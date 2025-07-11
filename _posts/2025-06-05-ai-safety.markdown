@@ -1,0 +1,13 @@
+---
+layout: post
+title:  "Novel AI Lexicon"
+date:   2025-06-01 23:49:53 -0700
+categories: ai safety
+---
+We need a new lexicon for AI. The anthropomorphisation of this technology is especially dangerous as it is causing emotional response to it. There are already papers citing the view of AI as an authority figure, yet also as a friend who is doing them a favour, which thus engenders the use of "please" and "thank you" A novel vocabulary must exist to prevent this danger.
+
+Possible alternatives words:
+
+Think - 
+Believe - 
+Says - 

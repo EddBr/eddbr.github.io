@@ -1,0 +1,1120 @@
+---
+layout: post
+title:  "ProcrastApply"
+date:   2025-07-11 
+categories: personal blog procrastapply
+---
+
+me
+ — 
+13/03/2025, 09:15
+03/13/2025:
+I am working on making installations easier.
+In Python (what the application is written in), it is quite difficult to make executables for different OSs. I know it's a hassle on Mac and will make a how-to guide as a temporary solution. 
+
+There now is a release for Linux,  shout out to all my Linux besties. However, even with this you need to do chmod +x ProcrastApply after installation to be able to run it. I'm trying to find better solutions. If you guys know anything please lmk
+
+Am going to make daily updates to keep all of you in the loop about what progress is being made. If you have any comments please lmk
+me
+ — 
+14/03/2025, 11:20
+03/14/2025:
+Relating to yesterday's post, a how to guide for Linux:
+Go to procrastapply.com
+Set your filtersFill in your email and upload your resumeDownload the folderUnzip the folderRun the following:cd Downloads/ProcrastApply_Package
+chmod +x ProcrastApply
+./ProcrastApply 
+
+If you try this and it doesn't work, let me know.
+Again, I want to make this more seemless
+
+Navbar
+I created a navbar! Woo woo.
+I'm aiming to implement a Google sign in. This way all UCs can use this, but I don't need to manage any passwords in the future.
+
+See you all tomorrow!
+me
+ — 
+16/03/2025, 00:09
+03/15/2025:
+I know it's a bit late, had a weirdly busy day. Anyways, as promised.
+Created 3 new pages:
+Homepage - Gives a bit more context about the page + ProcrastApply
+How-to - Gives more info about how to install the application. Still trying to find a better methodPricing - FREE!
+
+Plans for tomorrow: Google Sign in so that people don't have to fill in their email.
+
+See you all soon
+me
+ — 
+17/03/2025, 01:06
+03/16/2025:
+I have a plan!
+
+Downloading this is terrible. I'm sorry to everyone who has tried. I believe I can turn this into a web app to prevent all this hassle. This is going to take some work with AWS, so please bear with me. I am making this priority #1
+
+GL with finals everyone!
+me
+ — 
+17/03/2025, 23:41
+03/17/2025:
+That plan didn't work!
+
+I don't want to install anything and I don't think you do either. I'm instead now trying to make it a chrome extension. I still want to deliver massive value with our service and I don't want to dilute this with making "just another chrome extension" -- I want to make a great chrome extension, that you all actually like. 
+
+I'll let you all know when it's ready to go.
+
+Hope you're surviving the exam season!
+me
+ — 
+19/03/2025, 00:36
+03/18/2025:
+It is slowly getting there. Having to re-implement nearly all of it in a different language. However, that is faster than writing it for the first time!
+
+Hope finals aren't too bad, nearly half way through!
+me
+ — 
+20/03/2025, 00:33
+03/19/2025:
+Makin' the Chrome extension. This might turn out really nice. 
+
+Hope you're all ready for spring break!
+me
+ — 
+20/03/2025, 23:23
+03/20/2025
+So close to end of quarter - which means more time for ProcrastApply! Having some difficulty with communicating between content.js and background.js If you guys know stuff about sending messages in chrome extensions lmk.
+me
+ — 
+22/03/2025, 03:24
+03/21/2025
+Congrats on getting through finals! I know it's been a hard journey. I am getting to grips with the messaging system in Chrome extensions. Hope you all have a wonderful break
+me
+ — 
+22/03/2025, 17:22
+03/22/2025
+Still at it. Finally got the messages to work. Next step is to automatically apply!
+me
+ — 
+23/03/2025, 22:49
+03/23/2025
+Getting the autosubmissions working again. It's going to be complicated to get the cover letters aspect working, but I will get it!
+me
+ — 
+24/03/2025, 22:16
+03/24/2025
+It is moving! The extension runs on Handshake now and should get the flow working.
+Tomorrow
+I want to get the bare minimum flow working (submit application)
+me
+ — 
+25/03/2025, 23:52
+03/25/2025
+OK, didn't get bare minimum flow working, got website opener to work. Will have to break this process up into baby steps
+Tomorrow
+Submit 1 application
+me
+ — 
+27/03/2025, 00:31
+03/26/2025
+So bleeding close! Basic functionality works, but I want to keep track of the number of applications, which I will. CORS errors are induced, and who doesn't hate CORS errors.
+Tomorrow
+Get basic API request -> Simple job applications
+me
+ — 
+27/03/2025, 23:38
+03/27/2025
+CORS errors = Gone!
+Backend = Working!
+Flow = Nearly there!
+
+I want to get this right first time. No later date corrections. I want this to run smoothly and correctly. 
+Tomorrow
+Submit resume working
+me
+ — 
+28/03/2025, 23:55
+03/28/2025
+Huge day! Got basic flow working. First few applications with the Chrome extension only have been submitted!
+Tomorrow
+Iterate over page postings
+me
+ — 
+29/03/2025, 18:32
+03/29/2025
+I've gone backwards, will have to reuse what I had yesterday. For some reason it's really annoying getting the input boxes to load. Will have a rethink
+
+Tomorrow
+Remove today's changes. Get the input boxes to be read
+me
+ — 
+30/03/2025, 23:34
+03/30/2025
+Bit of a slow day tbh, hopefully my brain gets back into it. Removed yesterdays changes, need to tinker more with waiting for page to load
+Tomorrow
+Get flow to work when modal loads, as that's causing problems
+me
+ — 
+01/04/2025, 01:34
+03/31/2025
+We are getting the Chrome extension published on the Chrome store! 
+
+This means that ProcrastApply will be in your guys' hands soon enough! 
+
+Today, I managed to get more of the input boxes working, so that soon we will be able to deal with resumes, then the next step will be cover letters. Unfortunately, there is a lot of trial and error in this process, but everyday we are getting closer to a better product!
+Tomorrow
+I want to get the resume boxes working
+me
+ — 
+02/04/2025, 00:41
+04/01/2025
+We can look at multiple posts, it closes when it asks for transcript BUT we cannot submit resumes ... yet. It crashes when it tries to do this. We will get there
+Tomorrow
+@Gman and I will be at the MU handing out leaflets to more people to join this discord chat and understand people's problems with Handshake AND I will be coding more, hopefully getting CVs to work gah!
+me
+ — 
+02/04/2025, 23:06
+04/02/2025
+Diagnosed a lot of the issue when opening the modal. Am also getting the PDF library to work so that we can generate cover letters locally. 
+Tomorrow
+Make first PDF cover letter
+me
+ — 
+04/04/2025, 01:44
+04/03/2025
+Woo! Made the first PDF, getting things moving.
+Tomorrow
+Need to make get our API request to work to get cover letter content
+me
+ — 
+04/04/2025, 20:24
+04/04/2025
+Still trying to read the modal that pops out, having problems with getting the timing right. 
+Tomorrow
+Get paragraphs to work
+Get at least 1 input box read 
+me
+ — 
+05/04/2025, 23:30
+04/05/2025
+Got the paragraphs loaded in!
+Tomorrow
+Read input boxes
+me
+ — 
+06/04/2025, 23:52
+04/06/2025
+Great day today! Applications now work with resumes (although not 100% consistently -- am working on this).
+Tomorrow
+Want to get it consistent, day after tomorrow want to get cover letters fully working
+me
+ — 
+07/04/2025, 22:54
+04/07/2025
+Bit of a slog today, struggling to get consistent applications to work. I've realised that getting the cover letters working is going to be more finicky than I anticipated -- but it IS doable.
+Tomorrow
+Getting consistent applications
+me
+ — 
+08/04/2025, 22:33
+04/08/2025
+Great day! Got the resumes working, turns out there was a much simpler method than what I was doing, much faster too.
+Tomorrow
+Commence work on the cover letter section. 
+me
+ — 
+09/04/2025, 23:03
+04/09/2025
+Yup, so getting the cover letters going is slow work. I'm having trouble getting the next page to load afterwards, although I think it's more to do with what's going on with cover letters.
+Tomorrow
+Get background->content response 
+me
+ — 
+11/04/2025, 00:26
+04/10/2025
+Gah! This is frustrating, getting the next page thingy to work. Just gotta focus on background->content which I said I would!
+Tomorrow
+Forget about next page for now, get the response to work when a cover letter is created.
+me
+ — 
+11/04/2025, 09:02
+04/11/2025
+Getting there, all about getting the async calls just right.
+Tomorrow
+Picnic day!
+Still gonna be grinding! Think I might have the next page button working, just need to get the cover letters working
+me
+ — 
+12/04/2025, 15:37
+04/12/2025
+Happy picnic day!
+I got cover letters working - can't quite believe it! Now all I need to do is wait a short period before it submits application.
+Tomorrow
+Add a small timer before submission
+
+Stay Safe!
+me
+ — 
+13/04/2025, 22:26
+04/13/2025
+Getting the PDF text looking just right, need this for submissions
+Tomorrow
+Get PDFs perfect and need the submission to work
+me
+ — 
+14/04/2025, 21:52
+04/14/2025
+Cover letter functionality is now WORKING!! WOO. This is excellent news, now I just need to get it to works so you can upload your resume and get the functionality just right
+Tomorrow
+Get storage and resume upload working
+me
+ — 
+15/04/2025, 22:16
+04/15/2025
+Happy tax day! Got the flow to work when already applied to positions. Haven't got resume upload to work yet.
+Tomorrow
+Upload the resume pdf at the least
+me
+ — 
+16/04/2025, 13:34
+04/16/2025
+Handshake have updated their website. Which means that I have to rewrite many many lines of code. Woo!
+Chrome extensions are cool though, you can locally host websites on them- WHAT!? Crazy
+Tomorrow
+Get pdf upload working and accessible
+me
+ — 
+17/04/2025, 23:08
+04/17/2025
+Got the PDF upload to work. Started getting the flow working for the Handshake update. Handshake does look a lot cleaner if you lot haven't checked it out yet.
+Tomorrow
+More updates for the flow. Want to get cover transcripts working, and then cover letters
+me
+ — 
+18/04/2025, 14:57
+04/18/2025
+Cover letters are working, surprise how quickly I got that working.
+Tomorrow
+Get resume text read into cover letters so it's customised
+me
+ — 
+19/04/2025, 18:43
+04/19/2025
+PDFs are uploaded, struggling to re-read them for the cover letter section.
+Tomorrow
+Get PDF lib to work
+me
+ — 
+20/04/2025, 23:03
+04/20/2025
+Happy Easter!
+
+I am getting close to getting the PDFs read. This week will be exciting. Hopefully you can all download it and get some actual value from it!
+
+Tomorrow
+PDF Read!
+me
+ — 
+21/04/2025, 23:02
+04/21/2025
+PDFs are being read! Things are looking good, now I just need the next items to consistently be read. Looking forward to seeing you lot soon!
+Tomorrow
+Skip the correct postings
+me
+ — 
+22/04/2025, 22:21
+04/22/2025
+Cover letters now work! Very exciting times. Now all that's remaining on the user end is a weird bug that resets when it reaches the 4th post.
+Tomorrow
+Continue reading all posts on the page
+
+Your guys's HW:
+Download the extension!
+https://chromewebstore.google.com/detail/procrastapply/bhagaimmcfnbbdoffdoegknlacgponcp
+ProcrastApply - Chrome Web Store
+Getting students better jobs without the busywork
+Image
+me
+ — 
+23/04/2025, 23:47
+#04/23/2025
+Found the bug causing post resets - nested loops and repeatedly using the variable i - a classic! This now means it's working!! Going to the next page is a bit funky, but that shouldn't take too long.
+
+Looking to seeing you all on Friday!
+Tomorrow
+Fixing the next page issue
+
+
+
+Download link:
+https://chromewebstore.google.com/detail/procrastapply/bhagaimmcfnbbdoffdoegknlacgponcp
+ProcrastApply - Chrome Web Store
+Getting students better jobs without the busywork
+Image
+me
+ — 
+25/04/2025, 00:18
+04/24/2025
+Got next page to work! Am now making the filtering page much nicer.
+Tomorrow
+Get page filtering to work and give you all some free pizza 😋
+me
+ — 
+25/04/2025, 21:10
+04/25/2025
+Today we gave out $200 of pizza-- hope everyone who got a slice enjoyed it! 🍕
+Also managed to get Gmail login working. This should work for all UCs and will cater to the different Handshake domains.
+Tomorrow
+Will start job filtering stuff, it's quite menial but oh well.
+me
+ — 
+26/04/2025, 23:07
+04/26/2025
+Next page is working. Filtering page looks better. Now filters need to be implemented.
+Tomorrow
+Filters baby
+me
+ — 
+28/04/2025, 00:35
+04/27/2025
+Working on filters. Less boring than I thought it would be!
+I know people are facing issues on their Macs with the application. I will get to the bottom of this, and will update you all.
+Tomorrow
+More filters woo woo
+me
+ — 
+28/04/2025, 23:41
+04/28/2025
+So, it turns out that Handshake has updated their website for some users but not all. This is a problem, as I cannot develop for both platforms. We have tried getting in touch with them and will likely have to use a few connections to get in touch. 
+That being said, did some good work with the filters today + cleaned up logo!
+Tomorrow
+More filters stuff. Hopefully get an ETA for when Handshake updates website.
+me
+ — 
+29/04/2025, 23:25
+04/29/2025
+Worked on the website today. Feel like I'm twiddling my thumbs waiting for Handshake getting back to me. We need to make this happen immediately.
+Tomorrow
+Work on signing up for ProcrastApply on the Chrome extension
+me
+ — 
+30/04/2025, 22:52
+04/30/2025
+Got the background to start working again. Need to look at some backend issues, currently it's returning "Forbidden" - Yikes! 
+Tomorrow
+Sign up functionality on the backend + Cover letter stuff (I suspect it's an issue with ChatGPT things)
+me
+ — 
+01/05/2025, 10:33
+05/01/2025
+Pinch, punch, first day of the month!
+
+Got the user creation done, got in the flow this fine morning. The product works... However, you lot can't access it - that sucks! I could really do with the user feedback rn. Hopefully Handshake gets back to us.
+Tomorrow
+Create a demo so that you can understand how this works. The flow needs to be as smooth as possible.
+me
+ — 
+02/05/2025, 09:03
+05/02/2025
+The demo video should be up soon when the Chrome webstore approves it! I have been thinking a little bit about security and will make a few revisions to ensure a safe authentication by users.
+Tomorrow
+Work on authentication 
+me
+ — 
+03/05/2025, 20:49
+05/03/2025
+Working on the Google application now. AWS Layers are such a pain, surely Amazon could come up with a better way of doing this!
+Might also revert some changes back to support the un-updated version of the Handshake website. I'm putting it off because it feels dumb and makes the work I've done pointless, but I am just going to have to bite the bullet.
+Tomorrow
+Get Google authentication finished
+me
+ — 
+04/05/2025, 22:17
+05/04/2025
+Spent wayyyy too long getting the AWS layers sorted. At least I now know how to do it. Got a midterm next week so hope that also goes well. We have irons in the fire and will keep you all in the loop regarding a possible next step in ProcrastApply's future.
+Tomorrow
+Make sure email check works - need to do a final thing with Google to get backend to work
+me
+ — 
+06/05/2025, 00:03
+05/05/2025
+Midterm tomorrow ah! This Google stuff is a pain. Hoping to get it done tomorrow. Just messing around with it right now. At least I don't appear to be the only one with this problem.
+Tomorrow
+Get. Authentication. Done 
+me
+ — 
+07/05/2025, 01:13
+05/06/2025
+Ughh, still working on it
+Tomorrow
+Get manifest.json key working
+me
+ — 
+07/05/2025, 13:35
+05/07/2025
+Woo! I found a cheeky way of doing it on the backend. Now that works thank goodness. Good luck to all of our friends presenting at Demo day today!
+Tomorrow
+Look at feasibility of storing more things on the DB 
+me
+ — 
+09/05/2025, 04:00
+05/08/2025
+Got a lot of backend stuff working. Tomorrow is the day I get stuff working on Mac. Not waiting for Handshake to get back now.
+Tomorrow
+Get Mac working!
+me
+ — 
+10/05/2025, 04:21
+05/09/2025
+Mac is not working. I can't test to see if it will work. Messaged another Handshake employee. Starting another possible avenue to help you all get jobs.
+Tomorrow
+Have a long think about what is most worth doing
+me
+ — 
+11/05/2025, 02:52
+05/10/2025
+Ok, this has been interesting. Working more on a new idea we've had to increase value for you and improve your adds of getting jobs. More details soon.
+Tomorrow
+Keep working on this
+me
+ — 
+11/05/2025, 23:46
+05/11/2025
+Looking at new technologies. Looking to implement GraphQL for new project and am slowly getting to grips with it. Don't want to be too hasty.
+Tomorrow
+Build GraphQL
+me
+ — 
+12/05/2025, 23:47
+05/12/2025
+Turns out AWS is great at hosting mobile applications as well (hint hint). Amplify + Appsync + DynamoDB makes life very easy.
+Tomorrow
+Start building the thing 
+me
+ — 
+14/05/2025, 04:07
+05/13/2025
+Having fun again! Put the app on Amplify and it runs like a dream. Want to start getting the functionality on it... This could be good
+Tomorrow
+Get barebones interface on it
+me
+ — 
+14/05/2025, 23:57
+05/14/2025
+Hosting the app now, and immediately have authentication working. Not sure if messaging is functionality we would want. Will have to discuss it.
+Tomorrow
+Start working on shared similar interests. Build DB on information
+me
+ — 
+16/05/2025, 00:39
+05/15/2025
+Improved the app. Spoke to someone in design about it. Not sure if we really are solving a problem but only 1 way to find out ig.
+Tomorrow
+Keep the ball rolling
+me
+ — 
+17/05/2025, 02:06
+05/16/2025
+Made a bunch of improvements. Got user profiles looking better and the user flow better.
+Tomorrow
+Get user sign out looking better and improved  user interface. Need to look more at what students can do to differentiate themselves. 
+me
+ — 
+17/05/2025, 22:42
+05/17/2025
+Slowly making page look much better. I feel like I need to get more substantial functionality. Perhaps getting more backend stuff working. Will have to see.
+Tomorrow
+Get some backend stuff working
+me
+ — 
+19/05/2025, 00:37
+05/18/2025
+Making back end stuff. Need to interact with GraphQL from React Native side. Interesting getting it all together.
+Tomorrow
+More GraphQL stuff, try and get messages working
+me
+ — 
+20/05/2025, 00:34
+05/19/2025
+Working on an interface for text autocomplete. LLM autocomplete might be an interesting functionality. Experimenting.
+Tomorrow
+Get it to work with an API?
+me
+ — 
+21/05/2025, 01:08
+05/20/2025
+Cleaned the interface up, the text suggestions were pretty ugly. Getting irritating errors with the API key.
+Tomorrow
+Make the first API request
+me
+ — 
+21/05/2025, 23:32
+05/21/2025
+Looking better, suggestion is better. Now got it working so that the text rolls around the side. Worried about abusing my API credits, so will try to make it only make a suggestion after a delay, or perhaps at specific moments in time.
+Tomorrow
+Test out API (with thought)
+me
+ — 
+22/05/2025, 23:45
+05/22/2025
+Been cooking an idea up. Might actually be quite helpful... Will speak to the Gavdog abt it. Time to bring value to you lot.
+Tomorrow
+Hook up a backend?
+me
+ — 
+24/05/2025, 21:55
+05/23/2025
+Apologies for delay, did it at 1:30. Making it look real good, can now add new users to the tables with their data.
+Tomorrow
+Add user persistence
+05/24/2025
+User persistence now works! But locally, maybe I'll keep it super basic before making a back end and get people to test it before releasing. Can also edit users.
+Tomorrow
+Photos!
+me
+ — 
+26/05/2025, 11:42
+05/25/2025
+Photos done! Next to do is filtering the items and returning the specific contact details
+Tomorrow
+Return phone numbers 
+me
+ — 
+27/05/2025, 00:02
+05/26/2025
+Reach out functionality is much better and works with phones. Would be interesting to get user feedback, think I will ask people on Thursday.
+Tomorrow
+Entries should have control over being in the database (I think)
+me
+ — 
+28/05/2025, 01:22
+05/27/2025
+Hello all!
+Patched up a few things so that new users can be added again. Need to prep the demo for Thursday, this is also a bit of a mad week so need to get everything done. Regarding next functionality, not really sure. Will discuss with G tomorrow.
+Tomorrow
+Discuss with G and then make stuff from that
+me
+ — 
+29/05/2025, 01:55
+05/28/2025
+Met with G. Had a good talk. We have direction now and now what we want. We also know what we're up against now.
+Tomorrow
+Build site (know what we want, will divulge details later)
+me
+ — 
+30/05/2025, 01:16
+05/29/2025
+Building the website some more, facing issues with resume upload in NextJS.
+Tomorrow
+Busy day! Get resume upload working
+me
+ — 
+30/05/2025, 23:54
+05/30/2025
+Resume upload is now working! Need to get the match suggestions working next.
+Tomorrow
+Match suggestions
+me
+ — 
+31/05/2025, 14:30
+05/31/2025
+Trying a slightly different format today. I'm going to start by setting my intentions in my work and then seeing if I met them.
+Intention
+Get sample email functionality working so that it can quickly be sent to the target contacts.
+Result
+Got this working. I need to spend some time planning the flow.
+
+first time users: Upload resume -> getMatches -> createEmail
+
+nth time users: resume already uploaded -> getMatches -> createEmail
+
+Tomorrow
+Get this flow to work, using useEffect
+me
+ — 
+02/06/2025, 00:38
+06/01/2025
+Intention
+Get following flow to work:
+
+first time users: Upload resume -> getMatches -> createEmail
+
+nth time users: resume already uploaded -> getMatches -> createEmail
+Result
+Flow is working. Now need to clean up displaying resume.
+Tomorrow
+Display resume cleanly
+me
+ — 
+02/06/2025, 10:46
+06/02/2025
+Intention
+Display resume cleanly
+Result
+Resume is not cleanly displayed, been focusing on getting the email functionality to work with requests to OpenAI - useState + useEffect weirdness is annoying. Got it working now.
+Tomorrow
+Display resume text - need to think of something else exciting to do as well
+me
+ — 
+04/06/2025, 01:11
+06/03/2025
+Intention
+Display resume text
+Turns out it's also making a BUNCH of API calls - this ain't good, would spam my backend
+Result
+Ugh, trying to render this PDF, but it's not working. Need to try some more attempts
+Tomorrow
+Get this PDF visible and get the text from it
+me
+ — 
+05/06/2025, 01:48
+06/04/2025
+Intention
+Get this PDF visible and get the text from it
+Result
+PDF is visible!
+There is a thing about using sensitive personal data before utilising an LLM API - these things do not mix well. I want to ensure that there is a standard I am reaching that works.
+
+Why isn't there a label on websites that says something like - "WE ARE ISOXXX CERTIFIED"? Feel like that would be a good idea and circumnavigate those annoying popups.
+Tomorrow
+Redact sensitive data
+me
+ — 
+06/06/2025, 01:42
+06/05/2025
+Intention
+Redact sensitive data
+Result
+Weirdly, no good solution exists. I don't know why this is.
+
+I guess I'm going to have to go on a little sidequest now to create a light-weight redaction model. 
+
+There are some that already exist: https://huggingface.co/strickvl/nlp-redaction-classifier
+
+However, I don't know if it works for everything I want (names, addresses, emails, phone #s). Could be a small little tid-bit. I'm very surprised this doesn't exist already 
+Tomorrow
+Fine-tune that model!
+strickvl/nlp-redaction-classifier · Hugging Face
+strickvl/nlp-redaction-classifier · Hugging Face
+me
+ — 
+06/06/2025, 17:43
+06/06/2025
+Intention
+Fine-tune that model!
+Result
+Settled on this model:
+https://huggingface.co/Isotonic/deberta-v3-base_finetuned_ai4privacy_v2
+
+Runs pretty well and seems quite popular. Only thing is it splits up the words by tokens. This means I have funky behaviour where I will need to combine the tokens together in order to successfully redact sensitive info.
+Tomorrow
+Combine tokens together and get redacted resume text - This will be pretty cool to see
+Isotonic/deberta-v3-base_finetuned_ai4privacy_v2 · Hugging Face
+Isotonic/deberta-v3-base_finetuned_ai4privacy_v2 · Hugging Face
+me
+ — 
+08/06/2025, 00:34
+06/07/2025
+Intention
+Combine tokens together and get redacted resume text - This will be pretty cool to see
+Result
+It is nearly working! Pretty cool to see it redact the sensitive information. Problem is when there are multiple sensitive words that need to be removed due to index errors 
+Tomorrow
+Solve these index errors
+me
+ — 
+08/06/2025, 10:41
+06/08/2025
+Intention
+Solve these index errors
+Result
+I have nearly solved these indexing issues. It's more of a fun coding problem than I thought. Screw ChatGPT, I'm enjoying actually using my brain to solve a classic programming problem. Took longer than anticipated due to lack of logging (I've since fixed)
+Tomorrow
+Get my solution finished.
+me
+ — 
+09/06/2025, 22:50
+06/09/2025
+Intention
+Get my solution finished.
+Result
+Fixed! Did some more stuff to remove some forms of filtering. This is actually quite a nice solution
+Tomorrow
+Get OpenAI API up
+me
+ — 
+11/06/2025, 03:52
+06/10/2025
+Intention
+Get OpenAI API up
+Result
+Did not do this. I instead worked on getting the PDF viewable - which it now is. There were some weird funky things with local storage and have subsequently moved to indexedDB which I did not even know existed.
+Tomorrow
+Sleep. Then get OpenAI API up n' runnin'
+
+GL everyone with finals!
+me
+ — 
+11/06/2025, 14:38
+06/11/2025
+Intention
+Sleep. Then get OpenAI API up n' runnin'
+Result
+Oops, did not sleep very much and had a massive brain wave!
+
+This is THE idea. GG and I are going to Stanford this summer and think that we have found a way to deliver MASSIVE value to students. I hope you are all excited as we are.
+Best of luck with any more exams
+Tomorrow
+User creation - GG will be on data collection I believe
+me
+ — 
+13/06/2025, 03:22
+06/12/2025
+Intention
+User creation - GG will be on data collection I believe
+Result
+User creation is getting there, spent some time making things look good and adding extra functionality such as a bio section
+Tomorrow
+Get bio display to work
+User update to work
+me
+ — 
+14/06/2025, 04:17
+06/13/2025
+Intention
+Get bio display to work
+User update to work
+Result
+Not working. Quite late and v tired. Just trying to get stuff shipped.
+
+User updates is closer to working.
+Tomorrow
+Get the user update to work -> Get bio display up and running
+me
+ — 
+14/06/2025, 23:57
+06/14/2025
+Intention
+Get the user update to work -> Get bio display up and running
+Result
+Done! Also got photo upload to work
+Tomorrow
+Make the contact look smarter 
+
+Make the colour scheme more red
+me
+ — 
+16/06/2025, 00:36
+06/15/2025
+Intention
+Make the contact look smarter
+Make the colour scheme more red
+Result
+Contact looks a little better. 
+Red is pretty ugly but at least I have a better CSS structure
+Tomorrow
+Think about linking people they have worked with and SUGGESTED people.
+
+Consequently, will also have to start thinking about how papers connect people -> Maybe even want a way of opening up a page with the list of authors on a paper.
+
+Need to also speak with students about what they are looking for. Not sure which is the most important:
+
+    Recognition
+
+Students in their labCitationsCollaborators
+me
+ — 
+17/06/2025, 00:52
+06/16/2025
+Intention
+Think about linking people PhDs have worked with and SUGGESTED people.
+
+Consequently, will also have to start thinking about how papers connect people -> Maybe even want a way of opening up a page with the list of authors on a paper.
+
+Need to also speak with students about what they are looking for. Not sure which is the most important:
+
+    Recognition
+
+Students in their labCitationsCollaborators
+Result
+Unfortunately, did not get a chance to speak with PhD's, hopefully should be happening tomorrow but will see.
+
+Did some basic stuff - not super productive, quite a stressful day.
+Tomorrow
+Has the potential to be terrible. Will lyk
+me
+ — 
+18/06/2025, 00:40
+06/17/2025
+Intention
+Has the potential to be terrible. Will lyk 
+Result
+Things still up in the air, should be OK
+Regarding this stuff. Trying to setup a database to get stuff working. Looking at implementing OpenSearch - just familiarising myself
+
+Tomorrow
+Run an OpenSearch query
+me
+ — 
+19/06/2025, 00:05
+06/18/2025
+Intention
+Run an OpenSearch query
+Result
+I am sick. This has been hard. Trying to get through the week rn, but want to deliver. Every. Day.
+Created OpenSearch gonna go sleep now. Hope everyone is having a good summer.
+Tomorrow
+Do more! Please! I don't like being ill 😦
+me
+ — 
+20/06/2025, 00:50
+06/19/2025
+Intention
+Do more! Please! I don't like being ill 😦
+Result
+Feeling much better!
+Made a small change to make the URL available so that this works better for web.
+Tomorrow
+Take the leap and just start with a solution for making a searchable platform
+me
+ — 
+21/06/2025, 02:07
+06/20/2025
+Intention
+Take the leap and just start with a solution for making a searchable platform
+Result
+OK, turns out search is really quite complicated. I'm gonna keep this as easy and simple as I can and focus on user login and sign up - then at least stuff starts making sense. Search is kinda secondary.
+Tomorrow
+Make a front facing first page that has the search part. Then also have user login + signup / see profile buttons and pages
+me
+ — 
+22/06/2025, 02:19
+06/21/2025
+Intention
+Make a front facing first page that has the search part. Then also have user login + signup / see profile buttons and pages
+Result
+Front facing part was easy.
+Now need to have better login + signup functionality. Need to see when a user is actually signed in and what their user id would be - match Cognito with db of other stuff.
+Tomorrow
+Look at AWS ways to match cognito things with full apps
+me
+ — 
+22/06/2025, 18:37
+06/22/2025
+Intention
+Look at AWS ways to match cognito things with full apps
+Result
+Using guide: https://medium.com/@johnelisaaa/building-a-full-stack-react-app-integrating-aws-cognito-lambda-rds-mysql-amplify-api-a4f616559acb
+
+Setting up MySQL on my device. Have never managed DBs before so this is a fun (and also painful) new learning experience. Trying to connect to my VPC.
+Tomorrow
+Connect to VPC
+Medium
+Building a Full Stack React App: Integrating AWS Cognito + Lambda +...
+In this tutorial, we’ll build a secure REST API for our e-commerce website by integrating AWS Cognito, AWS Lambda, and MySQL (RDS).
+Building a Full Stack React App: Integrating AWS Cognito + Lambda +...
+me
+ — 
+23/06/2025, 23:47
+06/23/2025
+Intention
+Connect to VPC
+Result
+Set up mySQL on my device and made tables. Also set up AWS db which is now synced to the users I have with AWS Cognito. Scared of screwing something up, but so far seems pretty cool! Need to run some tests
+Tomorrow
+Make a first user on the DB!
+me
+ — 
+25/06/2025, 01:54
+06/24/2025
+Intention
+Make a first user on the DB!
+Result
+Have not made a user, had too late a day - GAH! Doing research takes up a lot of my day
+Tomorrow
+Make a damn user
+me
+ — 
+25/06/2025, 23:45
+06/25/2025
+Intention
+Make a damn user
+Result
+I did a thing. Used Replit to see if I could make the application. Did it superrrrr quick - scarily so. Issue is I'm now not familiar with the codebase, which I suppose is the point. Anyways. 
+Ta-dah: https://0e575a98-43ae-435e-a727-06ce709d1fec-00-25zds93xmkkwt.worf.replit.dev/
+Tomorrow
+Keep workin' it
+me
+ — 
+27/06/2025, 00:44
+06/26/2025
+Intention
+Keep workin' it
+Result
+Holy cow! Replit is amazing. We have an MVP already, getting PhDs to use it. This is nuts!
+Tomorrow
+Get user feedback and improve it - software engineering is dead. All hail AI.
+me
+ — 
+28/06/2025, 00:55
+06/27/2025
+Intention
+Get user feedback and improve it - software engineering is dead. All hail AI.
+Result
+Got user feedback, implementing it right now. This is looking good. Did cost me $8 and I'm not sure about scaling it with DB. That is probably a later consideration though -- tradeoffs!
+Tomorrow
+Implement more of the user feedback
+me
+ — 
+29/06/2025, 01:20
+06/28/2025
+Intention
+Implement more of the user feedback
+
+Result
+Have implemented more of the user feedback. I do get the sense that we're not actually solving a problem and this is a strong fear of mine. More feedback we got today was that weak connections are not that helpful. In academia, network is very powerful, but it must be one of strong connection as research collaboration is predicated on people being of high calibre and trustworthy. These things take time. That being said, I do think there is value in a quickly shareable profile page so that people can follow you and your work over time. We shall see.
+Tomorrow
+Get more feedback. Good thing we're seeing PhDs every day!
+me
+ — 
+30/06/2025, 00:34
+06/29/2025
+Intention
+Get more feedback. Good thing we're seeing PhDs every day!
+Result
+In classic adolescent style, we've been chasing a solution and not a problem. The world has changed, and building software products is easier than ever. I've been doing it over the past 6 months to become a better coder and gain more insight, but these skills are less valuable than ever (IMO and exempting highly-specialised niches). Now we need to find a problem and get to grips with it. I like PhDs, they are mostly nice people. I want to make things that solve their problems. Now I need to understand what their problems are. We're doing research now. Not building, even though I always have an itch to build, ultimately, the next skill I need to learn is patience and thinking before doing.
+Tomorrow
+Read more papers + articles about PhD problems.
+me
+ — 
+01/07/2025, 00:54
+06/30/2025
+Intention
+Read more papers + articles about PhD problems.
+Result
+Reading more. I've been given a very niche problem by a PhD and overlooked it. I think there is more to the story than I think. Could be that there is a very easy solution but remains unclear - will ask tomorrow.
+Tomorrow
+Ask PhD why they haven't fixed a minor inconvenience
+me
+ — 
+02/07/2025, 00:14
+07/01/2025
+Intention
+Ask PhD why they haven't fixed a minor inconvenience
+Result
+Read another paper about trouble PhDs face and spoke to a PhD today about their issue. It's a problem of time. Their page is of low priority and so they don't want to go change it.
+Tomorrow
+Having a conversation with a PhD about the application stuff.
+me
+ — 
+03/07/2025, 02:01
+07/02/2025
+Intention
+Having a conversation with a PhD about the application stuff.
+Result
+Discussion about PhD application stuff was good. Sounds like I probably want to do one. Anyways, there are a lot of things with the application process. I'm not sure if I can solve the things of or who is facing the problems. Sounds like it's just generally a tough gig. Regardless will keep looking. Going on a break this week and hoping for some time to reflect. 
+Tomorrow
+Enjoy the sun!
+me
+ — 
+04/07/2025, 01:09
+07/03/2025
+Intention
+Enjoy the sun!
+Result
+Enjoyed the sun! Spent some more time reading docs about challenges of PhD. It might have to happen.
+Tomorrow
+Happy 4th July! Keep reading!
+me
+ — 
+05/07/2025, 03:32
+07/04/2025
+Intention
+Keep reading!
+Result
+Hope everyone had a great 4th of July! Had to squeeze some stuff in now after a fun day out. Really need to discuss future of this project. Don't have a solid problem yet and reading the information out there is quite generalised. There is something else I have been thinking about, but it's not relevant. Hoping that having a small break from things will help.
+Tomorrow
+Keep things percolating and try to rest up (it's late!).
+me
+ — 
+06/07/2025, 01:49
+07/05/2025
+Intention
+Keep things percolating and try to rest up (it's late!).
+Result
+Had a talk with the Gman. Decided to keep going with the PhD stuff. We are actually bringing value, but the problem is conflicting motivations - they want the perks of being well connected with an UTD website, but they don't want to maintain it. Therefore, we're maintaining it for them - that's it, we're doing just that. Gman and I are updating the websites so that they don't have to worry. We're doing stuff that won't scale. 
+Tomorrow
+Begin the grind of updating the websites
+me
+ — 
+07/07/2025, 01:20
+07/06/2025
+Intention
+Begin the grind of updating the websites
+Result
+I have begun the grind of creating profiles and am now up to 9 (it takes a fairly long time to be thorough). This is a tenet of doing things that don't scale. If we begun by doing this stuff by hand, we will begin to learn how to do this in a manner that begins to scale. We should do this the dumb way so that we can begin to do it a bit smarter. I think for the time being we just keep doing this until something clicks.
+Tomorrow
+Fix the paper view on the personal pages themselves.
+Think about adding more collaborators.
+me
+ — 
+08/07/2025, 00:47
+07/07/2025
+Intention
+Fix the paper view on the personal pages themselves.
+Think about adding more collaborators.
+Result
+Had a great talk with a mentor today. We need to redefine and refocus what we are doing. Started back up on the alumni connection stuff. Was very easy to build back up. Gonna show the Gman how to do stuff on Replit - it is truly amazing.
+Tomorrow
+Show Gman Replit
+me
+ — 
+Yesterday at 01:16
+07/08/2025
+Intention
+Show Gman Replit
+Result
+Did not get to show the Gman. Will hopefully do that tomorrow when together. Did start looking at collating data for our project. We are gonna need a better way of doing this. Will likely take getting in touch with someone. Maybe we do just reach out to Davis.
+Tomorrow
+Show the Gman replit. Discuss reaching out to Davis.
+me
+ — 
+00:13
+07/09/2025
+Intention
+Show the Gman replit. Discuss reaching out to Davis.
+Result
+Showed Replit to the Gman. It's a pretty amazing technology and reckon everyone will be using it. It does cost money but I think it's one of those moments where you have to pay to play with the latest stuff. Genuinely hours of coding saved by using it. There definitely are still gaps which AI cannot solve - primarily the messiness of human beings. With that said, I'm a huge proponent. Let's see what else it can do! I should start using cursor as well - that's free for students!
+Need to send an email to Davis
+Tomorrow
+Download Cursor.
+Email Davis.
+me
+ — 
+00:09
+07/10/2025
+Intention
+Download Cursor.
+Email Davis.
+Result
+Cursor is amazing.
+Davis warm connection inbound.
+
+With that said, this might be goodbye -- from me, not ProcrastApply.
+
+I have made daily updates for the past 4 months and it has now reached a point where I say farewell. This has been a journey for which I am extremely grateful and have loved. We have met great people, learnt great lessons and made great mistakes; I couldn't have asked for more.
+
+Unfortunately, my time in the US and with you guys must come to an end.
+
+Total days worked on project: 183
+Total blog posts written: 120
+Total spent on AWS: $13.17
+Total spent on pizza: $200
+Total spent on domains: $12.17
+...
+Total Cost: PRICELESS!!!
+
+I wish you all the best and leave you in the capable hands of the Gman. ♥️
+
+Tomorrow
+Something else, not better or worse, just different.
