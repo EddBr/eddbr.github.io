@@ -1,0 +1,207 @@
+---
+layout: post
+title:  "Reinforcement Learning: An Introduction - Chapter 2"
+categories: rl textbook
+---
+
+# Instructive Feedback
+Indicates correct action to take
+Independent of action taken
+# Evaluative Feedback
+Indicates how good action taken is
+Depends entirely on action
+## Associative
+Actions are taken in more than 1 situation
+# AN $n$-Armed Bandit Problem
+Limited time steps
+Imagine an $n$-armed slot machine
+
+Not choosing the greedy move is exploration
+Choosing greedy is exploitation
+# Action Value
+## True Value $q(a)$
+Mean reward received when action is selected
+## Estimated Value $Q_t(a)$
+$Q_t(a)=\cfrac{R_1+R_2+...+R_{N_t(a)}}{N_t(a)}$
+$N_t(a)$ - Number of times action $a$ is selected
+$t$ - Time step
+$R_t$ - Reward
+
+If $N_t(a)=0$, we define $Q_t(a)$ with a default value. E.g. $Q_1(a)=0$
+
+$\lim_{N_t(a)\to\infty}Q_t(a)\to q(a)$
+
+## Greedy Selection
+$A_t=\arg\max_aQ_t(a)$
+
+$\epsilon$-greed algorithms are guaranteed to converge
+Probability of selecting optimal action converges to $1-\epsilon$
+## Nonstationary
+True values changed over time
+$e$-greedy are necessary
+
+There is a problem with this, however, as $N_t(a)$ increases, so do the memory requirements, without bound
+Can instead be computed:
+$Q_{k+1}=\frac 1 k \sum^k_{i=1}R_i$
+$=\frac 1 k (R_k+\sum^{k-1}_{i=1}R_i)$
+$=\frac 1 k (R_k+(k-1)Q_k+(Q_k-Q_k))$
+$=\frac 1 k (R_k+kQ_k-Q_k)$
+$=Q_k+\frac 1 k (R_k-Q_k)$
+
+For me, it's more intuitive to think of it as:
+$Q_{k+1}=\cfrac{R_k+(k-1)Q_k}{k}$
+## Update Rule
+$NewEstimate\leftarrow OldEstimate+StepSize[Target-OldEstimate]$
+which is like gradient descent ($W_k=W_{k-1}-\alpha\nabla W_{k-1}$)
+
+Note that for us, the step size $\alpha=\frac 1 k$ is changing over time
+## Tracking a Nonstationary Problem
+$Q_{k+1}=Q_k+\alpha[R_k-Q_k]$
+So the weighted average past rewards and initial estimate $Q_1$ is:
+$Q_{k+1}=Q_k+\alpha[R_k-Q_k]$
+$=\alpha R_k+(1-\alpha)Q_k$
+$=\alpha R_k+(1-\alpha)Q_k$
+$=\alpha R_k+(1-\alpha)[\alpha R_{k-1}+(1-\alpha)Q_{k-1}]$
+$=\alpha R_k+(1-\alpha)\alpha R_{k-1}+(1-\alpha)^2Q_{k-1}$
+$=\alpha R_k+(1-\alpha)\alpha R_{k-1}+(1-\alpha)^2Q_{k-1}+...+(1-\alpha)^{k-1}\alpha R_1+(1-\alpha)^kQ_1$
+$=(1-\alpha)^kQ_1+\sum^k_{i=1}\alpha(1-\alpha)^{k-i}R_i$
+
+This is a weighted average because the sum of the weights is $(1-\alpha)^k+\sum^k_{i=1}\alpha(1-\alpha)^{k-i}=1$ #nonstationaryweightedequ
+**Proof:**
+Geometric sum equation: $S_n=\cfrac {a(1-r^n)}{1-r}$
+Looking at $\sum^k_{i=1}\alpha(1-\alpha)^{k-i}$:
+$(1-\alpha)^{-1}>1$ since $0<\alpha\le1$, and for this section, we'll assume $alpha<1$ and will deal with this later as an edge case
+Therefore, we can reverse the direction of the sum, setting $r$ as $(1-\alpha)$
+$\therefore S_n=\cfrac {\alpha(1-(1-\alpha)^k)}{1-(1-\alpha)}$ 
+$=\cfrac {\alpha(1-(1-\alpha)^k)}{\alpha}$
+$=(1-(1-\alpha)^k)$
+
+If we add this back to #nonstationaryweightedequ 
+$(1-\alpha)^k+(1-(1-\alpha)^k)$
+$=1$ $\square$
+
+At the edge case, when $\alpha=1$
+The first part of #nonstationaryweightedequ $ becomes 0
+In the second part, every part of the sum becomes 0, except the last term, $\alpha(1-\alpha)^{k-k}=\alpha(1-\alpha)^0=\alpha=1$
+Therefore, this also sums to 1, $\square$
+## Convergence Conditions
+$\sum^\infty_{k=1}\alpha_k(a)=\infty$
+$\sum^\infty_{k=1}\alpha^2_k(a)<\infty$
+
+Does converge for sample-average case $\alpha_k(a)=\frac 1 k$
+This means that it does not converge when $\alpha$ is constant
+Non-convergence is desirable for a nonstationary environment
+
+Step-size parameters that meet the convergence conditions converge very slowly and need a lot of training - rarely ideal
+## Optimistic Initial Values
+Setting expected values much higher encourages exploration
+However, the drive to explore is temporary and thus doesn't work well in nonstationary problems (stops exploring, 0 adaptation)
+# Upper-Confidence-Bound Action Selection
+$A_t=\arg\max_a[Q_t(a)+c\sqrt{\cfrac{\ln t}{N_t(a)}}]$
+$c\sqrt{\cfrac{\ln t}{N_t(a)}}$ - Measure of uncertainty in estimate of $q(a)$
+
+We use UCB because $\epsilon$-greedy indiscriminately chooses non-greedy options
+
+Each time $a$ is chosen, $N_t(a)$ increases and thus reduces uncertainty
+
+When $a$ is not selected, $t$ increases, increasing uncertainty
+
+Explanation for spike in reward with UCB: It gives a large weighting to a route it estimates to have high value since $c=2$, it may be greater than $Q_t(a)$
+# Gradient Bandits
+$\Pr\{A-t=a\}=\cfrac {e^{H_t(a)}}{\sum^n_{b=1}e^{H_t(b)}}=\pi_t(a)$
+
+$H_{t+1}(A_t)=H_t(A_t)+\alpha(R_t-\bar R_t)(1-\pi_t(A_t)),$ #gradientbanditequation
+$H_{t+1}(a)=H_t(a)+\alpha(R_t-\bar R_t)\pi_t(a)$
+$\bar R$ is average of all rewards, serves as a baseline to compare $R_t$ to
+If reward is higher than baseline ($R_t>\bar R_t$), probability of choosing that action increases
+
+Having a baseline means that a shifting of rewards has no bearing on performance (i.e. if all rewards are set to +4, rather than 0)
+
+$H_{t+1}(a)=H_t(a)+\alpha\cfrac {\partial \mathbb{E} (R_t)}{\partial H_t(a)}$
+Measure of of performance is the expected reward $\mathbb{E}(R_t)=\sum_b\pi_t(b)q(b)$
+
+This algorithm is an instance of stochastic gradient ascent
+
+
+$\cfrac {\partial \mathbb{E} (R_t)}{\partial H_t(a)}=\cfrac {\partial }{\partial H_t(a)}[\sum_b\pi_t(b)q(b)]$
+$=\sum_bq(b)\cfrac{\partial \pi_t(b)}{\partial H_t(a)}$
+$=\sum_b(q(b)-X_t)\cfrac{\partial \pi_t(b)}{\partial H_t(a)}$
+$X_t$ - any scalar that does not depend on $b$
+$b$ is some action in the action space
+Can include $X_t$ because the gradient sums to 0 over all actions (sum of probabilities must remain 1, so sum of changes must $= 0$)
+
+$=\sum_b\pi_t(b)(q(b)-X_t)\cfrac{\partial pi_t(b)}{\partial H_t(a)}/\pi_t(b)$
+The equation is now in the form of an expectation, summing over all possible values $b$ of the random variable $A_t$ then multiplying by the probability of those values
+$=\mathbb{E}[(q(A_t)-X_t)\cfrac{\partial \pi_t(b)}{\partial H_t(a)}/\pi_t(A_t)]$
+$=\mathbb{E}[(R_t-\bar R_t)\cfrac{\partial \pi_t(b)}{\partial H_t(a)}/\pi_t(A_t)]$
+We set $X_t=\bar R_t$ because it can equal anything
+$R_t=q(A_t)$ is permitted because $\mathbb{E}[R_t]=q(A_t)$ and all other factors are non-random
+
+Assume $\cfrac{\partial \pi_t(b)}{\partial H_t(a)}=\pi_t(b)(\mathbb{I}_{a=A_t}-\pi_t(a))$:
+
+$=\mathbb{E}[(R_t-\bar R_t)\pi_t(A_t)(\mathbb{I}_{a=A_t}-\pi_t(a))/\pi_t(A_t)]$
+$=\mathbb{E}[(R_t-\bar R_t)(\mathbb{I}_{a=A_t}-\pi_t(a))]$
+
+where $\mathbb{I}_{a=b}=1$ if $a=b$
+otherwise $\mathbb{I}=0$
+
+which fits into the #gradientbanditequation :
+$H_{t+1}(a)=H_t(a)+\alpha(R_t-\bar R_t)(\mathbb{I}_{a=A_t}-\pi_t(a))$
+
+Remains to show  $\cfrac{\partial \pi_t(b)}{\partial H_t(a)}=\pi_t(b)(\mathbb{I}_{a=A_t}-\pi_t(a))$:
+We begin with the quotient rule equation: $\cfrac {\partial}{\partial x}[\cfrac {f(x)}{g(x)}]=\cfrac {\frac {\partial f(x)}{\partial x}g(x)-f(x)\frac {\partial g(x)}{\partial x}}{g(x)^2}$
+From this we can write:
+
+$\cfrac{\partial \pi_t(b)}{\partial H_t(a)}=\cfrac{\partial}{\partial H_t(a)}\pi_t(b)$
+$=\cfrac {\partial}{\partial H_t(a)}[\cfrac {e^{H_t(b)}}{\sum^n_{c=1}e^{H_t(c)}}]$
+$=\cfrac {\frac {\partial e^{H_t(b)}}{\partial H_t(a)}\sum^n_{c=1}e^{H_t(c)}-e^{H_t(b)}\frac {\partial \sum^n_{c=1}e^{h_t(c)}}{\partial H_t(a))}}{(\sum^n_{c=1}e^{h_t(c)})^2}$ - quotient rule
+$=\cfrac{\mathbb{I}_{a=b}e^{H_t(a)}\sum^n_{c=1}e^{H_t(c)}-e^{H_t(b)}e^{H_t(a)}}{(\sum^n_{c=1}e^{h_t(c)})^2}$ ($\frac {\partial e^x}{\partial x}=e^x$ and $\sum^n_{c=1}e^{H_t(c)}$ contains $e^{H_t(a)}$)
+$=\cfrac{\mathbb{I}_{a=b}e^{H_t(b)}}{\sum^n_{c=1}e^{h_t(c)}}-\cfrac{e^{H_t(b)}e^{H_t(a)}}{(\sum^n_{c=1}e^{h_t(c)})^2}$
+$=\mathbb{I}_{a=b}\pi_t(b)-\pi_t(b)\pi_t(a)$
+$=\pi_t(b)(\mathbb{I}_{a=b}-\pi_t(a))$ $\square$
+
+Gradient-based algorithms estimate action preferences, not values
+Connected bandits = associative search tasks
+## Gittins Indices
+Provide optional solution to certain forms of bandit problems
+
+# Exercises
+**Exercise 2.1** 
+In the comparison shown in Figure 2.1, which method will perform best in the long run in terms of cumulative reward and cumulative probability of selecting the best action? How much better will it be? Express your answer quantitatively.
+
+$\epsilon=0.01$ will perform the best in the long run, as its average reward will eventually overtake $\epsilon=0.1$
+This is because the chance of randomly choosing the suboptimal path is lower. It will end up choosing optimal actions 99% of the time.
+
+**Exercise 2.2** 
+Give pseudocode for a complete algorithm for the $n$-armed bandit problem. Use greedy action selection and incremental computation of action values with $α = \frac 1 k$ step-size parameter. Assume a function bandit(a) that takes an action and returns a reward. Use arrays and variables; do not subscript anything by the time index t (for examples of this style of pseudocode, see Figures 4.1 and 4.3). Indicate how the action values are initialized and updated after each reward. Indicate how the step-size parameters are set for each action as a function of how many times it has been tried. 
+
+Initialise array $N=0$ of length number of actions
+Initialise array $Q=0$ of length number of actions
+A = $\arg\max_a$ Q[a]
+Q[a]=Q[a]+$\frac 1 {N[a]}$(bandit(A)-Q[a])
+N[a]=N[a]+1
+
+**Exercise 2.3** 
+If the step-size parameters, $\alpha_k$, are not constant, then the estimate $Q_k$ is a weighted average of previously received rewards with a weighting different from that given by (2.6). What is the weighting on each prior reward for the general case, analogous to (2.6), in terms of $α_k$? 
+
+$Q_{k+1}=Q_k+\alpha_k[R_k-Q_k]$
+$=\alpha_kR_k+(1-\alpha_k)Q_k$
+$=\alpha_kR_k+(1-\alpha_k)(Q_{k-1}+\alpha_{k-1}[R_{k-1}-Q_{k-1}])$
+$=\alpha_kR_k+(1-\alpha_k)(\alpha_{k-1}R_{k-1}+(1-\alpha_k)(1-\alpha_{k-1})Q_{k-1})$
+$=\alpha_kR_k+\alpha_{k-1}(1-\alpha_k)R_{k-1}+...+\alpha_1R_2(1-\alpha_k)...(1-\alpha_2)+(1-\alpha_k)...(1-\alpha_1)Q1$
+$=Q_1\Pi^k_{i=1}(1-\alpha_i)+\sum^k_{i=1}(\alpha_iR_i\Pi^k_{j=1}(1-\alpha_j))$
+
+**Exercise 2.4 (programming)** Design and conduct an experiment to demonstrate the difficulties that sample-average methods have for nonstationary problems. Use a modified version of the 10-armed testbed in which all the q(a) start out equal and then take independent random walks. Prepare plots like Figure 2.1 for an action-value method using sample averages, incrementally computed by α = 1 k , and another action-value method using a constant step-size parameter, α = 0.1. Use ε = 0.1 and, if necessary, runs longer than 1000 plays.
+
+**Exercise 2.5**
+The results shown in Figure 2.2 should be quite reliable because they are averages over 2000 individual, randomly chosen 10-armed bandit tasks. Why, then, are there oscillations and spikes in the early part of the curve for the optimistic method? What might make this method perform particularly better or worse, on average, on particular early plays? 
+
+Depends on how the original values are set. If they are more accurate early on, it will perform better
+
+**Exercise 2.6** 
+Suppose you face a binary bandit task whose true action values change randomly from play to play. Specifically, suppose that for any play the true values of actions 1 and 2 are respectively 0.1 and 0.2 with probability 0.5 (case A), and 0.9 and 0.8 with probability 0.5 (case B). If you are not able to tell which case you face at any play, what is the best expectation of success you can achieve and how should you behave to achieve it? Now suppose that on each play you are told if you are facing case A or case B (although you still don’t know the true action values). This is an associative search task. What is the best expectation of success you can achieve in this task, and how should you behave to achieve it?
+
+If you bet 1: $\mathbb{E}(A)=0.5(0.1)+0.5(0.9)=0.05+0.45=0.5$
+If you bet 2: $\mathbb{E}(B)=0.5(0.2)+0.5(0.8)=0.1+0.4=0.5$
+Expected value is the same, doesn't matter which you choose
+You have to explore the rewards of all cases 
