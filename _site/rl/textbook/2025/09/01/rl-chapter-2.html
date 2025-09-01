@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Reinforcement Learning: An Introduction - Chapter 2 | Eddie’s Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Reinforcement Learning: An Introduction - Chapter 2" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Instructive Feedback Indicates correct action to take Independent of action taken Evaluative Feedback Indicates how good action taken is Depends entirely on action Associative Actions are taken in more than 1 situation AN $n$-Armed Bandit Problem Limited time steps Imagine an $n$-armed slot machine" />
+<meta property="og:description" content="Instructive Feedback Indicates correct action to take Independent of action taken Evaluative Feedback Indicates how good action taken is Depends entirely on action Associative Actions are taken in more than 1 situation AN $n$-Armed Bandit Problem Limited time steps Imagine an $n$-armed slot machine" />
+<link rel="canonical" href="http://localhost:4000/rl/textbook/2025/09/01/rl-chapter-2.html" />
+<meta property="og:url" content="http://localhost:4000/rl/textbook/2025/09/01/rl-chapter-2.html" />
+<meta property="og:site_name" content="Eddie’s Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2025-09-01T00:00:00-07:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Reinforcement Learning: An Introduction - Chapter 2" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2025-09-01T00:00:00-07:00","datePublished":"2025-09-01T00:00:00-07:00","description":"Instructive Feedback Indicates correct action to take Independent of action taken Evaluative Feedback Indicates how good action taken is Depends entirely on action Associative Actions are taken in more than 1 situation AN $n$-Armed Bandit Problem Limited time steps Imagine an $n$-armed slot machine","headline":"Reinforcement Learning: An Introduction - Chapter 2","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/rl/textbook/2025/09/01/rl-chapter-2.html"},"url":"http://localhost:4000/rl/textbook/2025/09/01/rl-chapter-2.html"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="http://localhost:4000/feed.xml" title="Eddie&apos;s Blog" /></head>
+<body><header class="site-header" role="banner">
+
+  <div class="wrapper"><a class="site-title" rel="author" href="/">Eddie&#39;s Blog</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/about/">About</a></div>
+      </nav></div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">Reinforcement Learning: An Introduction - Chapter 2</h1>
+    <p class="post-meta">
+      <time class="dt-published" datetime="2025-09-01T00:00:00-07:00" itemprop="datePublished">Sep 1, 2025
+      </time></p>
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" />
+
+<script defer="" src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+
+<script defer="" src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,
+	      {delimiters: [
+	      {left: '$$', right: '$$', display: true},
+	      {left: '$', right: '$', display: false},
+	      {left: '\\(', right: '\\)', display: false},
+	      {left: '\\[', right: '\\]', display: true}
+	      ]});"></script>
+
+<h1 id="instructive-feedback">Instructive Feedback</h1>
+<p>Indicates correct action to take
+Independent of action taken</p>
+<h1 id="evaluative-feedback">Evaluative Feedback</h1>
+<p>Indicates how good action taken is
+Depends entirely on action</p>
+<h2 id="associative">Associative</h2>
+<p>Actions are taken in more than 1 situation</p>
+<h1 id="an-n-armed-bandit-problem">AN $n$-Armed Bandit Problem</h1>
+<p>Limited time steps
+Imagine an $n$-armed slot machine</p>
+
+<p>Not choosing the greedy move is exploration
+Choosing greedy is exploitation</p>
+<h1 id="action-value">Action Value</h1>
+<h2 id="true-value-qa">True Value $q(a)$</h2>
+<p>Mean reward received when action is selected</p>
+<h2 id="estimated-value-q_ta">Estimated Value $Q_t(a)$</h2>
+<p>$Q_t(a)=\cfrac{R_1+R_2+…+R_{N_t(a)}}{N_t(a)}$
+$N_t(a)$ - Number of times action $a$ is selected
+$t$ - Time step
+$R_t$ - Reward</p>
+
+<p>If $N_t(a)=0$, we define $Q_t(a)$ with a default value. E.g. $Q_1(a)=0$</p>
+
+<p>$\lim_{N_t(a)\to\infty}Q_t(a)\to q(a)$</p>
+
+<h2 id="greedy-selection">Greedy Selection</h2>
+<p>$A_t=\arg\max_aQ_t(a)$</p>
+
+<p>$\epsilon$-greed algorithms are guaranteed to converge
+Probability of selecting optimal action converges to $1-\epsilon$</p>
+<h2 id="nonstationary">Nonstationary</h2>
+<p>True values changed over time
+$e$-greedy are necessary</p>
+
+<p>There is a problem with this, however, as $N_t(a)$ increases, so do the memory requirements, without bound
+Can instead be computed:
+$Q_{k+1}=\frac 1 k \sum^k_{i=1}R_i$
+$=\frac 1 k (R_k+\sum^{k-1}_{i=1}R_i)$
+$=\frac 1 k (R_k+(k-1)Q_k+(Q_k-Q_k))$
+$=\frac 1 k (R_k+kQ_k-Q_k)$
+$=Q_k+\frac 1 k (R_k-Q_k)$</p>
+
+<p>For me, it’s more intuitive to think of it as:
+$Q_{k+1}=\cfrac{R_k+(k-1)Q_k}{k}$</p>
+<h2 id="update-rule">Update Rule</h2>
+<p>$NewEstimate\leftarrow OldEstimate+StepSize[Target-OldEstimate]$
+which is like gradient descent ($W_k=W_{k-1}-\alpha\nabla W_{k-1}$)</p>
+
+<p>Note that for us, the step size $\alpha=\frac 1 k$ is changing over time</p>
+<h2 id="tracking-a-nonstationary-problem">Tracking a Nonstationary Problem</h2>
+<p>$Q_{k+1}=Q_k+\alpha[R_k-Q_k]$
+So the weighted average past rewards and initial estimate $Q_1$ is:
+$Q_{k+1}=Q_k+\alpha[R_k-Q_k]$
+$=\alpha R_k+(1-\alpha)Q_k$
+$=\alpha R_k+(1-\alpha)Q_k$
+$=\alpha R_k+(1-\alpha)[\alpha R_{k-1}+(1-\alpha)Q_{k-1}]$
+$=\alpha R_k+(1-\alpha)\alpha R_{k-1}+(1-\alpha)^2Q_{k-1}$
+$=\alpha R_k+(1-\alpha)\alpha R_{k-1}+(1-\alpha)^2Q_{k-1}+…+(1-\alpha)^{k-1}\alpha R_1+(1-\alpha)^kQ_1$
+$=(1-\alpha)^kQ_1+\sum^k_{i=1}\alpha(1-\alpha)^{k-i}R_i$</p>
+
+<p>This is a weighted average because the sum of the weights is $(1-\alpha)^k+\sum^k_{i=1}\alpha(1-\alpha)^{k-i}=1$ #nonstationaryweightedequ
+<strong>Proof:</strong>
+Geometric sum equation: $S_n=\cfrac {a(1-r^n)}{1-r}$
+Looking at $\sum^k_{i=1}\alpha(1-\alpha)^{k-i}$:
+$(1-\alpha)^{-1}&gt;1$ since $0&lt;\alpha\le1$, and for this section, we’ll assume $alpha&lt;1$ and will deal with this later as an edge case
+Therefore, we can reverse the direction of the sum, setting $r$ as $(1-\alpha)$
+$\therefore S_n=\cfrac {\alpha(1-(1-\alpha)^k)}{1-(1-\alpha)}$ 
+$=\cfrac {\alpha(1-(1-\alpha)^k)}{\alpha}$
+$=(1-(1-\alpha)^k)$</p>
+
+<p>If we add this back to #nonstationaryweightedequ 
+$(1-\alpha)^k+(1-(1-\alpha)^k)$
+$=1$ $\square$</p>
+
+<p>At the edge case, when $\alpha=1$
+The first part of #nonstationaryweightedequ $ becomes 0
+In the second part, every part of the sum becomes 0, except the last term, $\alpha(1-\alpha)^{k-k}=\alpha(1-\alpha)^0=\alpha=1$
+Therefore, this also sums to 1, $\square$</p>
+<h2 id="convergence-conditions">Convergence Conditions</h2>
+<p>$\sum^\infty_{k=1}\alpha_k(a)=\infty$
+$\sum^\infty_{k=1}\alpha^2_k(a)&lt;\infty$</p>
+
+<p>Does converge for sample-average case $\alpha_k(a)=\frac 1 k$
+This means that it does not converge when $\alpha$ is constant
+Non-convergence is desirable for a nonstationary environment</p>
+
+<p>Step-size parameters that meet the convergence conditions converge very slowly and need a lot of training - rarely ideal</p>
+<h2 id="optimistic-initial-values">Optimistic Initial Values</h2>
+<p>Setting expected values much higher encourages exploration
+However, the drive to explore is temporary and thus doesn’t work well in nonstationary problems (stops exploring, 0 adaptation)</p>
+<h1 id="upper-confidence-bound-action-selection">Upper-Confidence-Bound Action Selection</h1>
+<p>$A_t=\arg\max_a[Q_t(a)+c\sqrt{\cfrac{\ln t}{N_t(a)}}]$
+$c\sqrt{\cfrac{\ln t}{N_t(a)}}$ - Measure of uncertainty in estimate of $q(a)$</p>
+
+<p>We use UCB because $\epsilon$-greedy indiscriminately chooses non-greedy options</p>
+
+<p>Each time $a$ is chosen, $N_t(a)$ increases and thus reduces uncertainty</p>
+
+<p>When $a$ is not selected, $t$ increases, increasing uncertainty</p>
+
+<p>Explanation for spike in reward with UCB: It gives a large weighting to a route it estimates to have high value since $c=2$, it may be greater than $Q_t(a)$</p>
+<h1 id="gradient-bandits">Gradient Bandits</h1>
+<p>$\Pr{A-t=a}=\cfrac {e^{H_t(a)}}{\sum^n_{b=1}e^{H_t(b)}}=\pi_t(a)$</p>
+
+<p>$H_{t+1}(A_t)=H_t(A_t)+\alpha(R_t-\bar R_t)(1-\pi_t(A_t)),$ #gradientbanditequation
+$H_{t+1}(a)=H_t(a)+\alpha(R_t-\bar R_t)\pi_t(a)$
+$\bar R$ is average of all rewards, serves as a baseline to compare $R_t$ to
+If reward is higher than baseline ($R_t&gt;\bar R_t$), probability of choosing that action increases</p>
+
+<p>Having a baseline means that a shifting of rewards has no bearing on performance (i.e. if all rewards are set to +4, rather than 0)</p>
+
+<p>$H_{t+1}(a)=H_t(a)+\alpha\cfrac {\partial \mathbb{E} (R_t)}{\partial H_t(a)}$
+Measure of of performance is the expected reward $\mathbb{E}(R_t)=\sum_b\pi_t(b)q(b)$</p>
+
+<p>This algorithm is an instance of stochastic gradient ascent</p>
+
+<p>$\cfrac {\partial \mathbb{E} (R_t)}{\partial H_t(a)}=\cfrac {\partial }{\partial H_t(a)}[\sum_b\pi_t(b)q(b)]$
+$=\sum_bq(b)\cfrac{\partial \pi_t(b)}{\partial H_t(a)}$
+$=\sum_b(q(b)-X_t)\cfrac{\partial \pi_t(b)}{\partial H_t(a)}$
+$X_t$ - any scalar that does not depend on $b$
+$b$ is some action in the action space
+Can include $X_t$ because the gradient sums to 0 over all actions (sum of probabilities must remain 1, so sum of changes must $= 0$)</p>
+
+<p>$=\sum_b\pi_t(b)(q(b)-X_t)\cfrac{\partial pi_t(b)}{\partial H_t(a)}/\pi_t(b)$
+The equation is now in the form of an expectation, summing over all possible values $b$ of the random variable $A_t$ then multiplying by the probability of those values
+$=\mathbb{E}[(q(A_t)-X_t)\cfrac{\partial \pi_t(b)}{\partial H_t(a)}/\pi_t(A_t)]$
+$=\mathbb{E}[(R_t-\bar R_t)\cfrac{\partial \pi_t(b)}{\partial H_t(a)}/\pi_t(A_t)]$
+We set $X_t=\bar R_t$ because it can equal anything
+$R_t=q(A_t)$ is permitted because $\mathbb{E}[R_t]=q(A_t)$ and all other factors are non-random</p>
+
+<p>Assume $\cfrac{\partial \pi_t(b)}{\partial H_t(a)}=\pi_t(b)(\mathbb{I}_{a=A_t}-\pi_t(a))$:</p>
+
+<p>$=\mathbb{E}[(R_t-\bar R_t)\pi_t(A_t)(\mathbb{I}<em>{a=A_t}-\pi_t(a))/\pi_t(A_t)]$
+$=\mathbb{E}[(R_t-\bar R_t)(\mathbb{I}</em>{a=A_t}-\pi_t(a))]$</p>
+
+<p>where $\mathbb{I}_{a=b}=1$ if $a=b$
+otherwise $\mathbb{I}=0$</p>
+
+<p>which fits into the #gradientbanditequation :
+$H_{t+1}(a)=H_t(a)+\alpha(R_t-\bar R_t)(\mathbb{I}_{a=A_t}-\pi_t(a))$</p>
+
+<p>Remains to show  $\cfrac{\partial \pi_t(b)}{\partial H_t(a)}=\pi_t(b)(\mathbb{I}_{a=A_t}-\pi_t(a))$:
+We begin with the quotient rule equation: $\cfrac {\partial}{\partial x}[\cfrac {f(x)}{g(x)}]=\cfrac {\frac {\partial f(x)}{\partial x}g(x)-f(x)\frac {\partial g(x)}{\partial x}}{g(x)^2}$
+From this we can write:</p>
+
+<p>$\cfrac{\partial \pi_t(b)}{\partial H_t(a)}=\cfrac{\partial}{\partial H_t(a)}\pi_t(b)$
+$=\cfrac {\partial}{\partial H_t(a)}[\cfrac {e^{H_t(b)}}{\sum^n_{c=1}e^{H_t(c)}}]$
+$=\cfrac {\frac {\partial e^{H_t(b)}}{\partial H_t(a)}\sum^n_{c=1}e^{H_t(c)}-e^{H_t(b)}\frac {\partial \sum^n_{c=1}e^{h_t(c)}}{\partial H_t(a))}}{(\sum^n_{c=1}e^{h_t(c)})^2}$ - quotient rule
+$=\cfrac{\mathbb{I}<em>{a=b}e^{H_t(a)}\sum^n</em>{c=1}e^{H_t(c)}-e^{H_t(b)}e^{H_t(a)}}{(\sum^n_{c=1}e^{h_t(c)})^2}$ ($\frac {\partial e^x}{\partial x}=e^x$ and $\sum^n_{c=1}e^{H_t(c)}$ contains $e^{H_t(a)}$)
+$=\cfrac{\mathbb{I}<em>{a=b}e^{H_t(b)}}{\sum^n</em>{c=1}e^{h_t(c)}}-\cfrac{e^{H_t(b)}e^{H_t(a)}}{(\sum^n_{c=1}e^{h_t(c)})^2}$
+$=\mathbb{I}<em>{a=b}\pi_t(b)-\pi_t(b)\pi_t(a)$
+$=\pi_t(b)(\mathbb{I}</em>{a=b}-\pi_t(a))$ $\square$</p>
+
+<p>Gradient-based algorithms estimate action preferences, not values
+Connected bandits = associative search tasks</p>
+<h2 id="gittins-indices">Gittins Indices</h2>
+<p>Provide optional solution to certain forms of bandit problems</p>
+
+<h1 id="exercises">Exercises</h1>
+<p><strong>Exercise 2.1</strong> 
+In the comparison shown in Figure 2.1, which method will perform best in the long run in terms of cumulative reward and cumulative probability of selecting the best action? How much better will it be? Express your answer quantitatively.</p>
+
+<p>$\epsilon=0.01$ will perform the best in the long run, as its average reward will eventually overtake $\epsilon=0.1$
+This is because the chance of randomly choosing the suboptimal path is lower. It will end up choosing optimal actions 99% of the time.</p>
+
+<p><strong>Exercise 2.2</strong> 
+Give pseudocode for a complete algorithm for the $n$-armed bandit problem. Use greedy action selection and incremental computation of action values with $α = \frac 1 k$ step-size parameter. Assume a function bandit(a) that takes an action and returns a reward. Use arrays and variables; do not subscript anything by the time index t (for examples of this style of pseudocode, see Figures 4.1 and 4.3). Indicate how the action values are initialized and updated after each reward. Indicate how the step-size parameters are set for each action as a function of how many times it has been tried.</p>
+
+<p>Initialise array $N=0$ of length number of actions
+Initialise array $Q=0$ of length number of actions
+A = $\arg\max_a$ Q[a]
+Q[a]=Q[a]+$\frac 1 {N[a]}$(bandit(A)-Q[a])
+N[a]=N[a]+1</p>
+
+<p><strong>Exercise 2.3</strong> 
+If the step-size parameters, $\alpha_k$, are not constant, then the estimate $Q_k$ is a weighted average of previously received rewards with a weighting different from that given by (2.6). What is the weighting on each prior reward for the general case, analogous to (2.6), in terms of $α_k$?</p>
+
+<p>$Q_{k+1}=Q_k+\alpha_k[R_k-Q_k]$
+$=\alpha_kR_k+(1-\alpha_k)Q_k$
+$=\alpha_kR_k+(1-\alpha_k)(Q_{k-1}+\alpha_{k-1}[R_{k-1}-Q_{k-1}])$
+$=\alpha_kR_k+(1-\alpha_k)(\alpha_{k-1}R_{k-1}+(1-\alpha_k)(1-\alpha_{k-1})Q_{k-1})$
+$=\alpha_kR_k+\alpha_{k-1}(1-\alpha_k)R_{k-1}+…+\alpha_1R_2(1-\alpha_k)…(1-\alpha_2)+(1-\alpha_k)…(1-\alpha_1)Q1$
+$=Q_1\Pi^k_{i=1}(1-\alpha_i)+\sum^k_{i=1}(\alpha_iR_i\Pi^k_{j=1}(1-\alpha_j))$</p>
+
+<p><strong>Exercise 2.4 (programming)</strong> Design and conduct an experiment to demonstrate the difficulties that sample-average methods have for nonstationary problems. Use a modified version of the 10-armed testbed in which all the q(a) start out equal and then take independent random walks. Prepare plots like Figure 2.1 for an action-value method using sample averages, incrementally computed by α = 1 k , and another action-value method using a constant step-size parameter, α = 0.1. Use ε = 0.1 and, if necessary, runs longer than 1000 plays.</p>
+
+<p><strong>Exercise 2.5</strong>
+The results shown in Figure 2.2 should be quite reliable because they are averages over 2000 individual, randomly chosen 10-armed bandit tasks. Why, then, are there oscillations and spikes in the early part of the curve for the optimistic method? What might make this method perform particularly better or worse, on average, on particular early plays?</p>
+
+<p>Depends on how the original values are set. If they are more accurate early on, it will perform better</p>
+
+<p><strong>Exercise 2.6</strong> 
+Suppose you face a binary bandit task whose true action values change randomly from play to play. Specifically, suppose that for any play the true values of actions 1 and 2 are respectively 0.1 and 0.2 with probability 0.5 (case A), and 0.9 and 0.8 with probability 0.5 (case B). If you are not able to tell which case you face at any play, what is the best expectation of success you can achieve and how should you behave to achieve it? Now suppose that on each play you are told if you are facing case A or case B (although you still don’t know the true action values). This is an associative search task. What is the best expectation of success you can achieve in this task, and how should you behave to achieve it?</p>
+
+<p>If you bet 1: $\mathbb{E}(A)=0.5(0.1)+0.5(0.9)=0.05+0.45=0.5$
+If you bet 2: $\mathbb{E}(B)=0.5(0.2)+0.5(0.8)=0.1+0.4=0.5$
+Expected value is the same, doesn’t matter which you choose
+You have to explore the rewards of all cases</p>
+
+  </div><a class="u-url" href="/rl/textbook/2025/09/01/rl-chapter-2.html" hidden></a>
+</article>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">Eddie&#39;s Blog</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li class="p-name">Eddie&#39;s Blog</li><li><a class="u-email" href="mailto:your-email@example.com">your-email@example.com</a></li></ul>
+      </div>
+
+      <div class="footer-col footer-col-2"><ul class="social-media-list"><li><a href="https://github.com/eddbr"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#github"></use></svg> <span class="username">eddbr</span></a></li><li><a href="https://www.twitter.com/jekyllrb"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#twitter"></use></svg> <span class="username">jekyllrb</span></a></li></ul>
+</div>
+
+      <div class="footer-col footer-col-3">
+        <p>Eddie&#39;s Blog. Looking at intersection of tech and people.</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>

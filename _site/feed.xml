@@ -1,4 +1,318 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.4.1">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2025-07-11T00:25:52-07:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Eddie’s Blog</title><subtitle>Eddie&apos;s Blog. Looking at intersection of tech and people.</subtitle><entry><title type="html">ProcrastApply</title><link href="http://localhost:4000/personal/blog/procrastapply/2025/07/11/procrastapply.html" rel="alternate" type="text/html" title="ProcrastApply" /><published>2025-07-11T00:00:00-07:00</published><updated>2025-07-11T00:00:00-07:00</updated><id>http://localhost:4000/personal/blog/procrastapply/2025/07/11/procrastapply</id><content type="html" xml:base="http://localhost:4000/personal/blog/procrastapply/2025/07/11/procrastapply.html"><![CDATA[<p>me
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.4.1">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2025-09-01T16:30:20-07:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Eddie’s Blog</title><subtitle>Eddie&apos;s Blog. Looking at intersection of tech and people.</subtitle><entry><title type="html">Reinforcement Learning: An Introduction - Chapter 2</title><link href="http://localhost:4000/rl/textbook/2025/09/01/rl-chapter-2.html" rel="alternate" type="text/html" title="Reinforcement Learning: An Introduction - Chapter 2" /><published>2025-09-01T00:00:00-07:00</published><updated>2025-09-01T00:00:00-07:00</updated><id>http://localhost:4000/rl/textbook/2025/09/01/rl-chapter-2</id><content type="html" xml:base="http://localhost:4000/rl/textbook/2025/09/01/rl-chapter-2.html"><![CDATA[<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" />
+
+<script defer="" src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+
+<script defer="" src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,
+	      {delimiters: [
+	      {left: '$$', right: '$$', display: true},
+	      {left: '$', right: '$', display: false},
+	      {left: '\\(', right: '\\)', display: false},
+	      {left: '\\[', right: '\\]', display: true}
+	      ]});"></script>
+
+<h1 id="instructive-feedback">Instructive Feedback</h1>
+<p>Indicates correct action to take
+Independent of action taken</p>
+<h1 id="evaluative-feedback">Evaluative Feedback</h1>
+<p>Indicates how good action taken is
+Depends entirely on action</p>
+<h2 id="associative">Associative</h2>
+<p>Actions are taken in more than 1 situation</p>
+<h1 id="an-n-armed-bandit-problem">AN $n$-Armed Bandit Problem</h1>
+<p>Limited time steps
+Imagine an $n$-armed slot machine</p>
+
+<p>Not choosing the greedy move is exploration
+Choosing greedy is exploitation</p>
+<h1 id="action-value">Action Value</h1>
+<h2 id="true-value-qa">True Value $q(a)$</h2>
+<p>Mean reward received when action is selected</p>
+<h2 id="estimated-value-q_ta">Estimated Value $Q_t(a)$</h2>
+<p>$Q_t(a)=\cfrac{R_1+R_2+…+R_{N_t(a)}}{N_t(a)}$
+$N_t(a)$ - Number of times action $a$ is selected
+$t$ - Time step
+$R_t$ - Reward</p>
+
+<p>If $N_t(a)=0$, we define $Q_t(a)$ with a default value. E.g. $Q_1(a)=0$</p>
+
+<p>$\lim_{N_t(a)\to\infty}Q_t(a)\to q(a)$</p>
+
+<h2 id="greedy-selection">Greedy Selection</h2>
+<p>$A_t=\arg\max_aQ_t(a)$</p>
+
+<p>$\epsilon$-greed algorithms are guaranteed to converge
+Probability of selecting optimal action converges to $1-\epsilon$</p>
+<h2 id="nonstationary">Nonstationary</h2>
+<p>True values changed over time
+$e$-greedy are necessary</p>
+
+<p>There is a problem with this, however, as $N_t(a)$ increases, so do the memory requirements, without bound
+Can instead be computed:
+$Q_{k+1}=\frac 1 k \sum^k_{i=1}R_i$
+$=\frac 1 k (R_k+\sum^{k-1}_{i=1}R_i)$
+$=\frac 1 k (R_k+(k-1)Q_k+(Q_k-Q_k))$
+$=\frac 1 k (R_k+kQ_k-Q_k)$
+$=Q_k+\frac 1 k (R_k-Q_k)$</p>
+
+<p>For me, it’s more intuitive to think of it as:
+$Q_{k+1}=\cfrac{R_k+(k-1)Q_k}{k}$</p>
+<h2 id="update-rule">Update Rule</h2>
+<p>$NewEstimate\leftarrow OldEstimate+StepSize[Target-OldEstimate]$
+which is like gradient descent ($W_k=W_{k-1}-\alpha\nabla W_{k-1}$)</p>
+
+<p>Note that for us, the step size $\alpha=\frac 1 k$ is changing over time</p>
+<h2 id="tracking-a-nonstationary-problem">Tracking a Nonstationary Problem</h2>
+<p>$Q_{k+1}=Q_k+\alpha[R_k-Q_k]$
+So the weighted average past rewards and initial estimate $Q_1$ is:
+$Q_{k+1}=Q_k+\alpha[R_k-Q_k]$
+$=\alpha R_k+(1-\alpha)Q_k$
+$=\alpha R_k+(1-\alpha)Q_k$
+$=\alpha R_k+(1-\alpha)[\alpha R_{k-1}+(1-\alpha)Q_{k-1}]$
+$=\alpha R_k+(1-\alpha)\alpha R_{k-1}+(1-\alpha)^2Q_{k-1}$
+$=\alpha R_k+(1-\alpha)\alpha R_{k-1}+(1-\alpha)^2Q_{k-1}+…+(1-\alpha)^{k-1}\alpha R_1+(1-\alpha)^kQ_1$
+$=(1-\alpha)^kQ_1+\sum^k_{i=1}\alpha(1-\alpha)^{k-i}R_i$</p>
+
+<p>This is a weighted average because the sum of the weights is $(1-\alpha)^k+\sum^k_{i=1}\alpha(1-\alpha)^{k-i}=1$ #nonstationaryweightedequ
+<strong>Proof:</strong>
+Geometric sum equation: $S_n=\cfrac {a(1-r^n)}{1-r}$
+Looking at $\sum^k_{i=1}\alpha(1-\alpha)^{k-i}$:
+$(1-\alpha)^{-1}&gt;1$ since $0&lt;\alpha\le1$, and for this section, we’ll assume $alpha&lt;1$ and will deal with this later as an edge case
+Therefore, we can reverse the direction of the sum, setting $r$ as $(1-\alpha)$
+$\therefore S_n=\cfrac {\alpha(1-(1-\alpha)^k)}{1-(1-\alpha)}$ 
+$=\cfrac {\alpha(1-(1-\alpha)^k)}{\alpha}$
+$=(1-(1-\alpha)^k)$</p>
+
+<p>If we add this back to #nonstationaryweightedequ 
+$(1-\alpha)^k+(1-(1-\alpha)^k)$
+$=1$ $\square$</p>
+
+<p>At the edge case, when $\alpha=1$
+The first part of #nonstationaryweightedequ $ becomes 0
+In the second part, every part of the sum becomes 0, except the last term, $\alpha(1-\alpha)^{k-k}=\alpha(1-\alpha)^0=\alpha=1$
+Therefore, this also sums to 1, $\square$</p>
+<h2 id="convergence-conditions">Convergence Conditions</h2>
+<p>$\sum^\infty_{k=1}\alpha_k(a)=\infty$
+$\sum^\infty_{k=1}\alpha^2_k(a)&lt;\infty$</p>
+
+<p>Does converge for sample-average case $\alpha_k(a)=\frac 1 k$
+This means that it does not converge when $\alpha$ is constant
+Non-convergence is desirable for a nonstationary environment</p>
+
+<p>Step-size parameters that meet the convergence conditions converge very slowly and need a lot of training - rarely ideal</p>
+<h2 id="optimistic-initial-values">Optimistic Initial Values</h2>
+<p>Setting expected values much higher encourages exploration
+However, the drive to explore is temporary and thus doesn’t work well in nonstationary problems (stops exploring, 0 adaptation)</p>
+<h1 id="upper-confidence-bound-action-selection">Upper-Confidence-Bound Action Selection</h1>
+<p>$A_t=\arg\max_a[Q_t(a)+c\sqrt{\cfrac{\ln t}{N_t(a)}}]$
+$c\sqrt{\cfrac{\ln t}{N_t(a)}}$ - Measure of uncertainty in estimate of $q(a)$</p>
+
+<p>We use UCB because $\epsilon$-greedy indiscriminately chooses non-greedy options</p>
+
+<p>Each time $a$ is chosen, $N_t(a)$ increases and thus reduces uncertainty</p>
+
+<p>When $a$ is not selected, $t$ increases, increasing uncertainty</p>
+
+<p>Explanation for spike in reward with UCB: It gives a large weighting to a route it estimates to have high value since $c=2$, it may be greater than $Q_t(a)$</p>
+<h1 id="gradient-bandits">Gradient Bandits</h1>
+<p>$\Pr{A-t=a}=\cfrac {e^{H_t(a)}}{\sum^n_{b=1}e^{H_t(b)}}=\pi_t(a)$</p>
+
+<p>$H_{t+1}(A_t)=H_t(A_t)+\alpha(R_t-\bar R_t)(1-\pi_t(A_t)),$ #gradientbanditequation
+$H_{t+1}(a)=H_t(a)+\alpha(R_t-\bar R_t)\pi_t(a)$
+$\bar R$ is average of all rewards, serves as a baseline to compare $R_t$ to
+If reward is higher than baseline ($R_t&gt;\bar R_t$), probability of choosing that action increases</p>
+
+<p>Having a baseline means that a shifting of rewards has no bearing on performance (i.e. if all rewards are set to +4, rather than 0)</p>
+
+<p>$H_{t+1}(a)=H_t(a)+\alpha\cfrac {\partial \mathbb{E} (R_t)}{\partial H_t(a)}$
+Measure of of performance is the expected reward $\mathbb{E}(R_t)=\sum_b\pi_t(b)q(b)$</p>
+
+<p>This algorithm is an instance of stochastic gradient ascent</p>
+
+<p>$\cfrac {\partial \mathbb{E} (R_t)}{\partial H_t(a)}=\cfrac {\partial }{\partial H_t(a)}[\sum_b\pi_t(b)q(b)]$
+$=\sum_bq(b)\cfrac{\partial \pi_t(b)}{\partial H_t(a)}$
+$=\sum_b(q(b)-X_t)\cfrac{\partial \pi_t(b)}{\partial H_t(a)}$
+$X_t$ - any scalar that does not depend on $b$
+$b$ is some action in the action space
+Can include $X_t$ because the gradient sums to 0 over all actions (sum of probabilities must remain 1, so sum of changes must $= 0$)</p>
+
+<p>$=\sum_b\pi_t(b)(q(b)-X_t)\cfrac{\partial pi_t(b)}{\partial H_t(a)}/\pi_t(b)$
+The equation is now in the form of an expectation, summing over all possible values $b$ of the random variable $A_t$ then multiplying by the probability of those values
+$=\mathbb{E}[(q(A_t)-X_t)\cfrac{\partial \pi_t(b)}{\partial H_t(a)}/\pi_t(A_t)]$
+$=\mathbb{E}[(R_t-\bar R_t)\cfrac{\partial \pi_t(b)}{\partial H_t(a)}/\pi_t(A_t)]$
+We set $X_t=\bar R_t$ because it can equal anything
+$R_t=q(A_t)$ is permitted because $\mathbb{E}[R_t]=q(A_t)$ and all other factors are non-random</p>
+
+<p>Assume $\cfrac{\partial \pi_t(b)}{\partial H_t(a)}=\pi_t(b)(\mathbb{I}_{a=A_t}-\pi_t(a))$:</p>
+
+<p>$=\mathbb{E}[(R_t-\bar R_t)\pi_t(A_t)(\mathbb{I}<em>{a=A_t}-\pi_t(a))/\pi_t(A_t)]$
+$=\mathbb{E}[(R_t-\bar R_t)(\mathbb{I}</em>{a=A_t}-\pi_t(a))]$</p>
+
+<p>where $\mathbb{I}_{a=b}=1$ if $a=b$
+otherwise $\mathbb{I}=0$</p>
+
+<p>which fits into the #gradientbanditequation :
+$H_{t+1}(a)=H_t(a)+\alpha(R_t-\bar R_t)(\mathbb{I}_{a=A_t}-\pi_t(a))$</p>
+
+<p>Remains to show  $\cfrac{\partial \pi_t(b)}{\partial H_t(a)}=\pi_t(b)(\mathbb{I}_{a=A_t}-\pi_t(a))$:
+We begin with the quotient rule equation: $\cfrac {\partial}{\partial x}[\cfrac {f(x)}{g(x)}]=\cfrac {\frac {\partial f(x)}{\partial x}g(x)-f(x)\frac {\partial g(x)}{\partial x}}{g(x)^2}$
+From this we can write:</p>
+
+<p>$\cfrac{\partial \pi_t(b)}{\partial H_t(a)}=\cfrac{\partial}{\partial H_t(a)}\pi_t(b)$
+$=\cfrac {\partial}{\partial H_t(a)}[\cfrac {e^{H_t(b)}}{\sum^n_{c=1}e^{H_t(c)}}]$
+$=\cfrac {\frac {\partial e^{H_t(b)}}{\partial H_t(a)}\sum^n_{c=1}e^{H_t(c)}-e^{H_t(b)}\frac {\partial \sum^n_{c=1}e^{h_t(c)}}{\partial H_t(a))}}{(\sum^n_{c=1}e^{h_t(c)})^2}$ - quotient rule
+$=\cfrac{\mathbb{I}<em>{a=b}e^{H_t(a)}\sum^n</em>{c=1}e^{H_t(c)}-e^{H_t(b)}e^{H_t(a)}}{(\sum^n_{c=1}e^{h_t(c)})^2}$ ($\frac {\partial e^x}{\partial x}=e^x$ and $\sum^n_{c=1}e^{H_t(c)}$ contains $e^{H_t(a)}$)
+$=\cfrac{\mathbb{I}<em>{a=b}e^{H_t(b)}}{\sum^n</em>{c=1}e^{h_t(c)}}-\cfrac{e^{H_t(b)}e^{H_t(a)}}{(\sum^n_{c=1}e^{h_t(c)})^2}$
+$=\mathbb{I}<em>{a=b}\pi_t(b)-\pi_t(b)\pi_t(a)$
+$=\pi_t(b)(\mathbb{I}</em>{a=b}-\pi_t(a))$ $\square$</p>
+
+<p>Gradient-based algorithms estimate action preferences, not values
+Connected bandits = associative search tasks</p>
+<h2 id="gittins-indices">Gittins Indices</h2>
+<p>Provide optional solution to certain forms of bandit problems</p>
+
+<h1 id="exercises">Exercises</h1>
+<p><strong>Exercise 2.1</strong> 
+In the comparison shown in Figure 2.1, which method will perform best in the long run in terms of cumulative reward and cumulative probability of selecting the best action? How much better will it be? Express your answer quantitatively.</p>
+
+<p>$\epsilon=0.01$ will perform the best in the long run, as its average reward will eventually overtake $\epsilon=0.1$
+This is because the chance of randomly choosing the suboptimal path is lower. It will end up choosing optimal actions 99% of the time.</p>
+
+<p><strong>Exercise 2.2</strong> 
+Give pseudocode for a complete algorithm for the $n$-armed bandit problem. Use greedy action selection and incremental computation of action values with $α = \frac 1 k$ step-size parameter. Assume a function bandit(a) that takes an action and returns a reward. Use arrays and variables; do not subscript anything by the time index t (for examples of this style of pseudocode, see Figures 4.1 and 4.3). Indicate how the action values are initialized and updated after each reward. Indicate how the step-size parameters are set for each action as a function of how many times it has been tried.</p>
+
+<p>Initialise array $N=0$ of length number of actions
+Initialise array $Q=0$ of length number of actions
+A = $\arg\max_a$ Q[a]
+Q[a]=Q[a]+$\frac 1 {N[a]}$(bandit(A)-Q[a])
+N[a]=N[a]+1</p>
+
+<p><strong>Exercise 2.3</strong> 
+If the step-size parameters, $\alpha_k$, are not constant, then the estimate $Q_k$ is a weighted average of previously received rewards with a weighting different from that given by (2.6). What is the weighting on each prior reward for the general case, analogous to (2.6), in terms of $α_k$?</p>
+
+<p>$Q_{k+1}=Q_k+\alpha_k[R_k-Q_k]$
+$=\alpha_kR_k+(1-\alpha_k)Q_k$
+$=\alpha_kR_k+(1-\alpha_k)(Q_{k-1}+\alpha_{k-1}[R_{k-1}-Q_{k-1}])$
+$=\alpha_kR_k+(1-\alpha_k)(\alpha_{k-1}R_{k-1}+(1-\alpha_k)(1-\alpha_{k-1})Q_{k-1})$
+$=\alpha_kR_k+\alpha_{k-1}(1-\alpha_k)R_{k-1}+…+\alpha_1R_2(1-\alpha_k)…(1-\alpha_2)+(1-\alpha_k)…(1-\alpha_1)Q1$
+$=Q_1\Pi^k_{i=1}(1-\alpha_i)+\sum^k_{i=1}(\alpha_iR_i\Pi^k_{j=1}(1-\alpha_j))$</p>
+
+<p><strong>Exercise 2.4 (programming)</strong> Design and conduct an experiment to demonstrate the difficulties that sample-average methods have for nonstationary problems. Use a modified version of the 10-armed testbed in which all the q(a) start out equal and then take independent random walks. Prepare plots like Figure 2.1 for an action-value method using sample averages, incrementally computed by α = 1 k , and another action-value method using a constant step-size parameter, α = 0.1. Use ε = 0.1 and, if necessary, runs longer than 1000 plays.</p>
+
+<p><strong>Exercise 2.5</strong>
+The results shown in Figure 2.2 should be quite reliable because they are averages over 2000 individual, randomly chosen 10-armed bandit tasks. Why, then, are there oscillations and spikes in the early part of the curve for the optimistic method? What might make this method perform particularly better or worse, on average, on particular early plays?</p>
+
+<p>Depends on how the original values are set. If they are more accurate early on, it will perform better</p>
+
+<p><strong>Exercise 2.6</strong> 
+Suppose you face a binary bandit task whose true action values change randomly from play to play. Specifically, suppose that for any play the true values of actions 1 and 2 are respectively 0.1 and 0.2 with probability 0.5 (case A), and 0.9 and 0.8 with probability 0.5 (case B). If you are not able to tell which case you face at any play, what is the best expectation of success you can achieve and how should you behave to achieve it? Now suppose that on each play you are told if you are facing case A or case B (although you still don’t know the true action values). This is an associative search task. What is the best expectation of success you can achieve in this task, and how should you behave to achieve it?</p>
+
+<p>If you bet 1: $\mathbb{E}(A)=0.5(0.1)+0.5(0.9)=0.05+0.45=0.5$
+If you bet 2: $\mathbb{E}(B)=0.5(0.2)+0.5(0.8)=0.1+0.4=0.5$
+Expected value is the same, doesn’t matter which you choose
+You have to explore the rewards of all cases</p>]]></content><author><name></name></author><category term="rl" /><category term="textbook" /><summary type="html"><![CDATA[Instructive Feedback Indicates correct action to take Independent of action taken Evaluative Feedback Indicates how good action taken is Depends entirely on action Associative Actions are taken in more than 1 situation AN $n$-Armed Bandit Problem Limited time steps Imagine an $n$-armed slot machine]]></summary></entry><entry><title type="html">Reinforcement Learning: An Introduction - Chapter 1</title><link href="http://localhost:4000/rl/textbook/2025/08/28/rl-chapter-1.html" rel="alternate" type="text/html" title="Reinforcement Learning: An Introduction - Chapter 1" /><published>2025-08-28T00:00:00-07:00</published><updated>2025-08-28T00:00:00-07:00</updated><id>http://localhost:4000/rl/textbook/2025/08/28/rl-chapter-1</id><content type="html" xml:base="http://localhost:4000/rl/textbook/2025/08/28/rl-chapter-1.html"><![CDATA[<h1 id="rl">RL</h1>
+<p>RL is focused on goal-directed learning
+Learning how to map situations to actions to maximise the reward signal</p>
+<h2 id="closed-loop">Closed Loop</h2>
+<p>Actions influence later inputs</p>
+<h2 id="rl-problem-requirements">RL Problem Requirements</h2>
+<ol>
+  <li>Closed-loop</li>
+  <li>Not have direct instructions about what action to take</li>
+  <li>Consequences of actions over extended periods of time</li>
+</ol>
+
+<p>RL tries to maximise reward signal instead of trying to find hidden structure
+RL | Supervised Learning | Unsupervised Learning - they are distinct</p>
+<h3 id="explorationexploitation-trade-off">Exploration/Exploitation Trade-off</h3>
+<h1 id="subelements-of-rl-system">Subelements of RL system</h1>
+<h2 id="1-policy">1. Policy</h2>
+<p>Mapping from perceived state to actions</p>
+<h2 id="2-reward-signal">2. Reward signal</h2>
+<p>Defines the goal
+Each time step, the environment sends to the reinforcement learning agent a single number, a <strong>reward</strong></p>
+<h2 id="3-value-function">3. Value Function</h2>
+<p>Specifies what is good in long run
+Value of a state is the total reward expected in future from that state</p>
+
+<p>Reward is immediate, primary | Value is long-term, secondary</p>
+<h2 id="4-optional-model-of-environment">4. (optional) Model of environment</h2>
+<p>Model of environment
+Mimics environment and leads to predictions about the environment
+Models enable planning, which is deciding on a course of action by considering possible future situations
+Model-free is trial-and-error learning</p>
+<h1 id="evolutionary-methods">Evolutionary Methods</h1>
+<p>Non-learning (not learning from environment)
+Finds and utilises best policy</p>
+
+<p>| Pros                                                                                                                      | Cons                     |
+| ————————————————————————————————————————- | ———————— |
+| Works well when either:<br />1. Small set of policies<br />2. Good policies easy to find<br />3. Lots of time for policy search | Ignore useful structures |
+| Have advantages when agent cannot sense state of environment                                                              |                          |</p>
+<h2 id="policy-gradient-methods">Policy Gradient Methods</h2>
+<p>Estimate direction parameters should be adjusted to most rapidly improve policy’s performance</p>
+
+<h1 id="tic-tac-toe">Tic-Tac-Toe</h1>
+<h2 id="assumptions">Assumptions</h2>
+<p>Opposition player is imperfect and sometimes blunders</p>
+<h2 id="consequences">Consequences</h2>
+<p>Cannot use minimax, because that assumes the opponent is always correct</p>
+<h1 id="value-update-equation">Value Update Equation</h1>
+<p>$V(s)\leftarrow V(s) + \alpha[V(s’)-V(s)]$
+$\alpha$ - Step size parameter</p>
+
+<p>Converges if $\alpha$ reduces over time
+If $\alpha$ remains $&gt;0$, it can adjust to an opponent that changes strategy over time</p>
+<h1 id="problems-with-evolutionary-methods">Problems with Evolutionary Methods</h1>
+<p>Value functions methods allow individual states to be evaluated
+Evolutionary is less granular
+Evolutionary holds policy fixed, which means that it attributes same value to all moves</p>
+<h1 id="rl-history">RL History</h1>
+
+<h2 id="3-threads-led-to-rl">3 Threads led to RL</h2>
+<ol>
+  <li>Trial + error learning</li>
+  <li>Optimal control -  designing a controller to minimise measure of behaviour</li>
+  <li>Temporal difference methods - difference between temporally successive estimates of same quantity
+    <h1 id="curse-of-dimensionality">Curse of Dimensionality</h1>
+    <p>Computational requirements grow exponentially with number of variables</p>
+    <h1 id="animal-learning">Animal Learning</h1>
+    <h2 id="law-of-effect">Law of Effect</h2>
+    <p>Strength of feeling $\propto$ Strength of learning</p>
+    <h2 id="secondary-reinforcer">Secondary Reinforcer</h2>
+    <p>Stimulus that has been paired with a primary reinforcer such as food or pain
+(Value, rather than reward)</p>
+    <h1 id="credit-assignment-problem">Credit Assignment Problem</h1>
+    <p>How do you distribute success for many decisions?</p>
+    <h1 id="exercises">Exercises</h1>
+    <p><strong>Exercise 1.1: Self-Play</strong> 
+Suppose, instead of playing against a random opponent, the reinforcement learning algorithm described above played against itself. What do you think would happen in this case? Would it learn a different way of playing?</p>
+  </li>
+</ol>
+
+<p>It would continually invent new strategies to improve, as long as the step size parameter $\alpha&gt;0$</p>
+
+<p><strong>Exercise 1.2: Symmetries</strong>
+Many tic-tac-toe positions appear different but are really the same because of symmetries. How might we amend the reinforcement learning algorithm described above to take advantage of this? In what ways would this improve it? Now think again. Suppose the opponent did not take advantage of symmetries. In that case, should we? Is it true, then, that  symmetrically equivalent positions should necessarily have the same value?</p>
+
+<p>Conduct rotations to reveal symmetries. Can have fewer paths to make and thus fewer decisions</p>
+
+<p>Symmetrically equivalent positions should necessarily have the same values as long as the imperfect opponent makes the same blunders in those positions</p>
+
+<p><strong>Exercise 1.3: Greedy Play</strong> Suppose the reinforcement learning player was greedy, that is, it always played the move that brought it to the position that it rated the best. Would it learn to play better, or worse, than a non-greedy player? What problems might occur?</p>
+
+<p>Greedy player priorities reward over value, which is too short-term and will likely lose more often</p>
+
+<p><strong>Exercise 1.4: Learning from Exploration</strong> 
+Suppose learning updates occurred  after all moves, including exploratory moves. If the step-size parameter is appropriately reduced over time, then the state values would converge to a set of probabilities. What are the two sets of probabilities computed when we do, and when we do not, learn from exploratory moves? Assuming that we do continue to make exploratory moves, which set of probabilities might be better to learn? Which would result in more wins?</p>
+
+<p>When we do not learn from exploratory, the probabilities will match the ground truth probabilities.
+If we learn from exploratory, we are also learning from random, likely sub-optimal moves, which will add random error to the probabilities. Better to learn from exploratory IF we never stop making exploratory moves, as it accounts for these future errors</p>
+
+<p><strong>Exercise 1.5: Other Improvements</strong>
+Can you think of other ways to improve the reinforcement learning player? Can you think of any better way to solve the tic-tac-toe problem as posed?</p>
+
+<p>Initial values are set to 0.5, which is not accurate. For example, if opponent has 2 in a row, the probability of winning will be lower. Will learn faster as a result
+Better ways to solve problem may be heuristic-based</p>]]></content><author><name></name></author><category term="rl" /><category term="textbook" /><summary type="html"><![CDATA[RL RL is focused on goal-directed learning Learning how to map situations to actions to maximise the reward signal Closed Loop Actions influence later inputs RL Problem Requirements Closed-loop Not have direct instructions about what action to take Consequences of actions over extended periods of time]]></summary></entry><entry><title type="html">ProcrastApply</title><link href="http://localhost:4000/personal/blog/procrastapply/2025/07/11/procrastapply.html" rel="alternate" type="text/html" title="ProcrastApply" /><published>2025-07-11T00:00:00-07:00</published><updated>2025-07-11T00:00:00-07:00</updated><id>http://localhost:4000/personal/blog/procrastapply/2025/07/11/procrastapply</id><content type="html" xml:base="http://localhost:4000/personal/blog/procrastapply/2025/07/11/procrastapply.html"><![CDATA[<p>me
  — 
 13/03/2025, 09:15
 03/13/2025:
@@ -1116,23 +1430,7 @@ Something else, not better or worse, just different.</p>]]></content><author><na
 
 <p>I’ve been making daily code updates for my side project ProcrastApply since the 13 March 2025 and will upload all of those posts.</p>
 
-<p>The thing that pushed me to make the blog today is a deep distrust of ChatGPT. I’m making a website where I need to upload a PDF. I don’t know whether to parse it on the frontend or backend. My thoughts: frontend could be slow, backend PDF parsing sounds like a security nightmare. ChatGPT recommended I do it on the backend because ‘security’?? Doesn’t make sense. I’m familiar with the ELIZA effect and people ascribing ChatGPT and similar LLMs an authoritys status and I’m wary of it. I also feel like I’m losing an element of my faculty by using it for tasks such as these, but it is soooo much quicker.</p>]]></content><author><name></name></author><category term="personal" /><category term="blog" /><summary type="html"><![CDATA[First ever public post. Felt like it was time to. I have experienced positives of posting things on the Internet, it’s an amazing thing putting things out into the Universe. As long as I’m outputting stuff into the world, things seem to happen.]]></summary></entry><entry><title type="html">Welcome to Jekyll!</title><link href="http://localhost:4000/jekyll/update/2025/06/01/welcome-to-jekyll.html" rel="alternate" type="text/html" title="Welcome to Jekyll!" /><published>2025-06-01T23:49:53-07:00</published><updated>2025-06-01T23:49:53-07:00</updated><id>http://localhost:4000/jekyll/update/2025/06/01/welcome-to-jekyll</id><content type="html" xml:base="http://localhost:4000/jekyll/update/2025/06/01/welcome-to-jekyll.html"><![CDATA[<p>You’ll find this post in your <code class="language-plaintext highlighter-rouge">_posts</code> directory. Go ahead and edit it and re-build the site to see your changes. You can rebuild the site in many different ways, but the most common way is to run <code class="language-plaintext highlighter-rouge">jekyll serve</code>, which launches a web server and auto-regenerates your site when a file is updated.</p>
-
-<p>Jekyll requires blog post files to be named according to the following format:</p>
-
-<p><code class="language-plaintext highlighter-rouge">YEAR-MONTH-DAY-title.MARKUP</code></p>
-
-<p>Where <code class="language-plaintext highlighter-rouge">YEAR</code> is a four-digit number, <code class="language-plaintext highlighter-rouge">MONTH</code> and <code class="language-plaintext highlighter-rouge">DAY</code> are both two-digit numbers, and <code class="language-plaintext highlighter-rouge">MARKUP</code> is the file extension representing the format used in the file. After that, include the necessary front matter. Take a look at the source for this post to get an idea about how it works.</p>
-
-<p>Jekyll also offers powerful support for code snippets:</p>
-
-<figure class="highlight"><pre><code class="language-ruby" data-lang="ruby"><span class="k">def</span> <span class="nf">print_hi</span><span class="p">(</span><span class="nb">name</span><span class="p">)</span>
-  <span class="nb">puts</span> <span class="s2">"Hi, </span><span class="si">#{</span><span class="nb">name</span><span class="si">}</span><span class="s2">"</span>
-<span class="k">end</span>
-<span class="n">print_hi</span><span class="p">(</span><span class="s1">'Tom'</span><span class="p">)</span>
-<span class="c1">#=&gt; prints 'Hi, Tom' to STDOUT.</span></code></pre></figure>
-
-<p>Check out the <a href="https://jekyllrb.com/docs/home">Jekyll docs</a> for more info on how to get the most out of Jekyll. File all bugs/feature requests at <a href="https://github.com/jekyll/jekyll">Jekyll’s GitHub repo</a>. If you have questions, you can ask them on <a href="https://talk.jekyllrb.com/">Jekyll Talk</a>.</p>]]></content><author><name></name></author><category term="jekyll" /><category term="update" /><summary type="html"><![CDATA[You’ll find this post in your _posts directory. Go ahead and edit it and re-build the site to see your changes. You can rebuild the site in many different ways, but the most common way is to run jekyll serve, which launches a web server and auto-regenerates your site when a file is updated.]]></summary></entry><entry><title type="html">Novel AI Lexicon</title><link href="http://localhost:4000/ai/safety/2025/06/01/ai-safety.html" rel="alternate" type="text/html" title="Novel AI Lexicon" /><published>2025-06-01T23:49:53-07:00</published><updated>2025-06-01T23:49:53-07:00</updated><id>http://localhost:4000/ai/safety/2025/06/01/ai-safety</id><content type="html" xml:base="http://localhost:4000/ai/safety/2025/06/01/ai-safety.html"><![CDATA[<p>We need a new lexicon for AI. The anthropomorphisation of this technology is especially dangerous as it is causing emotional response to it. There are already papers citing the view of AI as an authority figure, yet also as a friend who is doing them a favour, which thus engenders the use of “please” and “thank you” A novel vocabulary must exist to prevent this danger.</p>
+<p>The thing that pushed me to make the blog today is a deep distrust of ChatGPT. I’m making a website where I need to upload a PDF. I don’t know whether to parse it on the frontend or backend. My thoughts: frontend could be slow, backend PDF parsing sounds like a security nightmare. ChatGPT recommended I do it on the backend because ‘security’?? Doesn’t make sense. I’m familiar with the ELIZA effect and people ascribing ChatGPT and similar LLMs an authoritys status and I’m wary of it. I also feel like I’m losing an element of my faculty by using it for tasks such as these, but it is soooo much quicker.</p>]]></content><author><name></name></author><category term="personal" /><category term="blog" /><summary type="html"><![CDATA[First ever public post. Felt like it was time to. I have experienced positives of posting things on the Internet, it’s an amazing thing putting things out into the Universe. As long as I’m outputting stuff into the world, things seem to happen.]]></summary></entry><entry><title type="html">Novel AI Lexicon</title><link href="http://localhost:4000/ai/safety/2025/06/01/ai-safety.html" rel="alternate" type="text/html" title="Novel AI Lexicon" /><published>2025-06-01T23:49:53-07:00</published><updated>2025-06-01T23:49:53-07:00</updated><id>http://localhost:4000/ai/safety/2025/06/01/ai-safety</id><content type="html" xml:base="http://localhost:4000/ai/safety/2025/06/01/ai-safety.html"><![CDATA[<p>We need a new lexicon for AI. The anthropomorphisation of this technology is especially dangerous as it is causing emotional response to it. There are already papers citing the view of AI as an authority figure, yet also as a friend who is doing them a favour, which thus engenders the use of “please” and “thank you” A novel vocabulary must exist to prevent this danger.</p>
 
 <p>Possible alternatives words:</p>
 

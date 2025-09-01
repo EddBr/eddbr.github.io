@@ -3,7 +3,7 @@ layout: post
 title:  "Reinforcement Learning: An Introduction - Chapter 2"
 categories: rl textbook
 ---
-
+{% include katex.html %}
 # Instructive Feedback
 Indicates correct action to take
 Independent of action taken
