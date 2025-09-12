@@ -3,6 +3,7 @@ layout: post
 title:  "Reinforcement Learning: An Introduction - Chapter 1"
 categories: rl textbook
 ---
+{% include katex.html %}
 
 # RL
 RL is focused on goal-directed learning
