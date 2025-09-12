@@ -1,7 +1,7 @@
 ---
 layout: post
 title:  "LLMs in the World"
-categories:LLM communication 
+categories: LLM communication 
 ---
 LLMs are becoming the new social media. The problems we are and will encounter, the benefits and the impact on human social function. Much the same way as people now incorporate videos, photos, and Wikipedia pages as verification of their own thoughts, or enhancements to the conversation being engaged in, LLMs will take a new step. Emotions will be more effectively conveyed and we will begin to question how we ever operated without them. People will use it as a sounding board for their ideas as well as a tool to more effectively communicate themselves. Communication is a 2 way street:
 In 1 direction you have the communicator
