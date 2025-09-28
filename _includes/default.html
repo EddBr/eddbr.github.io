@@ -1,3 +1,17 @@
 <head>
 	{% include katex.html %}
+	<link rel="stylesheet" href="{{ '/assets/css/custom.css' | relative_url }}">
 </head>
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" rel="author" href="{{ '/' | relative_url }}">{{ site.title | escape }}</a>
+    <nav class="site-nav">
+      <div class="trigger">
+        <a class="page-link" href="{{ '/' | relative_url }}">Home</a>
+        <a class="page-link" href="{{ '/about/' | relative_url }}">About</a>
+        <a class="page-link email-nav-button" href="mailto:s2289391@ed.ac.uk">📧 Email me</a>
+      </div>
+    </nav>
+  </div>
+</header>
