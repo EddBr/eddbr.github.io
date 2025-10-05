@@ -1,17 +1,17 @@
 ---
 layout: default
 title: Eddie's Blog
-description: "4th Year CS Student | ML Theory Research | AI Safety | Founder"
+description: "4th Year CS Student | ML/RL Research | Founder"
 ---
 
 <div class="welcome-section">
   <div class="welcome-content">
     <h1 class="welcome-title">Hi, I'm Eddie</h1>
-    <p class="welcome-subtitle">Computer Science student exploring AI safety and machine learning theory</p>
+    <p class="welcome-subtitle">Computer Science student exploring Reinforcement Learning and Machine Learning theory</p>
     <p class="welcome-description">
-      I'm passionate about understanding how AI systems work and making them safer. 
-      Currently working on my dissertation about LLM Agents with Reinforcement Learning, 
-      and I've had the chance to do research at Stanford's IxD Lab and build a startup called ProcrastApply.
+      I'm passionate about understanding how AI systems work.<br />
+      Currently working on my dissertation about LLM Agents with Reinforcement Learning.<br />
+      I've had the chance to do HCI research at <a href="https://hci.stanford.edu/">Stanford</a> and build a startup called <a href="https://procrastapply.com">ProcrastApply</a>.
     </p>
     <div class="welcome-links">
       <a href="/about/" class="welcome-btn">More about me</a>
@@ -26,7 +26,7 @@ description: "4th Year CS Student | ML Theory Research | AI Safety | Founder"
     <a href="/about/#research" class="work-card-link">
       <div class="work-card">
         <h3>🔬 Research</h3>
-        <p>My dissertation focuses on the theoretical foundations of LLM agents with reinforcement learning. I'm also exploring how humans and AI can work together better.</p>
+        <p>My dissertation focuses on the theoretical foundations of LLM agents with Reinforcement Learning. I'm also exploring how humans and AI can work together better.</p>
         <span class="card-link">Learn more →</span>
       </div>
     </a>
@@ -39,8 +39,8 @@ description: "4th Year CS Student | ML Theory Research | AI Safety | Founder"
     </a>
     <a href="/ai/safety/2025/06/01/ai-safety.html" class="work-card-link">
       <div class="work-card">
-        <h3>🤖 AI Safety</h3>
-        <p>I write about AI safety, particularly around how LLMs might affect human communication and social dynamics. It's a topic I think about a lot.</p>
+        <h3>Novel AI Lexicon</h3>
+        <p>The words we use are important. A small change to de-humanise LLMs.</p>
         <span class="card-link">Read my thoughts →</span>
       </div>
     </a>
@@ -78,17 +78,17 @@ description: "4th Year CS Student | ML Theory Research | AI Safety | Founder"
     
     <a href="/personal/blog/procrastapply/2025/07/11/procrastapply.html" class="post-card-link">
       <div class="post-card">
-        <h3>Building ProcrastApply</h3>
+        <h3>ProcrastApply Daily Logs</h3>
         <p class="post-meta">July 11, 2025</p>
-        <p>Lessons learned from building a platform to help students with applications...</p>
+        <p>Daily logs I made to keep our users updated over 6 months</p>
       </div>
     </a>
     
     <a href="/ai/safety/2025/06/01/ai-safety.html" class="post-card-link">
       <div class="post-card">
-        <h3>Thoughts on AI Safety</h3>
+        <h3>Novel AI Lexicon</h3>
         <p class="post-meta">June 1, 2025</p>
-        <p>My early thoughts on AI safety, ChatGPT, and maintaining human agency...</p>
+        <p>The importance of what words we are using</p>
       </div>
     </a>
     

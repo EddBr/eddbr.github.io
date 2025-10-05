@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Reinforcement Learning: An Introduction - Chapter 3 | Eddie’s Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Reinforcement Learning: An Introduction - Chapter 3" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Tension between applicability and mathematical tractability - tradeoff Agent Learner and decision maker Environment Things agent interacts with" />
+<meta property="og:description" content="Tension between applicability and mathematical tractability - tradeoff Agent Learner and decision maker Environment Things agent interacts with" />
+<link rel="canonical" href="http://localhost:4000/rl/textbook/2025/09/30/rl-chapter-3.html" />
+<meta property="og:url" content="http://localhost:4000/rl/textbook/2025/09/30/rl-chapter-3.html" />
+<meta property="og:site_name" content="Eddie’s Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2025-09-30T00:00:00-07:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Reinforcement Learning: An Introduction - Chapter 3" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2025-09-30T00:00:00-07:00","datePublished":"2025-09-30T00:00:00-07:00","description":"Tension between applicability and mathematical tractability - tradeoff Agent Learner and decision maker Environment Things agent interacts with","headline":"Reinforcement Learning: An Introduction - Chapter 3","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/rl/textbook/2025/09/30/rl-chapter-3.html"},"url":"http://localhost:4000/rl/textbook/2025/09/30/rl-chapter-3.html"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="http://localhost:4000/feed.xml" title="Eddie&apos;s Blog" /></head>
+<body><header class="site-header" role="banner">
+
+  <div class="wrapper"><a class="site-title" rel="author" href="/">Eddie&#39;s Blog</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/about/">About</a><a class="page-link" href="/">Eddie&#39;s Blog</a></div>
+      </nav></div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">Reinforcement Learning: An Introduction - Chapter 3</h1>
+    <p class="post-meta">
+      <time class="dt-published" datetime="2025-09-30T00:00:00-07:00" itemprop="datePublished">Sep 30, 2025
+      </time></p>
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" />
+
+<script defer="" src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+
+<script defer="" src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,
+	      {delimiters: [
+	      {left: '$$', right: '$$', display: true},
+	      {left: '$', right: '$', display: false},
+	      {left: '\\(', right: '\\)', display: false},
+	      {left: '\\[', right: '\\]', display: true}
+	      ]});"></script>
+
+<p>Tension between applicability and mathematical tractability - tradeoff</p>
+<h2 id="agent">Agent</h2>
+<p>Learner and decision maker</p>
+<h2 id="environment">Environment</h2>
+<p>Things agent interacts with</p>
+
+<p>Anything that the agent cannot changed arbitrarily</p>
+<h2 id="state">State</h2>
+<p>Whatever information is available to the agent</p>
+<h2 id="rewards">Rewards</h2>
+<p>Special numerical values that the agent tries to maximise</p>
+<h2 id="policy-pi">Policy $\pi$</h2>
+<p>Mapping from state to probabilities of each action
+The policy changes over time</p>
+<h2 id="reinforcement-learning">Reinforcement Learning</h2>
+<p>An abstraction of the problem of goal-directed learning from interaction</p>
+
+<p>Any learning problem abstracted to 3 signals:</p>
+<ol>
+  <li>Signal to represent choices made by agent (actions)</li>
+  <li>Signal to represent basis for decision (states)</li>
+  <li>Signal to define agent’s goal (rewards, which are always single numbers)
+    <h2 id="reward-hypothesis">Reward Hypothesis</h2>
+    <p>Goals and purpose can be thought of as the maximisation of the expected value of cumulative sum of reward</p>
+    <h2 id="reward-signal">Reward Signal</h2>
+    <p>Received scalar signal</p>
+  </li>
+</ol>
+
+<p>Method to communicate <em>what</em> you want to achieve, not <em>how</em> you want to achieve it</p>
+<h1 id="returns">Returns</h1>
+<p>$G_t=R_{t+1}+R_{t+2}+R_{t+3}+…R_{T}$</p>
+<h2 id="episodic-tasks">Episodic Tasks</h2>
+<p>Interactions break down naturally into subsequences
+Episode ends in a terminal state and resets
+Set of all nonterminal states - $\mathcal{S}$
+Set of all states (with terminals) - $\mathcal{S}^+$</p>
+<h3 id="episodic-notation">Episodic Notation</h3>
+<p>$S_{t,i}$ 
+$t$ - time step
+$i$ - Episode number
+But we don’t really use $i$, more commonly written as $S_t$</p>
+<h2 id="continuing-tasks">Continuing Tasks</h2>
+<p>No identifiable episodes</p>
+<h2 id="discounted-returns">Discounted Returns</h2>
+<p>$G_t=R_{t+1}+\gamma R_{t+2}+\gamma^2 R_{t+3}+…=\sum^\infty_{k=0}\gamma^kR_{t+k+1}$</p>
+
+<p>$\gamma$ - Discount Rate
+$0\le\gamma\le1$</p>
+<h3 id="pole-balancing">Pole-Balancing</h3>
+<p>Can be episodic OR continuing – depends on how the task is defined</p>
+
+<p>Episodic when: the episodes are when the pole falls, reward is +1 for every time step before failure</p>
+
+<p>Continuing when: reward is -1 on each failure and 0 at all other times and discounting is applied, thus value is $\gamma ^T$ which incentivises moves to keep pole balanced</p>
+<h2 id="unified-return-notation">Unified Return Notation</h2>
+<p>$G_t=\sum^{T-t-1}<em>{k=0}\gamma^kR</em>{t+k+1}$
+Which allows for when $T=\infty$ or $\gamma=1$ (but not both)</p>
+<h1 id="markov-property">Markov Property</h1>
+<p>State signal that succeeds in returning all relevant information</p>
+<h3 id="independence-of-path">Independence of Path</h3>
+<p>It doesn’t matter how that position and velocity came about, all that matters is the current state signal</p>
+
+<p>Independent of its history</p>
+
+<p>$Pr(R_{t+1}=r,S_{t+1}=s’|S_0,A_0,R_1,…S_{t-1},A_{t-1},S_t,A_t)$
+If the state signal has the Markov property, this can be written as:
+$p(s’,r|s,a)=Pr(R_{t+1}=r,S_{t+1}=s’|S_t,A_t)$ for all $r,s’,S_t,A_t$</p>
+
+<p>Markov state provides equivalent predictions to full histories</p>
+<h1 id="markov-decisions-processes-mdp">Markov Decisions Processes (MDP)</h1>
+<p>RL tasks that satisfy the Markov property are called Markov Decision Processes</p>
+
+<p>MDP enables the computation of other environmental quantities:</p>
+<h2 id="expected-reward">Expected reward</h2>
+<p>$r(s,a)=\mathbb{E}[R_{t+1}|S_t=s,A_t=a]=\sum_{r\in \mathcal{R}}r\sum_{s’\in\mathcal{S}}p(s’,r|s,a)$</p>
+<h2 id="state-transition-probabilities">State Transition Probabilities</h2>
+<p>$p(s’|s,a)=Pr(S_{t+1}=s’|S_t=s,A_t=a)=\sum_{r\in\mathcal{R}}p(s’,r|s,a)$</p>
+<h3 id="expected-rewards-to-state-action-next-state-triples">Expected Rewards to state-action-next-state triples</h3>
+<p>$r(s,a,s’)=\mathbb{E}[R_{t+1}|S_t=s,A_t=a,S_{t+1}=s’]=\cfrac{\sum_{r\in \mathcal{R}}r\times p(s’,r|s,a)}{p(s’|s,a)}$
+![[Pasted image 20250930040238.png]]</p>
+
+<h2 id="policy-vs-value">Policy Vs Value</h2>
+<p>Policy: Mapping: state $\to$ probability
+Value: Expected return when following policy $\pi$ from state $S$</p>
+
+<h2 id="valueexpected-return">Value/Expected return</h2>
+<p>$v_\pi(s)=\mathbb{E}<em>\pi[G_t|S_t=s]=\mathbb{E}</em>\pi[\sum^\infty_{k=0}\gamma^kR_{t+k+1}|S_t=s]$
+where $\mathbb{E}_\pi$ denotes expected value of a random variable given that the agent follows policy $\pi$</p>
+<h2 id="important-note">Important Note</h2>
+<p>Value of terminal state, if any, is always 0</p>
+
+<h1 id="action-value-function-for-policy-pi">Action-Value Function for policy $\pi$</h1>
+<p>Value of taking an action $q_\pi(s,a)=\mathbb{E}<em>\pi[G_t|S_t=s,A_t=a]=\mathbb{E}</em>\pi[\sum^\infty_{k=0}\gamma^kR_{t+k+1}|S_t=s,A_t=a]$</p>
+
+<p>$v_\pi$ and $q_\pi$ can be estimated from experience</p>
+
+<h2 id="making-v_pi-recursive">Making $v_\pi$ Recursive</h2>
+<p>$v_\pi(s)=\mathbb{E}<em>\pi[G_t|S_t=s]$
+$=\mathbb{E}</em>\pi[\sum^\infty_{k=0}\gamma^kR_{t+k+1}|S_t=s]$
+$=\mathbb{E}<em>\pi[R</em>{t+1}+\sum^\infty_{k=0}\gamma^kR_{t+k+2}|S_t=s]$
+$=\underset{a}\sum\pi(a,s)\underset{s’}\sum\underset{r}\sum p(s’,r|s,a)[r+\gamma\mathbb{E}<em>\pi[\sum^\infty</em>{k=0}\gamma^kR_{t+k+2}|S_{t+1}=s’]]$ since $\mathbb{E}<em>\pi()=\sum\text{Value}\times p(\text{Value})$ for all actions, states and rewards
+$=\underset{a}\sum\pi(a|s)\underset{s’,r}p(s’,r|s,a)[r+\gamma v</em>\pi(s’)]$ - #vpibellmanequation Bellman equation for $v_\pi$</p>
+<h1 id="optimal-value-functions">Optimal Value Functions</h1>
+<h2 id="better-policies">Better Policies</h2>
+<p>A policy $\pi$ is better than or equal to another policy if its expected return $\ge$ $\pi’$ s expected return for all states $s$
+$\pi\ge\pi’ \iff v_\pi(s)\ge v_{\pi’}(s)$ for all $s\in S$</p>
+<h2 id="optimal-policy-pi">Optimal Policy $\pi^*$</h2>
+<p>Policy $\pi^*$ is optimal if it is better than all other policies</p>
+
+<p>There may be more than one optimal policy</p>
+
+<h3 id="optimal-state-value-function-v_">Optimal State-Value Function $v_*$</h3>
+<p>All optimal policies share the same state-value function known as the Optimal state-Value function $v_<em>$
+$v_</em>(s)=\underset{\pi}\max v_\pi(s)$ for all $s\in \mathcal{S}$</p>
+
+<p><strong>Bellman optimality equation</strong></p>
+
+<p>$v_<em>(s)=\underset{a\in\mathcal{A}(s)}\max q_\pi(s,a)$
+$=\underset{a}\max\mathbb{E}_{\pi</em>}[G_t|S_t=s,A_t=a]$
+$=\underset{a}\max\mathbb{E}<em>{\pi*}[\sum^\infty</em>{k=0} \gamma^kR_{t+k+1}|S_t=s,A_t=a]$
+$=\underset{a}\max\mathbb{E}<em>{\pi*}[R</em>{t+1}+\gamma\sum^\infty_{k=0} \gamma^kR_{t+k+2}|S_t=s,A_t=a]$
+$=\underset{a}\max\mathbb{E}[R_{t+1}+\gamma v_<em>(S_{t+1}|S_t=s,A_t=a)]$ #vstarbellmanequation
+$=\underset{a\in\mathcal{A(s)}}\max{\underset{s’,r}\sum} p(s’,r|s,a)[r+\gamma v_</em>(s’)]$ #vstarbellmanequation</p>
+<h3 id="optimal-action-value-function-q_">Optimal Action-Value Function $q_*$</h3>
+<p>$q_<em>(s,a)=\underset{\pi}\max q_\pi(s,a)$ for all $s\in\mathcal{S}$ and $a\in\mathcal{A}(s)$
+$q_</em>(s,a)=\mathbb{E}[R_{t+1}+\gamma v_*(S_{t+1})|S_t=s, A_t=a]$</p>
+
+<p><strong>Bellman optimality equation</strong>
+$q_<em>(s,a)=\mathbb{E}[R_{t+1}+\gamma\underset{a’}\max q_</em>(S_{t+1},a’)|S_t=s,A_t=a]$
+$=\underset{s’,r}\sum p(s’,r|s,a)[r+\gamma \underset{a’}\max q_*(s’,a’)]$ #qstarbellmanequation</p>
+
+<h2 id="bellman-optimality-equations">Bellman Optimality equations</h2>
+<p>$N$ Bellman equations for $N$ states</p>
+
+<p>The Bellman optimality equation is a system of equations, one for each state</p>
+
+<h2 id="greedy-v_">Greedy $v_*$</h2>
+<p>Greedy policies with $v_<em>$ are optimal policies $\pi^</em>$</p>
+
+<p>Greedy policy + $v_*$ = Optimal in the long-term</p>
+
+<h3 id="benefit-of-q">Benefit of $q$</h3>
+<p>With $q(s,a)$, nothing is needed to be known about successor states and their values</p>
+<h1 id="exercises">Exercises</h1>
+<p><strong>Exercise 3.1</strong>
+<u>Speaking with another person</u>
+States:</p>
+<ul>
+  <li>Listening</li>
+  <li>Speaking</li>
+  <li>Terminal state of the end of convo
+Actions:</li>
+  <li>Nodding</li>
+  <li>Saying words</li>
+  <li>Keeping / breaking eye contact
+Rewards:</li>
+  <li>Feeling good</li>
+  <li>Other person feeling good</li>
+  <li>Gaining info
+<u>Football</u>
+States:</li>
+  <li>Winning</li>
+  <li>Losing</li>
+  <li>Drawing</li>
+  <li>Game in play</li>
+  <li>Game over
+Actions:</li>
+  <li>Scoring a goal</li>
+  <li>Conceding goal
+Rewards:</li>
+  <li>Winning
+<u>Eating</u>
+States:</li>
+  <li>Hungry</li>
+  <li>Full
+Actions:</li>
+  <li>Putting food in mouth</li>
+  <li>Swallowing</li>
+  <li>Vomiting
+Reward:</li>
+  <li>Endorphins
+<strong>Exercise 3.2</strong>
+Problems where a certain decision ends the learning situation entirely. i.e. hardcore Minecraft – really poor decisions have irreversible consequences
+<strong>Exercise 3.3</strong>
+It depends.</li>
+</ul>
+
+<p>The level of granularity is a choice. I suppose the lower, the more immediate the rewards?
+But it might be difficult to go to higher level objectives when being rewardsed for lower-level actions</p>
+
+<p>It must be a free choice
+<strong>Exercise 3.4</strong>
+The return for all actions is -1, since there is no way to get a positive reward, and each action is non-discounted. In the continuous discounted formulation, the agent is incentivised to avoid the pole-falling and different actions will have different likelihoods, resulting in different rewards that are discounted. In this new formulation, each action will ultimately lead to a terminal state and is discounted, thus there is no incentive to prevent the pole from falling.
+<strong>Exercise 3.5</strong>
+The robot must be incentivised to explore and find the exit. Until the robot happens to explore and find the exit (which may never happen if the maze is too big), then it will never associate positive reward with exiting
+<strong>Exercise 3.6</strong>
+Makrov state is when a given state can accurately predict all future states and expected rewards.</p>
+
+<p>If we had a complete history of the past, we could now what was occluded.</p>
+
+<p>If we assume the first situation, is a full history, then with the second situation, if nothing had changed going into the 2nd day, it would be a Markov state.</p>
+
+<p>But, we do not have enough information, we cannot see what is hidden and cannot predict the next states. Cannot be a Markov state.
+<strong>Exercise 3.7</strong></p>
+
+<p><strong>Exercise 3.8</strong>
+$\underset{s’,r}\sum p(s’,r|s,a)[r+\underset{a’}\sum \pi(a’|s’)\gamma q_\pi(s’,a’)]$
+<strong>Exercise 3.9</strong>
+$v_\pi(s)=\underset{a}\sum\pi(a|s)\underset{s’,r}p(s’,r|s,a)[r+\gamma v_\pi(s’)]$
+Assuming each state has probability 1/4 and using $\gamma=0.9$:
+$\frac 1 4 (0.9\times2.3+0.9\times-0.4+0.9\times0.4+0.9\times0.7)$
+$=0.675\approx 0.7 \square$ 
+<strong>Exercise 3.10</strong>
+The signs are important. If all rewards were positive, it is possible that a strong enough positive association could be built with the wrong outcome if enforced over time.</p>
+
+<table>
+  <tbody>
+    <tr>
+      <td>$v_\pi(s)=\underset{a}\sum\pi(a</td>
+      <td>s)\underset{s’,r}p(s’,r</td>
+      <td>s,a)[r+\gamma v_\pi(s’)]$ - Bellman Equation</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>$v’<em>\pi(s)=\underset{a}\sum\pi(a|s)\underset{s’,r}p(s’,r|s,a)[r+c+\gamma v’</em>\pi(s’)]$
+$v’<em>\pi(s)=\underset{a}\sum\pi(a|s)\underset{s’,r}p(s’,r|s,a)[r+c+\gamma [v</em>\pi(s’)+v_c]]$
+$=[\underset{a}\sum\pi(a|s)\underset{s’,r}p(s’,r|s,a)][r+c+\gamma [v_\pi(s’)+v_c]]$
+$=[c+\gamma v_c]+\underset{a}\sum\pi(a|s)\underset{s’,r}p(s’,r|s,a)[r+\gamma v_\pi(s’)]$
+$=v_\pi(s)+\underset{a}\sum\pi(a|s)\underset{s’,r}p(s’,r|s,a)[c+\gamma v_c]$
+$=v_\pi(s)+c+\gamma v_c$ since $c$ and $\gamma v_c$ are constants that do not change over $a,s’,r$
+And we know $v’<em>\pi(s)=v</em>\pi(s)+v_c$ 
+$\therefore v_\pi(s)+c+\gamma v_c=v_\pi(s)+v_c$
+$\to c + \gamma v_c=v_c$
+$\to (1-\gamma)v_c=c$
+$\to v_c=\frac c {(1-\gamma)}$</p>
+
+<p><strong>Exercise 3.11</strong>
+Longer routes are now more incentivised. If $c$ is large enough, there is a greater incentive to do the longest route possible if $c$ is greater than rewards pre-existing</p>
+
+<p><strong>Exercise 3.12</strong>
+$v_\pi(s)=\pi(a|S_t=s)$
+$\mathbb{E}<em>\pi(q</em>\pi(s,a|S_t=s,a=a_3)$
+$\pi(a|s)q_\pi(s,a)$
+<strong>Exercise 3.13</strong>
+I’m sorry, I have so many other assignments to do. Think these are quite self explanatory (I was too lazy)
+<strong>Exercise 3.14</strong>
+<strong>Exercise 3.15</strong>
+<strong>Exercise 3.16</strong>
+<strong>Exercise 3.17</strong>
+<strong>Exercise 3.18</strong>
+<strong>Exercise 3.19</strong>
+<strong>Exercise 3.20</strong>
+<strong>Exercise 3.21</strong></p>
+
+  </div><a class="u-url" href="/rl/textbook/2025/09/30/rl-chapter-3.html" hidden></a>
+</article>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">Eddie&#39;s Blog</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li class="p-name">Eddie&#39;s Blog</li><li><a class="u-email" href="mailto:s2289391@ed.ac.uk">s2289391@ed.ac.uk</a></li></ul>
+      </div>
+
+      <div class="footer-col footer-col-2"><ul class="social-media-list"><li><a href="https://github.com/eddbr"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#github"></use></svg> <span class="username">eddbr</span></a></li></ul>
+</div>
+
+      <div class="footer-col footer-col-3">
+        <p>4th Year CS Student | ML/RL Research | Founder of ProcrastApply</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>

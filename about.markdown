@@ -7,8 +7,8 @@ permalink: /about/
 <div class="about-intro">
   <h1>About me</h1>
   <p class="intro-text">
-    I'm a 4th year Computer Science student at the University of Edinburgh, 
-    and I'm really passionate about understanding how AI systems work and how we can make them safer.
+    I'm a 4th year Computer Science student at the University of Edinburgh. <br />
+    I'm really passionate about understanding how AI systems work.
   </p>
 </div>
 
@@ -17,12 +17,12 @@ permalink: /about/
     <h2>What I'm researching</h2>
     <div class="research-item">
       <h3>My dissertation: LLM Agents with Reinforcement Learning</h3>
-      <p>I'm exploring the theoretical foundations of how large language models can be enhanced through reinforcement learning. It's fascinating to think about how we can create AI agents that are both more capable and safer.</p>
+      <p>I'm exploring the theoretical foundations of how large language models can be enhanced through reinforcement learning. It's exciting exploring the field to make AI agents more interpretable and effective.</p>
     </div>
     
     <div class="research-item">
       <h3>Stanford IxD Research Lab</h3>
-      <p>I had the amazing opportunity to do research at Stanford's Interaction Design Research Lab, working with <a href="https://juliamarkel.github.io" target="_blank">Julia Markel</a> on projects that explore how technology and human behavior intersect. It really opened my eyes to the human side of technology.</p>
+      <p>I had the amazing opportunity to do research at Stanford's Interaction Design Research Lab, working with <a href="https://juliamarkel.github.io" target="_blank">Julia Markel</a> to create Identity Amplification -- a design process for GenAI tools that has more consideration of possible externalities.</p>
     </div>
   </section>
 
@@ -30,28 +30,28 @@ permalink: /about/
     <h2>Building things</h2>
     <div class="startup-item">
       <h3>ProcrastApply</h3>
-      <p>I founded and ran ProcrastApply, a platform designed to help students overcome application procrastination. It was a great learning experience - both in terms of building the technology and understanding the psychology behind why people procrastinate.</p>
+      <p>I co-founded ProcrastApply with <a href="https://www.linkedin.com/in/gavin-goldwasser-115310334/">Gavin</a>, a platform designed to help students get better jobs. We raised some money and got 40 users to help get actual jobs. I love startups.</p>
       <p><a href="https://procrastapply.com" target="_blank" class="external-link">Check out ProcrastApply →</a></p>
     </div>
   </section>
 
   <section class="about-section">
     <h2>Where I want to go</h2>
-    <p>I'm really interested in working at organizations that are pushing the boundaries of AI research and safety. I'm particularly drawn to:</p>
+    <p>I'm really interested in working at organizations that are pushing the boundaries of AI research. I'm particularly drawn to:</p>
     <ul class="company-list">
-      <li><strong>DeepMind</strong> - Their work on AI safety and alignment really inspires me</li>
-      <li><strong>Anthropic</strong> - I love their focus on AI safety and making AI systems more helpful</li>
-      <li><strong>OpenAI</strong> - The cutting-edge research they're doing is fascinating</li>
+      <li><strong>Anthropic</strong></li>
+      <li><strong>DeepMind</strong></li>
+      <li><strong>OpenAI</strong></li>
     </ul>
-    <p>I'm also applying to Masters programs to dive deeper into machine learning theory and AI safety research.</p>
+    <p>I'm also applying to Masters programs to dive deeper into machine learning theory🤞.</p>
   </section>
 
   <section class="about-section">
     <h2>What I'm interested in</h2>
     <div class="interests-grid">
       <div class="interest-item">
-        <h4>AI Safety</h4>
-        <p>Understanding and mitigating risks in advanced AI systems</p>
+        <h4>Reinforcement Learning</h4>
+        <p>Learning from interaction and rewards</p>
       </div>
       <div class="interest-item">
         <h4>Machine Learning Theory</h4>
@@ -60,10 +60,6 @@ permalink: /about/
       <div class="interest-item">
         <h4>Human-AI Interaction</h4>
         <p>How humans and AI systems can work together effectively</p>
-      </div>
-      <div class="interest-item">
-        <h4>Reinforcement Learning</h4>
-        <p>Learning from interaction and feedback</p>
       </div>
     </div>
   </section>
