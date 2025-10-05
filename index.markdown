@@ -52,6 +52,14 @@ description: "4th Year CS Student | ML/RL Research | Founder"
   <p class="writing-intro">I write about AI, machine learning, and the intersection of technology and human behavior. Here are some of my recent posts:</p>
   
   <div class="posts-grid">
+    <a href="/rl/textbook/2025/09/30/rl-chapter-3.html" class="post-card-link">
+      <div class="post-card">
+        <h3>RL Chapter 3</h3>
+        <p class="post-meta">September 30, 2025</p>
+        <p>Digging deeper into reinforcement learning through Sutton & Barto's textbook...</p>
+      </div>
+    </a>
+    
     <a href="/llm/communication/2025/09/12/llms-in-the-world.html" class="post-card-link">
       <div class="post-card">
         <h3>LLMs in the World</h3>
