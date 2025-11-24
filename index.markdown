@@ -51,65 +51,36 @@ description: "4th Year CS Student | ML/RL Research | Founder"
   <h2>Recent writing</h2>
   <p class="writing-intro">I write about AI, machine learning, and the intersection of technology and human behavior. Here are some of my recent posts:</p>
   
-  <div class="posts-grid">
-    <a href="/rl/textbook/2025/09/30/rl-chapter-3.html" class="post-card-link">
-      <div class="post-card">
-        <h3>RL Chapter 3</h3>
-        <p class="post-meta">September 30, 2025</p>
-        <p>Digging deeper into reinforcement learning through Sutton & Barto's textbook...</p>
-      </div>
-    </a>
+  {% assign all_posts = site.posts %}
+  {% if all_posts.size > 0 %}
+    {% assign latest_post = all_posts | first %}
+    <div class="latest-post">
+      <div class="latest-meta">Latest</div>
+      <h3><a href="{{ latest_post.url }}">{{ latest_post.title }}</a></h3>
+      <p class="post-meta">{{ latest_post.date | date: "%B %-d, %Y" }}</p>
+      <p>{{ latest_post.description | default: latest_post.excerpt | strip_html | truncatewords: 28 }}</p>
+      <a href="{{ latest_post.url }}" class="card-link">Read post →</a>
+    </div>
     
-    <a href="/llm/communication/2025/09/12/llms-in-the-world.html" class="post-card-link">
-      <div class="post-card">
-        <h3>LLMs in the World</h3>
-        <p class="post-meta">September 12, 2025</p>
-        <p>How LLMs are becoming the new social media and what that means for human communication...</p>
-      </div>
-    </a>
-    
-    <a href="/rl/textbook/2025/09/01/rl-chapter-2.html" class="post-card-link">
-      <div class="post-card">
-        <h3>RL Chapter 2</h3>
-        <p class="post-meta">September 1, 2025</p>
-        <p>Continuing my journey through reinforcement learning theory and applications...</p>
-      </div>
-    </a>
-    
-    <a href="/rl/textbook/2025/08/28/rl-chapter-1.html" class="post-card-link">
-      <div class="post-card">
-        <h3>RL Chapter 1</h3>
-        <p class="post-meta">August 28, 2025</p>
-        <p>Starting my exploration of reinforcement learning fundamentals...</p>
-      </div>
-    </a>
-    
-    <a href="/personal/blog/procrastapply/2025/07/11/procrastapply.html" class="post-card-link">
-      <div class="post-card">
-        <h3>ProcrastApply Daily Logs</h3>
-        <p class="post-meta">July 11, 2025</p>
-        <p>Daily logs I made to keep our users updated over 6 months</p>
-      </div>
-    </a>
-    
-    <a href="/ai/safety/2025/06/01/ai-safety.html" class="post-card-link">
-      <div class="post-card">
-        <h3>Novel AI Lexicon</h3>
-        <p class="post-meta">June 1, 2025</p>
-        <p>The importance of what words we are using</p>
-      </div>
-    </a>
-    
-    <a href="/personal/blog/2025/06/01/first-post.html" class="post-card-link">
-      <div class="post-card">
-        <h3>First Post</h3>
-        <p class="post-meta">June 1, 2025</p>
-        <p>Why I decided to start writing publicly and putting my thoughts out there...</p>
-      </div>
-    </a>
-  </div>
+    {% if all_posts.size > 1 %}
+    <div class="posts-grid">
+      {% for post in all_posts offset:1 limit:6 %}
+      <a href="{{ post.url }}" class="post-card-link">
+        <div class="post-card">
+          <h3>{{ post.title }}</h3>
+          <p class="post-meta">{{ post.date | date: "%B %-d, %Y" }}</p>
+          <p>{{ post.description | default: post.excerpt | strip_html | truncatewords: 22 }}</p>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    {% endif %}
+  {% else %}
+    <p class="writing-intro">No posts yet — check back soon!</p>
+  {% endif %}
   
   <div class="writing-actions">
+    <a href="/writing/" class="btn btn-primary">📝 Browse all posts</a>
     <a href="mailto:s2289391@ed.ac.uk" class="btn btn-primary">📧 Email me</a>
     <a href="https://github.com/eddbr" class="btn btn-secondary" target="_blank">💻 My GitHub</a>
     <a href="/feed.xml" class="btn btn-secondary">📰 Subscribe to my blog</a>
@@ -316,6 +287,37 @@ description: "4th Year CS Student | ML/RL Research | Founder"
   line-height: 1.6;
   font-size: 0.95rem;
   flex-grow: 1;
+}
+
+.latest-post {
+  background: #ecfdf5;
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
+  padding: 2rem;
+  margin: 2rem 0;
+  box-shadow: 0 4px 12px rgba(6, 95, 70, 0.08);
+}
+
+.latest-post h3 {
+  margin: 0 0 0.75rem 0;
+  font-size: 1.5rem;
+  color: #065f46;
+}
+
+.latest-post p {
+  margin: 0 0 1rem 0;
+  color: #065f46;
+}
+
+.latest-meta {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.85rem;
+  background: #d1fae5;
+  color: #065f46;
+  border-radius: 999px;
+  margin-bottom: 0.8rem;
+  font-weight: 600;
 }
 
 .writing-actions {
