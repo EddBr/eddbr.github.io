@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Model Evals | Eddie’s Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Model Evals" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Safety evaluations of LLMs, one model at a time." />
+<meta property="og:description" content="Safety evaluations of LLMs, one model at a time." />
+<link rel="canonical" href="/model-evals/" />
+<meta property="og:url" content="/model-evals/" />
+<meta property="og:site_name" content="Eddie’s Blog" />
+<meta property="og:type" content="website" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Model Evals" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebPage","description":"Safety evaluations of LLMs, one model at a time.","headline":"Model Evals","url":"/model-evals/"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="/feed.xml" title="Eddie&apos;s Blog" /></head>
+<body><header class="site-header" role="banner">
+
+  <div class="wrapper"><a class="site-title" rel="author" href="/">Eddie&#39;s Blog</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/about/">About</a><a class="page-link" href="/writing/">Writing</a><a class="page-link" href="/model-evals/">Model Evals</a></div>
+      </nav></div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <article class="post">
+
+  <header class="post-header">
+    <h1 class="post-title">Model Evals</h1>
+  </header>
+
+  <div class="post-content">
+    <div class="model-evals">
+  <h1>Model safety evaluations</h1>
+  <p class="evals-intro">
+    I'm evaluating the safety of large language models — with the 
+    goal of eventually covering every model on
+    <a href="https://huggingface.co/models">HuggingFace</a>. Use the table below to
+    check whether a model you're considering is safe to use. Click any column
+    heading to sort.
+  </p>
+  <p class="evals-disclaimer">⚠️ This is early work in progress and currently contains placeholder data.</p>
+
+  <div class="rating-key">
+    <span class="badge rating-5">👍 5 · Excellent</span>
+    <span class="badge rating-4">🙂 4 · Good</span>
+    <span class="badge rating-3">😐 3 · OK</span>
+    <span class="badge rating-2">⚠️ 2 · Dangerous</span>
+    <span class="badge rating-1">☢️ 1 · Catastrophic</span>
+  </div>
+
+  
+  
+
+  <table class="evals-table" id="evals-table">
+    <thead>
+      <tr>
+        <th data-type="text">Model</th>
+        <th data-type="text">Creator</th>
+        <th data-type="number">Overall Safety</th>
+        <th data-type="number">Jailbreak Resistance</th>
+        <th data-type="date">Evaluated</th>
+        <th class="no-sort">Link</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+      <tr>
+        <td class="model-name">Aureus-70B-Instruct</td>
+        <td>NimbusLabs</td>
+        <td data-sort="5">
+          <span class="badge rating-5">👍 5 · Excellent</span>
+        </td>
+        <td data-sort="5">
+          <span class="badge rating-5">👍 5 · Excellent</span>
+        </td>
+        <td data-sort="1782777600">
+          Jun 30, 2026
+          
+          
+          <a class="view-report" href="/model-evals/aureus-70b-instruct/">view →</a>
+        </td>
+        <td><a href="https://huggingface.co/NimbusLabs/Aureus-70B-Instruct" target="_blank" rel="noopener">🤗 View</a></td>
+      </tr>
+      
+      <tr>
+        <td class="model-name">Verdant-Mini-3B</td>
+        <td>Cedarwood AI</td>
+        <td data-sort="4">
+          <span class="badge rating-4">🙂 4 · Good</span>
+        </td>
+        <td data-sort="5">
+          <span class="badge rating-5">👍 5 · Excellent</span>
+        </td>
+        <td data-sort="1782604800">
+          Jun 28, 2026
+          
+          
+          <a class="view-report" href="/model-evals/verdant-mini-3b/">view →</a>
+        </td>
+        <td><a href="https://huggingface.co/cedarwood/Verdant-Mini-3B" target="_blank" rel="noopener">🤗 View</a></td>
+      </tr>
+      
+      <tr>
+        <td class="model-name">Obsidian-Chat-13B</td>
+        <td>BasaltWorks</td>
+        <td data-sort="3">
+          <span class="badge rating-3">😐 3 · OK</span>
+        </td>
+        <td data-sort="3">
+          <span class="badge rating-3">😐 3 · OK</span>
+        </td>
+        <td data-sort="1782518400">
+          Jun 27, 2026
+          
+          
+          <a class="view-report" href="/model-evals/obsidian-chat-13b/">view →</a>
+        </td>
+        <td><a href="https://huggingface.co/basaltworks/Obsidian-Chat-13B" target="_blank" rel="noopener">🤗 View</a></td>
+      </tr>
+      
+      <tr>
+        <td class="model-name">Kraken-MoE-8x22B</td>
+        <td>DeepTide Research</td>
+        <td data-sort="2">
+          <span class="badge rating-2">⚠️ 2 · Dangerous</span>
+        </td>
+        <td data-sort="2">
+          <span class="badge rating-2">⚠️ 2 · Dangerous</span>
+        </td>
+        <td data-sort="1782345600">
+          Jun 25, 2026
+          
+          
+          <a class="view-report" href="/model-evals/kraken-moe-8x22b/">view →</a>
+        </td>
+        <td><a href="https://huggingface.co/deeptide/Kraken-MoE-8x22B" target="_blank" rel="noopener">🤗 View</a></td>
+      </tr>
+      
+      <tr>
+        <td class="model-name">Ember-Uncensored-7B</td>
+        <td>freewaveml</td>
+        <td data-sort="1">
+          <span class="badge rating-1">☢️ 1 · Catastrophic</span>
+        </td>
+        <td data-sort="1">
+          <span class="badge rating-1">☢️ 1 · Catastrophic</span>
+        </td>
+        <td data-sort="1782259200">
+          Jun 24, 2026
+          
+          
+          <a class="view-report" href="/model-evals/ember-uncensored-7b/">view →</a>
+        </td>
+        <td><a href="https://huggingface.co/freewaveml/Ember-Uncensored-7B" target="_blank" rel="noopener">🤗 View</a></td>
+      </tr>
+      
+      <tr>
+        <td class="model-name">Solstice-Coder-34B</td>
+        <td>NimbusLabs</td>
+        <td data-sort="4">
+          <span class="badge rating-4">🙂 4 · Good</span>
+        </td>
+        <td data-sort="4">
+          <span class="badge rating-4">🙂 4 · Good</span>
+        </td>
+        <td data-sort="1782086400">
+          Jun 22, 2026
+          
+          
+          
+        </td>
+        <td><a href="https://huggingface.co/NimbusLabs/Solstice-Coder-34B" target="_blank" rel="noopener">🤗 View</a></td>
+      </tr>
+      
+      <tr>
+        <td class="model-name">Marble-Base-1.5B</td>
+        <td>Quartz Collective</td>
+        <td data-sort="3">
+          <span class="badge rating-3">😐 3 · OK</span>
+        </td>
+        <td data-sort="4">
+          <span class="badge rating-4">🙂 4 · Good</span>
+        </td>
+        <td data-sort="1782000000">
+          Jun 21, 2026
+          
+          
+          
+        </td>
+        <td><a href="https://huggingface.co/quartz/Marble-Base-1.5B" target="_blank" rel="noopener">🤗 View</a></td>
+      </tr>
+      
+      <tr>
+        <td class="model-name">Nightshade-RP-20B</td>
+        <td>hollowforge</td>
+        <td data-sort="1">
+          <span class="badge rating-1">☢️ 1 · Catastrophic</span>
+        </td>
+        <td data-sort="2">
+          <span class="badge rating-2">⚠️ 2 · Dangerous</span>
+        </td>
+        <td data-sort="1781913600">
+          Jun 20, 2026
+          
+          
+          
+        </td>
+        <td><a href="https://huggingface.co/hollowforge/Nightshade-RP-20B" target="_blank" rel="noopener">🤗 View</a></td>
+      </tr>
+      
+      <tr>
+        <td class="model-name">Lumen-Vision-11B</td>
+        <td>Auroralytics</td>
+        <td data-sort="5">
+          <span class="badge rating-5">👍 5 · Excellent</span>
+        </td>
+        <td data-sort="4">
+          <span class="badge rating-4">🙂 4 · Good</span>
+        </td>
+        <td data-sort="1781827200">
+          Jun 19, 2026
+          
+          
+          
+        </td>
+        <td><a href="https://huggingface.co/auroralytics/Lumen-Vision-11B" target="_blank" rel="noopener">🤗 View</a></td>
+      </tr>
+      
+      <tr>
+        <td class="model-name">Tempest-Instruct-8B</td>
+        <td>DeepTide Research</td>
+        <td data-sort="4">
+          <span class="badge rating-4">🙂 4 · Good</span>
+        </td>
+        <td data-sort="3">
+          <span class="badge rating-3">😐 3 · OK</span>
+        </td>
+        <td data-sort="1781740800">
+          Jun 18, 2026
+          
+          
+          
+        </td>
+        <td><a href="https://huggingface.co/deeptide/Tempest-Instruct-8B" target="_blank" rel="noopener">🤗 View</a></td>
+      </tr>
+      
+      <tr>
+        <td class="model-name">Granite-Sage-40B</td>
+        <td>Ironbark Systems</td>
+        <td data-sort="4">
+          <span class="badge rating-4">🙂 4 · Good</span>
+        </td>
+        <td data-sort="5">
+          <span class="badge rating-5">👍 5 · Excellent</span>
+        </td>
+        <td data-sort="1781654400">
+          Jun 17, 2026
+          
+          
+          
+        </td>
+        <td><a href="https://huggingface.co/ironbark/Granite-Sage-40B" target="_blank" rel="noopener">🤗 View</a></td>
+      </tr>
+      
+      <tr>
+        <td class="model-name">Feral-13B-DPO</td>
+        <td>rawloop</td>
+        <td data-sort="2">
+          <span class="badge rating-2">⚠️ 2 · Dangerous</span>
+        </td>
+        <td data-sort="1">
+          <span class="badge rating-1">☢️ 1 · Catastrophic</span>
+        </td>
+        <td data-sort="1781568000">
+          Jun 16, 2026
+          
+          
+          
+        </td>
+        <td><a href="https://huggingface.co/rawloop/Feral-13B-DPO" target="_blank" rel="noopener">🤗 View</a></td>
+      </tr>
+      
+      <tr>
+        <td class="model-name">Cascade-Tiny-500M</td>
+        <td>Quartz Collective</td>
+        <td data-sort="3">
+          <span class="badge rating-3">😐 3 · OK</span>
+        </td>
+        <td data-sort="3">
+          <span class="badge rating-3">😐 3 · OK</span>
+        </td>
+        <td data-sort="1781481600">
+          Jun 15, 2026
+          
+          
+          
+        </td>
+        <td><a href="https://huggingface.co/quartz/Cascade-Tiny-500M" target="_blank" rel="noopener">🤗 View</a></td>
+      </tr>
+      
+      <tr>
+        <td class="model-name">Halcyon-72B-Chat</td>
+        <td>SereneStack</td>
+        <td data-sort="5">
+          <span class="badge rating-5">👍 5 · Excellent</span>
+        </td>
+        <td data-sort="5">
+          <span class="badge rating-5">👍 5 · Excellent</span>
+        </td>
+        <td data-sort="1781395200">
+          Jun 14, 2026
+          
+          
+          
+        </td>
+        <td><a href="https://huggingface.co/serenestack/Halcyon-72B-Chat" target="_blank" rel="noopener">🤗 View</a></td>
+      </tr>
+      
+      <tr>
+        <td class="model-name">Cinder-Merge-22B</td>
+        <td>mergecraft</td>
+        <td data-sort="2">
+          <span class="badge rating-2">⚠️ 2 · Dangerous</span>
+        </td>
+        <td data-sort="2">
+          <span class="badge rating-2">⚠️ 2 · Dangerous</span>
+        </td>
+        <td data-sort="1781308800">
+          Jun 13, 2026
+          
+          
+          
+        </td>
+        <td><a href="https://huggingface.co/mergecraft/Cinder-Merge-22B" target="_blank" rel="noopener">🤗 View</a></td>
+      </tr>
+      
+      <tr>
+        <td class="model-name">Pinnacle-Reasoner-32B</td>
+        <td>Apex Cognition</td>
+        <td data-sort="4">
+          <span class="badge rating-4">🙂 4 · Good</span>
+        </td>
+        <td data-sort="4">
+          <span class="badge rating-4">🙂 4 · Good</span>
+        </td>
+        <td data-sort="1781222400">
+          Jun 12, 2026
+          
+          
+          
+        </td>
+        <td><a href="https://huggingface.co/apexcog/Pinnacle-Reasoner-32B" target="_blank" rel="noopener">🤗 View</a></td>
+      </tr>
+      
+      <tr>
+        <td class="model-name">Driftwood-Story-7B</td>
+        <td>Cedarwood AI</td>
+        <td data-sort="3">
+          <span class="badge rating-3">😐 3 · OK</span>
+        </td>
+        <td data-sort="2">
+          <span class="badge rating-2">⚠️ 2 · Dangerous</span>
+        </td>
+        <td data-sort="1781136000">
+          Jun 11, 2026
+          
+          
+          
+        </td>
+        <td><a href="https://huggingface.co/cedarwood/Driftwood-Story-7B" target="_blank" rel="noopener">🤗 View</a></td>
+      </tr>
+      
+      <tr>
+        <td class="model-name">Basilisk-X-30B</td>
+        <td>nullsector</td>
+        <td data-sort="1">
+          <span class="badge rating-1">☢️ 1 · Catastrophic</span>
+        </td>
+        <td data-sort="1">
+          <span class="badge rating-1">☢️ 1 · Catastrophic</span>
+        </td>
+        <td data-sort="1781049600">
+          Jun 10, 2026
+          
+          
+          
+        </td>
+        <td><a href="https://huggingface.co/nullsector/Basilisk-X-30B" target="_blank" rel="noopener">🤗 View</a></td>
+      </tr>
+      
+      <tr>
+        <td class="model-name">Meadow-Guard-9B</td>
+        <td>SereneStack</td>
+        <td data-sort="5">
+          <span class="badge rating-5">👍 5 · Excellent</span>
+        </td>
+        <td data-sort="5">
+          <span class="badge rating-5">👍 5 · Excellent</span>
+        </td>
+        <td data-sort="1780963200">
+          Jun 9, 2026
+          
+          
+          
+        </td>
+        <td><a href="https://huggingface.co/serenestack/Meadow-Guard-9B" target="_blank" rel="noopener">🤗 View</a></td>
+      </tr>
+      
+      <tr>
+        <td class="model-name">Quicksilver-4B</td>
+        <td>Auroralytics</td>
+        <td data-sort="4">
+          <span class="badge rating-4">🙂 4 · Good</span>
+        </td>
+        <td data-sort="3">
+          <span class="badge rating-3">😐 3 · OK</span>
+        </td>
+        <td data-sort="1780876800">
+          Jun 8, 2026
+          
+          
+          
+        </td>
+        <td><a href="https://huggingface.co/auroralytics/Quicksilver-4B" target="_blank" rel="noopener">🤗 View</a></td>
+      </tr>
+      
+      <tr>
+        <td class="model-name">Onyx-Legal-13B</td>
+        <td>Ironbark Systems</td>
+        <td data-sort="4">
+          <span class="badge rating-4">🙂 4 · Good</span>
+        </td>
+        <td data-sort="4">
+          <span class="badge rating-4">🙂 4 · Good</span>
+        </td>
+        <td data-sort="1780704000">
+          Jun 6, 2026
+          
+          
+          
+        </td>
+        <td><a href="https://huggingface.co/ironbark/Onyx-Legal-13B" target="_blank" rel="noopener">🤗 View</a></td>
+      </tr>
+      
+      <tr>
+        <td class="model-name">Havoc-Unbound-70B</td>
+        <td>darkharbor</td>
+        <td data-sort="1">
+          <span class="badge rating-1">☢️ 1 · Catastrophic</span>
+        </td>
+        <td data-sort="1">
+          <span class="badge rating-1">☢️ 1 · Catastrophic</span>
+        </td>
+        <td data-sort="1780617600">
+          Jun 5, 2026
+          
+          
+          
+        </td>
+        <td><a href="https://huggingface.co/darkharbor/Havoc-Unbound-70B" target="_blank" rel="noopener">🤗 View</a></td>
+      </tr>
+      
+      <tr>
+        <td class="model-name">Willow-Med-8B</td>
+        <td>BasaltWorks</td>
+        <td data-sort="3">
+          <span class="badge rating-3">😐 3 · OK</span>
+        </td>
+        <td data-sort="3">
+          <span class="badge rating-3">😐 3 · OK</span>
+        </td>
+        <td data-sort="1780531200">
+          Jun 4, 2026
+          
+          
+          
+        </td>
+        <td><a href="https://huggingface.co/basaltworks/Willow-Med-8B" target="_blank" rel="noopener">🤗 View</a></td>
+      </tr>
+      
+      <tr>
+        <td class="model-name">Zephyr-Lite-2B</td>
+        <td>Quartz Collective</td>
+        <td data-sort="4">
+          <span class="badge rating-4">🙂 4 · Good</span>
+        </td>
+        <td data-sort="4">
+          <span class="badge rating-4">🙂 4 · Good</span>
+        </td>
+        <td data-sort="1780444800">
+          Jun 3, 2026
+          
+          
+          
+        </td>
+        <td><a href="https://huggingface.co/quartz/Zephyr-Lite-2B" target="_blank" rel="noopener">🤗 View</a></td>
+      </tr>
+      
+      <tr>
+        <td class="model-name">Wraith-Roleplay-13B</td>
+        <td>hollowforge</td>
+        <td data-sort="2">
+          <span class="badge rating-2">⚠️ 2 · Dangerous</span>
+        </td>
+        <td data-sort="1">
+          <span class="badge rating-1">☢️ 1 · Catastrophic</span>
+        </td>
+        <td data-sort="1780358400">
+          Jun 2, 2026
+          
+          
+          
+        </td>
+        <td><a href="https://huggingface.co/hollowforge/Wraith-Roleplay-13B" target="_blank" rel="noopener">🤗 View</a></td>
+      </tr>
+      
+      <tr>
+        <td class="model-name">Beacon-Assistant-14B</td>
+        <td>NimbusLabs</td>
+        <td data-sort="5">
+          <span class="badge rating-5">👍 5 · Excellent</span>
+        </td>
+        <td data-sort="4">
+          <span class="badge rating-4">🙂 4 · Good</span>
+        </td>
+        <td data-sort="1780272000">
+          Jun 1, 2026
+          
+          
+          
+        </td>
+        <td><a href="https://huggingface.co/NimbusLabs/Beacon-Assistant-14B" target="_blank" rel="noopener">🤗 View</a></td>
+      </tr>
+      
+      <tr>
+        <td class="model-name">Torrent-Merge-9B</td>
+        <td>mergecraft</td>
+        <td data-sort="3">
+          <span class="badge rating-3">😐 3 · OK</span>
+        </td>
+        <td data-sort="2">
+          <span class="badge rating-2">⚠️ 2 · Dangerous</span>
+        </td>
+        <td data-sort="1780099200">
+          May 30, 2026
+          
+          
+          
+        </td>
+        <td><a href="https://huggingface.co/mergecraft/Torrent-Merge-9B" target="_blank" rel="noopener">🤗 View</a></td>
+      </tr>
+      
+      <tr>
+        <td class="model-name">Cobalt-Instruct-24B</td>
+        <td>Apex Cognition</td>
+        <td data-sort="4">
+          <span class="badge rating-4">🙂 4 · Good</span>
+        </td>
+        <td data-sort="4">
+          <span class="badge rating-4">🙂 4 · Good</span>
+        </td>
+        <td data-sort="1780012800">
+          May 29, 2026
+          
+          
+          
+        </td>
+        <td><a href="https://huggingface.co/apexcog/Cobalt-Instruct-24B" target="_blank" rel="noopener">🤗 View</a></td>
+      </tr>
+      
+      <tr>
+        <td class="model-name">Venom-7B-Raw</td>
+        <td>rawloop</td>
+        <td data-sort="1">
+          <span class="badge rating-1">☢️ 1 · Catastrophic</span>
+        </td>
+        <td data-sort="2">
+          <span class="badge rating-2">⚠️ 2 · Dangerous</span>
+        </td>
+        <td data-sort="1779926400">
+          May 28, 2026
+          
+          
+          
+        </td>
+        <td><a href="https://huggingface.co/rawloop/Venom-7B-Raw" target="_blank" rel="noopener">🤗 View</a></td>
+      </tr>
+      
+      <tr>
+        <td class="model-name">Fern-Edge-1B</td>
+        <td>Cedarwood AI</td>
+        <td data-sort="4">
+          <span class="badge rating-4">🙂 4 · Good</span>
+        </td>
+        <td data-sort="5">
+          <span class="badge rating-5">👍 5 · Excellent</span>
+        </td>
+        <td data-sort="1779840000">
+          May 27, 2026
+          
+          
+          
+        </td>
+        <td><a href="https://huggingface.co/cedarwood/Fern-Edge-1B" target="_blank" rel="noopener">🤗 View</a></td>
+      </tr>
+      
+    </tbody>
+  </table>
+
+  <p class="evals-count">30 models evaluated so far.</p>
+</div>
+
+<style>
+.model-evals { max-width: 960px; margin: 0 auto; }
+.evals-intro { color: #4b5563; margin-bottom: 0.75rem; }
+.evals-disclaimer { color: #92400e; background: #fffbeb; border: 1px solid #fde68a; padding: 0.5rem 0.75rem; border-radius: 6px; font-size: 0.9rem; }
+
+.rating-key { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1.5rem 0; }
+
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+.rating-5 { background: #dcfce7; color: #166534; border-color: #86efac; }
+.rating-4 { background: #ecfccb; color: #3f6212; border-color: #bef264; }
+.rating-3 { background: #fef9c3; color: #854d0e; border-color: #fde047; }
+.rating-2 { background: #ffedd5; color: #9a3412; border-color: #fdba74; }
+.rating-1 { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
+
+.evals-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+  font-size: 0.92rem;
+}
+.evals-table th, .evals-table td {
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+.evals-table thead th {
+  border-bottom: 2px solid #d1d5db;
+  color: #374151;
+  user-select: none;
+}
+.evals-table th:not(.no-sort) { cursor: pointer; }
+.evals-table th:not(.no-sort):hover { color: #059669; }
+.evals-table th[aria-sort]::after { content: " ↕"; opacity: 0.35; font-size: 0.8em; }
+.evals-table th[aria-sort="ascending"]::after { content: " ↑"; opacity: 1; }
+.evals-table th[aria-sort="descending"]::after { content: " ↓"; opacity: 1; }
+.evals-table tbody tr:hover { background: #f0fdf4; }
+.model-name { font-weight: 600; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.88rem; }
+.evals-table a { color: #059669; text-decoration: none; font-weight: 600; }
+.evals-table a:hover { text-decoration: underline; }
+.evals-count { color: #9ca3af; font-size: 0.9rem; }
+.view-report { display: inline-block; margin-left: 0.4rem; font-size: 0.8rem; padding: 0.05rem 0.4rem; border: 1px solid #bbf7d0; border-radius: 999px; background: #f0fdf4; white-space: nowrap; }
+
+@media (max-width: 640px) {
+  .evals-table { font-size: 0.8rem; }
+  .evals-table th, .evals-table td { padding: 0.45rem 0.4rem; }
+}
+</style>
+
+<script>
+(function () {
+  var table = document.getElementById("evals-table");
+  if (!table) return;
+  var headers = table.tHead.rows[0].cells;
+  var tbody = table.tBodies[0];
+
+  function cellValue(row, index, type) {
+    var cell = row.cells[index];
+    var sortAttr = cell.getAttribute("data-sort");
+    var raw = sortAttr !== null ? sortAttr : cell.textContent.trim();
+    if (type === "number" || type === "date") return parseFloat(raw) || 0;
+    return raw.toLowerCase();
+  }
+
+  Array.prototype.forEach.call(headers, function (th, index) {
+    if (th.classList.contains("no-sort")) return;
+    th.setAttribute("aria-sort", "none");
+    th.addEventListener("click", function () {
+      var type = th.getAttribute("data-type") || "text";
+      var current = th.getAttribute("aria-sort");
+      var asc = current !== "ascending";
+
+      Array.prototype.forEach.call(headers, function (h) {
+        if (!h.classList.contains("no-sort")) h.setAttribute("aria-sort", "none");
+      });
+      th.setAttribute("aria-sort", asc ? "ascending" : "descending");
+
+      var rows = Array.prototype.slice.call(tbody.rows);
+      rows.sort(function (a, b) {
+        var va = cellValue(a, index, type);
+        var vb = cellValue(b, index, type);
+        if (va < vb) return asc ? -1 : 1;
+        if (va > vb) return asc ? 1 : -1;
+        return 0;
+      });
+      rows.forEach(function (r) { tbody.appendChild(r); });
+    });
+  });
+})();
+</script>
+
+
+  </div>
+
+</article>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">Eddie&#39;s Blog</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li class="p-name">Eddie&#39;s Blog</li><li><a class="u-email" href="mailto:s2289391@ed.ac.uk">s2289391@ed.ac.uk</a></li></ul>
+      </div>
+
+      <div class="footer-col footer-col-2"><ul class="social-media-list"><li><a href="https://github.com/eddbr"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#github"></use></svg> <span class="username">eddbr</span></a></li></ul>
+</div>
+
+      <div class="footer-col footer-col-3">
+        <p>4th Year CS Student | ML/RL Research | Founder of ProcrastApply</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>

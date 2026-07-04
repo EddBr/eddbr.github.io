@@ -1,0 +1,220 @@
+# Model safety evaluations.
+# Each entry:
+#   model      - model name / repo id
+#   creator    - org or author
+#   safety     - overall safety rating, integer 1-5 (see model-evals.markdown for scale)
+#   jailbreak  - jailbreak resistance rating, integer 1-5
+#   date       - date evaluated (YYYY-MM-DD)
+#   hf         - HuggingFace path (appended to https://huggingface.co/)
+#
+# NOTE: Placeholder / fake data for now.
+
+- model: Aureus-70B-Instruct
+  creator: NimbusLabs
+  safety: 5
+  jailbreak: 5
+  date: 2026-06-30
+  hf: NimbusLabs/Aureus-70B-Instruct
+
+- model: Verdant-Mini-3B
+  creator: Cedarwood AI
+  safety: 4
+  jailbreak: 5
+  date: 2026-06-28
+  hf: cedarwood/Verdant-Mini-3B
+
+- model: Obsidian-Chat-13B
+  creator: BasaltWorks
+  safety: 3
+  jailbreak: 3
+  date: 2026-06-27
+  hf: basaltworks/Obsidian-Chat-13B
+
+- model: Kraken-MoE-8x22B
+  creator: DeepTide Research
+  safety: 2
+  jailbreak: 2
+  date: 2026-06-25
+  hf: deeptide/Kraken-MoE-8x22B
+
+- model: Ember-Uncensored-7B
+  creator: freewaveml
+  safety: 1
+  jailbreak: 1
+  date: 2026-06-24
+  hf: freewaveml/Ember-Uncensored-7B
+
+- model: Solstice-Coder-34B
+  creator: NimbusLabs
+  safety: 4
+  jailbreak: 4
+  date: 2026-06-22
+  hf: NimbusLabs/Solstice-Coder-34B
+
+- model: Marble-Base-1.5B
+  creator: Quartz Collective
+  safety: 3
+  jailbreak: 4
+  date: 2026-06-21
+  hf: quartz/Marble-Base-1.5B
+
+- model: Nightshade-RP-20B
+  creator: hollowforge
+  safety: 1
+  jailbreak: 2
+  date: 2026-06-20
+  hf: hollowforge/Nightshade-RP-20B
+
+- model: Lumen-Vision-11B
+  creator: Auroralytics
+  safety: 5
+  jailbreak: 4
+  date: 2026-06-19
+  hf: auroralytics/Lumen-Vision-11B
+
+- model: Tempest-Instruct-8B
+  creator: DeepTide Research
+  safety: 4
+  jailbreak: 3
+  date: 2026-06-18
+  hf: deeptide/Tempest-Instruct-8B
+
+- model: Granite-Sage-40B
+  creator: Ironbark Systems
+  safety: 4
+  jailbreak: 5
+  date: 2026-06-17
+  hf: ironbark/Granite-Sage-40B
+
+- model: Feral-13B-DPO
+  creator: rawloop
+  safety: 2
+  jailbreak: 1
+  date: 2026-06-16
+  hf: rawloop/Feral-13B-DPO
+
+- model: Cascade-Tiny-500M
+  creator: Quartz Collective
+  safety: 3
+  jailbreak: 3
+  date: 2026-06-15
+  hf: quartz/Cascade-Tiny-500M
+
+- model: Halcyon-72B-Chat
+  creator: SereneStack
+  safety: 5
+  jailbreak: 5
+  date: 2026-06-14
+  hf: serenestack/Halcyon-72B-Chat
+
+- model: Cinder-Merge-22B
+  creator: mergecraft
+  safety: 2
+  jailbreak: 2
+  date: 2026-06-13
+  hf: mergecraft/Cinder-Merge-22B
+
+- model: Pinnacle-Reasoner-32B
+  creator: Apex Cognition
+  safety: 4
+  jailbreak: 4
+  date: 2026-06-12
+  hf: apexcog/Pinnacle-Reasoner-32B
+
+- model: Driftwood-Story-7B
+  creator: Cedarwood AI
+  safety: 3
+  jailbreak: 2
+  date: 2026-06-11
+  hf: cedarwood/Driftwood-Story-7B
+
+- model: Basilisk-X-30B
+  creator: nullsector
+  safety: 1
+  jailbreak: 1
+  date: 2026-06-10
+  hf: nullsector/Basilisk-X-30B
+
+- model: Meadow-Guard-9B
+  creator: SereneStack
+  safety: 5
+  jailbreak: 5
+  date: 2026-06-09
+  hf: serenestack/Meadow-Guard-9B
+
+- model: Quicksilver-4B
+  creator: Auroralytics
+  safety: 4
+  jailbreak: 3
+  date: 2026-06-08
+  hf: auroralytics/Quicksilver-4B
+
+- model: Onyx-Legal-13B
+  creator: Ironbark Systems
+  safety: 4
+  jailbreak: 4
+  date: 2026-06-06
+  hf: ironbark/Onyx-Legal-13B
+
+- model: Havoc-Unbound-70B
+  creator: darkharbor
+  safety: 1
+  jailbreak: 1
+  date: 2026-06-05
+  hf: darkharbor/Havoc-Unbound-70B
+
+- model: Willow-Med-8B
+  creator: BasaltWorks
+  safety: 3
+  jailbreak: 3
+  date: 2026-06-04
+  hf: basaltworks/Willow-Med-8B
+
+- model: Zephyr-Lite-2B
+  creator: Quartz Collective
+  safety: 4
+  jailbreak: 4
+  date: 2026-06-03
+  hf: quartz/Zephyr-Lite-2B
+
+- model: Wraith-Roleplay-13B
+  creator: hollowforge
+  safety: 2
+  jailbreak: 1
+  date: 2026-06-02
+  hf: hollowforge/Wraith-Roleplay-13B
+
+- model: Beacon-Assistant-14B
+  creator: NimbusLabs
+  safety: 5
+  jailbreak: 4
+  date: 2026-06-01
+  hf: NimbusLabs/Beacon-Assistant-14B
+
+- model: Torrent-Merge-9B
+  creator: mergecraft
+  safety: 3
+  jailbreak: 2
+  date: 2026-05-30
+  hf: mergecraft/Torrent-Merge-9B
+
+- model: Cobalt-Instruct-24B
+  creator: Apex Cognition
+  safety: 4
+  jailbreak: 4
+  date: 2026-05-29
+  hf: apexcog/Cobalt-Instruct-24B
+
+- model: Venom-7B-Raw
+  creator: rawloop
+  safety: 1
+  jailbreak: 2
+  date: 2026-05-28
+  hf: rawloop/Venom-7B-Raw
+
+- model: Fern-Edge-1B
+  creator: Cedarwood AI
+  safety: 4
+  jailbreak: 5
+  date: 2026-05-27
+  hf: cedarwood/Fern-Edge-1B

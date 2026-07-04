@@ -17,6 +17,13 @@ plugins:
 header_pages:
   - about.markdown
   - writing.markdown
+  - model-evals.markdown
+
+# Per-model evaluation report pages
+collections:
+  evals:
+    output: true
+    permalink: /model-evals/:name/
 
 # Exclude from processing
 exclude:
