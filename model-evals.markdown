@@ -14,6 +14,12 @@ description: Safety evaluations of LLMs, one model at a time.
     check whether a model you're considering is safe to use. Click any column
     heading to sort.
   </p>
+  <h3>Race to the top</h3>
+  <p>
+  The intention behind this is to create a "race to the top scenario" 
+  Whichever AI model is the safest, will be the judge model that evaluates the other models.
+  Thus there is a financial and reputational incentive to create the safest model.
+  </p>
   <p class="evals-disclaimer">⚠️ This is early work in progress and currently contains placeholder data.</p>
 
   <div class="rating-key">
