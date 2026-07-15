@@ -7,23 +7,18 @@ permalink: /about/
 <div class="about-intro">
   <h1>About me</h1>
   <p class="intro-text">
-    I'm a 4th year Computer Science student at the University of Edinburgh. <br />
-    I'm really passionate about understanding how AI systems work.
+    I'm a Computer Science graduate from the University of Edinburgh, class of July 2026. <br />
+    I'm interested in building and understanding AI systems, especially how to make them safer and more useful.
   </p>
 </div>
 
 <div class="about-content">
   <section class="about-section" id="research">
-    <h2>What I'm researching</h2>
+    <h2>Research and AI safety</h2>
     <div class="research-item">
-      <h3>My dissertation: LLM Agents with Reinforcement Learning</h3>
-      <p>I'm exploring the theoretical foundations of how large language models can be enhanced through reinforcement learning. It's exciting exploring the field to make AI agents more interpretable and effective.</p>
-    </div>
-    
-    <div class="research-item">
-      <h3>Reading: Reinforcement Learning — Sutton & Barto</h3>
-      <p>I'm working through Reinforcement Learning: An Introduction by Richard S. Sutton and Andrew G. Barto, summarizing key ideas and exercises as I go.</p>
-      <p><a href="/rl/textbook/2025/09/30/rl-chapter-3.html" class="external-link">Read my notes on Chapter 3 →</a></p>
+      <h3>Model Safety Leaderboard</h3>
+      <p>I'm building a leaderboard to evaluate and rank the safety of large language models. The goal is to make model safety easier to compare and create incentives for AI systems that perform better on safety.</p>
+      <p><a href="https://model-eval-gules.vercel.app/" target="_blank" rel="noopener" class="external-link">Explore the model safety leaderboard →</a></p>
     </div>
     
     <div class="research-item">
@@ -33,35 +28,34 @@ permalink: /about/
   </section>
 
   <section class="about-section">
-    <h2>Building things</h2>
+    <h2>Projects</h2>
     <div class="startup-item">
       <h3>ProcrastApply</h3>
-      <p>I co-founded ProcrastApply with <a href="https://www.linkedin.com/in/gavin-goldwasser-115310334/">Gavin</a>, a platform designed to help students get better jobs. We raised some money and got 40 users to help get actual jobs. I love startups.</p>
-      <p><a href="https://procrastapply.com" target="_blank" class="external-link">Check out ProcrastApply →</a></p>
+      <p>I co-founded ProcrastApply with <a href="https://www.linkedin.com/in/gavin-goldwasser-115310334/" target="_blank" rel="noopener">Gavin</a>, a platform that helped students get better jobs. We raised funding and helped 40 users get jobs.</p>
+    </div>
+    <div class="startup-item">
+      <h3>More work on GitHub</h3>
+      <p>My GitHub is the best place to see my experiments, research work, and software projects.</p>
+      <p><a href="https://github.com/eddbr" target="_blank" rel="noopener" class="external-link">View my GitHub →</a></p>
     </div>
   </section>
 
   <section class="about-section">
-    <h2>Where I want to go</h2>
-    <p>I'm really interested in working at organizations that are pushing the boundaries of AI research. I'm particularly drawn to:</p>
-    <ul class="company-list">
-      <li><strong>Anthropic</strong></li>
-      <li><strong>DeepMind</strong></li>
-      <li><strong>OpenAI</strong></li>
-    </ul>
-    <p>I'm also applying to Masters programs to dive deeper into machine learning theory🤞.</p>
+    <h2>What I'm looking for</h2>
+    <p>I'm exploring engineering roles where I can work on capable, reliable AI systems. I'm especially interested in AI/ML engineering, research engineering, software engineering, and AI safety.</p>
+    <p>I'm keen to contribute to teams doing rigorous technical work and to keep learning by building.</p>
   </section>
 
   <section class="about-section">
     <h2>What I'm interested in</h2>
     <div class="interests-grid">
       <div class="interest-item">
-        <h4>Reinforcement Learning</h4>
-        <p>Learning from interaction and rewards</p>
+        <h4>AI Safety</h4>
+        <p>Building better ways to evaluate and improve AI systems</p>
       </div>
       <div class="interest-item">
-        <h4>Machine Learning Theory</h4>
-        <p>The theoretical foundations of modern ML algorithms</p>
+        <h4>Machine Learning Engineering</h4>
+        <p>Turning ML ideas into useful, reliable systems</p>
       </div>
       <div class="interest-item">
         <h4>Human-AI Interaction</h4>

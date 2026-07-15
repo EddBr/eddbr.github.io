@@ -1,17 +1,17 @@
 ---
 layout: default
 title: Eddie's Blog
-description: "4th Year CS Student | ML/RL Research | Founder"
+description: "Computer Science graduate exploring AI/ML and safety engineering"
 ---
 
 <div class="welcome-section">
   <div class="welcome-content">
     <h1 class="welcome-title">Hi, I'm Eddie</h1>
-    <p class="welcome-subtitle">Computer Science student exploring Reinforcement Learning and Machine Learning theory</p>
+    <p class="welcome-subtitle">Computer Science graduate exploring AI/ML and safety engineering</p>
     <p class="welcome-description">
       I'm passionate about understanding how AI systems work.<br />
-      Currently working on my dissertation about LLM Agents with Reinforcement Learning.<br />
-      I've had the chance to do HCI research at <a href="https://hci.stanford.edu/">Stanford</a> and build a startup called <a href="https://procrastapply.com">ProcrastApply</a>.
+      I recently graduated from the University of Edinburgh and am exploring engineering roles in AI, machine learning, and AI safety.<br />
+      I've had the chance to do HCI research at <a href="https://hci.stanford.edu/">Stanford</a> and am building tools to evaluate the safety of large language models.
     </p>
     <div class="welcome-links">
       <a href="/about/" class="welcome-btn">More about me</a>
@@ -21,27 +21,27 @@ description: "4th Year CS Student | ML/RL Research | Founder"
 </div>
 
 <div class="what-i-do">
-  <h2>What I'm working on</h2>
+  <h2>Projects</h2>
   <div class="work-grid">
     <a href="/about/#research" class="work-card-link">
       <div class="work-card">
         <h3>🔬 Research</h3>
-        <p>My dissertation focuses on the theoretical foundations of LLM agents with Reinforcement Learning. I'm also exploring how humans and AI can work together better.</p>
+        <p>At Stanford's Interaction Design Research Lab, I helped create Identity Amplification, a design process for GenAI tools that considers their wider effects.</p>
         <span class="card-link">Learn more →</span>
       </div>
     </a>
-    <a href="https://procrastapply.com" class="work-card-link" target="_blank">
+    <a href="https://model-eval-gules.vercel.app/" class="work-card-link" target="_blank" rel="noopener">
       <div class="work-card">
-        <h3>🚀 ProcrastApply</h3>
-        <p>I built a platform to help students overcome application procrastination. It's been a great learning experience in both tech and understanding human behavior.</p>
-        <span class="card-link">Check it out →</span>
+        <h3>🛡️ Model Safety Leaderboard</h3>
+        <p>I'm building a leaderboard to evaluate and rank the safety of large language models, helping create incentives for safer AI systems.</p>
+        <span class="card-link">Explore the leaderboard →</span>
       </div>
     </a>
-    <a href="/ai/safety/2025/06/01/ai-safety.html" class="work-card-link">
+    <a href="https://github.com/eddbr" class="work-card-link" target="_blank" rel="noopener">
       <div class="work-card">
-        <h3>Novel AI Lexicon</h3>
-        <p>The words we use are important. A small change to de-humanise LLMs.</p>
-        <span class="card-link">Read my thoughts →</span>
+        <h3>💻 More projects on GitHub</h3>
+        <p>Find my experiments, research work, and software projects on GitHub.</p>
+        <span class="card-link">View my code →</span>
       </div>
     </a>
   </div>
