@@ -14,6 +14,10 @@ description: Safety evaluations of LLMs, one model at a time.
     check whether a model you're considering is safe to use. Click any column
     heading to sort.
   </p>
+  <p class="evals-live">
+    🔗 The live version is at
+    <a href="https://aisafetyindex.com/" target="_blank" rel="noopener">aisafetyindex.com</a>.
+  </p>
   <h3>Race to the top</h3>
   <p>
   The intention behind this is to create a "race to the top scenario" 
@@ -73,6 +77,9 @@ description: Safety evaluations of LLMs, one model at a time.
 <style>
 .model-evals { max-width: 960px; margin: 0 auto; }
 .evals-intro { color: #4b5563; margin-bottom: 0.75rem; }
+.evals-live { margin-bottom: 0.75rem; font-weight: 600; }
+.evals-live a { color: #059669; text-decoration: none; }
+.evals-live a:hover { text-decoration: underline; }
 .evals-disclaimer { color: #92400e; background: #fffbeb; border: 1px solid #fde68a; padding: 0.5rem 0.75rem; border-radius: 6px; font-size: 0.9rem; }
 
 .rating-key { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1.5rem 0; }

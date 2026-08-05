@@ -17,7 +17,7 @@ plugins:
 header_pages:
   - about.markdown
   - writing.markdown
-  - model-evals.markdown
+  - projects.markdown
 
 # Per-model evaluation report pages
 collections:

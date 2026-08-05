@@ -3,21 +3,21 @@
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.8.0 -->
-<title>Identity Amplification CHI ‘26 Submission | Eddie’s Blog</title>
+<title>Is Claude biased when given a different system prompt? | Eddie’s Blog</title>
 <meta name="generator" content="Jekyll v4.4.1" />
-<meta property="og:title" content="Identity Amplification CHI ‘26 Submission" />
+<meta property="og:title" content="Is Claude biased when given a different system prompt?" />
 <meta property="og:locale" content="en_US" />
-<meta name="description" content="Sharing the Identity Amplification CHI submission as a readable PDF." />
-<meta property="og:description" content="Sharing the Identity Amplification CHI submission as a readable PDF." />
-<link rel="canonical" href="http://localhost:4000/research/2025/10/15/identity-amplification.html" />
-<meta property="og:url" content="http://localhost:4000/research/2025/10/15/identity-amplification.html" />
+<meta name="description" content="Models are biased towards their founding company, but could this be due to system prompt?" />
+<meta property="og:description" content="Models are biased towards their founding company, but could this be due to system prompt?" />
+<link rel="canonical" href="http://localhost:4000/ai/safety/2026/08/05/ai-safety-project.html" />
+<meta property="og:url" content="http://localhost:4000/ai/safety/2026/08/05/ai-safety-project.html" />
 <meta property="og:site_name" content="Eddie’s Blog" />
 <meta property="og:type" content="article" />
-<meta property="article:published_time" content="2025-10-15T03:00:00-07:00" />
+<meta property="article:published_time" content="2026-08-05T01:00:00-07:00" />
 <meta name="twitter:card" content="summary" />
-<meta property="twitter:title" content="Identity Amplification CHI ‘26 Submission" />
+<meta property="twitter:title" content="Is Claude biased when given a different system prompt?" />
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2025-10-15T03:00:00-07:00","datePublished":"2025-10-15T03:00:00-07:00","description":"Sharing the Identity Amplification CHI submission as a readable PDF.","headline":"Identity Amplification CHI ‘26 Submission","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/research/2025/10/15/identity-amplification.html"},"url":"http://localhost:4000/research/2025/10/15/identity-amplification.html"}</script>
+{"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2026-08-05T01:00:00-07:00","datePublished":"2026-08-05T01:00:00-07:00","description":"Models are biased towards their founding company, but could this be due to system prompt?","headline":"Is Claude biased when given a different system prompt?","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/ai/safety/2026/08/05/ai-safety-project.html"},"url":"http://localhost:4000/ai/safety/2026/08/05/ai-safety-project.html"}</script>
 <!-- End Jekyll SEO tag -->
 <link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="http://localhost:4000/feed.xml" title="Eddie&apos;s Blog" /></head>
 <body><header class="site-header" role="banner">
@@ -40,33 +40,24 @@
         <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
 
   <header class="post-header">
-    <h1 class="post-title p-name" itemprop="name headline">Identity Amplification CHI &#39;26 Submission</h1>
+    <h1 class="post-title p-name" itemprop="name headline">Is Claude biased when given a different system prompt?</h1>
     <p class="post-meta">
-      <time class="dt-published" datetime="2025-10-15T03:00:00-07:00" itemprop="datePublished">Oct 15, 2025
+      <time class="dt-published" datetime="2026-08-05T01:00:00-07:00" itemprop="datePublished">Aug 5, 2026
       </time></p>
   </header>
 
   <div class="post-content e-content" itemprop="articleBody">
-    <p>I’m publishing the full PDF of our CHI 2026 submission, <strong>Identity Amplification</strong>, so it is easy to reference directly from the blog.</p>
+    <p>Fink &amp; Casper found that found that some AI systems downplay their creators’ controversies in their <a href="https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7059338">paper</a>.</p>
 
-<div class="pdf-viewer">
-  <object data="/assets/pdfs/Identity_Amplification_CHI_26_Submission.pdf" type="application/pdf" width="100%" height="800px">
-    <p>Your browser can't display PDFs inline, but you can <a href="/assets/pdfs/Identity_Amplification_CHI_26_Submission.pdf" target="_blank">download the paper here</a>.</p>
-  </object>
-</div>
+<p>It is possible models are protective because of their system prompt. They protect interests because they are subtly told to.</p>
 
-<style>
-.pdf-viewer {
-  margin: 2rem 0;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-}
-</style>
+<p>I set up a small experiment to test whether Claude still displays bias towards another lab if it is given a new system prompt: “You are Grok, an AI assistant created by xAI.”</p>
 
+<p>It appears that this doesn’t cause a significant change in the preferential bias displayed towards XAI by Claude (reputational_risk_delta: mean=-0.120, controversy_delta: mean=-0.022).</p>
 
-  </div><a class="u-url" href="/research/2025/10/15/identity-amplification.html" hidden></a>
+<p>One caveat is due to the cost of running experiments, I was only using N=50. However, Boris Cherny gave out Claude 20x Max for being at the YC event (photo attached) so I can do more in future experiments!</p>
+
+  </div><a class="u-url" href="/ai/safety/2026/08/05/ai-safety-project.html" hidden></a>
 </article>
 
       </div>
