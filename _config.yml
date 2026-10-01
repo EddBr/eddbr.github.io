@@ -5,6 +5,7 @@ description: >-
   Computer Science graduate | AI/ML and safety engineering
 baseurl: ""
 url: ""
+timezone: Europe/London
 
 # Social links
 github_username: eddbr
