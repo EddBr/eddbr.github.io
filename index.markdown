@@ -81,7 +81,7 @@ description: "Computer Science graduate exploring AI/ML and safety engineering"
   
   <div class="writing-actions">
     <a href="/writing/" class="btn btn-primary">📝 Browse all posts</a>
-    <a href="mailto:s2289391@ed.ac.uk" class="btn btn-primary">📧 Email me</a>
+    <a href="https://www.linkedin.com/in/eddiebrown-/" target="_blank" rel="noopener" class="btn btn-primary">💼 Connect on LinkedIn</a>
     <a href="https://github.com/eddbr" class="btn btn-secondary" target="_blank">💻 My GitHub</a>
     <a href="/feed.xml" class="btn btn-secondary">📰 Subscribe to my blog</a>
   </div>

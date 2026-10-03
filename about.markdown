@@ -68,7 +68,7 @@ permalink: /about/
     <h2>Let's connect</h2>
     <p>I'm always interested in discussing research, collaboration opportunities, or just chatting about AI and technology. Feel free to reach out!</p>
     <div class="contact-links">
-      <a href="mailto:s2289391@ed.ac.uk" class="btn btn-primary">📧 Email me</a>
+      <a href="https://www.linkedin.com/in/eddiebrown-/" target="_blank" rel="noopener" class="btn btn-primary">💼 Connect on LinkedIn</a>
       <a href="https://github.com/eddbr" target="_blank" class="btn btn-secondary">💻 My GitHub</a>
       <a href="/feed.xml" class="btn btn-secondary">📰 Subscribe to my blog</a>
     </div>
