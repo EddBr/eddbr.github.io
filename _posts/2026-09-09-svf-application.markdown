@@ -25,7 +25,7 @@ People have different perspectives which shape this and doesn't necessarily mean
 You make your own experience. If you've already defied the odds by getting on to the program, who knows what you could do during it! If you're hyperfocused on a goal and consistently working towards it, SVF could offer an opportunity to help make it happen.
 # Should you do SVF?
 SVF's value depends on YOU. The alumni that benefit the most are often those who struggled most to get in.
-If you're looking for opportunities, are hungry and willing to go the extra mile, then go for it! Plus, it's fun to discover the Bay if you haven't been before! :foggy:
+If you're looking for opportunities, are hungry and willing to go the extra mile, then go for it! Plus, it's fun to discover the Bay if you haven't been before! 🌁
 Finally, the SVF team is also doing a great job of building a powerful community that helps each other.
 # Questions?
 If you have questions, let me know!
