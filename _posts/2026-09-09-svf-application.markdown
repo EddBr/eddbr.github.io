@@ -28,4 +28,6 @@ SVF's value depends on YOU. The alumni that benefit the most are often those who
 If you're looking for opportunities, are hungry and willing to go the extra mile, then go for it! Plus, it's fun to discover the Bay if you haven't been before! 🌁
 Finally, the SVF team is also doing a great job of building a powerful community that helps each other.
 # Questions?
-If you have questions, let me know!
+If you have questions, let me know! Please add a note if you want to connect on LinkedIn.
+# Other Resources
+[Lorenzo Viglietti's posts](https://medium.com/@loreviglietti/list/silicon-valley-fellowship-5b056b3eb96e)
