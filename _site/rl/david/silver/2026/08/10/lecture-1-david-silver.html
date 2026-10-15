@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>David Silver RL Lecture 1 | Eddie’s Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="David Silver RL Lecture 1" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Difference between RL and other machine learning There is no supervisor - instead a reward signal Feedback is delayed Time is important (sequential, non i.i.d.) Agent’s actions affect the subsequent data it receives Examples of RL Fly stunt helicopter Defeat world champion at Backgammon Managing investment portfolio Control power station! - Sequence of controls in power station Make humanoid robot walk Play many different Atari games The RL Problem Reward $R_t$ - scalar feedback Indicates how well agent is doing at step $t$ Agent’s job is to maximise cumulative reward Reward Hypothesis All goals can be described by the maximisation of the expected cumulative reward $\mathbb{E}(G_t)$ -RL is based off this hypothesis Examples of Reward" />
+<meta property="og:description" content="Difference between RL and other machine learning There is no supervisor - instead a reward signal Feedback is delayed Time is important (sequential, non i.i.d.) Agent’s actions affect the subsequent data it receives Examples of RL Fly stunt helicopter Defeat world champion at Backgammon Managing investment portfolio Control power station! - Sequence of controls in power station Make humanoid robot walk Play many different Atari games The RL Problem Reward $R_t$ - scalar feedback Indicates how well agent is doing at step $t$ Agent’s job is to maximise cumulative reward Reward Hypothesis All goals can be described by the maximisation of the expected cumulative reward $\mathbb{E}(G_t)$ -RL is based off this hypothesis Examples of Reward" />
+<link rel="canonical" href="/rl/david/silver/2026/08/10/lecture-1-david-silver.html" />
+<meta property="og:url" content="/rl/david/silver/2026/08/10/lecture-1-david-silver.html" />
+<meta property="og:site_name" content="Eddie’s Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-08-10T00:00:00+01:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="David Silver RL Lecture 1" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2026-08-10T00:00:00+01:00","datePublished":"2026-08-10T00:00:00+01:00","description":"Difference between RL and other machine learning There is no supervisor - instead a reward signal Feedback is delayed Time is important (sequential, non i.i.d.) Agent’s actions affect the subsequent data it receives Examples of RL Fly stunt helicopter Defeat world champion at Backgammon Managing investment portfolio Control power station! - Sequence of controls in power station Make humanoid robot walk Play many different Atari games The RL Problem Reward $R_t$ - scalar feedback Indicates how well agent is doing at step $t$ Agent’s job is to maximise cumulative reward Reward Hypothesis All goals can be described by the maximisation of the expected cumulative reward $\\mathbb{E}(G_t)$ -RL is based off this hypothesis Examples of Reward","headline":"David Silver RL Lecture 1","mainEntityOfPage":{"@type":"WebPage","@id":"/rl/david/silver/2026/08/10/lecture-1-david-silver.html"},"url":"/rl/david/silver/2026/08/10/lecture-1-david-silver.html"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="/feed.xml" title="Eddie&apos;s Blog" /></head>
+<body><header class="site-header" role="banner">
+
+  <div class="wrapper"><a class="site-title" rel="author" href="/">Eddie&#39;s Blog</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/about/">About</a><a class="page-link" href="/writing/">Writing</a><a class="page-link" href="/projects/">Projects</a><a class="page-link" href="/playground/">Playground</a></div>
+      </nav></div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">David Silver RL Lecture 1</h1>
+    <p class="post-meta">
+      <time class="dt-published" datetime="2026-08-10T00:00:00+01:00" itemprop="datePublished">Aug 10, 2026
+      </time></p>
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" />
+
+<script defer="" src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+
+<script defer="" src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,
+	      {delimiters: [
+	      {left: '$$', right: '$$', display: true},
+	      {left: '$', right: '$', display: false},
+	      {left: '\\(', right: '\\)', display: false},
+	      {left: '\\[', right: '\\]', display: true}
+	      ]});"></script>
+
+<h1 id="difference-between-rl-and-other-machine-learning">Difference between RL and other machine learning</h1>
+<ol>
+  <li>There is no supervisor - instead a reward signal</li>
+  <li>Feedback is delayed</li>
+  <li>Time is important (sequential, non i.i.d.)</li>
+  <li>Agent’s actions affect the subsequent data it receives
+    <h3 id="examples-of-rl">Examples of RL</h3>
+  </li>
+  <li>Fly stunt helicopter</li>
+  <li>Defeat world champion at Backgammon</li>
+  <li>Managing investment portfolio</li>
+  <li>Control power station! - Sequence of controls in power station</li>
+  <li>Make humanoid robot walk</li>
+  <li>Play many different Atari games
+    <h1 id="the-rl-problem">The RL Problem</h1>
+    <h2 id="reward">Reward</h2>
+    <p>$R_t$ - scalar feedback
+Indicates how well agent is doing at step $t$
+Agent’s job is to maximise cumulative reward</p>
+    <h3 id="reward-hypothesis">Reward Hypothesis</h3>
+    <p>All goals can be described by the maximisation of the expected cumulative reward $\mathbb{E}(G_t)$
+-RL is based off this hypothesis</p>
+    <h3 id="examples-of-reward">Examples of Reward</h3>
+  </li>
+</ol>
+
+<p>| Situation                     | +ve Reward                     | -ve Reward                  |
+| —————————– | —————————— | ————————— |
+| Helicopter manouevres         | Following desired trajectory   | Crashing                    |
+| Backgammon                    | Winning                        | Losing                      |
+| Managing investment portfolio | Increasing $/£ in bank account | Losing money                |
+| Control a power station       | Producing power                | Exceeding safety thresholds |
+| Humanoid walk                 | Forward motion                 | Falling over                |
+| Atari games                   | Increasing score               | Decreasing score            |</p>
+<h2 id="sequential-decision-making">Sequential Decision Making</h2>
+<p><strong>Goal:</strong> Select actions to maximise total future reward</p>
+<ul>
+  <li>Actions have long term consequences</li>
+  <li>Rewards might be delayed</li>
+  <li>Better to sacrifice immediate reward to gain more long-term reward
+    <h3 id="examples">Examples:</h3>
+    <ol>
+      <li>Financial investment (takes years to mature)</li>
+      <li>Flying helicopter (might prevent crash in several hours)</li>
+      <li>Blocking opponent’s moves (increases odds of winning in many moves)
+        <h2 id="agent-and-environment">Agent and Environment</h2>
+        <p>![[Pasted image 20260809143727.png]]</p>
+        <h3 id="in-each-time-step-t">In each time step $t$:</h3>
+      </li>
+    </ol>
+  </li>
+</ul>
+
+<p>| Agent                                                                                        | Environment                                                                            |
+| ——————————————————————————————– | ————————————————————————————– |
+| 1. Executes action $A_t$<br />2. Receives observation $O_t$<br />3. Receives scalar reward $R_t$ | 1. Receives action $A_t$<br />2. Emits observation $O_t$<br />3. Emits scalar reward $R_t$ |</p>
+<h2 id="history-and-state">History and State</h2>
+<h3 id="history">History</h3>
+<p>Sequence of observations, actions, rewards
+$H_t=A_1,O_1,R_1,…,A_t,O_t,R_t$
+(all variables up to time $t$)
+e.g. sensirometer stream of a robot or embodied agent</p>
+
+<p>Agent selects actions depending on history</p>
+<h3 id="state">State</h3>
+<p>Information used to decide what happens next
+State is a function of the history
+$S_t=f(H_t)$</p>
+<h2 id="environment-state">Environment State</h2>
+<p>$S^e_t$ - environment’s private representation
+(whatever data environment uses to pick next observation/reward)
+Not usually visible to agent</p>
+<h2 id="agent-state">Agent State</h2>
+<p>$S^a_t$ - agent’s internal representation
+(whatever information the agent uses to decide next action)
+Any function of history $S^a_t=f(H_t)$</p>
+<h2 id="information-state--markov-state">Information State / Markov State</h2>
+<p>Contains all useful information from the history</p>
+
+<table>
+  <tbody>
+    <tr>
+      <td>A state $S_t$ is Markov iff $\mathbb{P}[S_{t+1}</td>
+      <td>S_t]=\mathbb{P}[S_{t+1}</td>
+      <td>S_1,…,S_t]$</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>All of history is Markov (not very useful but true)</p>
+<h2 id="fully-observable-environments">Fully Observable Environments</h2>
+<p>Agent directly observes environment state
+$O_t=S^a_t=S^e_t$
+This is a Markov Decision Process (MDP)</p>
+<h2 id="partially-observable-environments">Partially Observable Environments</h2>
+<p>Partial observability - agent indirectly observes environment</p>
+<h3 id="examples-1">Examples</h3>
+<ol>
+  <li>Robot with camera vision isn’t told its absolute location</li>
+  <li>Trading agent only observes current prices</li>
+  <li>Poker playing agent only observes public cards
+Agent state $\ne$ Environment state</li>
+</ol>
+
+<p>-Partially observable Markov decision process (POMDP)
+Agent must construct it’s own state $S_t^a$:</p>
+<ol>
+  <li>Complete history $S^a_t=H_t$</li>
+  <li>Build Bayesian beliefs $S^a_t=(\mathbb{P}[S^e_t=s^1],…,\mathbb{P}[S^e_t=s^n])$</li>
+  <li>RNN $S^a_t=\sigma(S^a_{t-1}W_s+O_tW_o)$
+    <h1 id="inside-an-rl-agent">Inside an RL agent</h1>
+    <p>May include one or more:</p>
+  </li>
+  <li>Policy $\pi$ - agent’s behaviour function</li>
+  <li>Value function $V$ - how good each state/action</li>
+  <li>Model - agent’s representation of environment
+    <h2 id="1-policy">1. Policy</h2>
+    <p>Map from state to action $a=\pi(s)$ or stochastically $\pi(a|s)=\mathbb{P}[A=a|S=s]$</p>
+  </li>
+</ol>
+
+<h2 id="2-value-function">2. Value Function</h2>
+<p>Value function is a prediction of future reward
+Used to evaluate the goodness/badness of states
+$V_\pi(s)=\mathbb{E}<em>\pi[R_t+\gamma R</em>{t+1}+\gamma^2 R_{t+2}+…|S_t=s]$</p>
+<h2 id="3-model">3. Model</h2>
+<p>Predicts what environment will do next
+Transitions: $\mathcal{P}$ predicts next state (i.e. dynamics)
+Rewards: $\mathcal{R}$ predicts next (immediate) reward</p>
+
+<p>$\mathcal{P}^a_{ss’}=\mathbb{P}[S’=s’|S=s,A=a]$
+$\mathcal{R}^a_{s}=\mathbb{P}[R|S=s,A=a]$</p>
+<h2 id="categorising-agents">Categorising Agents</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Value-based</th>
+      <th>Policy-based</th>
+      <th>Actor Critic</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>No policy (implicit)</td>
+      <td>Policy</td>
+      <td>Policy</td>
+    </tr>
+    <tr>
+      <td>Value function</td>
+      <td>No value function</td>
+      <td>Value function</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>| Model free                   | Model Based                  |
+| —————————- | —————————- |
+| Policy and/or value function | Policy and/or value function |
+| No model                     | Model                        |
+![[Pasted image 20260809154439.png]]</p>
+<h1 id="problems-within-rl">Problems within RL</h1>
+<h2 id="reinforcement-learning">Reinforcement Learning</h2>
+<ul>
+  <li>Environment is initially unknown</li>
+  <li>Agent interacts with environment</li>
+  <li>Agent improves policy
+    <h2 id="planning">Planning</h2>
+  </li>
+  <li>Model of environment is known</li>
+  <li>Agent performs computations with its model (without any external interaction)</li>
+  <li>Agent improves its policy
+    <h3 id="atari-example">Atari Example</h3>
+  </li>
+  <li>Knows rules of the game</li>
+  <li>Can query the emulator for next state and score</li>
+  <li>Plan ahead to find optimal policy (MCTS)
+    <h2 id="exploration-v-exploitation">Exploration V Exploitation</h2>
+    <p>RL is like trial and error learning
+Agent should discover a good policy from its experience of the environment, without losing too much reward</p>
+  </li>
+</ul>
+
+<p>Exploration finds more information about environment
+Exploitation exploits known information to maximise reward</p>
+<h3 id="examples-2">Examples</h3>
+
+<p>| Example                      | Exploitation                    | Exploration             |
+| —————————- | ——————————- | ———————– |
+| Restaurant                   | Go to your favourite restaurant | Try a new restaurant    |
+| Online Banner Advertisements | Show must successful advert     | Show a different advert |
+| Oil drilling                 | Drill at best known location    | Drill at a new location |
+| Game playing                 | Play best move                  | Play different strategy |</p>
+<h2 id="prediction-and-control">Prediction and Control</h2>
+<p>Prediction - evaluate the future given my policy
+Control - optimise the future (find the best policy)</p>
+
+  </div><a class="u-url" href="/rl/david/silver/2026/08/10/lecture-1-david-silver.html" hidden></a>
+</article>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">Eddie&#39;s Blog</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li class="p-name">Eddie&#39;s Blog</li></ul>
+      </div>
+
+      <div class="footer-col footer-col-2"><ul class="social-media-list"><li><a href="https://github.com/eddbr"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#github"></use></svg> <span class="username">eddbr</span></a></li><li><a href="https://www.linkedin.com/in/eddiebrown-"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#linkedin"></use></svg> <span class="username">eddiebrown-</span></a></li></ul>
+</div>
+
+      <div class="footer-col footer-col-3">
+        <p>Product Engineer at Tano.ai | AI/ML and safety engineering</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>

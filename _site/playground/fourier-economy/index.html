@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A Fourier Series Model of the Economy | Eddie's Blog</title>
+<meta name="description" content="GDP as a Fourier series of economic cycles, interrupted by black swans.">
+<style>
+  :root {
+    --bg: #fdfdfd;
+    --card: #ffffff;
+    --ink: #111111;
+    --heading: #374151;
+    --body: #4b5563;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+    --rule: #e8e8e8;
+    --accent: #059669;
+    --accent-dark: #047857;
+    --forecast: #9ca3af;
+    --swan: #dc2626;
+    --boon: #2a7ae2;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    font: 400 16px/1.5 var(--font); color: var(--ink); background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: #2a7ae2; text-decoration: none; }
+
+  /* Site header (matches eddbr.github.io) */
+  .site-header { border-top: 5px solid #424242; border-bottom: 1px solid var(--rule); min-height: 56px; }
+  .wrapper { max-width: 800px; margin: 0 auto; padding: 0 30px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+  .site-title { font-size: 26px; font-weight: 300; line-height: 54px; letter-spacing: -1px; color: #424242; }
+  .site-nav a { color: var(--ink); margin-left: 20px; }
+  .site-nav a:hover { text-decoration: underline; }
+
+  main { max-width: 1180px; margin: 0 auto; padding: 32px 24px 48px; }
+  .intro { text-align: center; margin-bottom: 24px; }
+  h1 { font-size: 2.2rem; font-weight: 600; color: var(--heading); margin: 0 0 0.4rem; }
+  .intro p { color: var(--muted); font-size: 1.1rem; margin: 0; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); overflow: hidden;
+  }
+  .stats {
+    display: flex; gap: 32px; padding: 16px 24px; border-bottom: 1px solid var(--border); flex-wrap: wrap;
+  }
+  .stat .k { display: block; font-size: 0.8rem; color: var(--muted); }
+  .stat .v { font-size: 1.5rem; font-weight: 600; color: var(--heading); font-variant-numeric: tabular-nums; }
+  #sImpact.neg { color: var(--swan); }
+  #sImpact.pos { color: var(--boon); }
+  .legend { margin-left: auto; display: flex; gap: 16px; align-items: center; font-size: 0.85rem; color: var(--muted); flex-wrap: wrap; }
+  .legend span::before {
+    content: ""; display: inline-block; width: 18px; vertical-align: middle; margin-right: 6px;
+    border-top: 2px solid var(--accent);
+  }
+  .legend .clock::before { border-top: 2px dashed var(--forecast); }
+  .legend .lost::before { height: 10px; border: 0; background: var(--swan); opacity: 0.2; }
+
+  .canvas-wrap { position: relative; height: min(64vh, 620px); min-height: 380px; }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+  .controls {
+    display: flex; align-items: center; gap: 12px 24px; flex-wrap: wrap;
+    padding: 14px 24px; border-top: 1px solid var(--border); font-size: 0.9rem;
+  }
+  button {
+    font: inherit; font-weight: 500; color: var(--accent); background: transparent;
+    border: 1px solid var(--accent); border-radius: 4px; padding: 0.4rem 0.9rem; cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  button:hover { background: var(--accent); color: #fff; }
+  button.swan-btn { color: var(--swan); border-color: var(--swan); }
+  button.swan-btn:hover { background: var(--swan); color: #fff; }
+  label.slider { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+  label.slider output { color: var(--heading); min-width: 3.5ch; font-variant-numeric: tabular-nums; }
+  input[type=range] { accent-color: var(--accent); width: 100px; }
+  .spacer { flex: 1; }
+
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; padding: 0 24px 16px; }
+  .chip {
+    color: var(--heading); border-color: var(--border); background: #f9fafb; font-size: 0.85rem; padding: 0.3rem 0.7rem;
+  }
+  .chip:hover { background: #f3f4f6; color: var(--heading); border-color: var(--accent); }
+  .chip small { color: var(--muted); font-weight: 400; }
+  .chip.off { opacity: 0.4; text-decoration: line-through; }
+
+  @media (max-width: 700px) {
+    .wrapper { padding: 0 15px; }
+    .site-nav a { margin-left: 14px; }
+    main { padding: 20px 12px 32px; }
+    h1 { font-size: 1.8rem; }
+    .intro p { font-size: 1rem; }
+    .stats { gap: 18px; padding: 12px 16px; }
+    .stat .v { font-size: 1.2rem; }
+    .legend { margin-left: 0; width: 100%; }
+    .controls { padding: 12px 16px; gap: 10px 16px; }
+    .chips { padding: 0 16px 14px; }
+    input[type=range] { width: 80px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="intro">
+    <h1>A Fourier Series Model of the Economy</h1>
+  </div>
+
+  <div class="card">
+    <div class="stats">
+      <div class="stat"><span class="k">Year</span><span class="v" id="sYear">2026</span></div>
+      <div class="stat"><span class="k">GDP</span><span class="v" id="sGdp">100</span></div>
+      <div class="stat"><span class="k">Swan impact</span><span class="v" id="sImpact">0%</span></div>
+      <div class="legend">
+        <span class="real">GDP</span>
+        <span class="clock">forecast</span>
+        <span class="lost">lost output</span>
+      </div>
+    </div>
+
+    <div class="canvas-wrap">
+      <canvas id="c" aria-label="Rotating economic cycles drawing GDP over time, with black swan shocks"></canvas>
+    </div>
+
+    <div class="controls">
+      <button id="bPause" title="Space">Pause</button>
+      <button id="bSwan" class="swan-btn" title="B">Black swan</button>
+      <label class="slider">Speed <input id="iSpeed" type="range" min="0.5" max="10" step="0.5" value="2.5"><output></output></label>
+      <label class="slider">Swans per century <input id="iRate" type="range" min="0" max="30" step="1" value="6"><output></output></label>
+      <label class="slider" title="Lower means rarer but much bigger extremes">Tail <input id="iAlpha" type="range" min="1.1" max="3" step="0.1" value="1.5"><output></output></label>
+      <span class="spacer"></span>
+      <button id="bReset" title="R">Reset</button>
+    </div>
+    <div class="chips" id="chips"></div>
+  </div>
+</main>
+
+<script>
+(() => {
+  const TAU = Math.PI * 2;
+  const START_YEAR = 2026;
+  const STEP = 0.02;        // years per sub-step
+  const KEEP_YEARS = 120;
+  const GROWTH = 0.02;      // trend growth, log units per year
+
+  // A Fourier series over a 60-year base period: every cycle is a whole fraction of it.
+  // Amplitudes in log-GDP (0.05 ≈ 5% above/below trend)
+  const BASE = [
+    { name: 'Technology', icon: '💡', period: 60, r: 0.06 },
+    { name: 'Medicine',   icon: '🧬', period: 30, r: 0.035 },
+    { name: 'Housing',    icon: '🏠', period: 20, r: 0.035 },
+    { name: 'Energy',     icon: '⚡', period: 12, r: 0.02 },
+    { name: 'Business confidence', icon: '🐂', period: 10, r: 0.025 },
+    { name: 'Markets',    icon: '📈', period: 4,  r: 0.02 },
+  ];
+  const TOTAL_R = BASE.reduce((a, c) => a + c.r, 0);
+
+  const NEG = ['Sovereign default', 'Pandemic', 'Credit freeze', 'Energy shock', 'Regional war', 'Flash crash',
+    'Bank run', 'Supply-chain rupture', 'Solar storm', 'Housing collapse', 'Currency crisis',
+    'Algorithmic cascade', 'Crop failure', 'Cyberattack', 'Trade embargo', 'Volcanic winter', 'Strait closed'];
+  const POS = ['Fusion breakthrough', 'Peace dividend', 'Productivity boom', 'Superconductor', 'Cure for cancer'];
+
+  const params = { speed: 2.5, rate: 6, alpha: 1.5 };
+  const enabled = BASE.map(() => true);
+  let paused = false;
+  let S, view;
+
+  const gauss = () => Math.sqrt(-2 * Math.log(1 - Math.random())) * Math.cos(TAU * Math.random());
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+
+  // ---------- model ----------
+  function reset() {
+    S = {
+      t: 0,
+      perm: 0,   // permanent level change from swans
+      cycles: BASE.map(c => {
+        const phi = Math.random() * TAU;
+        return { ...c, w: TAU / c.period, phi0: phi, phi, amp: c.r };
+      }),
+      shocks: [], events: [], hist: [], trail: [], rings: [], flash: 0,
+    };
+    view = null;
+    for (let t = -KEEP_YEARS; t <= 0; t += STEP) record(t);
+    S.t = 0;
+  }
+
+  // Epicycle chain: the cycles plus any live shock circles.
+  function arms(t) {
+    const list = [];
+    let x = 0, y = 0;
+    const push = (r, ang, kind, alpha, label) => {
+      list.push({ x, y, r, ang, kind, alpha, label });
+      x += r * Math.cos(ang);
+      y += r * Math.sin(ang);
+    };
+    S.cycles.forEach((c, i) => { if (enabled[i]) push(c.amp, c.w * t + c.phi, 'cycle', 1, c.name); });
+    for (const s of S.shocks) {
+      const age = t - s.t0;
+      const kind = s.sign > 0 ? 'pos' : 'neg';
+      push(s.scarR * Math.exp(-age / s.scarTau), s.sign * Math.PI / 2, kind, 0.9);
+      const d = Math.exp(-age / s.tau);
+      for (const c of s.circles) push(c.r * d, c.w * age + c.th0, kind, d);
+    }
+    return { list, x, y };
+  }
+
+  function forecast(t) {
+    let y = GROWTH * t;
+    S.cycles.forEach((c, i) => { if (enabled[i]) y += c.r * Math.sin(c.w * t + c.phi0); });
+    return y;
+  }
+
+  function record(t) {
+    const a = arms(t);
+    S.hist.push({ t, y: GROWTH * t + S.perm + a.y, yf: forecast(t) });
+    S.trail.push({ x: a.x, y: a.y });
+    if (S.trail.length > 700) S.trail.shift();
+  }
+
+  function swan(manual) {
+    const u = 1 - Math.random();
+    let m = Math.min(0.35, 0.035 * Math.pow(u, -1 / params.alpha));
+    if (manual) m = Math.max(m, 0.08);
+    const sign = Math.random() < 0.2 ? 1 : -1;
+
+    // A sudden shock contains every frequency: a burst of circles all pointing the same way at t0.
+    const K = 30;
+    const ws = Array.from({ length: K }, () => 0.2 + Math.random());
+    const wsum = ws.reduce((a, b) => a + b, 0);
+    const circles = ws.map(wt => ({
+      r: 0.45 * m * wt / wsum,
+      w: (TAU / (0.2 * Math.pow(25, Math.random()))) * (Math.random() < 0.5 ? -1 : 1),
+      th0: sign * Math.PI / 2,
+    })).sort((a, b) => b.r - a.r);
+
+    S.shocks.push({
+      t0: S.t, sign, circles,
+      tau: 1 + Math.random() * 2.5,
+      scarR: 0.25 * m,
+      scarTau: 5 + Math.random() * 10,
+    });
+    S.perm += sign * 0.3 * m;
+
+    // The cycles slip a little, for good.
+    const k = Math.sqrt(m / 0.035);
+    for (const c of S.cycles) {
+      c.phi += gauss() * 0.13 * k;
+      c.amp *= Math.exp(gauss() * 0.07 * k);
+    }
+
+    S.events.push({ t: S.t, sign, m, name: pick(sign > 0 ? POS : NEG) });
+    S.flash = Math.min(1, 0.3 + m * 3);
+    S.rings.push({ born: performance.now(), sign, m });
+  }
+
+  function step(dtYears) {
+    const n = Math.max(1, Math.round(dtYears / STEP));
+    const h = dtYears / n;
+    const pSwan = 1 - Math.exp(-(params.rate / 100) * h);
+    for (let i = 0; i < n; i++) {
+      S.t += h;
+      for (const c of S.cycles) c.amp += (c.r - c.amp) * h / 40;
+      if (Math.random() < pSwan) swan(false);
+      record(S.t);
+    }
+    S.shocks = S.shocks.filter(s => {
+      const age = S.t - s.t0;
+      return Math.exp(-age / s.tau) > 0.004 || s.scarR * Math.exp(-age / s.scarTau) > 0.001;
+    });
+    while (S.hist.length && S.hist[0].t < S.t - KEEP_YEARS) S.hist.shift();
+    S.events = S.events.filter(e => e.t > S.t - KEEP_YEARS);
+  }
+
+  // ---------- rendering ----------
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+  const FONT = '12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+  let W = 0, H = 0, C = {};
+
+  function readColors() {
+    const cs = getComputedStyle(document.documentElement);
+    for (const k of ['card', 'heading', 'muted', 'border', 'accent', 'forecast', 'swan', 'boon']) C[k] = cs.getPropertyValue('--' + k).trim();
+  }
+
+  function resize() {
+    const r = canvas.getBoundingClientRect();
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    W = r.width; H = r.height;
+    canvas.width = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function draw() {
+    const narrow = W < 700;
+    const R = Math.min(H * 0.32, W * (narrow ? 0.2 : 0.15));   // gear radius, px
+    const sm = R / TOTAL_R;
+    const cx = W - (narrow ? 16 : 32) - R;
+    const X0 = cx - R - (narrow ? 20 : 48);
+    const span = Math.max(25, Math.min(60, X0 / 14));
+    const ppy = X0 / span;
+    const top = 48, bottom = H - 40;
+    const xOf = t => X0 - (S.t - t) * ppy;
+
+    // fit the vertical range to what's on screen, eased so it doesn't jitter
+    let lo = Infinity, hi = -Infinity;
+    for (let i = S.hist.length - 1; i >= 0; i--) {
+      const h = S.hist[i];
+      if (xOf(h.t) < 0) break;
+      lo = Math.min(lo, h.y, h.yf); hi = Math.max(hi, h.y, h.yf);
+    }
+    const pad = (hi - lo) * 0.06;
+    if (!view) view = { lo: lo - pad, hi: hi + pad };
+    view.lo += (lo - pad - view.lo) * 0.08;
+    view.hi += (hi + pad - view.hi) * 0.08;
+    const yOf = v => bottom - (v - view.lo) / (view.hi - view.lo) * (bottom - top);
+
+    ctx.fillStyle = C.card;
+    ctx.fillRect(0, 0, W, H);
+    if (S.flash > 0.01) {
+      ctx.globalAlpha = S.flash * 0.08;
+      ctx.fillStyle = C.swan;
+      ctx.fillRect(0, 0, W, H);
+      ctx.globalAlpha = 1;
+    }
+
+    // GDP gridlines at each doubling (2026 = 100)
+    ctx.font = FONT;
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = C.border;
+    ctx.fillStyle = C.muted;
+    ctx.textAlign = 'left';
+    for (let k = -8; k <= 12; k++) {
+      const y = yOf(k * Math.LN2);
+      if (y < top - 10 || y > bottom + 10) continue;
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(X0, y); ctx.stroke();
+      ctx.fillText(Math.round(100 * Math.pow(2, k)), 8, y - 5);
+    }
+
+    // decade labels
+    ctx.textAlign = 'center';
+    for (let yr = Math.floor((START_YEAR + S.t) / 10) * 10; ; yr -= 10) {
+      const x = xOf(yr - START_YEAR);
+      if (x < -20) break;
+      if (x < X0 - 18) ctx.fillText(yr, x, H - 14);
+    }
+    ctx.setLineDash([2, 4]);
+    ctx.beginPath(); ctx.moveTo(X0, 26); ctx.lineTo(X0, H - 30); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillText('now', X0, 18);
+
+    // swan markers
+    ctx.textAlign = 'left';
+    const rowEnd = [-1e9, -1e9, -1e9];
+    for (const e of S.events) {
+      const x = xOf(e.t);
+      if (x < 0) continue;
+      ctx.strokeStyle = ctx.fillStyle = e.sign > 0 ? C.boon : C.swan;
+      ctx.globalAlpha = 0.25;
+      ctx.beginPath(); ctx.moveTo(x, 26); ctx.lineTo(x, H - 30); ctx.stroke();
+      const row = rowEnd.findIndex(end => x > end + 10);
+      if (row >= 0) {
+        ctx.globalAlpha = 0.9;
+        ctx.fillText(e.name, x + 4, 22 + row * 15);
+        rowEnd[row] = x + 4 + ctx.measureText(e.name).width;
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // visible slice of history, newest first
+    const vis = [];
+    for (let i = S.hist.length - 1; i >= 0; i--) {
+      const h = S.hist[i];
+      const x = xOf(h.t);
+      vis.push({ x, y: yOf(h.y), yf: yOf(h.yf) });
+      if (x < 0) break;
+    }
+
+    // lost output: the gap between forecast and reality
+    ctx.fillStyle = C.swan;
+    ctx.globalAlpha = 0.1;
+    ctx.beginPath();
+    vis.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
+    for (let i = vis.length - 1; i >= 0; i--) ctx.lineTo(vis[i].x, vis[i].yf);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    const line = (key, color, width, dash) => {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.setLineDash(dash);
+      ctx.beginPath();
+      vis.forEach((p, i) => i ? ctx.lineTo(p.x, p[key]) : ctx.moveTo(p.x, p[key]));
+      ctx.stroke();
+      ctx.setLineDash([]);
+    };
+    line('yf', C.forecast, 1.25, [5, 5]);
+    line('y', C.accent, 2, []);
+
+    // the gears sit on the trend line
+    const A = arms(S.t);
+    const cy = Math.max(R + 8, Math.min(H - R - 8, yOf(GROWTH * S.t + S.perm)));
+
+    ctx.strokeStyle = C.accent;
+    ctx.lineWidth = 1;
+    const tr = S.trail, chunk = 25;
+    for (let i = 0; i < tr.length - 1; i += chunk) {
+      ctx.globalAlpha = 0.03 + 0.25 * (i / tr.length);
+      ctx.beginPath();
+      ctx.moveTo(cx + tr[i].x * sm, cy - tr[i].y * sm);
+      for (let j = i + 1; j <= Math.min(i + chunk, tr.length - 1); j++) ctx.lineTo(cx + tr[j].x * sm, cy - tr[j].y * sm);
+      ctx.stroke();
+    }
+
+    ctx.textAlign = 'center';
+    for (const a of A.list) {
+      const px = cx + a.x * sm, py = cy - a.y * sm, rr = a.r * sm;
+      if (rr < 0.3) continue;
+      const cycle = a.kind === 'cycle';
+      ctx.strokeStyle = cycle ? C.heading : a.kind === 'pos' ? C.boon : C.swan;
+      ctx.lineWidth = 1;
+      ctx.globalAlpha = cycle ? 0.2 : 0.5 * a.alpha;
+      ctx.beginPath(); ctx.arc(px, py, rr, 0, TAU); ctx.stroke();
+      ctx.globalAlpha = cycle ? 0.8 : 0.9 * Math.max(a.alpha, 0.3);
+      ctx.lineWidth = cycle ? 1.5 : 1;
+      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px + Math.cos(a.ang) * rr, py - Math.sin(a.ang) * rr); ctx.stroke();
+      if (a.label && rr > 22) {
+        ctx.globalAlpha = 0.75;
+        ctx.fillStyle = C.muted;
+        ctx.fillText(a.label, px, py - rr - 5);
+      }
+    }
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = C.heading;
+    ctx.beginPath(); ctx.arc(cx, cy, 2.5, 0, TAU); ctx.fill();
+
+    // tip → today's point on the chart
+    const tx = cx + A.x * sm, ty = cy - A.y * sm;
+    const nowY = vis[0].y;
+    ctx.strokeStyle = C.accent;
+    ctx.globalAlpha = 0.5;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(X0, nowY); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = C.accent;
+    ctx.beginPath(); ctx.arc(tx, ty, 4, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(X0, nowY, 3.5, 0, TAU); ctx.fill();
+
+    const now = performance.now();
+    S.rings = S.rings.filter(r => now - r.born < 1400);
+    for (const r of S.rings) {
+      const k = (now - r.born) / 1400;
+      ctx.strokeStyle = r.sign > 0 ? C.boon : C.swan;
+      ctx.globalAlpha = (1 - k) * 0.7;
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(tx, ty, 6 + k * (40 + r.m * 500), 0, TAU); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // ---------- stats ----------
+  const el = id => document.getElementById(id);
+  const sYear = el('sYear'), sGdp = el('sGdp'), sImpact = el('sImpact');
+  let hudTick = 0;
+  function hud() {
+    if (++hudTick % 6) return;
+    const h = S.hist[S.hist.length - 1];
+    sYear.textContent = Math.floor(START_YEAR + S.t);
+    sGdp.textContent = Math.round(100 * Math.exp(h.y));
+    const pct = Math.round((Math.exp(S.perm) - 1) * 100);
+    sImpact.textContent = (pct > 0 ? '+' : pct < 0 ? '−' : '') + Math.abs(pct) + '%';
+    sImpact.className = 'v' + (pct < 0 ? ' neg' : pct > 0 ? ' pos' : '');
+  }
+
+  // ---------- controls ----------
+  const bind = (id, key, fmt) => {
+    const i = el(id), o = i.nextElementSibling;
+    const upd = () => { params[key] = +i.value; o.textContent = fmt(+i.value); };
+    i.addEventListener('input', upd); upd();
+  };
+  bind('iSpeed', 'speed', v => v + ' yrs/s');
+  bind('iRate', 'rate', v => v);
+  bind('iAlpha', 'alpha', v => v.toFixed(1));
+
+  BASE.forEach((c, i) => {
+    const b = document.createElement('button');
+    b.className = 'chip';
+    b.innerHTML = `${c.icon} ${c.name} <small>${c.period} yrs</small>`;
+    b.title = `Switch the ${c.name.toLowerCase()} cycle on or off`;
+    b.addEventListener('click', () => { enabled[i] = !enabled[i]; b.classList.toggle('off', !enabled[i]); });
+    el('chips').appendChild(b);
+  });
+
+  const bPause = el('bPause');
+  const togglePause = () => { paused = !paused; bPause.textContent = paused ? 'Play' : 'Pause'; };
+  bPause.addEventListener('click', togglePause);
+  el('bSwan').addEventListener('click', () => swan(true));
+  el('bReset').addEventListener('click', reset);
+  window.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT' || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.code === 'Space') { e.preventDefault(); togglePause(); }
+    else if (e.key === 'b' || e.key === 'B') swan(true);
+    else if (e.key === 'r' || e.key === 'R') reset();
+  });
+
+  // ---------- loop ----------
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    if (!paused) {
+      step(dt * params.speed);
+      S.flash *= Math.exp(-dt * 3);
+    }
+    draw();
+    hud();
+    requestAnimationFrame(frame);
+  }
+
+  readColors();
+  resize();
+  window.addEventListener('resize', resize);
+  reset();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

@@ -7,7 +7,7 @@ permalink: /about/
 <div class="about-intro">
   <h1>About me</h1>
   <p class="intro-text">
-    I'm a Computer Science graduate from the University of Edinburgh, class of July 2026. <br />
+    I'm a Product Engineer at <a href="https://tano.ai">Tano.ai</a>. Before that I studied Computer Science at the University of Edinburgh. <br />
     I'm interested in building and understanding AI systems, especially how to make them safer and more useful.
   </p>
 </div>
@@ -38,12 +38,6 @@ permalink: /about/
       <p>My GitHub is the best place to see my experiments, research work, and software projects.</p>
       <p><a href="https://github.com/eddbr" target="_blank" rel="noopener" class="external-link">View my GitHub →</a></p>
     </div>
-  </section>
-
-  <section class="about-section">
-    <h2>What I'm looking for</h2>
-    <p>I'm exploring engineering roles where I can work on capable, reliable AI systems. I'm especially interested in AI/ML engineering, research engineering, software engineering, and AI safety.</p>
-    <p>I'm keen to contribute to teams doing rigorous technical work and to keep learning by building.</p>
   </section>
 
   <section class="about-section">
@@ -281,7 +275,7 @@ permalink: /about/
   .interests-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .contact-links {
     flex-direction: column;
     align-items: center;

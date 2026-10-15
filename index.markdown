@@ -1,16 +1,15 @@
 ---
 layout: default
 title: Eddie's Blog
-description: "Computer Science graduate exploring AI/ML and safety engineering"
+description: "Product Engineer at Tano.ai"
 ---
 
 <div class="welcome-section">
   <div class="welcome-content">
     <h1 class="welcome-title">Hi, I'm Eddie</h1>
-    <p class="welcome-subtitle">Computer Science graduate exploring AI/ML and safety engineering</p>
+    <p class="welcome-subtitle">Product Engineer at <a href="https://tano.ai">Tano.ai</a></p>
     <p class="welcome-description">
       I'm passionate about understanding how AI systems work.<br />
-      I recently graduated from the University of Edinburgh and am exploring engineering roles in AI, machine learning, and AI safety.<br />
       I've had the chance to do HCI research at <a href="https://hci.stanford.edu/">Stanford</a> and am building tools to evaluate the safety of large language models.
     </p>
     <div class="welcome-links">
@@ -382,7 +381,7 @@ description: "Computer Science graduate exploring AI/ML and safety engineering"
   .work-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .posts-grid {
     grid-template-columns: 1fr;
   }

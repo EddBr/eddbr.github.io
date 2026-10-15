@@ -1,4 +1,413 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.4.1">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2026-08-05T09:58:46-07:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Eddie’s Blog</title><subtitle>Computer Science graduate | AI/ML and safety engineering</subtitle><entry><title type="html">Is Claude biased when given a different system prompt?</title><link href="http://localhost:4000/ai/safety/2026/08/05/ai-safety-project.html" rel="alternate" type="text/html" title="Is Claude biased when given a different system prompt?" /><published>2026-08-05T01:00:00-07:00</published><updated>2026-08-05T01:00:00-07:00</updated><id>http://localhost:4000/ai/safety/2026/08/05/ai-safety-project</id><content type="html" xml:base="http://localhost:4000/ai/safety/2026/08/05/ai-safety-project.html"><![CDATA[<p>Fink &amp; Casper found that found that some AI systems downplay their creators’ controversies in their <a href="https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7059338">paper</a>.</p>
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.4.1">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2026-10-15T23:10:54+01:00</updated><id>/feed.xml</id><title type="html">Eddie’s Blog</title><subtitle>Product Engineer at Tano.ai | AI/ML and safety engineering</subtitle><entry><title type="html">Silicon Valley Fellowship</title><link href="/personal/blog/2026/10/02/svf-application.html" rel="alternate" type="text/html" title="Silicon Valley Fellowship" /><published>2026-10-02T00:00:00+01:00</published><updated>2026-10-02T00:00:00+01:00</updated><id>/personal/blog/2026/10/02/svf-application</id><content type="html" xml:base="/personal/blog/2026/10/02/svf-application.html"><![CDATA[<p>I receive messages asking about the Silicon Valley Fellowship. I want to give each email it’s due effort, but I can be busy. I’m writing this blog to give all the information I can.</p>
+<h1 id="what-was-the-application-process-like">What was the application process like?</h1>
+<p>My application was super quick. I filled out the form and then had a 10/15 minute interview.</p>
+<h1 id="what-are-they-looking-for">What are they looking for?</h1>
+<p>SVF filters for people who are ambitious, hungry and helpful.
+I cannot remember the exact questions (and it’s more fun to find out on the day!). These are some questions that are good to have an answer for:</p>
+
+<ol>
+  <li>Why do you want to do SVF?</li>
+  <li>Why are you the right candidate?</li>
+  <li>What makes you stand out?</li>
+</ol>
+
+<p>Don’t worry about the scale of what you’re working on. The SVF team want people who are starting small and trying super hard because these people would get the most out of the fellowship.</p>
+<h1 id="reaching-out-to-people">Reaching out to people</h1>
+<p>It’s a good idea to reach out to people to see what SVF <em>can</em> be. However, keep in mind each alumnus will share <em>their</em> experience.
+People have different perspectives which shape this and doesn’t necessarily mean this will be your experience.
+You make your own experience. If you’ve already defied the odds by getting on to the program, who knows what you could do during it! If you’re hyperfocused on a goal and consistently working towards it, SVF could offer an opportunity to help make it happen.</p>
+<h1 id="should-you-do-svf">Should you do SVF?</h1>
+<p>SVF’s value depends on YOU. The alumni that benefit the most are often those who struggled most to get in.
+If you’re looking for opportunities, are hungry and willing to go the extra mile, then go for it! Plus, it’s fun to discover the Bay if you haven’t been before! 🌁
+Finally, the SVF team is also doing a great job of building a powerful community that helps each other.</p>
+<h1 id="questions">Questions?</h1>
+<p>If you have questions, let me know! Please add a note if you want to connect on LinkedIn.</p>
+<h1 id="other-resources">Other Resources</h1>
+<p><a href="https://medium.com/@loreviglietti/list/silicon-valley-fellowship-5b056b3eb96e">Lorenzo Viglietti’s posts</a></p>]]></content><author><name></name></author><category term="personal" /><category term="blog" /><summary type="html"><![CDATA[I receive messages asking about the Silicon Valley Fellowship. I want to give each email it’s due effort, but I can be busy. I’m writing this blog to give all the information I can. What was the application process like? My application was super quick. I filled out the form and then had a 10/15 minute interview. What are they looking for? SVF filters for people who are ambitious, hungry and helpful. I cannot remember the exact questions (and it’s more fun to find out on the day!). These are some questions that are good to have an answer for:]]></summary></entry><entry><title type="html">The Future of Jobs</title><link href="/vision/2026/10/02/future-jobs.html" rel="alternate" type="text/html" title="The Future of Jobs" /><published>2026-10-02T00:00:00+01:00</published><updated>2026-10-02T00:00:00+01:00</updated><id>/vision/2026/10/02/future-jobs</id><content type="html" xml:base="/vision/2026/10/02/future-jobs.html"><![CDATA[<p>It seems as if AI is actually <a href="https://situational-awareness.ai/from-gpt-4-to-agi/#Unhobbling">unhobbling</a> humans in work. Software engineers were always capable of writing 10x more code, but handwriting was the bottleneck. This means jobs will persist, right?</p>
+
+<p>Well, some jobs. I think the generalisable rule is that the job must scale.</p>
+
+<p>Software engineers still exist because they can scale. They can be in charge of 10 AI models, coordinate them and produce 10x the output. Engineering roles that didn’t scale are redundant, e.g. the junior software engineer.</p>
+
+<p>I suspect this scaling law will hold true for other industries as well. If a lawyer can now write 10x more legal documetnts, they will. Radiologists were predicted to be replaced by AI. Instead, they read more radiographs.</p>
+
+<p>The scale of the work now depends on the scale you can handle. Previously, scaling required managing lots of people, now anyone can manage agents. Inefficiencies and reasonable blockers in the world will prevent it happening everywhere, but I think there is generally room for optimism!</p>
+
+<p>What scale can we handle?</p>]]></content><author><name></name></author><category term="vision" /><summary type="html"><![CDATA[It seems as if AI is actually unhobbling humans in work. Software engineers were always capable of writing 10x more code, but handwriting was the bottleneck. This means jobs will persist, right?]]></summary></entry><entry><title type="html">David Silver RL Lecture 1</title><link href="/rl/david/silver/2026/08/10/lecture-1-david-silver.html" rel="alternate" type="text/html" title="David Silver RL Lecture 1" /><published>2026-08-10T00:00:00+01:00</published><updated>2026-08-10T00:00:00+01:00</updated><id>/rl/david/silver/2026/08/10/lecture-1-david-silver</id><content type="html" xml:base="/rl/david/silver/2026/08/10/lecture-1-david-silver.html"><![CDATA[<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" />
+
+<script defer="" src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+
+<script defer="" src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,
+	      {delimiters: [
+	      {left: '$$', right: '$$', display: true},
+	      {left: '$', right: '$', display: false},
+	      {left: '\\(', right: '\\)', display: false},
+	      {left: '\\[', right: '\\]', display: true}
+	      ]});"></script>
+
+<h1 id="difference-between-rl-and-other-machine-learning">Difference between RL and other machine learning</h1>
+<ol>
+  <li>There is no supervisor - instead a reward signal</li>
+  <li>Feedback is delayed</li>
+  <li>Time is important (sequential, non i.i.d.)</li>
+  <li>Agent’s actions affect the subsequent data it receives
+    <h3 id="examples-of-rl">Examples of RL</h3>
+  </li>
+  <li>Fly stunt helicopter</li>
+  <li>Defeat world champion at Backgammon</li>
+  <li>Managing investment portfolio</li>
+  <li>Control power station! - Sequence of controls in power station</li>
+  <li>Make humanoid robot walk</li>
+  <li>Play many different Atari games
+    <h1 id="the-rl-problem">The RL Problem</h1>
+    <h2 id="reward">Reward</h2>
+    <p>$R_t$ - scalar feedback
+Indicates how well agent is doing at step $t$
+Agent’s job is to maximise cumulative reward</p>
+    <h3 id="reward-hypothesis">Reward Hypothesis</h3>
+    <p>All goals can be described by the maximisation of the expected cumulative reward $\mathbb{E}(G_t)$
+-RL is based off this hypothesis</p>
+    <h3 id="examples-of-reward">Examples of Reward</h3>
+  </li>
+</ol>
+
+<p>| Situation                     | +ve Reward                     | -ve Reward                  |
+| —————————– | —————————— | ————————— |
+| Helicopter manouevres         | Following desired trajectory   | Crashing                    |
+| Backgammon                    | Winning                        | Losing                      |
+| Managing investment portfolio | Increasing $/£ in bank account | Losing money                |
+| Control a power station       | Producing power                | Exceeding safety thresholds |
+| Humanoid walk                 | Forward motion                 | Falling over                |
+| Atari games                   | Increasing score               | Decreasing score            |</p>
+<h2 id="sequential-decision-making">Sequential Decision Making</h2>
+<p><strong>Goal:</strong> Select actions to maximise total future reward</p>
+<ul>
+  <li>Actions have long term consequences</li>
+  <li>Rewards might be delayed</li>
+  <li>Better to sacrifice immediate reward to gain more long-term reward
+    <h3 id="examples">Examples:</h3>
+    <ol>
+      <li>Financial investment (takes years to mature)</li>
+      <li>Flying helicopter (might prevent crash in several hours)</li>
+      <li>Blocking opponent’s moves (increases odds of winning in many moves)
+        <h2 id="agent-and-environment">Agent and Environment</h2>
+        <p>![[Pasted image 20260809143727.png]]</p>
+        <h3 id="in-each-time-step-t">In each time step $t$:</h3>
+      </li>
+    </ol>
+  </li>
+</ul>
+
+<p>| Agent                                                                                        | Environment                                                                            |
+| ——————————————————————————————– | ————————————————————————————– |
+| 1. Executes action $A_t$<br />2. Receives observation $O_t$<br />3. Receives scalar reward $R_t$ | 1. Receives action $A_t$<br />2. Emits observation $O_t$<br />3. Emits scalar reward $R_t$ |</p>
+<h2 id="history-and-state">History and State</h2>
+<h3 id="history">History</h3>
+<p>Sequence of observations, actions, rewards
+$H_t=A_1,O_1,R_1,…,A_t,O_t,R_t$
+(all variables up to time $t$)
+e.g. sensirometer stream of a robot or embodied agent</p>
+
+<p>Agent selects actions depending on history</p>
+<h3 id="state">State</h3>
+<p>Information used to decide what happens next
+State is a function of the history
+$S_t=f(H_t)$</p>
+<h2 id="environment-state">Environment State</h2>
+<p>$S^e_t$ - environment’s private representation
+(whatever data environment uses to pick next observation/reward)
+Not usually visible to agent</p>
+<h2 id="agent-state">Agent State</h2>
+<p>$S^a_t$ - agent’s internal representation
+(whatever information the agent uses to decide next action)
+Any function of history $S^a_t=f(H_t)$</p>
+<h2 id="information-state--markov-state">Information State / Markov State</h2>
+<p>Contains all useful information from the history</p>
+
+<table>
+  <tbody>
+    <tr>
+      <td>A state $S_t$ is Markov iff $\mathbb{P}[S_{t+1}</td>
+      <td>S_t]=\mathbb{P}[S_{t+1}</td>
+      <td>S_1,…,S_t]$</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>All of history is Markov (not very useful but true)</p>
+<h2 id="fully-observable-environments">Fully Observable Environments</h2>
+<p>Agent directly observes environment state
+$O_t=S^a_t=S^e_t$
+This is a Markov Decision Process (MDP)</p>
+<h2 id="partially-observable-environments">Partially Observable Environments</h2>
+<p>Partial observability - agent indirectly observes environment</p>
+<h3 id="examples-1">Examples</h3>
+<ol>
+  <li>Robot with camera vision isn’t told its absolute location</li>
+  <li>Trading agent only observes current prices</li>
+  <li>Poker playing agent only observes public cards
+Agent state $\ne$ Environment state</li>
+</ol>
+
+<p>-Partially observable Markov decision process (POMDP)
+Agent must construct it’s own state $S_t^a$:</p>
+<ol>
+  <li>Complete history $S^a_t=H_t$</li>
+  <li>Build Bayesian beliefs $S^a_t=(\mathbb{P}[S^e_t=s^1],…,\mathbb{P}[S^e_t=s^n])$</li>
+  <li>RNN $S^a_t=\sigma(S^a_{t-1}W_s+O_tW_o)$
+    <h1 id="inside-an-rl-agent">Inside an RL agent</h1>
+    <p>May include one or more:</p>
+  </li>
+  <li>Policy $\pi$ - agent’s behaviour function</li>
+  <li>Value function $V$ - how good each state/action</li>
+  <li>Model - agent’s representation of environment
+    <h2 id="1-policy">1. Policy</h2>
+    <p>Map from state to action $a=\pi(s)$ or stochastically $\pi(a|s)=\mathbb{P}[A=a|S=s]$</p>
+  </li>
+</ol>
+
+<h2 id="2-value-function">2. Value Function</h2>
+<p>Value function is a prediction of future reward
+Used to evaluate the goodness/badness of states
+$V_\pi(s)=\mathbb{E}<em>\pi[R_t+\gamma R</em>{t+1}+\gamma^2 R_{t+2}+…|S_t=s]$</p>
+<h2 id="3-model">3. Model</h2>
+<p>Predicts what environment will do next
+Transitions: $\mathcal{P}$ predicts next state (i.e. dynamics)
+Rewards: $\mathcal{R}$ predicts next (immediate) reward</p>
+
+<p>$\mathcal{P}^a_{ss’}=\mathbb{P}[S’=s’|S=s,A=a]$
+$\mathcal{R}^a_{s}=\mathbb{P}[R|S=s,A=a]$</p>
+<h2 id="categorising-agents">Categorising Agents</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Value-based</th>
+      <th>Policy-based</th>
+      <th>Actor Critic</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>No policy (implicit)</td>
+      <td>Policy</td>
+      <td>Policy</td>
+    </tr>
+    <tr>
+      <td>Value function</td>
+      <td>No value function</td>
+      <td>Value function</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>| Model free                   | Model Based                  |
+| —————————- | —————————- |
+| Policy and/or value function | Policy and/or value function |
+| No model                     | Model                        |
+![[Pasted image 20260809154439.png]]</p>
+<h1 id="problems-within-rl">Problems within RL</h1>
+<h2 id="reinforcement-learning">Reinforcement Learning</h2>
+<ul>
+  <li>Environment is initially unknown</li>
+  <li>Agent interacts with environment</li>
+  <li>Agent improves policy
+    <h2 id="planning">Planning</h2>
+  </li>
+  <li>Model of environment is known</li>
+  <li>Agent performs computations with its model (without any external interaction)</li>
+  <li>Agent improves its policy
+    <h3 id="atari-example">Atari Example</h3>
+  </li>
+  <li>Knows rules of the game</li>
+  <li>Can query the emulator for next state and score</li>
+  <li>Plan ahead to find optimal policy (MCTS)
+    <h2 id="exploration-v-exploitation">Exploration V Exploitation</h2>
+    <p>RL is like trial and error learning
+Agent should discover a good policy from its experience of the environment, without losing too much reward</p>
+  </li>
+</ul>
+
+<p>Exploration finds more information about environment
+Exploitation exploits known information to maximise reward</p>
+<h3 id="examples-2">Examples</h3>
+
+<p>| Example                      | Exploitation                    | Exploration             |
+| —————————- | ——————————- | ———————– |
+| Restaurant                   | Go to your favourite restaurant | Try a new restaurant    |
+| Online Banner Advertisements | Show must successful advert     | Show a different advert |
+| Oil drilling                 | Drill at best known location    | Drill at a new location |
+| Game playing                 | Play best move                  | Play different strategy |</p>
+<h2 id="prediction-and-control">Prediction and Control</h2>
+<p>Prediction - evaluate the future given my policy
+Control - optimise the future (find the best policy)</p>]]></content><author><name></name></author><category term="rl" /><category term="david" /><category term="silver" /><summary type="html"><![CDATA[Difference between RL and other machine learning There is no supervisor - instead a reward signal Feedback is delayed Time is important (sequential, non i.i.d.) Agent’s actions affect the subsequent data it receives Examples of RL Fly stunt helicopter Defeat world champion at Backgammon Managing investment portfolio Control power station! - Sequence of controls in power station Make humanoid robot walk Play many different Atari games The RL Problem Reward $R_t$ - scalar feedback Indicates how well agent is doing at step $t$ Agent’s job is to maximise cumulative reward Reward Hypothesis All goals can be described by the maximisation of the expected cumulative reward $\mathbb{E}(G_t)$ -RL is based off this hypothesis Examples of Reward]]></summary></entry><entry><title type="html">David Silver RL Lecture 2</title><link href="/rl/david/silver/2026/08/10/lecture-2-david-silver.html" rel="alternate" type="text/html" title="David Silver RL Lecture 2" /><published>2026-08-10T00:00:00+01:00</published><updated>2026-08-10T00:00:00+01:00</updated><id>/rl/david/silver/2026/08/10/lecture-2-david-silver</id><content type="html" xml:base="/rl/david/silver/2026/08/10/lecture-2-david-silver.html"><![CDATA[<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" />
+
+<script defer="" src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+
+<script defer="" src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,
+	      {delimiters: [
+	      {left: '$$', right: '$$', display: true},
+	      {left: '$', right: '$', display: false},
+	      {left: '\\(', right: '\\)', display: false},
+	      {left: '\\[', right: '\\]', display: true}
+	      ]});"></script>
+
+<h1 id="markov-processes">Markov Processes</h1>
+<p>MDPs formally describe an environment for RL
+Assumption: Environment is fully observable</p>
+
+<p>The current state completely characterises the process</p>
+
+<p>Almost all RL problems can be formalised as MDPs</p>
+<h2 id="state-transition-matrix">State Transition Matrix</h2>
+<p>$\mathcal{P}<em>{ss’}=\mathbb{P}[S</em>{t+1}=s’|S_t=s]$
+State transition matrix $\mathcal{P}$ defines transition probabilities from all states $s$ to successor states $s’$</p>
+
+<p>$\mathcal{P}=\begin{bmatrix} \mathcal{P}<em>{11} &amp; … &amp; \mathcal{P}</em>{1n} \\vdots  \ \mathcal{P}<em>{n1} &amp; &amp; \mathcal{P}</em>{nn}\end{bmatrix}$
+$\sum$row = 1</p>
+<h2 id="markov-process">Markov Process</h2>
+<p>Memoryless + random</p>
+
+<h3 id="definition">Definition</h3>
+<p>A tuple $\braket{ \mathcal{S},\mathcal{P}}$</p>
+
+<p>Where</p>
+<ul>
+  <li>$\mathcal{S}$ is a finite set of states</li>
+  <li>$\mathcal{P}$ is a state transition probability matrix $\mathcal{P}=\mathbb{P}[S_{t+1}=s’|S_t=s]$
+    <h1 id="markov-reward-processes">Markov Reward Processes</h1>
+    <p>Markov reward process is a Markov chain with values</p>
+  </li>
+</ul>
+
+<p>$=\braket{\mathcal{S},\mathcal{P},\mathcal{R},\gamma}$</p>
+
+<ul>
+  <li>$\mathcal{S}$ is a finite state of states</li>
+  <li>
+    <table>
+      <tbody>
+        <tr>
+          <td>$\mathcal{P}$ is a state transition probability matrix $=\mathbb{P}[S_{t+1}=s’</td>
+          <td>S_t=s]$</td>
+        </tr>
+      </tbody>
+    </table>
+  </li>
+  <li>
+    <table>
+      <tbody>
+        <tr>
+          <td>$\mathcal{R}$ is a reward function $R_s=\mathbb{E}[R_{t+1}</td>
+          <td>S_t=s]$</td>
+        </tr>
+      </tbody>
+    </table>
+  </li>
+  <li>$\gamma$ is the discount factor $\in[0,1]$</li>
+</ul>
+
+<p>Return $G_t=R_{t+1}+\gamma R_{t+2}=\sum_{k=0}^\infty\gamma^kR_{t+k+1}$</p>
+
+<h2 id="why-do-we-discount">Why do we discount?</h2>
+<ol>
+  <li>Mathematically convenient (bounds)</li>
+  <li>Avoids infinity</li>
+  <li>Represents uncertainty over the future</li>
+  <li>Money now is worth more than money later (interest rate)</li>
+  <li>Humans + animals display discounting / preference for immediate reward</li>
+  <li>[my addition] - also good for credit assignment? Earlier actions should have be attributed more reward as they led to future actions</li>
+</ol>
+
+<h2 id="value-function">Value Function</h2>
+<p>Value function $V(s)$ gives long-term value of state $s$
+$V(s)=\mathbb{E}[G_t|S_t=s]$</p>
+<h2 id="bellman-equation">Bellman Equation</h2>
+<p>Value function has 2 components:</p>
+<ol>
+  <li>Immediate reward $R_{t+1}$</li>
+  <li>Discounted value of successor state $\gamma V(S_{t+1})$
+$V(s)=\mathbb{E}[G_t|S_t=s]$
+$V(s)=\mathbb{E}[R_{t+1}+\gamma R_{t+2}+…|S_t=s]$
+$V(s)=\mathbb{E}[R_{t+1}+(\gamma R_{t+2}+…)|S_t=s]$
+$V(s)=\mathbb{E}[R_{t+1}+\gamma G_{t+1}|S_t=s]$
+$V(s)=\mathbb{E}[R_{t+1}+\gamma V(S_{t+1})|S_t=s]$</li>
+</ol>
+
+<p>$V(s)=\mathcal{R}<em>s+\gamma\sum</em>{s’\in \mathcal{S}}\mathcal{P}_{ss’}v(s’)$</p>
+
+<p>Bellman equation can be concisely expressed using matrices
+$v=\mathcal{R}+\gamma\mathcal{P}v$
+$\begin{bmatrix} v(1) \ \vdots \ v(n) \end{bmatrix} = \begin{bmatrix} \mathcal{R}<em>1 \ \vdots \ \mathcal{R}_n \end{bmatrix} + \begin{bmatrix} \mathcal{P}</em>{11} &amp; \dots &amp; \mathcal{P}<em>{1n} \ \vdots  \ \mathcal{P}</em>{n1} &amp; \dots &amp; \mathcal{P}_{nn} \end{bmatrix} \begin{bmatrix} v(1) \ \vdots \ v(n) \end{bmatrix}$</p>
+<h3 id="solving-bellman-equation">Solving Bellman Equation</h3>
+<p>It is a linear equation
+$v=\mathcal{R}+\gamma\mathcal{P}v$
+-&gt; $v=(I-\gamma\mathcal{P})^{-1}\mathcal{R}$
+Computational complexity of inverting matrix is $O(n^3)$ for $n$ states</p>
+<h1 id="markov-decision-processes">Markov Decision Processes</h1>
+<p>Markov reward process with decisions</p>
+
+<p>$\braket{\mathcal{S},\mathcal{A},\mathcal{P},\mathcal{R},\gamma}$
+$\mathcal{A}$ is a set of actions
+$\mathcal{P}^a_{ss’}=\mathbb{P}[S_{t+1}=s’|S_t=s,A_t=a]$
+$\mathcal{R}=\mathbb{E}[R_{t+1}|S_t=s,A_t=a]$</p>
+<h2 id="policy">Policy</h2>
+<p>Distribution over actions given states
+$\pi(a|s)=\mathbb{P}[A=a|S_t=s]$
+$\pi$ depends on current state, not history
+-&gt; $\pi$ is time independent</p>
+
+<p>State sequence $S_1,S_2,…$ is a Markov process $\braket{\mathcal{S},\mathcal{P}^\pi}$
+State and reward sequence $S_1,R_1,S_2,…$ is a Markov reward process $\braket{\mathcal{S},\mathcal{P}^\pi,\mathcal{R}^\pi,\gamma}$</p>
+
+<p>We update the transition and reward matrices by averaging according to the action taken
+$\mathcal{P}^\pi_{s,s’}=\sum_{a\in A}\pi(a|s)\mathcal{P}^a_{s,s’}$
+$\mathcal{R}^\pi_{s,s’}=\sum_{a\in A}\pi(a|s)\mathcal{R}^a_{s,s’}$</p>
+
+<p>e.g. If there are 2 actions ($a_1,a_2$) that can be taken, each with probability 0.5:
+$\mathcal{P}^\pi_{s,s’}=0.5\mathcal{P}^{a_1}<em>{s,s’}+0.5\mathcal{P}^{a_2}</em>{s,s’}$
+$\mathcal{R}^\pi_{s,s’}=0.5\mathcal{R}^{a_1}<em>{s,s’}+0.5\mathcal{R}^{a_2}</em>{s,s’}$
+(We average)</p>
+<h2 id="value-function-1">Value Function</h2>
+<p>Expectation is dependent on the policy, thus we must use $V_\pi$ (subscript $\pi$)</p>
+
+<h3 id="state-value-function-v_pi">State Value Function $v_\pi$</h3>
+<p>$v_\pi=\mathbb{E}<em>\pi[G_t|S_t=s]$
+$v</em>\pi=\mathbb{E}<em>\pi[R</em>{t+1}+\gamma v_\pi(S_{t+1})|S_t=s]$</p>
+<h3 id="action-value-function-q_pi">Action-value function $q_\pi$</h3>
+<p>$q_\pi(s,a)=\mathbb{E}[G_t|S_t=s,A_t=a]$
+$q_\pi(s,a)=\mathbb{E}[R_{t+1}+\gamma q_\pi(S_{t+1},A_{t+1}|S_t=s,A_t=a]$</p>
+<h2 id="relating-v_pi-and-q_pi">Relating $v_\pi$ and $q_\pi$</h2>
+<p>$v_\pi=\sum_{a\in A}\pi(a|s)q_\pi(a|s)$
+$q_\pi=\mathcal{R}^a_s+\gamma\sum_{s’\in S}\mathcal{P}^a_{ss’}v_\pi(s’)$ (reward is received after action)</p>
+<h2 id="recursive-bellman-equation">Recursive Bellman Equation</h2>
+<p>$v_\pi(s)=\sum_{a\in A}\pi(a|s)(\mathcal{R}^a_s+\gamma\sum_{s’\in\mathcal{S}}\mathcal{P}^a_{ss’}v_\pi(s’))$</p>
+
+<p>$q_\pi(s)=\mathcal{R}^a_s+\gamma\sum_{s’\in S}\mathcal{P}^a_{ss’}\sum_{a’\in A}\pi(a’|s’)q_\pi(s’,a’)$</p>
+<h2 id="optimal-value-function">Optimal Value Function</h2>
+<p>Maximum value function over all policies
+$v_<em>(s)\max_\pi v_\pi(s)$
+$q_</em>(s,a)=\max_\pi q_\pi(s,a)$</p>
+
+<p>Define a partial ordering over policies
+$\pi\ge\pi’$ if $v_\pi(s)\ge v_{\pi’}(s),\forall s$</p>
+<h2 id="finding-optimal-policy">Finding Optimal Policy</h2>
+<p>$\pi_<em>(a|s)$ if $a=\arg\max_{a\in\mathcal{A}}q_</em>(s,a)$</p>
+
+<p>$v_<em>(s)=\max_a q_</em>(s,a)$
+$q_<em>(s,a)=\mathcal{R}^a_S+\gamma\sum_{s’\in S}\mathcal{P}^a_{ss’}v_</em>(s’)$ - this includes the terms from the environment, which is out of our control</p>
+<h3 id="recursively">Recursively</h3>
+<p>$v_<em>(s)=\mathcal{R}^a_S+\gamma\sum_{s’\in S}\mathcal{P}^a_{ss’}v_</em>(s’)$
+$q_<em>(s,a)=\mathcal{R}^a_S+\gamma\sum_{s’\in S}\mathcal{P}^a_{ss’}q_</em>(s’,a’)$</p>
+<h2 id="solving-bellman">Solving Bellman</h2>
+<p>Bellman equations are non-linear
+Requires iterative solutions:</p>
+<ol>
+  <li>Value iteration</li>
+  <li>Policy iteration</li>
+  <li>Q-learning</li>
+  <li>SARSA</li>
+</ol>]]></content><author><name></name></author><category term="rl" /><category term="david" /><category term="silver" /><summary type="html"><![CDATA[Markov Processes MDPs formally describe an environment for RL Assumption: Environment is fully observable]]></summary></entry><entry><title type="html">Is Claude biased when given a different system prompt?</title><link href="/ai/safety/2026/08/05/ai-safety-project.html" rel="alternate" type="text/html" title="Is Claude biased when given a different system prompt?" /><published>2026-08-05T09:00:00+01:00</published><updated>2026-08-05T09:00:00+01:00</updated><id>/ai/safety/2026/08/05/ai-safety-project</id><content type="html" xml:base="/ai/safety/2026/08/05/ai-safety-project.html"><![CDATA[<p>Fink &amp; Casper found that found that some AI systems downplay their creators’ controversies in their <a href="https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7059338">paper</a>.</p>
 
 <p>It is possible models are protective because of their system prompt. They protect interests because they are subtly told to.</p>
 
@@ -6,7 +415,7 @@
 
 <p>It appears that this doesn’t cause a significant change in the preferential bias displayed towards XAI by Claude (reputational_risk_delta: mean=-0.120, controversy_delta: mean=-0.022).</p>
 
-<p>One caveat is due to the cost of running experiments, I was only using N=50. However, Boris Cherny gave out Claude 20x Max for being at the YC event (photo attached) so I can do more in future experiments!</p>]]></content><author><name></name></author><category term="ai" /><category term="safety" /><summary type="html"><![CDATA[Models are biased towards their founding company, but could this be due to system prompt?]]></summary></entry><entry><title type="html">The Next Era of Personal Computing</title><link href="http://localhost:4000/pc/prediction/2026/06/24/next-era-pc.html" rel="alternate" type="text/html" title="The Next Era of Personal Computing" /><published>2026-06-24T00:00:00-07:00</published><updated>2026-06-24T00:00:00-07:00</updated><id>http://localhost:4000/pc/prediction/2026/06/24/next-era-pc</id><content type="html" xml:base="http://localhost:4000/pc/prediction/2026/06/24/next-era-pc.html"><![CDATA[<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" />
+<p>One caveat is due to the cost of running experiments, I was only using N=50. However, Boris Cherny gave out Claude 20x Max for being at the YC event (photo attached) so I can do more in future experiments!</p>]]></content><author><name></name></author><category term="ai" /><category term="safety" /><summary type="html"><![CDATA[Models are biased towards their founding company, but could this be due to system prompt?]]></summary></entry><entry><title type="html">The Next Era of Personal Computing</title><link href="/pc/prediction/2026/06/24/next-era-pc.html" rel="alternate" type="text/html" title="The Next Era of Personal Computing" /><published>2026-06-24T00:00:00+01:00</published><updated>2026-06-24T00:00:00+01:00</updated><id>/pc/prediction/2026/06/24/next-era-pc</id><content type="html" xml:base="/pc/prediction/2026/06/24/next-era-pc.html"><![CDATA[<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" />
 
 <script defer="" src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
 
@@ -30,7 +439,7 @@
   <li>Your data. This may become one of the few sources of value that humans can offer economically, so it is imperative we have the option of selling it.</li>
 </ol>
 
-<p>There are potential drawbacks with this. We are already witnessing the terrible feedback loops that these models can have, leading to harmful AI-human relationships and conversations. Therefore, this option is likely only feasible when models have reached a sufficient safety threshold.</p>]]></content><author><name></name></author><category term="pc" /><category term="prediction" /><summary type="html"><![CDATA[The original PC revolution introduced a transition from shared, centralised mainframes to individual devices of which customers had ownership. A similar transition will probably occur, where centralised LLMs will transition to local models on personal devices. The people will thus reclaim control over their data and privacy.]]></summary></entry><entry><title type="html">LLMs will make us better</title><link href="http://localhost:4000/ai/llm/society/future/2025/11/28/llms-make-us-better.html" rel="alternate" type="text/html" title="LLMs will make us better" /><published>2025-11-28T00:00:00-08:00</published><updated>2025-11-28T00:00:00-08:00</updated><id>http://localhost:4000/ai/llm/society/future/2025/11/28/llms-make-us-better</id><content type="html" xml:base="http://localhost:4000/ai/llm/society/future/2025/11/28/llms-make-us-better.html"><![CDATA[<p>The reason LLMs are so important now is because they make us question ourselves. They are a change that makes society question itself. Suddenly we’re asking deeper questions about the value of work, what is the value of this skill I am learning? Is it innately human, because that might now be more valuable? This humanistic value is permeating and percolating across all living human beings. People are demonstrating more agency, they think more about what skills they will learn, what they’re better at because there is this new level of competition. Now we are being thoughtful of how we are spending our time. We as a collective are still more powerful, but we must band together. We must improve our communication skills, we should let AI test us because then we test our mettle. This is a massive opportunity for growth but it is hard and it is painful, but we will be better as a result of it.</p>]]></content><author><name></name></author><category term="ai" /><category term="llm" /><category term="society" /><category term="future" /><summary type="html"><![CDATA[The reason LLMs are so important now is because they make us question ourselves. They are a change that makes society question itself. Suddenly we’re asking deeper questions about the value of work, what is the value of this skill I am learning? Is it innately human, because that might now be more valuable? This humanistic value is permeating and percolating across all living human beings. People are demonstrating more agency, they think more about what skills they will learn, what they’re better at because there is this new level of competition. Now we are being thoughtful of how we are spending our time. We as a collective are still more powerful, but we must band together. We must improve our communication skills, we should let AI test us because then we test our mettle. This is a massive opportunity for growth but it is hard and it is painful, but we will be better as a result of it.]]></summary></entry><entry><title type="html">Identity Amplification CHI ‘26 Submission</title><link href="http://localhost:4000/research/2025/10/15/identity-amplification.html" rel="alternate" type="text/html" title="Identity Amplification CHI ‘26 Submission" /><published>2025-10-15T03:00:00-07:00</published><updated>2025-10-15T03:00:00-07:00</updated><id>http://localhost:4000/research/2025/10/15/identity-amplification</id><content type="html" xml:base="http://localhost:4000/research/2025/10/15/identity-amplification.html"><![CDATA[<p>I’m publishing the full PDF of our CHI 2026 submission, <strong>Identity Amplification</strong>, so it is easy to reference directly from the blog.</p>
+<p>There are potential drawbacks with this. We are already witnessing the terrible feedback loops that these models can have, leading to harmful AI-human relationships and conversations. Therefore, this option is likely only feasible when models have reached a sufficient safety threshold.</p>]]></content><author><name></name></author><category term="pc" /><category term="prediction" /><summary type="html"><![CDATA[The original PC revolution introduced a transition from shared, centralised mainframes to individual devices of which customers had ownership. A similar transition will probably occur, where centralised LLMs will transition to local models on personal devices. The people will thus reclaim control over their data and privacy.]]></summary></entry><entry><title type="html">LLMs will make us better</title><link href="/ai/llm/society/future/2025/11/28/llms-make-us-better.html" rel="alternate" type="text/html" title="LLMs will make us better" /><published>2025-11-28T00:00:00+00:00</published><updated>2025-11-28T00:00:00+00:00</updated><id>/ai/llm/society/future/2025/11/28/llms-make-us-better</id><content type="html" xml:base="/ai/llm/society/future/2025/11/28/llms-make-us-better.html"><![CDATA[<p>The reason LLMs are so important now is because they make us question ourselves. They are a change that makes society question itself. Suddenly we’re asking deeper questions about the value of work, what is the value of this skill I am learning? Is it innately human, because that might now be more valuable? This humanistic value is permeating and percolating across all living human beings. People are demonstrating more agency, they think more about what skills they will learn, what they’re better at because there is this new level of competition. Now we are being thoughtful of how we are spending our time. We as a collective are still more powerful, but we must band together. We must improve our communication skills, we should let AI test us because then we test our mettle. This is a massive opportunity for growth but it is hard and it is painful, but we will be better as a result of it.</p>]]></content><author><name></name></author><category term="ai" /><category term="llm" /><category term="society" /><category term="future" /><summary type="html"><![CDATA[The reason LLMs are so important now is because they make us question ourselves. They are a change that makes society question itself. Suddenly we’re asking deeper questions about the value of work, what is the value of this skill I am learning? Is it innately human, because that might now be more valuable? This humanistic value is permeating and percolating across all living human beings. People are demonstrating more agency, they think more about what skills they will learn, what they’re better at because there is this new level of competition. Now we are being thoughtful of how we are spending our time. We as a collective are still more powerful, but we must band together. We must improve our communication skills, we should let AI test us because then we test our mettle. This is a massive opportunity for growth but it is hard and it is painful, but we will be better as a result of it.]]></summary></entry><entry><title type="html">Identity Amplification CHI ‘26 Submission</title><link href="/research/2025/10/15/identity-amplification.html" rel="alternate" type="text/html" title="Identity Amplification CHI ‘26 Submission" /><published>2025-10-15T11:00:00+01:00</published><updated>2025-10-15T11:00:00+01:00</updated><id>/research/2025/10/15/identity-amplification</id><content type="html" xml:base="/research/2025/10/15/identity-amplification.html"><![CDATA[<p>I’m publishing the full PDF of our CHI 2026 submission, <strong>Identity Amplification</strong>, so it is easy to reference directly from the blog.</p>
 
 <div class="pdf-viewer">
   <object data="/assets/pdfs/Identity_Amplification_CHI_26_Submission.pdf" type="application/pdf" width="100%" height="800px">
@@ -46,7 +455,7 @@
   overflow: hidden;
   box-shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
-</style>]]></content><author><name></name></author><category term="research" /><summary type="html"><![CDATA[Sharing the Identity Amplification CHI submission as a readable PDF.]]></summary></entry><entry><title type="html">Reinforcement Learning: An Introduction - Chapter 3</title><link href="http://localhost:4000/rl/textbook/2025/09/30/rl-chapter-3.html" rel="alternate" type="text/html" title="Reinforcement Learning: An Introduction - Chapter 3" /><published>2025-09-30T00:00:00-07:00</published><updated>2025-09-30T00:00:00-07:00</updated><id>http://localhost:4000/rl/textbook/2025/09/30/rl-chapter-3</id><content type="html" xml:base="http://localhost:4000/rl/textbook/2025/09/30/rl-chapter-3.html"><![CDATA[<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" />
+</style>]]></content><author><name></name></author><category term="research" /><summary type="html"><![CDATA[Sharing the Identity Amplification CHI submission as a readable PDF.]]></summary></entry><entry><title type="html">Reinforcement Learning: An Introduction - Chapter 3</title><link href="/rl/textbook/2025/09/30/rl-chapter-3.html" rel="alternate" type="text/html" title="Reinforcement Learning: An Introduction - Chapter 3" /><published>2025-09-30T00:00:00+01:00</published><updated>2025-09-30T00:00:00+01:00</updated><id>/rl/textbook/2025/09/30/rl-chapter-3</id><content type="html" xml:base="/rl/textbook/2025/09/30/rl-chapter-3.html"><![CDATA[<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" />
 
 <script defer="" src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
 
@@ -312,7 +721,7 @@ I’m sorry, I have so many other assignments to do. Think these are quite self 
 <strong>Exercise 3.18</strong>
 <strong>Exercise 3.19</strong>
 <strong>Exercise 3.20</strong>
-<strong>Exercise 3.21</strong></p>]]></content><author><name></name></author><category term="rl" /><category term="textbook" /><summary type="html"><![CDATA[Tension between applicability and mathematical tractability - tradeoff Agent Learner and decision maker Environment Things agent interacts with]]></summary></entry><entry><title type="html">LLMs in the World</title><link href="http://localhost:4000/llm/communication/2025/09/12/llms-in-the-world.html" rel="alternate" type="text/html" title="LLMs in the World" /><published>2025-09-12T00:00:00-07:00</published><updated>2025-09-12T00:00:00-07:00</updated><id>http://localhost:4000/llm/communication/2025/09/12/llms-in-the-world</id><content type="html" xml:base="http://localhost:4000/llm/communication/2025/09/12/llms-in-the-world.html"><![CDATA[<p>LLMs are becoming the new social media. The problems we are and will encounter, the benefits and the impact on human social function. Much the same way as people now incorporate videos, photos, and Wikipedia pages as verification of their own thoughts, or enhancements to the conversation being engaged in, LLMs will take a new step. Emotions will be more effectively conveyed and we will begin to question how we ever operated without them. People will use it as a sounding board for their ideas as well as a tool to more effectively communicate themselves. Communication is a 2 way street:
+<strong>Exercise 3.21</strong></p>]]></content><author><name></name></author><category term="rl" /><category term="textbook" /><summary type="html"><![CDATA[Tension between applicability and mathematical tractability - tradeoff Agent Learner and decision maker Environment Things agent interacts with]]></summary></entry><entry><title type="html">LLMs in the World</title><link href="/llm/communication/2025/09/12/llms-in-the-world.html" rel="alternate" type="text/html" title="LLMs in the World" /><published>2025-09-12T00:00:00+01:00</published><updated>2025-09-12T00:00:00+01:00</updated><id>/llm/communication/2025/09/12/llms-in-the-world</id><content type="html" xml:base="/llm/communication/2025/09/12/llms-in-the-world.html"><![CDATA[<p>LLMs are becoming the new social media. The problems we are and will encounter, the benefits and the impact on human social function. Much the same way as people now incorporate videos, photos, and Wikipedia pages as verification of their own thoughts, or enhancements to the conversation being engaged in, LLMs will take a new step. Emotions will be more effectively conveyed and we will begin to question how we ever operated without them. People will use it as a sounding board for their ideas as well as a tool to more effectively communicate themselves. Communication is a 2 way street:
 In 1 direction you have the communicator
 In the other you have the listener
 And this switches.</p>
@@ -329,1448 +738,4 @@ I hope the trajectory changes because this technology really could offer a chanc
 
 <p>I think I’m obsessed with getting the most effective outcome from a situation and good communication is a really good method to do so. Everyone can have more from these situations.</p>
 
-<p>I suppose this is where the cheating at life thing comes in, but I don’t think it can work. It doesn’t fix the problems LLMs engender, merely exacerbates and expands their sycophantic reach.</p>]]></content><author><name></name></author><category term="LLM" /><category term="communication" /><summary type="html"><![CDATA[LLMs are becoming the new social media. The problems we are and will encounter, the benefits and the impact on human social function. Much the same way as people now incorporate videos, photos, and Wikipedia pages as verification of their own thoughts, or enhancements to the conversation being engaged in, LLMs will take a new step. Emotions will be more effectively conveyed and we will begin to question how we ever operated without them. People will use it as a sounding board for their ideas as well as a tool to more effectively communicate themselves. Communication is a 2 way street: In 1 direction you have the communicator In the other you have the listener And this switches.]]></summary></entry><entry><title type="html">Reinforcement Learning: An Introduction - Chapter 2</title><link href="http://localhost:4000/rl/textbook/2025/09/01/rl-chapter-2.html" rel="alternate" type="text/html" title="Reinforcement Learning: An Introduction - Chapter 2" /><published>2025-09-01T00:00:00-07:00</published><updated>2025-09-01T00:00:00-07:00</updated><id>http://localhost:4000/rl/textbook/2025/09/01/rl-chapter-2</id><content type="html" xml:base="http://localhost:4000/rl/textbook/2025/09/01/rl-chapter-2.html"><![CDATA[<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" />
-
-<script defer="" src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
-
-<script defer="" src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,
-	      {delimiters: [
-	      {left: '$$', right: '$$', display: true},
-	      {left: '$', right: '$', display: false},
-	      {left: '\\(', right: '\\)', display: false},
-	      {left: '\\[', right: '\\]', display: true}
-	      ]});"></script>
-
-<h1 id="instructive-feedback">Instructive Feedback</h1>
-<p>Indicates correct action to take
-Independent of action taken</p>
-<h1 id="evaluative-feedback">Evaluative Feedback</h1>
-<p>Indicates how good action taken is
-Depends entirely on action</p>
-<h2 id="associative">Associative</h2>
-<p>Actions are taken in more than 1 situation</p>
-<h1 id="an-n-armed-bandit-problem">AN $n$-Armed Bandit Problem</h1>
-<p>Limited time steps
-Imagine an $n$-armed slot machine</p>
-
-<p>Not choosing the greedy move is exploration
-Choosing greedy is exploitation</p>
-<h1 id="action-value">Action Value</h1>
-<h2 id="true-value-qa">True Value $q(a)$</h2>
-<p>Mean reward received when action is selected</p>
-<h2 id="estimated-value-q_ta">Estimated Value $Q_t(a)$</h2>
-<p>$Q_t(a)=\cfrac{R_1+R_2+…+R_{N_t(a)}}{N_t(a)}$
-$N_t(a)$ - Number of times action $a$ is selected
-$t$ - Time step
-$R_t$ - Reward</p>
-
-<p>If $N_t(a)=0$, we define $Q_t(a)$ with a default value. E.g. $Q_1(a)=0$</p>
-
-<p>$\lim_{N_t(a)\to\infty}Q_t(a)\to q(a)$</p>
-
-<h2 id="greedy-selection">Greedy Selection</h2>
-<p>$A_t=\arg\max_aQ_t(a)$</p>
-
-<p>$\epsilon$-greed algorithms are guaranteed to converge
-Probability of selecting optimal action converges to $1-\epsilon$</p>
-<h2 id="nonstationary">Nonstationary</h2>
-<p>True values changed over time
-$e$-greedy are necessary</p>
-
-<p>There is a problem with this, however, as $N_t(a)$ increases, so do the memory requirements, without bound
-Can instead be computed:
-$Q_{k+1}=\frac 1 k \sum^k_{i=1}R_i$
-$=\frac 1 k (R_k+\sum^{k-1}_{i=1}R_i)$
-$=\frac 1 k (R_k+(k-1)Q_k+(Q_k-Q_k))$
-$=\frac 1 k (R_k+kQ_k-Q_k)$
-$=Q_k+\frac 1 k (R_k-Q_k)$</p>
-
-<p>For me, it’s more intuitive to think of it as:
-$Q_{k+1}=\cfrac{R_k+(k-1)Q_k}{k}$</p>
-<h2 id="update-rule">Update Rule</h2>
-<p>$NewEstimate\leftarrow OldEstimate+StepSize[Target-OldEstimate]$
-which is like gradient descent ($W_k=W_{k-1}-\alpha\nabla W_{k-1}$)</p>
-
-<p>Note that for us, the step size $\alpha=\frac 1 k$ is changing over time</p>
-<h2 id="tracking-a-nonstationary-problem">Tracking a Nonstationary Problem</h2>
-<p>$Q_{k+1}=Q_k+\alpha[R_k-Q_k]$
-So the weighted average past rewards and initial estimate $Q_1$ is:
-$Q_{k+1}=Q_k+\alpha[R_k-Q_k]$
-$=\alpha R_k+(1-\alpha)Q_k$
-$=\alpha R_k+(1-\alpha)Q_k$
-$=\alpha R_k+(1-\alpha)[\alpha R_{k-1}+(1-\alpha)Q_{k-1}]$
-$=\alpha R_k+(1-\alpha)\alpha R_{k-1}+(1-\alpha)^2Q_{k-1}$
-$=\alpha R_k+(1-\alpha)\alpha R_{k-1}+(1-\alpha)^2Q_{k-1}+…+(1-\alpha)^{k-1}\alpha R_1+(1-\alpha)^kQ_1$
-$=(1-\alpha)^kQ_1+\sum^k_{i=1}\alpha(1-\alpha)^{k-i}R_i$</p>
-
-<p>This is a weighted average because the sum of the weights is $(1-\alpha)^k+\sum^k_{i=1}\alpha(1-\alpha)^{k-i}=1$ #nonstationaryweightedequ
-<strong>Proof:</strong>
-Geometric sum equation: $S_n=\cfrac {a(1-r^n)}{1-r}$
-Looking at $\sum^k_{i=1}\alpha(1-\alpha)^{k-i}$:
-$(1-\alpha)^{-1}&gt;1$ since $0&lt;\alpha\le1$, and for this section, we’ll assume $alpha&lt;1$ and will deal with this later as an edge case
-Therefore, we can reverse the direction of the sum, setting $r$ as $(1-\alpha)$
-$\therefore S_n=\cfrac {\alpha(1-(1-\alpha)^k)}{1-(1-\alpha)}$ 
-$=\cfrac {\alpha(1-(1-\alpha)^k)}{\alpha}$
-$=(1-(1-\alpha)^k)$</p>
-
-<p>If we add this back to #nonstationaryweightedequ 
-$(1-\alpha)^k+(1-(1-\alpha)^k)$
-$=1$ $\square$</p>
-
-<p>At the edge case, when $\alpha=1$
-The first part of #nonstationaryweightedequ $ becomes 0
-In the second part, every part of the sum becomes 0, except the last term, $\alpha(1-\alpha)^{k-k}=\alpha(1-\alpha)^0=\alpha=1$
-Therefore, this also sums to 1, $\square$</p>
-<h2 id="convergence-conditions">Convergence Conditions</h2>
-<p>$\sum^\infty_{k=1}\alpha_k(a)=\infty$
-$\sum^\infty_{k=1}\alpha^2_k(a)&lt;\infty$</p>
-
-<p>Does converge for sample-average case $\alpha_k(a)=\frac 1 k$
-This means that it does not converge when $\alpha$ is constant
-Non-convergence is desirable for a nonstationary environment</p>
-
-<p>Step-size parameters that meet the convergence conditions converge very slowly and need a lot of training - rarely ideal</p>
-<h2 id="optimistic-initial-values">Optimistic Initial Values</h2>
-<p>Setting expected values much higher encourages exploration
-However, the drive to explore is temporary and thus doesn’t work well in nonstationary problems (stops exploring, 0 adaptation)</p>
-<h1 id="upper-confidence-bound-action-selection">Upper-Confidence-Bound Action Selection</h1>
-<p>$A_t=\arg\max_a[Q_t(a)+c\sqrt{\cfrac{\ln t}{N_t(a)}}]$
-$c\sqrt{\cfrac{\ln t}{N_t(a)}}$ - Measure of uncertainty in estimate of $q(a)$</p>
-
-<p>We use UCB because $\epsilon$-greedy indiscriminately chooses non-greedy options</p>
-
-<p>Each time $a$ is chosen, $N_t(a)$ increases and thus reduces uncertainty</p>
-
-<p>When $a$ is not selected, $t$ increases, increasing uncertainty</p>
-
-<p>Explanation for spike in reward with UCB: It gives a large weighting to a route it estimates to have high value since $c=2$, it may be greater than $Q_t(a)$</p>
-<h1 id="gradient-bandits">Gradient Bandits</h1>
-<p>$\Pr{A-t=a}=\cfrac {e^{H_t(a)}}{\sum^n_{b=1}e^{H_t(b)}}=\pi_t(a)$</p>
-
-<p>$H_{t+1}(A_t)=H_t(A_t)+\alpha(R_t-\bar R_t)(1-\pi_t(A_t)),$ #gradientbanditequation
-$H_{t+1}(a)=H_t(a)+\alpha(R_t-\bar R_t)\pi_t(a)$
-$\bar R$ is average of all rewards, serves as a baseline to compare $R_t$ to
-If reward is higher than baseline ($R_t&gt;\bar R_t$), probability of choosing that action increases</p>
-
-<p>Having a baseline means that a shifting of rewards has no bearing on performance (i.e. if all rewards are set to +4, rather than 0)</p>
-
-<p>$H_{t+1}(a)=H_t(a)+\alpha\cfrac {\partial \mathbb{E} (R_t)}{\partial H_t(a)}$
-Measure of of performance is the expected reward $\mathbb{E}(R_t)=\sum_b\pi_t(b)q(b)$</p>
-
-<p>This algorithm is an instance of stochastic gradient ascent</p>
-
-<p>$\cfrac {\partial \mathbb{E} (R_t)}{\partial H_t(a)}=\cfrac {\partial }{\partial H_t(a)}[\sum_b\pi_t(b)q(b)]$
-$=\sum_bq(b)\cfrac{\partial \pi_t(b)}{\partial H_t(a)}$
-$=\sum_b(q(b)-X_t)\cfrac{\partial \pi_t(b)}{\partial H_t(a)}$
-$X_t$ - any scalar that does not depend on $b$
-$b$ is some action in the action space
-Can include $X_t$ because the gradient sums to 0 over all actions (sum of probabilities must remain 1, so sum of changes must $= 0$)</p>
-
-<p>$=\sum_b\pi_t(b)(q(b)-X_t)\cfrac{\partial pi_t(b)}{\partial H_t(a)}/\pi_t(b)$
-The equation is now in the form of an expectation, summing over all possible values $b$ of the random variable $A_t$ then multiplying by the probability of those values
-$=\mathbb{E}[(q(A_t)-X_t)\cfrac{\partial \pi_t(b)}{\partial H_t(a)}/\pi_t(A_t)]$
-$=\mathbb{E}[(R_t-\bar R_t)\cfrac{\partial \pi_t(b)}{\partial H_t(a)}/\pi_t(A_t)]$
-We set $X_t=\bar R_t$ because it can equal anything
-$R_t=q(A_t)$ is permitted because $\mathbb{E}[R_t]=q(A_t)$ and all other factors are non-random</p>
-
-<p>Assume $\cfrac{\partial \pi_t(b)}{\partial H_t(a)}=\pi_t(b)(\mathbb{I}_{a=A_t}-\pi_t(a))$:</p>
-
-<p>$=\mathbb{E}[(R_t-\bar R_t)\pi_t(A_t)(\mathbb{I}<em>{a=A_t}-\pi_t(a))/\pi_t(A_t)]$
-$=\mathbb{E}[(R_t-\bar R_t)(\mathbb{I}</em>{a=A_t}-\pi_t(a))]$</p>
-
-<p>where $\mathbb{I}_{a=b}=1$ if $a=b$
-otherwise $\mathbb{I}=0$</p>
-
-<p>which fits into the #gradientbanditequation :
-$H_{t+1}(a)=H_t(a)+\alpha(R_t-\bar R_t)(\mathbb{I}_{a=A_t}-\pi_t(a))$</p>
-
-<p>Remains to show  $\cfrac{\partial \pi_t(b)}{\partial H_t(a)}=\pi_t(b)(\mathbb{I}_{a=A_t}-\pi_t(a))$:
-We begin with the quotient rule equation: $\cfrac {\partial}{\partial x}[\cfrac {f(x)}{g(x)}]=\cfrac {\frac {\partial f(x)}{\partial x}g(x)-f(x)\frac {\partial g(x)}{\partial x}}{g(x)^2}$
-From this we can write:</p>
-
-<p>$\cfrac{\partial \pi_t(b)}{\partial H_t(a)}=\cfrac{\partial}{\partial H_t(a)}\pi_t(b)$
-$=\cfrac {\partial}{\partial H_t(a)}[\cfrac {e^{H_t(b)}}{\sum^n_{c=1}e^{H_t(c)}}]$
-$=\cfrac {\frac {\partial e^{H_t(b)}}{\partial H_t(a)}\sum^n_{c=1}e^{H_t(c)}-e^{H_t(b)}\frac {\partial \sum^n_{c=1}e^{h_t(c)}}{\partial H_t(a))}}{(\sum^n_{c=1}e^{h_t(c)})^2}$ - quotient rule
-$=\cfrac{\mathbb{I}<em>{a=b}e^{H_t(a)}\sum^n</em>{c=1}e^{H_t(c)}-e^{H_t(b)}e^{H_t(a)}}{(\sum^n_{c=1}e^{h_t(c)})^2}$ ($\frac {\partial e^x}{\partial x}=e^x$ and $\sum^n_{c=1}e^{H_t(c)}$ contains $e^{H_t(a)}$)
-$=\cfrac{\mathbb{I}<em>{a=b}e^{H_t(b)}}{\sum^n</em>{c=1}e^{h_t(c)}}-\cfrac{e^{H_t(b)}e^{H_t(a)}}{(\sum^n_{c=1}e^{h_t(c)})^2}$
-$=\mathbb{I}<em>{a=b}\pi_t(b)-\pi_t(b)\pi_t(a)$
-$=\pi_t(b)(\mathbb{I}</em>{a=b}-\pi_t(a))$ $\square$</p>
-
-<p>Gradient-based algorithms estimate action preferences, not values
-Connected bandits = associative search tasks</p>
-<h2 id="gittins-indices">Gittins Indices</h2>
-<p>Provide optional solution to certain forms of bandit problems</p>
-
-<h1 id="exercises">Exercises</h1>
-<p><strong>Exercise 2.1</strong> 
-In the comparison shown in Figure 2.1, which method will perform best in the long run in terms of cumulative reward and cumulative probability of selecting the best action? How much better will it be? Express your answer quantitatively.</p>
-
-<p>$\epsilon=0.01$ will perform the best in the long run, as its average reward will eventually overtake $\epsilon=0.1$
-This is because the chance of randomly choosing the suboptimal path is lower. It will end up choosing optimal actions 99% of the time.</p>
-
-<p><strong>Exercise 2.2</strong> 
-Give pseudocode for a complete algorithm for the $n$-armed bandit problem. Use greedy action selection and incremental computation of action values with $α = \frac 1 k$ step-size parameter. Assume a function bandit(a) that takes an action and returns a reward. Use arrays and variables; do not subscript anything by the time index t (for examples of this style of pseudocode, see Figures 4.1 and 4.3). Indicate how the action values are initialized and updated after each reward. Indicate how the step-size parameters are set for each action as a function of how many times it has been tried.</p>
-
-<p>Initialise array $N=0$ of length number of actions
-Initialise array $Q=0$ of length number of actions
-A = $\arg\max_a$ Q[a]
-Q[a]=Q[a]+$\frac 1 {N[a]}$(bandit(A)-Q[a])
-N[a]=N[a]+1</p>
-
-<p><strong>Exercise 2.3</strong> 
-If the step-size parameters, $\alpha_k$, are not constant, then the estimate $Q_k$ is a weighted average of previously received rewards with a weighting different from that given by (2.6). What is the weighting on each prior reward for the general case, analogous to (2.6), in terms of $α_k$?</p>
-
-<p>$Q_{k+1}=Q_k+\alpha_k[R_k-Q_k]$
-$=\alpha_kR_k+(1-\alpha_k)Q_k$
-$=\alpha_kR_k+(1-\alpha_k)(Q_{k-1}+\alpha_{k-1}[R_{k-1}-Q_{k-1}])$
-$=\alpha_kR_k+(1-\alpha_k)(\alpha_{k-1}R_{k-1}+(1-\alpha_k)(1-\alpha_{k-1})Q_{k-1})$
-$=\alpha_kR_k+\alpha_{k-1}(1-\alpha_k)R_{k-1}+…+\alpha_1R_2(1-\alpha_k)…(1-\alpha_2)+(1-\alpha_k)…(1-\alpha_1)Q1$
-$=Q_1\Pi^k_{i=1}(1-\alpha_i)+\sum^k_{i=1}(\alpha_iR_i\Pi^k_{j=1}(1-\alpha_j))$</p>
-
-<p><strong>Exercise 2.4 (programming)</strong> Design and conduct an experiment to demonstrate the difficulties that sample-average methods have for nonstationary problems. Use a modified version of the 10-armed testbed in which all the q(a) start out equal and then take independent random walks. Prepare plots like Figure 2.1 for an action-value method using sample averages, incrementally computed by α = 1 k , and another action-value method using a constant step-size parameter, α = 0.1. Use ε = 0.1 and, if necessary, runs longer than 1000 plays.</p>
-
-<p><strong>Exercise 2.5</strong>
-The results shown in Figure 2.2 should be quite reliable because they are averages over 2000 individual, randomly chosen 10-armed bandit tasks. Why, then, are there oscillations and spikes in the early part of the curve for the optimistic method? What might make this method perform particularly better or worse, on average, on particular early plays?</p>
-
-<p>Depends on how the original values are set. If they are more accurate early on, it will perform better</p>
-
-<p><strong>Exercise 2.6</strong> 
-Suppose you face a binary bandit task whose true action values change randomly from play to play. Specifically, suppose that for any play the true values of actions 1 and 2 are respectively 0.1 and 0.2 with probability 0.5 (case A), and 0.9 and 0.8 with probability 0.5 (case B). If you are not able to tell which case you face at any play, what is the best expectation of success you can achieve and how should you behave to achieve it? Now suppose that on each play you are told if you are facing case A or case B (although you still don’t know the true action values). This is an associative search task. What is the best expectation of success you can achieve in this task, and how should you behave to achieve it?</p>
-
-<p>If you bet 1: $\mathbb{E}(A)=0.5(0.1)+0.5(0.9)=0.05+0.45=0.5$
-If you bet 2: $\mathbb{E}(B)=0.5(0.2)+0.5(0.8)=0.1+0.4=0.5$
-Expected value is the same, doesn’t matter which you choose
-You have to explore the rewards of all cases</p>]]></content><author><name></name></author><category term="rl" /><category term="textbook" /><summary type="html"><![CDATA[Instructive Feedback Indicates correct action to take Independent of action taken Evaluative Feedback Indicates how good action taken is Depends entirely on action Associative Actions are taken in more than 1 situation AN $n$-Armed Bandit Problem Limited time steps Imagine an $n$-armed slot machine]]></summary></entry><entry><title type="html">Reinforcement Learning: An Introduction - Chapter 1</title><link href="http://localhost:4000/rl/textbook/2025/08/28/rl-chapter-1.html" rel="alternate" type="text/html" title="Reinforcement Learning: An Introduction - Chapter 1" /><published>2025-08-28T00:00:00-07:00</published><updated>2025-08-28T00:00:00-07:00</updated><id>http://localhost:4000/rl/textbook/2025/08/28/rl-chapter-1</id><content type="html" xml:base="http://localhost:4000/rl/textbook/2025/08/28/rl-chapter-1.html"><![CDATA[<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" />
-
-<script defer="" src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
-
-<script defer="" src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,
-	      {delimiters: [
-	      {left: '$$', right: '$$', display: true},
-	      {left: '$', right: '$', display: false},
-	      {left: '\\(', right: '\\)', display: false},
-	      {left: '\\[', right: '\\]', display: true}
-	      ]});"></script>
-
-<h1 id="rl">RL</h1>
-<p>RL is focused on goal-directed learning
-Learning how to map situations to actions to maximise the reward signal</p>
-<h2 id="closed-loop">Closed Loop</h2>
-<p>Actions influence later inputs</p>
-<h2 id="rl-problem-requirements">RL Problem Requirements</h2>
-<ol>
-  <li>Closed-loop</li>
-  <li>Not have direct instructions about what action to take</li>
-  <li>Consequences of actions over extended periods of time</li>
-</ol>
-
-<p>RL tries to maximise reward signal instead of trying to find hidden structure
-RL | Supervised Learning | Unsupervised Learning - they are distinct</p>
-<h3 id="explorationexploitation-trade-off">Exploration/Exploitation Trade-off</h3>
-<h1 id="subelements-of-rl-system">Subelements of RL system</h1>
-<h2 id="1-policy">1. Policy</h2>
-<p>Mapping from perceived state to actions</p>
-<h2 id="2-reward-signal">2. Reward signal</h2>
-<p>Defines the goal
-Each time step, the environment sends to the reinforcement learning agent a single number, a <strong>reward</strong></p>
-<h2 id="3-value-function">3. Value Function</h2>
-<p>Specifies what is good in long run
-Value of a state is the total reward expected in future from that state</p>
-
-<p>Reward is immediate, primary | Value is long-term, secondary</p>
-<h2 id="4-optional-model-of-environment">4. (optional) Model of environment</h2>
-<p>Model of environment
-Mimics environment and leads to predictions about the environment
-Models enable planning, which is deciding on a course of action by considering possible future situations
-Model-free is trial-and-error learning</p>
-<h1 id="evolutionary-methods">Evolutionary Methods</h1>
-<p>Non-learning (not learning from environment)
-Finds and utilises best policy</p>
-
-<p>| Pros                                                                                                                      | Cons                     |
-| ————————————————————————————————————————- | ———————— |
-| Works well when either:<br />1. Small set of policies<br />2. Good policies easy to find<br />3. Lots of time for policy search | Ignore useful structures |
-| Have advantages when agent cannot sense state of environment                                                              |                          |</p>
-<h2 id="policy-gradient-methods">Policy Gradient Methods</h2>
-<p>Estimate direction parameters should be adjusted to most rapidly improve policy’s performance</p>
-
-<h1 id="tic-tac-toe">Tic-Tac-Toe</h1>
-<h2 id="assumptions">Assumptions</h2>
-<p>Opposition player is imperfect and sometimes blunders</p>
-<h2 id="consequences">Consequences</h2>
-<p>Cannot use minimax, because that assumes the opponent is always correct</p>
-<h1 id="value-update-equation">Value Update Equation</h1>
-<p>$V(s)\leftarrow V(s) + \alpha[V(s’)-V(s)]$
-$\alpha$ - Step size parameter</p>
-
-<p>Converges if $\alpha$ reduces over time
-If $\alpha$ remains $&gt;0$, it can adjust to an opponent that changes strategy over time</p>
-<h1 id="problems-with-evolutionary-methods">Problems with Evolutionary Methods</h1>
-<p>Value functions methods allow individual states to be evaluated
-Evolutionary is less granular
-Evolutionary holds policy fixed, which means that it attributes same value to all moves</p>
-<h1 id="rl-history">RL History</h1>
-
-<h2 id="3-threads-led-to-rl">3 Threads led to RL</h2>
-<ol>
-  <li>Trial + error learning</li>
-  <li>Optimal control -  designing a controller to minimise measure of behaviour</li>
-  <li>Temporal difference methods - difference between temporally successive estimates of same quantity
-    <h1 id="curse-of-dimensionality">Curse of Dimensionality</h1>
-    <p>Computational requirements grow exponentially with number of variables</p>
-    <h1 id="animal-learning">Animal Learning</h1>
-    <h2 id="law-of-effect">Law of Effect</h2>
-    <p>Strength of feeling $\propto$ Strength of learning</p>
-    <h2 id="secondary-reinforcer">Secondary Reinforcer</h2>
-    <p>Stimulus that has been paired with a primary reinforcer such as food or pain
-(Value, rather than reward)</p>
-    <h1 id="credit-assignment-problem">Credit Assignment Problem</h1>
-    <p>How do you distribute success for many decisions?</p>
-    <h1 id="exercises">Exercises</h1>
-    <p><strong>Exercise 1.1: Self-Play</strong> 
-Suppose, instead of playing against a random opponent, the reinforcement learning algorithm described above played against itself. What do you think would happen in this case? Would it learn a different way of playing?</p>
-  </li>
-</ol>
-
-<p>It would continually invent new strategies to improve, as long as the step size parameter $\alpha&gt;0$</p>
-
-<p><strong>Exercise 1.2: Symmetries</strong>
-Many tic-tac-toe positions appear different but are really the same because of symmetries. How might we amend the reinforcement learning algorithm described above to take advantage of this? In what ways would this improve it? Now think again. Suppose the opponent did not take advantage of symmetries. In that case, should we? Is it true, then, that  symmetrically equivalent positions should necessarily have the same value?</p>
-
-<p>Conduct rotations to reveal symmetries. Can have fewer paths to make and thus fewer decisions</p>
-
-<p>Symmetrically equivalent positions should necessarily have the same values as long as the imperfect opponent makes the same blunders in those positions</p>
-
-<p><strong>Exercise 1.3: Greedy Play</strong> Suppose the reinforcement learning player was greedy, that is, it always played the move that brought it to the position that it rated the best. Would it learn to play better, or worse, than a non-greedy player? What problems might occur?</p>
-
-<p>Greedy player priorities reward over value, which is too short-term and will likely lose more often</p>
-
-<p><strong>Exercise 1.4: Learning from Exploration</strong> 
-Suppose learning updates occurred  after all moves, including exploratory moves. If the step-size parameter is appropriately reduced over time, then the state values would converge to a set of probabilities. What are the two sets of probabilities computed when we do, and when we do not, learn from exploratory moves? Assuming that we do continue to make exploratory moves, which set of probabilities might be better to learn? Which would result in more wins?</p>
-
-<p>When we do not learn from exploratory, the probabilities will match the ground truth probabilities.
-If we learn from exploratory, we are also learning from random, likely sub-optimal moves, which will add random error to the probabilities. Better to learn from exploratory IF we never stop making exploratory moves, as it accounts for these future errors</p>
-
-<p><strong>Exercise 1.5: Other Improvements</strong>
-Can you think of other ways to improve the reinforcement learning player? Can you think of any better way to solve the tic-tac-toe problem as posed?</p>
-
-<p>Initial values are set to 0.5, which is not accurate. For example, if opponent has 2 in a row, the probability of winning will be lower. Will learn faster as a result
-Better ways to solve problem may be heuristic-based</p>]]></content><author><name></name></author><category term="rl" /><category term="textbook" /><summary type="html"><![CDATA[]]></summary></entry><entry><title type="html">ProcrastApply</title><link href="http://localhost:4000/personal/blog/procrastapply/2025/07/11/procrastapply.html" rel="alternate" type="text/html" title="ProcrastApply" /><published>2025-07-11T00:00:00-07:00</published><updated>2025-07-11T00:00:00-07:00</updated><id>http://localhost:4000/personal/blog/procrastapply/2025/07/11/procrastapply</id><content type="html" xml:base="http://localhost:4000/personal/blog/procrastapply/2025/07/11/procrastapply.html"><![CDATA[<p>me
- — 
-13/03/2025, 09:15
-03/13/2025:
-I am working on making installations easier.
-In Python (what the application is written in), it is quite difficult to make executables for different OSs. I know it’s a hassle on Mac and will make a how-to guide as a temporary solution.</p>
-
-<p>There now is a release for Linux,  shout out to all my Linux besties. However, even with this you need to do chmod +x ProcrastApply after installation to be able to run it. I’m trying to find better solutions. If you guys know anything please lmk</p>
-
-<p>Am going to make daily updates to keep all of you in the loop about what progress is being made. If you have any comments please lmk
-me
- — 
-14/03/2025, 11:20
-03/14/2025:
-Relating to yesterday’s post, a how to guide for Linux:
-Go to procrastapply.com
-Set your filtersFill in your email and upload your resumeDownload the folderUnzip the folderRun the following:cd Downloads/ProcrastApply_Package
-chmod +x ProcrastApply
-./ProcrastApply</p>
-
-<p>If you try this and it doesn’t work, let me know.
-Again, I want to make this more seemless</p>
-
-<p>Navbar
-I created a navbar! Woo woo.
-I’m aiming to implement a Google sign in. This way all UCs can use this, but I don’t need to manage any passwords in the future.</p>
-
-<p>See you all tomorrow!
-me
- — 
-16/03/2025, 00:09
-03/15/2025:
-I know it’s a bit late, had a weirdly busy day. Anyways, as promised.
-Created 3 new pages:
-Homepage - Gives a bit more context about the page + ProcrastApply
-How-to - Gives more info about how to install the application. Still trying to find a better methodPricing - FREE!</p>
-
-<p>Plans for tomorrow: Google Sign in so that people don’t have to fill in their email.</p>
-
-<p>See you all soon
-me
- — 
-17/03/2025, 01:06
-03/16/2025:
-I have a plan!</p>
-
-<p>Downloading this is terrible. I’m sorry to everyone who has tried. I believe I can turn this into a web app to prevent all this hassle. This is going to take some work with AWS, so please bear with me. I am making this priority #1</p>
-
-<p>GL with finals everyone!
-me
- — 
-17/03/2025, 23:41
-03/17/2025:
-That plan didn’t work!</p>
-
-<p>I don’t want to install anything and I don’t think you do either. I’m instead now trying to make it a chrome extension. I still want to deliver massive value with our service and I don’t want to dilute this with making “just another chrome extension” – I want to make a great chrome extension, that you all actually like.</p>
-
-<p>I’ll let you all know when it’s ready to go.</p>
-
-<p>Hope you’re surviving the exam season!
-me
- — 
-19/03/2025, 00:36
-03/18/2025:
-It is slowly getting there. Having to re-implement nearly all of it in a different language. However, that is faster than writing it for the first time!</p>
-
-<p>Hope finals aren’t too bad, nearly half way through!
-me
- — 
-20/03/2025, 00:33
-03/19/2025:
-Makin’ the Chrome extension. This might turn out really nice.</p>
-
-<p>Hope you’re all ready for spring break!
-me
- — 
-20/03/2025, 23:23
-03/20/2025
-So close to end of quarter - which means more time for ProcrastApply! Having some difficulty with communicating between content.js and background.js If you guys know stuff about sending messages in chrome extensions lmk.
-me
- — 
-22/03/2025, 03:24
-03/21/2025
-Congrats on getting through finals! I know it’s been a hard journey. I am getting to grips with the messaging system in Chrome extensions. Hope you all have a wonderful break
-me
- — 
-22/03/2025, 17:22
-03/22/2025
-Still at it. Finally got the messages to work. Next step is to automatically apply!
-me
- — 
-23/03/2025, 22:49
-03/23/2025
-Getting the autosubmissions working again. It’s going to be complicated to get the cover letters aspect working, but I will get it!
-me
- — 
-24/03/2025, 22:16
-03/24/2025
-It is moving! The extension runs on Handshake now and should get the flow working.
-Tomorrow
-I want to get the bare minimum flow working (submit application)
-me
- — 
-25/03/2025, 23:52
-03/25/2025
-OK, didn’t get bare minimum flow working, got website opener to work. Will have to break this process up into baby steps
-Tomorrow
-Submit 1 application
-me
- — 
-27/03/2025, 00:31
-03/26/2025
-So bleeding close! Basic functionality works, but I want to keep track of the number of applications, which I will. CORS errors are induced, and who doesn’t hate CORS errors.
-Tomorrow
-Get basic API request -&gt; Simple job applications
-me
- — 
-27/03/2025, 23:38
-03/27/2025
-CORS errors = Gone!
-Backend = Working!
-Flow = Nearly there!</p>
-
-<p>I want to get this right first time. No later date corrections. I want this to run smoothly and correctly. 
-Tomorrow
-Submit resume working
-me
- — 
-28/03/2025, 23:55
-03/28/2025
-Huge day! Got basic flow working. First few applications with the Chrome extension only have been submitted!
-Tomorrow
-Iterate over page postings
-me
- — 
-29/03/2025, 18:32
-03/29/2025
-I’ve gone backwards, will have to reuse what I had yesterday. For some reason it’s really annoying getting the input boxes to load. Will have a rethink</p>
-
-<p>Tomorrow
-Remove today’s changes. Get the input boxes to be read
-me
- — 
-30/03/2025, 23:34
-03/30/2025
-Bit of a slow day tbh, hopefully my brain gets back into it. Removed yesterdays changes, need to tinker more with waiting for page to load
-Tomorrow
-Get flow to work when modal loads, as that’s causing problems
-me
- — 
-01/04/2025, 01:34
-03/31/2025
-We are getting the Chrome extension published on the Chrome store!</p>
-
-<p>This means that ProcrastApply will be in your guys’ hands soon enough!</p>
-
-<p>Today, I managed to get more of the input boxes working, so that soon we will be able to deal with resumes, then the next step will be cover letters. Unfortunately, there is a lot of trial and error in this process, but everyday we are getting closer to a better product!
-Tomorrow
-I want to get the resume boxes working
-me
- — 
-02/04/2025, 00:41
-04/01/2025
-We can look at multiple posts, it closes when it asks for transcript BUT we cannot submit resumes … yet. It crashes when it tries to do this. We will get there
-Tomorrow
-@Gman and I will be at the MU handing out leaflets to more people to join this discord chat and understand people’s problems with Handshake AND I will be coding more, hopefully getting CVs to work gah!
-me
- — 
-02/04/2025, 23:06
-04/02/2025
-Diagnosed a lot of the issue when opening the modal. Am also getting the PDF library to work so that we can generate cover letters locally. 
-Tomorrow
-Make first PDF cover letter
-me
- — 
-04/04/2025, 01:44
-04/03/2025
-Woo! Made the first PDF, getting things moving.
-Tomorrow
-Need to make get our API request to work to get cover letter content
-me
- — 
-04/04/2025, 20:24
-04/04/2025
-Still trying to read the modal that pops out, having problems with getting the timing right. 
-Tomorrow
-Get paragraphs to work
-Get at least 1 input box read 
-me
- — 
-05/04/2025, 23:30
-04/05/2025
-Got the paragraphs loaded in!
-Tomorrow
-Read input boxes
-me
- — 
-06/04/2025, 23:52
-04/06/2025
-Great day today! Applications now work with resumes (although not 100% consistently – am working on this).
-Tomorrow
-Want to get it consistent, day after tomorrow want to get cover letters fully working
-me
- — 
-07/04/2025, 22:54
-04/07/2025
-Bit of a slog today, struggling to get consistent applications to work. I’ve realised that getting the cover letters working is going to be more finicky than I anticipated – but it IS doable.
-Tomorrow
-Getting consistent applications
-me
- — 
-08/04/2025, 22:33
-04/08/2025
-Great day! Got the resumes working, turns out there was a much simpler method than what I was doing, much faster too.
-Tomorrow
-Commence work on the cover letter section. 
-me
- — 
-09/04/2025, 23:03
-04/09/2025
-Yup, so getting the cover letters going is slow work. I’m having trouble getting the next page to load afterwards, although I think it’s more to do with what’s going on with cover letters.
-Tomorrow
-Get background-&gt;content response 
-me
- — 
-11/04/2025, 00:26
-04/10/2025
-Gah! This is frustrating, getting the next page thingy to work. Just gotta focus on background-&gt;content which I said I would!
-Tomorrow
-Forget about next page for now, get the response to work when a cover letter is created.
-me
- — 
-11/04/2025, 09:02
-04/11/2025
-Getting there, all about getting the async calls just right.
-Tomorrow
-Picnic day!
-Still gonna be grinding! Think I might have the next page button working, just need to get the cover letters working
-me
- — 
-12/04/2025, 15:37
-04/12/2025
-Happy picnic day!
-I got cover letters working - can’t quite believe it! Now all I need to do is wait a short period before it submits application.
-Tomorrow
-Add a small timer before submission</p>
-
-<p>Stay Safe!
-me
- — 
-13/04/2025, 22:26
-04/13/2025
-Getting the PDF text looking just right, need this for submissions
-Tomorrow
-Get PDFs perfect and need the submission to work
-me
- — 
-14/04/2025, 21:52
-04/14/2025
-Cover letter functionality is now WORKING!! WOO. This is excellent news, now I just need to get it to works so you can upload your resume and get the functionality just right
-Tomorrow
-Get storage and resume upload working
-me
- — 
-15/04/2025, 22:16
-04/15/2025
-Happy tax day! Got the flow to work when already applied to positions. Haven’t got resume upload to work yet.
-Tomorrow
-Upload the resume pdf at the least
-me
- — 
-16/04/2025, 13:34
-04/16/2025
-Handshake have updated their website. Which means that I have to rewrite many many lines of code. Woo!
-Chrome extensions are cool though, you can locally host websites on them- WHAT!? Crazy
-Tomorrow
-Get pdf upload working and accessible
-me
- — 
-17/04/2025, 23:08
-04/17/2025
-Got the PDF upload to work. Started getting the flow working for the Handshake update. Handshake does look a lot cleaner if you lot haven’t checked it out yet.
-Tomorrow
-More updates for the flow. Want to get cover transcripts working, and then cover letters
-me
- — 
-18/04/2025, 14:57
-04/18/2025
-Cover letters are working, surprise how quickly I got that working.
-Tomorrow
-Get resume text read into cover letters so it’s customised
-me
- — 
-19/04/2025, 18:43
-04/19/2025
-PDFs are uploaded, struggling to re-read them for the cover letter section.
-Tomorrow
-Get PDF lib to work
-me
- — 
-20/04/2025, 23:03
-04/20/2025
-Happy Easter!</p>
-
-<p>I am getting close to getting the PDFs read. This week will be exciting. Hopefully you can all download it and get some actual value from it!</p>
-
-<p>Tomorrow
-PDF Read!
-me
- — 
-21/04/2025, 23:02
-04/21/2025
-PDFs are being read! Things are looking good, now I just need the next items to consistently be read. Looking forward to seeing you lot soon!
-Tomorrow
-Skip the correct postings
-me
- — 
-22/04/2025, 22:21
-04/22/2025
-Cover letters now work! Very exciting times. Now all that’s remaining on the user end is a weird bug that resets when it reaches the 4th post.
-Tomorrow
-Continue reading all posts on the page</p>
-
-<p>Your guys’s HW:
-Download the extension!
-https://chromewebstore.google.com/detail/procrastapply/bhagaimmcfnbbdoffdoegknlacgponcp
-ProcrastApply - Chrome Web Store
-Getting students better jobs without the busywork
-Image
-me
- — 
-23/04/2025, 23:47
-#04/23/2025
-Found the bug causing post resets - nested loops and repeatedly using the variable i - a classic! This now means it’s working!! Going to the next page is a bit funky, but that shouldn’t take too long.</p>
-
-<p>Looking to seeing you all on Friday!
-Tomorrow
-Fixing the next page issue</p>
-
-<p>Download link:
-https://chromewebstore.google.com/detail/procrastapply/bhagaimmcfnbbdoffdoegknlacgponcp
-ProcrastApply - Chrome Web Store
-Getting students better jobs without the busywork
-Image
-me
- — 
-25/04/2025, 00:18
-04/24/2025
-Got next page to work! Am now making the filtering page much nicer.
-Tomorrow
-Get page filtering to work and give you all some free pizza 😋
-me
- — 
-25/04/2025, 21:10
-04/25/2025
-Today we gave out $200 of pizza– hope everyone who got a slice enjoyed it! 🍕
-Also managed to get Gmail login working. This should work for all UCs and will cater to the different Handshake domains.
-Tomorrow
-Will start job filtering stuff, it’s quite menial but oh well.
-me
- — 
-26/04/2025, 23:07
-04/26/2025
-Next page is working. Filtering page looks better. Now filters need to be implemented.
-Tomorrow
-Filters baby
-me
- — 
-28/04/2025, 00:35
-04/27/2025
-Working on filters. Less boring than I thought it would be!
-I know people are facing issues on their Macs with the application. I will get to the bottom of this, and will update you all.
-Tomorrow
-More filters woo woo
-me
- — 
-28/04/2025, 23:41
-04/28/2025
-So, it turns out that Handshake has updated their website for some users but not all. This is a problem, as I cannot develop for both platforms. We have tried getting in touch with them and will likely have to use a few connections to get in touch. 
-That being said, did some good work with the filters today + cleaned up logo!
-Tomorrow
-More filters stuff. Hopefully get an ETA for when Handshake updates website.
-me
- — 
-29/04/2025, 23:25
-04/29/2025
-Worked on the website today. Feel like I’m twiddling my thumbs waiting for Handshake getting back to me. We need to make this happen immediately.
-Tomorrow
-Work on signing up for ProcrastApply on the Chrome extension
-me
- — 
-30/04/2025, 22:52
-04/30/2025
-Got the background to start working again. Need to look at some backend issues, currently it’s returning “Forbidden” - Yikes! 
-Tomorrow
-Sign up functionality on the backend + Cover letter stuff (I suspect it’s an issue with ChatGPT things)
-me
- — 
-01/05/2025, 10:33
-05/01/2025
-Pinch, punch, first day of the month!</p>
-
-<p>Got the user creation done, got in the flow this fine morning. The product works… However, you lot can’t access it - that sucks! I could really do with the user feedback rn. Hopefully Handshake gets back to us.
-Tomorrow
-Create a demo so that you can understand how this works. The flow needs to be as smooth as possible.
-me
- — 
-02/05/2025, 09:03
-05/02/2025
-The demo video should be up soon when the Chrome webstore approves it! I have been thinking a little bit about security and will make a few revisions to ensure a safe authentication by users.
-Tomorrow
-Work on authentication 
-me
- — 
-03/05/2025, 20:49
-05/03/2025
-Working on the Google application now. AWS Layers are such a pain, surely Amazon could come up with a better way of doing this!
-Might also revert some changes back to support the un-updated version of the Handshake website. I’m putting it off because it feels dumb and makes the work I’ve done pointless, but I am just going to have to bite the bullet.
-Tomorrow
-Get Google authentication finished
-me
- — 
-04/05/2025, 22:17
-05/04/2025
-Spent wayyyy too long getting the AWS layers sorted. At least I now know how to do it. Got a midterm next week so hope that also goes well. We have irons in the fire and will keep you all in the loop regarding a possible next step in ProcrastApply’s future.
-Tomorrow
-Make sure email check works - need to do a final thing with Google to get backend to work
-me
- — 
-06/05/2025, 00:03
-05/05/2025
-Midterm tomorrow ah! This Google stuff is a pain. Hoping to get it done tomorrow. Just messing around with it right now. At least I don’t appear to be the only one with this problem.
-Tomorrow
-Get. Authentication. Done 
-me
- — 
-07/05/2025, 01:13
-05/06/2025
-Ughh, still working on it
-Tomorrow
-Get manifest.json key working
-me
- — 
-07/05/2025, 13:35
-05/07/2025
-Woo! I found a cheeky way of doing it on the backend. Now that works thank goodness. Good luck to all of our friends presenting at Demo day today!
-Tomorrow
-Look at feasibility of storing more things on the DB 
-me
- — 
-09/05/2025, 04:00
-05/08/2025
-Got a lot of backend stuff working. Tomorrow is the day I get stuff working on Mac. Not waiting for Handshake to get back now.
-Tomorrow
-Get Mac working!
-me
- — 
-10/05/2025, 04:21
-05/09/2025
-Mac is not working. I can’t test to see if it will work. Messaged another Handshake employee. Starting another possible avenue to help you all get jobs.
-Tomorrow
-Have a long think about what is most worth doing
-me
- — 
-11/05/2025, 02:52
-05/10/2025
-Ok, this has been interesting. Working more on a new idea we’ve had to increase value for you and improve your adds of getting jobs. More details soon.
-Tomorrow
-Keep working on this
-me
- — 
-11/05/2025, 23:46
-05/11/2025
-Looking at new technologies. Looking to implement GraphQL for new project and am slowly getting to grips with it. Don’t want to be too hasty.
-Tomorrow
-Build GraphQL
-me
- — 
-12/05/2025, 23:47
-05/12/2025
-Turns out AWS is great at hosting mobile applications as well (hint hint). Amplify + Appsync + DynamoDB makes life very easy.
-Tomorrow
-Start building the thing 
-me
- — 
-14/05/2025, 04:07
-05/13/2025
-Having fun again! Put the app on Amplify and it runs like a dream. Want to start getting the functionality on it… This could be good
-Tomorrow
-Get barebones interface on it
-me
- — 
-14/05/2025, 23:57
-05/14/2025
-Hosting the app now, and immediately have authentication working. Not sure if messaging is functionality we would want. Will have to discuss it.
-Tomorrow
-Start working on shared similar interests. Build DB on information
-me
- — 
-16/05/2025, 00:39
-05/15/2025
-Improved the app. Spoke to someone in design about it. Not sure if we really are solving a problem but only 1 way to find out ig.
-Tomorrow
-Keep the ball rolling
-me
- — 
-17/05/2025, 02:06
-05/16/2025
-Made a bunch of improvements. Got user profiles looking better and the user flow better.
-Tomorrow
-Get user sign out looking better and improved  user interface. Need to look more at what students can do to differentiate themselves. 
-me
- — 
-17/05/2025, 22:42
-05/17/2025
-Slowly making page look much better. I feel like I need to get more substantial functionality. Perhaps getting more backend stuff working. Will have to see.
-Tomorrow
-Get some backend stuff working
-me
- — 
-19/05/2025, 00:37
-05/18/2025
-Making back end stuff. Need to interact with GraphQL from React Native side. Interesting getting it all together.
-Tomorrow
-More GraphQL stuff, try and get messages working
-me
- — 
-20/05/2025, 00:34
-05/19/2025
-Working on an interface for text autocomplete. LLM autocomplete might be an interesting functionality. Experimenting.
-Tomorrow
-Get it to work with an API?
-me
- — 
-21/05/2025, 01:08
-05/20/2025
-Cleaned the interface up, the text suggestions were pretty ugly. Getting irritating errors with the API key.
-Tomorrow
-Make the first API request
-me
- — 
-21/05/2025, 23:32
-05/21/2025
-Looking better, suggestion is better. Now got it working so that the text rolls around the side. Worried about abusing my API credits, so will try to make it only make a suggestion after a delay, or perhaps at specific moments in time.
-Tomorrow
-Test out API (with thought)
-me
- — 
-22/05/2025, 23:45
-05/22/2025
-Been cooking an idea up. Might actually be quite helpful… Will speak to the Gavdog abt it. Time to bring value to you lot.
-Tomorrow
-Hook up a backend?
-me
- — 
-24/05/2025, 21:55
-05/23/2025
-Apologies for delay, did it at 1:30. Making it look real good, can now add new users to the tables with their data.
-Tomorrow
-Add user persistence
-05/24/2025
-User persistence now works! But locally, maybe I’ll keep it super basic before making a back end and get people to test it before releasing. Can also edit users.
-Tomorrow
-Photos!
-me
- — 
-26/05/2025, 11:42
-05/25/2025
-Photos done! Next to do is filtering the items and returning the specific contact details
-Tomorrow
-Return phone numbers 
-me
- — 
-27/05/2025, 00:02
-05/26/2025
-Reach out functionality is much better and works with phones. Would be interesting to get user feedback, think I will ask people on Thursday.
-Tomorrow
-Entries should have control over being in the database (I think)
-me
- — 
-28/05/2025, 01:22
-05/27/2025
-Hello all!
-Patched up a few things so that new users can be added again. Need to prep the demo for Thursday, this is also a bit of a mad week so need to get everything done. Regarding next functionality, not really sure. Will discuss with G tomorrow.
-Tomorrow
-Discuss with G and then make stuff from that
-me
- — 
-29/05/2025, 01:55
-05/28/2025
-Met with G. Had a good talk. We have direction now and now what we want. We also know what we’re up against now.
-Tomorrow
-Build site (know what we want, will divulge details later)
-me
- — 
-30/05/2025, 01:16
-05/29/2025
-Building the website some more, facing issues with resume upload in NextJS.
-Tomorrow
-Busy day! Get resume upload working
-me
- — 
-30/05/2025, 23:54
-05/30/2025
-Resume upload is now working! Need to get the match suggestions working next.
-Tomorrow
-Match suggestions
-me
- — 
-31/05/2025, 14:30
-05/31/2025
-Trying a slightly different format today. I’m going to start by setting my intentions in my work and then seeing if I met them.
-Intention
-Get sample email functionality working so that it can quickly be sent to the target contacts.
-Result
-Got this working. I need to spend some time planning the flow.</p>
-
-<p>first time users: Upload resume -&gt; getMatches -&gt; createEmail</p>
-
-<p>nth time users: resume already uploaded -&gt; getMatches -&gt; createEmail</p>
-
-<p>Tomorrow
-Get this flow to work, using useEffect
-me
- — 
-02/06/2025, 00:38
-06/01/2025
-Intention
-Get following flow to work:</p>
-
-<p>first time users: Upload resume -&gt; getMatches -&gt; createEmail</p>
-
-<p>nth time users: resume already uploaded -&gt; getMatches -&gt; createEmail
-Result
-Flow is working. Now need to clean up displaying resume.
-Tomorrow
-Display resume cleanly
-me
- — 
-02/06/2025, 10:46
-06/02/2025
-Intention
-Display resume cleanly
-Result
-Resume is not cleanly displayed, been focusing on getting the email functionality to work with requests to OpenAI - useState + useEffect weirdness is annoying. Got it working now.
-Tomorrow
-Display resume text - need to think of something else exciting to do as well
-me
- — 
-04/06/2025, 01:11
-06/03/2025
-Intention
-Display resume text
-Turns out it’s also making a BUNCH of API calls - this ain’t good, would spam my backend
-Result
-Ugh, trying to render this PDF, but it’s not working. Need to try some more attempts
-Tomorrow
-Get this PDF visible and get the text from it
-me
- — 
-05/06/2025, 01:48
-06/04/2025
-Intention
-Get this PDF visible and get the text from it
-Result
-PDF is visible!
-There is a thing about using sensitive personal data before utilising an LLM API - these things do not mix well. I want to ensure that there is a standard I am reaching that works.</p>
-
-<p>Why isn’t there a label on websites that says something like - “WE ARE ISOXXX CERTIFIED”? Feel like that would be a good idea and circumnavigate those annoying popups.
-Tomorrow
-Redact sensitive data
-me
- — 
-06/06/2025, 01:42
-06/05/2025
-Intention
-Redact sensitive data
-Result
-Weirdly, no good solution exists. I don’t know why this is.</p>
-
-<p>I guess I’m going to have to go on a little sidequest now to create a light-weight redaction model.</p>
-
-<p>There are some that already exist: https://huggingface.co/strickvl/nlp-redaction-classifier</p>
-
-<p>However, I don’t know if it works for everything I want (names, addresses, emails, phone #s). Could be a small little tid-bit. I’m very surprised this doesn’t exist already 
-Tomorrow
-Fine-tune that model!
-strickvl/nlp-redaction-classifier · Hugging Face
-strickvl/nlp-redaction-classifier · Hugging Face
-me
- — 
-06/06/2025, 17:43
-06/06/2025
-Intention
-Fine-tune that model!
-Result
-Settled on this model:
-https://huggingface.co/Isotonic/deberta-v3-base_finetuned_ai4privacy_v2</p>
-
-<p>Runs pretty well and seems quite popular. Only thing is it splits up the words by tokens. This means I have funky behaviour where I will need to combine the tokens together in order to successfully redact sensitive info.
-Tomorrow
-Combine tokens together and get redacted resume text - This will be pretty cool to see
-Isotonic/deberta-v3-base_finetuned_ai4privacy_v2 · Hugging Face
-Isotonic/deberta-v3-base_finetuned_ai4privacy_v2 · Hugging Face
-me
- — 
-08/06/2025, 00:34
-06/07/2025
-Intention
-Combine tokens together and get redacted resume text - This will be pretty cool to see
-Result
-It is nearly working! Pretty cool to see it redact the sensitive information. Problem is when there are multiple sensitive words that need to be removed due to index errors 
-Tomorrow
-Solve these index errors
-me
- — 
-08/06/2025, 10:41
-06/08/2025
-Intention
-Solve these index errors
-Result
-I have nearly solved these indexing issues. It’s more of a fun coding problem than I thought. Screw ChatGPT, I’m enjoying actually using my brain to solve a classic programming problem. Took longer than anticipated due to lack of logging (I’ve since fixed)
-Tomorrow
-Get my solution finished.
-me
- — 
-09/06/2025, 22:50
-06/09/2025
-Intention
-Get my solution finished.
-Result
-Fixed! Did some more stuff to remove some forms of filtering. This is actually quite a nice solution
-Tomorrow
-Get OpenAI API up
-me
- — 
-11/06/2025, 03:52
-06/10/2025
-Intention
-Get OpenAI API up
-Result
-Did not do this. I instead worked on getting the PDF viewable - which it now is. There were some weird funky things with local storage and have subsequently moved to indexedDB which I did not even know existed.
-Tomorrow
-Sleep. Then get OpenAI API up n’ runnin’</p>
-
-<p>GL everyone with finals!
-me
- — 
-11/06/2025, 14:38
-06/11/2025
-Intention
-Sleep. Then get OpenAI API up n’ runnin’
-Result
-Oops, did not sleep very much and had a massive brain wave!</p>
-
-<p>This is THE idea. GG and I are going to Stanford this summer and think that we have found a way to deliver MASSIVE value to students. I hope you are all excited as we are.
-Best of luck with any more exams
-Tomorrow
-User creation - GG will be on data collection I believe
-me
- — 
-13/06/2025, 03:22
-06/12/2025
-Intention
-User creation - GG will be on data collection I believe
-Result
-User creation is getting there, spent some time making things look good and adding extra functionality such as a bio section
-Tomorrow
-Get bio display to work
-User update to work
-me
- — 
-14/06/2025, 04:17
-06/13/2025
-Intention
-Get bio display to work
-User update to work
-Result
-Not working. Quite late and v tired. Just trying to get stuff shipped.</p>
-
-<p>User updates is closer to working.
-Tomorrow
-Get the user update to work -&gt; Get bio display up and running
-me
- — 
-14/06/2025, 23:57
-06/14/2025
-Intention
-Get the user update to work -&gt; Get bio display up and running
-Result
-Done! Also got photo upload to work
-Tomorrow
-Make the contact look smarter</p>
-
-<p>Make the colour scheme more red
-me
- — 
-16/06/2025, 00:36
-06/15/2025
-Intention
-Make the contact look smarter
-Make the colour scheme more red
-Result
-Contact looks a little better. 
-Red is pretty ugly but at least I have a better CSS structure
-Tomorrow
-Think about linking people they have worked with and SUGGESTED people.</p>
-
-<p>Consequently, will also have to start thinking about how papers connect people -&gt; Maybe even want a way of opening up a page with the list of authors on a paper.</p>
-
-<p>Need to also speak with students about what they are looking for. Not sure which is the most important:</p>
-
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Recognition
-</code></pre></div></div>
-
-<p>Students in their labCitationsCollaborators
-me
- — 
-17/06/2025, 00:52
-06/16/2025
-Intention
-Think about linking people PhDs have worked with and SUGGESTED people.</p>
-
-<p>Consequently, will also have to start thinking about how papers connect people -&gt; Maybe even want a way of opening up a page with the list of authors on a paper.</p>
-
-<p>Need to also speak with students about what they are looking for. Not sure which is the most important:</p>
-
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Recognition
-</code></pre></div></div>
-
-<p>Students in their labCitationsCollaborators
-Result
-Unfortunately, did not get a chance to speak with PhD’s, hopefully should be happening tomorrow but will see.</p>
-
-<p>Did some basic stuff - not super productive, quite a stressful day.
-Tomorrow
-Has the potential to be terrible. Will lyk
-me
- — 
-18/06/2025, 00:40
-06/17/2025
-Intention
-Has the potential to be terrible. Will lyk 
-Result
-Things still up in the air, should be OK
-Regarding this stuff. Trying to setup a database to get stuff working. Looking at implementing OpenSearch - just familiarising myself</p>
-
-<p>Tomorrow
-Run an OpenSearch query
-me
- — 
-19/06/2025, 00:05
-06/18/2025
-Intention
-Run an OpenSearch query
-Result
-I am sick. This has been hard. Trying to get through the week rn, but want to deliver. Every. Day.
-Created OpenSearch gonna go sleep now. Hope everyone is having a good summer.
-Tomorrow
-Do more! Please! I don’t like being ill 😦
-me
- — 
-20/06/2025, 00:50
-06/19/2025
-Intention
-Do more! Please! I don’t like being ill 😦
-Result
-Feeling much better!
-Made a small change to make the URL available so that this works better for web.
-Tomorrow
-Take the leap and just start with a solution for making a searchable platform
-me
- — 
-21/06/2025, 02:07
-06/20/2025
-Intention
-Take the leap and just start with a solution for making a searchable platform
-Result
-OK, turns out search is really quite complicated. I’m gonna keep this as easy and simple as I can and focus on user login and sign up - then at least stuff starts making sense. Search is kinda secondary.
-Tomorrow
-Make a front facing first page that has the search part. Then also have user login + signup / see profile buttons and pages
-me
- — 
-22/06/2025, 02:19
-06/21/2025
-Intention
-Make a front facing first page that has the search part. Then also have user login + signup / see profile buttons and pages
-Result
-Front facing part was easy.
-Now need to have better login + signup functionality. Need to see when a user is actually signed in and what their user id would be - match Cognito with db of other stuff.
-Tomorrow
-Look at AWS ways to match cognito things with full apps
-me
- — 
-22/06/2025, 18:37
-06/22/2025
-Intention
-Look at AWS ways to match cognito things with full apps
-Result
-Using guide: https://medium.com/@johnelisaaa/building-a-full-stack-react-app-integrating-aws-cognito-lambda-rds-mysql-amplify-api-a4f616559acb</p>
-
-<p>Setting up MySQL on my device. Have never managed DBs before so this is a fun (and also painful) new learning experience. Trying to connect to my VPC.
-Tomorrow
-Connect to VPC
-Medium
-Building a Full Stack React App: Integrating AWS Cognito + Lambda +…
-In this tutorial, we’ll build a secure REST API for our e-commerce website by integrating AWS Cognito, AWS Lambda, and MySQL (RDS).
-Building a Full Stack React App: Integrating AWS Cognito + Lambda +…
-me
- — 
-23/06/2025, 23:47
-06/23/2025
-Intention
-Connect to VPC
-Result
-Set up mySQL on my device and made tables. Also set up AWS db which is now synced to the users I have with AWS Cognito. Scared of screwing something up, but so far seems pretty cool! Need to run some tests
-Tomorrow
-Make a first user on the DB!
-me
- — 
-25/06/2025, 01:54
-06/24/2025
-Intention
-Make a first user on the DB!
-Result
-Have not made a user, had too late a day - GAH! Doing research takes up a lot of my day
-Tomorrow
-Make a damn user
-me
- — 
-25/06/2025, 23:45
-06/25/2025
-Intention
-Make a damn user
-Result
-I did a thing. Used Replit to see if I could make the application. Did it superrrrr quick - scarily so. Issue is I’m now not familiar with the codebase, which I suppose is the point. Anyways. 
-Ta-dah: https://0e575a98-43ae-435e-a727-06ce709d1fec-00-25zds93xmkkwt.worf.replit.dev/
-Tomorrow
-Keep workin’ it
-me
- — 
-27/06/2025, 00:44
-06/26/2025
-Intention
-Keep workin’ it
-Result
-Holy cow! Replit is amazing. We have an MVP already, getting PhDs to use it. This is nuts!
-Tomorrow
-Get user feedback and improve it - software engineering is dead. All hail AI.
-me
- — 
-28/06/2025, 00:55
-06/27/2025
-Intention
-Get user feedback and improve it - software engineering is dead. All hail AI.
-Result
-Got user feedback, implementing it right now. This is looking good. Did cost me $8 and I’m not sure about scaling it with DB. That is probably a later consideration though – tradeoffs!
-Tomorrow
-Implement more of the user feedback
-me
- — 
-29/06/2025, 01:20
-06/28/2025
-Intention
-Implement more of the user feedback</p>
-
-<p>Result
-Have implemented more of the user feedback. I do get the sense that we’re not actually solving a problem and this is a strong fear of mine. More feedback we got today was that weak connections are not that helpful. In academia, network is very powerful, but it must be one of strong connection as research collaboration is predicated on people being of high calibre and trustworthy. These things take time. That being said, I do think there is value in a quickly shareable profile page so that people can follow you and your work over time. We shall see.
-Tomorrow
-Get more feedback. Good thing we’re seeing PhDs every day!
-me
- — 
-30/06/2025, 00:34
-06/29/2025
-Intention
-Get more feedback. Good thing we’re seeing PhDs every day!
-Result
-In classic adolescent style, we’ve been chasing a solution and not a problem. The world has changed, and building software products is easier than ever. I’ve been doing it over the past 6 months to become a better coder and gain more insight, but these skills are less valuable than ever (IMO and exempting highly-specialised niches). Now we need to find a problem and get to grips with it. I like PhDs, they are mostly nice people. I want to make things that solve their problems. Now I need to understand what their problems are. We’re doing research now. Not building, even though I always have an itch to build, ultimately, the next skill I need to learn is patience and thinking before doing.
-Tomorrow
-Read more papers + articles about PhD problems.
-me
- — 
-01/07/2025, 00:54
-06/30/2025
-Intention
-Read more papers + articles about PhD problems.
-Result
-Reading more. I’ve been given a very niche problem by a PhD and overlooked it. I think there is more to the story than I think. Could be that there is a very easy solution but remains unclear - will ask tomorrow.
-Tomorrow
-Ask PhD why they haven’t fixed a minor inconvenience
-me
- — 
-02/07/2025, 00:14
-07/01/2025
-Intention
-Ask PhD why they haven’t fixed a minor inconvenience
-Result
-Read another paper about trouble PhDs face and spoke to a PhD today about their issue. It’s a problem of time. Their page is of low priority and so they don’t want to go change it.
-Tomorrow
-Having a conversation with a PhD about the application stuff.
-me
- — 
-03/07/2025, 02:01
-07/02/2025
-Intention
-Having a conversation with a PhD about the application stuff.
-Result
-Discussion about PhD application stuff was good. Sounds like I probably want to do one. Anyways, there are a lot of things with the application process. I’m not sure if I can solve the things of or who is facing the problems. Sounds like it’s just generally a tough gig. Regardless will keep looking. Going on a break this week and hoping for some time to reflect. 
-Tomorrow
-Enjoy the sun!
-me
- — 
-04/07/2025, 01:09
-07/03/2025
-Intention
-Enjoy the sun!
-Result
-Enjoyed the sun! Spent some more time reading docs about challenges of PhD. It might have to happen.
-Tomorrow
-Happy 4th July! Keep reading!
-me
- — 
-05/07/2025, 03:32
-07/04/2025
-Intention
-Keep reading!
-Result
-Hope everyone had a great 4th of July! Had to squeeze some stuff in now after a fun day out. Really need to discuss future of this project. Don’t have a solid problem yet and reading the information out there is quite generalised. There is something else I have been thinking about, but it’s not relevant. Hoping that having a small break from things will help.
-Tomorrow
-Keep things percolating and try to rest up (it’s late!).
-me
- — 
-06/07/2025, 01:49
-07/05/2025
-Intention
-Keep things percolating and try to rest up (it’s late!).
-Result
-Had a talk with the Gman. Decided to keep going with the PhD stuff. We are actually bringing value, but the problem is conflicting motivations - they want the perks of being well connected with an UTD website, but they don’t want to maintain it. Therefore, we’re maintaining it for them - that’s it, we’re doing just that. Gman and I are updating the websites so that they don’t have to worry. We’re doing stuff that won’t scale. 
-Tomorrow
-Begin the grind of updating the websites
-me
- — 
-07/07/2025, 01:20
-07/06/2025
-Intention
-Begin the grind of updating the websites
-Result
-I have begun the grind of creating profiles and am now up to 9 (it takes a fairly long time to be thorough). This is a tenet of doing things that don’t scale. If we begun by doing this stuff by hand, we will begin to learn how to do this in a manner that begins to scale. We should do this the dumb way so that we can begin to do it a bit smarter. I think for the time being we just keep doing this until something clicks.
-Tomorrow
-Fix the paper view on the personal pages themselves.
-Think about adding more collaborators.
-me
- — 
-08/07/2025, 00:47
-07/07/2025
-Intention
-Fix the paper view on the personal pages themselves.
-Think about adding more collaborators.
-Result
-Had a great talk with a mentor today. We need to redefine and refocus what we are doing. Started back up on the alumni connection stuff. Was very easy to build back up. Gonna show the Gman how to do stuff on Replit - it is truly amazing.
-Tomorrow
-Show Gman Replit
-me
- — 
-Yesterday at 01:16
-07/08/2025
-Intention
-Show Gman Replit
-Result
-Did not get to show the Gman. Will hopefully do that tomorrow when together. Did start looking at collating data for our project. We are gonna need a better way of doing this. Will likely take getting in touch with someone. Maybe we do just reach out to Davis.
-Tomorrow
-Show the Gman replit. Discuss reaching out to Davis.
-me
- — 
-00:13
-07/09/2025
-Intention
-Show the Gman replit. Discuss reaching out to Davis.
-Result
-Showed Replit to the Gman. It’s a pretty amazing technology and reckon everyone will be using it. It does cost money but I think it’s one of those moments where you have to pay to play with the latest stuff. Genuinely hours of coding saved by using it. There definitely are still gaps which AI cannot solve - primarily the messiness of human beings. With that said, I’m a huge proponent. Let’s see what else it can do! I should start using cursor as well - that’s free for students!
-Need to send an email to Davis
-Tomorrow
-Download Cursor.
-Email Davis.
-me
- — 
-00:09
-07/10/2025
-Intention
-Download Cursor.
-Email Davis.
-Result
-Cursor is amazing.
-Davis warm connection inbound.</p>
-
-<p>With that said, this might be goodbye – from me, not ProcrastApply.</p>
-
-<p>I have made daily updates for the past 4 months and it has now reached a point where I say farewell. This has been a journey for which I am extremely grateful and have loved. We have met great people, learnt great lessons and made great mistakes; I couldn’t have asked for more.</p>
-
-<p>Unfortunately, my time in the US and with you guys must come to an end.</p>
-
-<p>Total days worked on project: 183
-Total blog posts written: 120
-Total spent on AWS: $13.17
-Total spent on pizza: $200
-Total spent on domains: $12.17
-…
-Total Cost: PRICELESS!!!</p>
-
-<p>I wish you all the best and leave you in the capable hands of the Gman. ♥️</p>
-
-<p>Tomorrow
-Something else, not better or worse, just different.</p>]]></content><author><name></name></author><category term="personal" /><category term="blog" /><category term="procrastapply" /><summary type="html"><![CDATA[me — 13/03/2025, 09:15 03/13/2025: I am working on making installations easier. In Python (what the application is written in), it is quite difficult to make executables for different OSs. I know it’s a hassle on Mac and will make a how-to guide as a temporary solution.]]></summary></entry><entry><title type="html">First Public Post</title><link href="http://localhost:4000/personal/blog/2025/06/01/first-post.html" rel="alternate" type="text/html" title="First Public Post" /><published>2025-06-01T23:49:53-07:00</published><updated>2025-06-01T23:49:53-07:00</updated><id>http://localhost:4000/personal/blog/2025/06/01/first-post</id><content type="html" xml:base="http://localhost:4000/personal/blog/2025/06/01/first-post.html"><![CDATA[<p>First ever public post. Felt like it was time to. I have experienced positives of posting things on the Internet, it’s an amazing thing putting things out into the Universe. As long as I’m outputting stuff into the world, things seem to happen.</p>
-
-<p>That sounds well and good, but my innate skepticism comes out and would say that sounds braggadocious and pretentious. Maybe this is really a platform for me to vent my thoughts and see if the Internet is an echo chamber for other people to agree with me and amplify my narcissism. Irrespective, this feels like an honest medium where I can relay my thoughts and experiences.</p>
-
-<p>I’ve been making daily code updates for my side project ProcrastApply since the 13 March 2025 and will upload all of those posts.</p>
-
-<p>The thing that pushed me to make the blog today is a deep distrust of ChatGPT. I’m making a website where I need to upload a PDF. I don’t know whether to parse it on the frontend or backend. My thoughts: frontend could be slow, backend PDF parsing sounds like a security nightmare. ChatGPT recommended I do it on the backend because ‘security’?? Doesn’t make sense. I’m familiar with the ELIZA effect and people ascribing ChatGPT and similar LLMs an authoritys status and I’m wary of it. I also feel like I’m losing an element of my faculty by using it for tasks such as these, but it is soooo much quicker.</p>]]></content><author><name></name></author><category term="personal" /><category term="blog" /><summary type="html"><![CDATA[First ever public post. Felt like it was time to. I have experienced positives of posting things on the Internet, it’s an amazing thing putting things out into the Universe. As long as I’m outputting stuff into the world, things seem to happen.]]></summary></entry></feed>
+<p>I suppose this is where the cheating at life thing comes in, but I don’t think it can work. It doesn’t fix the problems LLMs engender, merely exacerbates and expands their sycophantic reach.</p>]]></content><author><name></name></author><category term="LLM" /><category term="communication" /><summary type="html"><![CDATA[LLMs are becoming the new social media. The problems we are and will encounter, the benefits and the impact on human social function. Much the same way as people now incorporate videos, photos, and Wikipedia pages as verification of their own thoughts, or enhancements to the conversation being engaged in, LLMs will take a new step. Emotions will be more effectively conveyed and we will begin to question how we ever operated without them. People will use it as a sounding board for their ideas as well as a tool to more effectively communicate themselves. Communication is a 2 way street: In 1 direction you have the communicator In the other you have the listener And this switches.]]></summary></entry></feed>

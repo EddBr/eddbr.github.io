@@ -1,7 +1,7 @@
 # Site settings
 title: Eddie's Blog
 description: >-
-  Computer Science graduate | AI/ML and safety engineering
+  Product Engineer at Tano.ai | AI/ML and safety engineering
 baseurl: ""
 url: ""
 timezone: Europe/London
@@ -19,6 +19,7 @@ header_pages:
   - about.markdown
   - writing.markdown
   - projects.markdown
+  - playground.markdown
 
 # Per-model evaluation report pages
 collections:

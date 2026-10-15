@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>David Silver RL Lecture 2 | Eddie’s Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="David Silver RL Lecture 2" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Markov Processes MDPs formally describe an environment for RL Assumption: Environment is fully observable" />
+<meta property="og:description" content="Markov Processes MDPs formally describe an environment for RL Assumption: Environment is fully observable" />
+<link rel="canonical" href="/rl/david/silver/2026/08/10/lecture-2-david-silver.html" />
+<meta property="og:url" content="/rl/david/silver/2026/08/10/lecture-2-david-silver.html" />
+<meta property="og:site_name" content="Eddie’s Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-08-10T00:00:00+01:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="David Silver RL Lecture 2" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2026-08-10T00:00:00+01:00","datePublished":"2026-08-10T00:00:00+01:00","description":"Markov Processes MDPs formally describe an environment for RL Assumption: Environment is fully observable","headline":"David Silver RL Lecture 2","mainEntityOfPage":{"@type":"WebPage","@id":"/rl/david/silver/2026/08/10/lecture-2-david-silver.html"},"url":"/rl/david/silver/2026/08/10/lecture-2-david-silver.html"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="/feed.xml" title="Eddie&apos;s Blog" /></head>
+<body><header class="site-header" role="banner">
+
+  <div class="wrapper"><a class="site-title" rel="author" href="/">Eddie&#39;s Blog</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/about/">About</a><a class="page-link" href="/writing/">Writing</a><a class="page-link" href="/projects/">Projects</a><a class="page-link" href="/playground/">Playground</a></div>
+      </nav></div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">David Silver RL Lecture 2</h1>
+    <p class="post-meta">
+      <time class="dt-published" datetime="2026-08-10T00:00:00+01:00" itemprop="datePublished">Aug 10, 2026
+      </time></p>
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" />
+
+<script defer="" src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+
+<script defer="" src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,
+	      {delimiters: [
+	      {left: '$$', right: '$$', display: true},
+	      {left: '$', right: '$', display: false},
+	      {left: '\\(', right: '\\)', display: false},
+	      {left: '\\[', right: '\\]', display: true}
+	      ]});"></script>
+
+<h1 id="markov-processes">Markov Processes</h1>
+<p>MDPs formally describe an environment for RL
+Assumption: Environment is fully observable</p>
+
+<p>The current state completely characterises the process</p>
+
+<p>Almost all RL problems can be formalised as MDPs</p>
+<h2 id="state-transition-matrix">State Transition Matrix</h2>
+<p>$\mathcal{P}<em>{ss’}=\mathbb{P}[S</em>{t+1}=s’|S_t=s]$
+State transition matrix $\mathcal{P}$ defines transition probabilities from all states $s$ to successor states $s’$</p>
+
+<p>$\mathcal{P}=\begin{bmatrix} \mathcal{P}<em>{11} &amp; … &amp; \mathcal{P}</em>{1n} \\vdots  \ \mathcal{P}<em>{n1} &amp; &amp; \mathcal{P}</em>{nn}\end{bmatrix}$
+$\sum$row = 1</p>
+<h2 id="markov-process">Markov Process</h2>
+<p>Memoryless + random</p>
+
+<h3 id="definition">Definition</h3>
+<p>A tuple $\braket{ \mathcal{S},\mathcal{P}}$</p>
+
+<p>Where</p>
+<ul>
+  <li>$\mathcal{S}$ is a finite set of states</li>
+  <li>$\mathcal{P}$ is a state transition probability matrix $\mathcal{P}=\mathbb{P}[S_{t+1}=s’|S_t=s]$
+    <h1 id="markov-reward-processes">Markov Reward Processes</h1>
+    <p>Markov reward process is a Markov chain with values</p>
+  </li>
+</ul>
+
+<p>$=\braket{\mathcal{S},\mathcal{P},\mathcal{R},\gamma}$</p>
+
+<ul>
+  <li>$\mathcal{S}$ is a finite state of states</li>
+  <li>
+    <table>
+      <tbody>
+        <tr>
+          <td>$\mathcal{P}$ is a state transition probability matrix $=\mathbb{P}[S_{t+1}=s’</td>
+          <td>S_t=s]$</td>
+        </tr>
+      </tbody>
+    </table>
+  </li>
+  <li>
+    <table>
+      <tbody>
+        <tr>
+          <td>$\mathcal{R}$ is a reward function $R_s=\mathbb{E}[R_{t+1}</td>
+          <td>S_t=s]$</td>
+        </tr>
+      </tbody>
+    </table>
+  </li>
+  <li>$\gamma$ is the discount factor $\in[0,1]$</li>
+</ul>
+
+<p>Return $G_t=R_{t+1}+\gamma R_{t+2}=\sum_{k=0}^\infty\gamma^kR_{t+k+1}$</p>
+
+<h2 id="why-do-we-discount">Why do we discount?</h2>
+<ol>
+  <li>Mathematically convenient (bounds)</li>
+  <li>Avoids infinity</li>
+  <li>Represents uncertainty over the future</li>
+  <li>Money now is worth more than money later (interest rate)</li>
+  <li>Humans + animals display discounting / preference for immediate reward</li>
+  <li>[my addition] - also good for credit assignment? Earlier actions should have be attributed more reward as they led to future actions</li>
+</ol>
+
+<h2 id="value-function">Value Function</h2>
+<p>Value function $V(s)$ gives long-term value of state $s$
+$V(s)=\mathbb{E}[G_t|S_t=s]$</p>
+<h2 id="bellman-equation">Bellman Equation</h2>
+<p>Value function has 2 components:</p>
+<ol>
+  <li>Immediate reward $R_{t+1}$</li>
+  <li>Discounted value of successor state $\gamma V(S_{t+1})$
+$V(s)=\mathbb{E}[G_t|S_t=s]$
+$V(s)=\mathbb{E}[R_{t+1}+\gamma R_{t+2}+…|S_t=s]$
+$V(s)=\mathbb{E}[R_{t+1}+(\gamma R_{t+2}+…)|S_t=s]$
+$V(s)=\mathbb{E}[R_{t+1}+\gamma G_{t+1}|S_t=s]$
+$V(s)=\mathbb{E}[R_{t+1}+\gamma V(S_{t+1})|S_t=s]$</li>
+</ol>
+
+<p>$V(s)=\mathcal{R}<em>s+\gamma\sum</em>{s’\in \mathcal{S}}\mathcal{P}_{ss’}v(s’)$</p>
+
+<p>Bellman equation can be concisely expressed using matrices
+$v=\mathcal{R}+\gamma\mathcal{P}v$
+$\begin{bmatrix} v(1) \ \vdots \ v(n) \end{bmatrix} = \begin{bmatrix} \mathcal{R}<em>1 \ \vdots \ \mathcal{R}_n \end{bmatrix} + \begin{bmatrix} \mathcal{P}</em>{11} &amp; \dots &amp; \mathcal{P}<em>{1n} \ \vdots  \ \mathcal{P}</em>{n1} &amp; \dots &amp; \mathcal{P}_{nn} \end{bmatrix} \begin{bmatrix} v(1) \ \vdots \ v(n) \end{bmatrix}$</p>
+<h3 id="solving-bellman-equation">Solving Bellman Equation</h3>
+<p>It is a linear equation
+$v=\mathcal{R}+\gamma\mathcal{P}v$
+-&gt; $v=(I-\gamma\mathcal{P})^{-1}\mathcal{R}$
+Computational complexity of inverting matrix is $O(n^3)$ for $n$ states</p>
+<h1 id="markov-decision-processes">Markov Decision Processes</h1>
+<p>Markov reward process with decisions</p>
+
+<p>$\braket{\mathcal{S},\mathcal{A},\mathcal{P},\mathcal{R},\gamma}$
+$\mathcal{A}$ is a set of actions
+$\mathcal{P}^a_{ss’}=\mathbb{P}[S_{t+1}=s’|S_t=s,A_t=a]$
+$\mathcal{R}=\mathbb{E}[R_{t+1}|S_t=s,A_t=a]$</p>
+<h2 id="policy">Policy</h2>
+<p>Distribution over actions given states
+$\pi(a|s)=\mathbb{P}[A=a|S_t=s]$
+$\pi$ depends on current state, not history
+-&gt; $\pi$ is time independent</p>
+
+<p>State sequence $S_1,S_2,…$ is a Markov process $\braket{\mathcal{S},\mathcal{P}^\pi}$
+State and reward sequence $S_1,R_1,S_2,…$ is a Markov reward process $\braket{\mathcal{S},\mathcal{P}^\pi,\mathcal{R}^\pi,\gamma}$</p>
+
+<p>We update the transition and reward matrices by averaging according to the action taken
+$\mathcal{P}^\pi_{s,s’}=\sum_{a\in A}\pi(a|s)\mathcal{P}^a_{s,s’}$
+$\mathcal{R}^\pi_{s,s’}=\sum_{a\in A}\pi(a|s)\mathcal{R}^a_{s,s’}$</p>
+
+<p>e.g. If there are 2 actions ($a_1,a_2$) that can be taken, each with probability 0.5:
+$\mathcal{P}^\pi_{s,s’}=0.5\mathcal{P}^{a_1}<em>{s,s’}+0.5\mathcal{P}^{a_2}</em>{s,s’}$
+$\mathcal{R}^\pi_{s,s’}=0.5\mathcal{R}^{a_1}<em>{s,s’}+0.5\mathcal{R}^{a_2}</em>{s,s’}$
+(We average)</p>
+<h2 id="value-function-1">Value Function</h2>
+<p>Expectation is dependent on the policy, thus we must use $V_\pi$ (subscript $\pi$)</p>
+
+<h3 id="state-value-function-v_pi">State Value Function $v_\pi$</h3>
+<p>$v_\pi=\mathbb{E}<em>\pi[G_t|S_t=s]$
+$v</em>\pi=\mathbb{E}<em>\pi[R</em>{t+1}+\gamma v_\pi(S_{t+1})|S_t=s]$</p>
+<h3 id="action-value-function-q_pi">Action-value function $q_\pi$</h3>
+<p>$q_\pi(s,a)=\mathbb{E}[G_t|S_t=s,A_t=a]$
+$q_\pi(s,a)=\mathbb{E}[R_{t+1}+\gamma q_\pi(S_{t+1},A_{t+1}|S_t=s,A_t=a]$</p>
+<h2 id="relating-v_pi-and-q_pi">Relating $v_\pi$ and $q_\pi$</h2>
+<p>$v_\pi=\sum_{a\in A}\pi(a|s)q_\pi(a|s)$
+$q_\pi=\mathcal{R}^a_s+\gamma\sum_{s’\in S}\mathcal{P}^a_{ss’}v_\pi(s’)$ (reward is received after action)</p>
+<h2 id="recursive-bellman-equation">Recursive Bellman Equation</h2>
+<p>$v_\pi(s)=\sum_{a\in A}\pi(a|s)(\mathcal{R}^a_s+\gamma\sum_{s’\in\mathcal{S}}\mathcal{P}^a_{ss’}v_\pi(s’))$</p>
+
+<p>$q_\pi(s)=\mathcal{R}^a_s+\gamma\sum_{s’\in S}\mathcal{P}^a_{ss’}\sum_{a’\in A}\pi(a’|s’)q_\pi(s’,a’)$</p>
+<h2 id="optimal-value-function">Optimal Value Function</h2>
+<p>Maximum value function over all policies
+$v_<em>(s)\max_\pi v_\pi(s)$
+$q_</em>(s,a)=\max_\pi q_\pi(s,a)$</p>
+
+<p>Define a partial ordering over policies
+$\pi\ge\pi’$ if $v_\pi(s)\ge v_{\pi’}(s),\forall s$</p>
+<h2 id="finding-optimal-policy">Finding Optimal Policy</h2>
+<p>$\pi_<em>(a|s)$ if $a=\arg\max_{a\in\mathcal{A}}q_</em>(s,a)$</p>
+
+<p>$v_<em>(s)=\max_a q_</em>(s,a)$
+$q_<em>(s,a)=\mathcal{R}^a_S+\gamma\sum_{s’\in S}\mathcal{P}^a_{ss’}v_</em>(s’)$ - this includes the terms from the environment, which is out of our control</p>
+<h3 id="recursively">Recursively</h3>
+<p>$v_<em>(s)=\mathcal{R}^a_S+\gamma\sum_{s’\in S}\mathcal{P}^a_{ss’}v_</em>(s’)$
+$q_<em>(s,a)=\mathcal{R}^a_S+\gamma\sum_{s’\in S}\mathcal{P}^a_{ss’}q_</em>(s’,a’)$</p>
+<h2 id="solving-bellman">Solving Bellman</h2>
+<p>Bellman equations are non-linear
+Requires iterative solutions:</p>
+<ol>
+  <li>Value iteration</li>
+  <li>Policy iteration</li>
+  <li>Q-learning</li>
+  <li>SARSA</li>
+</ol>
+
+  </div><a class="u-url" href="/rl/david/silver/2026/08/10/lecture-2-david-silver.html" hidden></a>
+</article>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">Eddie&#39;s Blog</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li class="p-name">Eddie&#39;s Blog</li></ul>
+      </div>
+
+      <div class="footer-col footer-col-2"><ul class="social-media-list"><li><a href="https://github.com/eddbr"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#github"></use></svg> <span class="username">eddbr</span></a></li><li><a href="https://www.linkedin.com/in/eddiebrown-"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#linkedin"></use></svg> <span class="username">eddiebrown-</span></a></li></ul>
+</div>
+
+      <div class="footer-col footer-col-3">
+        <p>Product Engineer at Tano.ai | AI/ML and safety engineering</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>
