@@ -19,6 +19,17 @@ description: Interactive experiments.
         <a href="{{ '/playground/fourier-economy/' | relative_url }}">Try it →</a>
       </p>
     </li>
+    <li>
+      <h2><a href="{{ '/playground/most-x/' | relative_url }}">🐟 The Most X Image</a></h2>
+      <p>
+        Pick a classifier and a thing, and your browser runs gradient ascent on an image
+        until the model is as sure as it can be. Five classifiers (objects, textures,
+        art styles, scenes and beauty) running live on your GPU.
+      </p>
+      <p class="playground-links">
+        <a href="{{ '/playground/most-x/' | relative_url }}">Try it →</a>
+      </p>
+    </li>
   </ul>
 </div>
 

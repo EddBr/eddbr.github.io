@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Most X Image | Eddie's Blog</title>
+<meta name="description" content="Gradient ascent on an image until a classifier is as sure as it can be. Five classifiers, running live in your browser.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%232f45c9'/%3E%3Ccircle cx='8' cy='8' r='3.5' fill='%23fff'/%3E%3C/svg%3E">
+<style>
+/* Matches eddbr.github.io (see playground/fourier-economy): light only,
+   emerald accent, system font, white cards on an off-white page. */
+:root {
+  --bg: #fdfdfd;
+  --card: #ffffff;
+  --ink: #111111;
+  --heading: #374151;
+  --body: #4b5563;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --rule: #e8e8e8;
+  --track: #f3f4f6;
+  --accent: #059669;
+  --accent-dark: #047857;
+  --accent-soft: #f0fdf4;
+  --signal: #d97706;
+  --plate-bg: #f3f4f6;
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  font: 400 16px/1.5 var(--font); color: var(--ink); background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+a { color: #2a7ae2; text-decoration: none; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Site header (matches eddbr.github.io) */
+.site-header { border-top: 5px solid #424242; border-bottom: 1px solid var(--rule); min-height: 56px; }
+.site-header .wrapper { max-width: 800px; margin: 0 auto; padding: 0 30px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+.site-title { font-size: 26px; font-weight: 300; line-height: 54px; letter-spacing: -1px; color: #424242; }
+.site-nav a { color: var(--ink); margin-left: 20px; }
+.site-nav a:hover { text-decoration: underline; }
+@media (max-width: 600px) {
+  .site-header .wrapper { padding: 0 15px; }
+  .site-nav a { margin-left: 14px; }
+}
+
+.wrap {
+  max-width: 1180px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 32px;
+  padding-block: 32px 48px;
+  padding-left: max(24px, env(safe-area-inset-left, 0px));
+  padding-right: max(24px, env(safe-area-inset-right, 0px));
+}
+@media (max-width: 600px) { .wrap { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); } }
+.wrap > * { min-width: 0; }
+
+/* ---------------- intro */
+header.intro { display: grid; gap: 6px; text-align: center; justify-items: center; }
+.eyebrow { font-size: 0.8rem; color: var(--muted); }
+h1 { font-size: 2.2rem; font-weight: 600; line-height: 1.2; color: var(--heading); margin: 0; text-wrap: balance; overflow-wrap: anywhere; }
+@media (max-width: 600px) { h1 { font-size: 1.8rem; } }
+h1 .x { color: var(--accent); }
+.lede { max-width: 62ch; color: var(--muted); margin: 0; font-size: 1.1rem; }
+
+/* ---------------- bench */
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); }
+.bench { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 0; align-items: start; overflow: hidden; }
+.bench > * { padding: 24px; }
+.bench > .panel { border-left: 1px solid var(--border); }
+@media (max-width: 860px) {
+  .bench { grid-template-columns: minmax(0, 1fr); }
+  .bench > .panel { border-left: 0; border-top: 1px solid var(--border); }
+  .bench > * { padding: 16px; }
+}
+
+.plate { display: grid; gap: 10px; }
+.plate-frame { position: relative; aspect-ratio: 1; max-width: 100%; background: var(--plate-bg); border-radius: 6px; overflow: hidden; }
+.plate canvas { width: 100%; height: 100%; display: block; }
+.plate-status {
+  position: absolute; inset: auto 0 0 0; padding: 10px 12px;
+  font-size: 0.8rem; font-weight: 500; color: #fff; font-variant-numeric: tabular-nums;
+  background: linear-gradient(transparent, rgba(0,0,0,.5));
+  display: flex; justify-content: space-between; gap: 12px; pointer-events: none;
+}
+.plate-caption { font-size: 0.8rem; color: var(--muted); display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-variant-numeric: tabular-nums; }
+
+.panel { display: grid; gap: 22px; min-width: 0; }
+.field { display: grid; gap: 8px; min-width: 0; }
+.label { font-size: 0.8rem; font-weight: 600; color: var(--heading); }
+
+.models { display: grid; gap: 6px; }
+.model {
+  display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; align-items: baseline;
+  text-align: left; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--card); color: var(--ink); font: inherit; cursor: pointer;
+}
+.model:hover { border-color: var(--accent); }
+.model[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.model b { font-weight: 600; color: var(--heading); }
+.model[aria-pressed="true"] b { color: var(--accent-dark); }
+.model .meta { font-size: 0.8rem; color: var(--muted); justify-self: end; font-variant-numeric: tabular-nums; }
+.model .desc { grid-column: 1 / -1; font-size: 0.85rem; color: var(--muted); line-height: 1.4; }
+
+.picker { position: relative; }
+input[type="text"] {
+  width: 100%; font: 500 1.1rem/1.2 var(--font); color: var(--ink);
+  padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--card);
+}
+input[type="text"]:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+.suggest {
+  position: absolute; z-index: 5; left: 0; right: 0; top: calc(100% + 4px); max-height: 260px; overflow: auto;
+  background: var(--card); border: 1px solid var(--border); border-radius: 6px; margin: 0; padding: 4px; list-style: none;
+  box-shadow: 0 8px 24px rgba(0,0,0,.1);
+}
+.suggest li { padding: 6px 8px; border-radius: 4px; cursor: pointer; }
+.suggest li[aria-selected="true"], .suggest li:hover { background: var(--accent); color: #fff; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  font: inherit; font-size: 0.85rem; padding: 0.3rem 0.7rem; border-radius: 99px; cursor: pointer;
+  border: 1px solid var(--border); background: #f9fafb; color: var(--heading);
+}
+.chip:hover { background: var(--track); border-color: var(--accent); }
+
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+button.primary, button.secondary {
+  font: inherit; font-weight: 500; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--accent); transition: background .15s, color .15s;
+}
+button.primary { background: var(--accent); color: #fff; }
+button.primary:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
+button.secondary { background: transparent; color: var(--accent); }
+button.secondary:hover { background: var(--accent); color: #fff; }
+button:disabled { opacity: .5; cursor: progress; }
+
+.knobs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; }
+@media (max-width: 420px) { .knobs { grid-template-columns: minmax(0, 1fr); } }
+.knob { display: grid; gap: 6px; font-size: 0.85rem; color: var(--body); }
+.knob .row { display: flex; justify-content: space-between; gap: 8px; }
+.knob output { font-variant-numeric: tabular-nums; color: var(--heading); font-weight: 500; }
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+.toggle { display: flex; gap: 10px; align-items: flex-start; font-size: 0.85rem; color: var(--muted); grid-column: 1 / -1; }
+.toggle b { color: var(--heading); font-weight: 600; }
+.toggle input { accent-color: var(--accent); margin-top: 3px; }
+
+/* ---------------- readout */
+.readout { display: grid; gap: 10px; padding-top: 14px; }
+.readout h2 { margin: 0; font-size: 0.8rem; font-weight: 600; color: var(--heading); }
+.bars { display: grid; gap: 6px; font-variant-numeric: tabular-nums; }
+.bar { display: grid; grid-template-columns: minmax(0, 9.5rem) minmax(0, 1fr) 3.4rem; gap: 10px; align-items: center; font-size: 0.85rem; color: var(--body); }
+.bar .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar .track { height: 8px; background: var(--track); border-radius: 4px; overflow: hidden; }
+.bar .fill { height: 100%; background: #9ca3af; width: 0; transition: width .25s; border-radius: 4px; }
+.bar.target .fill { background: var(--signal); }
+.bar.target .name { color: var(--signal); font-weight: 600; }
+.bar .val { text-align: right; }
+#curve { width: 100%; height: 64px; display: block; }
+
+/* ---------------- sections */
+section h2 { font-size: 1.4rem; font-weight: 600; color: var(--heading); margin: 0 0 6px; }
+section > p { margin: 0 0 18px; max-width: 65ch; color: var(--muted); }
+.gallery { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 900px) { .gallery { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.specimen { display: grid; gap: 4px; padding: 0; border: 0; background: none; color: var(--ink); text-align: left; cursor: pointer; font: inherit; }
+.specimen img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; background: var(--plate-bg); display: block; border: 1px solid var(--border); transition: border-color .15s, box-shadow .15s; }
+.specimen:hover img { border-color: var(--accent); box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+.specimen span { font-size: 0.9rem; color: var(--heading); font-weight: 500; line-height: 1.3; }
+.specimen small { font-size: 0.75rem; color: var(--muted); }
+
+.notes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; }
+@media (max-width: 860px) { .notes { grid-template-columns: minmax(0, 1fr); } }
+.notes h3 { font-size: 1rem; font-weight: 600; color: var(--heading); margin: 0 0 6px; }
+.notes p { margin: 0; color: var(--body); font-size: 0.95rem; }
+table { border-collapse: collapse; width: 100%; font-size: 0.85rem; color: var(--body); }
+.table-wrap { overflow-x: auto; }
+th, td { text-align: left; padding: 8px 12px 8px 0; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { font-size: 0.75rem; font-weight: 600; color: var(--muted); }
+td:first-child { color: var(--heading); font-weight: 500; }
+td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.err { color: #dc2626; font-size: 0.85rem; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <header class="intro">
+    <div class="eyebrow">Activation maximization · runs on your GPU</div>
+    <h1>The most <span class="x" id="headline-x">goldfish</span> image</h1>
+    <p class="lede">Pick a classifier and a thing. Starting from noise, your browser nudges the pixels hundreds of times, each step in whatever direction makes the classifier more certain. What comes out is the picture that network finds most convincing.</p>
+  </header>
+
+  <div class="bench card">
+    <div class="plate">
+      <div class="plate-frame">
+        <canvas id="plate" width="256" height="256" aria-label="The image being generated"></canvas>
+        <div class="plate-status"><span id="status">Loading…</span><span id="stepcount"></span></div>
+      </div>
+      <div class="plate-caption"><span id="caption">Gallery example shown until you press Generate.</span><span id="speed"></span></div>
+      <div class="readout">
+        <h2 id="readout-title">What the classifier sees</h2>
+        <div class="bars" id="bars"></div>
+        <canvas id="curve" width="600" height="64" aria-label="Confidence over steps"></canvas>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="field">
+        <span class="label">1 · Classifier</span>
+        <div class="models" id="models"></div>
+      </div>
+
+      <div class="field">
+        <label class="label" for="target">2 · Most what?</label>
+        <div class="picker">
+          <input type="text" id="target" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="suggest">
+          <ul class="suggest" id="suggest" role="listbox" hidden></ul>
+        </div>
+        <div class="chips" id="chips"></div>
+      </div>
+
+      <div class="actions">
+        <button class="primary" id="go">Generate</button>
+        <button class="secondary" id="reseed" title="Same target, new starting noise">New seed</button>
+        <button class="secondary" id="save">Save PNG</button>
+      </div>
+
+      <div class="knobs">
+        <div class="knob">
+          <div class="row"><label for="steps">Steps</label><output id="steps-out"></output></div>
+          <input type="range" id="steps" min="64" max="1024" step="32" value="384">
+        </div>
+        <div class="knob">
+          <div class="row"><label for="lr">Step size</label><output id="lr-out"></output></div>
+          <input type="range" id="lr" min="0.02" max="0.3" step="0.01" value="0.12">
+        </div>
+        <label class="toggle"><input type="checkbox" id="robust" checked> <span><b>Jitter and zoom every step.</b> Turn this off to watch the model get fooled by an image that only works at one exact alignment.</span></label>
+      </div>
+
+      <div class="err" id="err" role="alert"></div>
+    </div>
+  </div>
+
+  <section>
+    <h2>Specimens</h2>
+    <p>Rendered ahead of time with the same code, 384 steps each. Click one to load its settings, then press Generate to grow it yourself.</p>
+    <div class="gallery" id="gallery"></div>
+  </section>
+
+  <section>
+    <h2>The five classifiers</h2>
+    <p>Each classifier learned a different idea of "most". Three of them share one backbone that was trained to resist adversarial attacks, which turns out to matter a lot for how readable the pictures are.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Classifier</th><th>Network</th><th>Trained on</th><th>Outputs</th><th>Download</th></tr></thead>
+        <tbody id="model-table"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="notes">
+    <div>
+      <h3>Why it isn't just noise</h3>
+      <p>Changing raw pixels gives every spatial frequency the same weight, and the fastest way to raise a score is high-frequency static. So the image is stored as Fourier coefficients scaled by 1/frequency, with colours decorrelated. Smooth shapes become cheap to make and static becomes expensive.</p>
+    </div>
+    <div>
+      <h3>Why robust models draw better</h3>
+      <p>An ordinary classifier can be pushed to 100% by patterns no human would recognise. The ImageNet backbone here was adversarially trained (ℓ<sub>2</sub>, ε = 3), so small meaningless changes can't move it. The only way up is to draw something that actually looks like the thing. Compare Objects with Scenes, which uses a normally trained network, and see the lighthouse specimen with jitter turned off.</p>
+    </div>
+    <div>
+      <h3>Most and least beautiful look the same</h3>
+      <p>NIMA predicts how 1–10 photo ratings would be distributed. Push it up and you get pastel swirl rated 8.7, higher than most real photos get. Push it down and you get nearly the same swirl rated 2.6. The difference lives in textures too fine for people to notice. The model reacts to them, but it has no idea what a beautiful scene is.</p>
+    </div>
+  </section>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+<script type="module" src="app.js"></script>
+</body>
+</html>

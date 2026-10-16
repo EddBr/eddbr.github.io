@@ -1,0 +1,1 @@
+{"dtype": "float16", "shards": ["head_textures.0.bin"], "tensors": [{"name": "fc.w", "shape": [512, 47], "offset": 0}, {"name": "fc.b", "shape": [47], "offset": 24064}]}
