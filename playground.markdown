@@ -30,6 +30,17 @@ description: Interactive experiments.
         <a href="{{ '/playground/most-x/' | relative_url }}">Try it →</a>
       </p>
     </li>
+    <li>
+      <h2><a href="{{ '/playground/most-x-sound/' | relative_url }}">🔊 The Most X Sound</a></h2>
+      <p>
+        The same idea for audio. Pick one of 521 sounds and your browser reshapes a 4-second loop
+        until Google's YAMNet is sure it's hearing a baby cry, applause or a siren. It comes out as
+        uncanny, buzzing static with the right outline.
+      </p>
+      <p class="playground-links">
+        <a href="{{ '/playground/most-x-sound/' | relative_url }}">Try it →</a>
+      </p>
+    </li>
   </ul>
 </div>
 
