@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Spot the Usability Problems | Eddie's Blog</title>
+<meta name="description" content="Find and name every usability problem in an app that breaks all 10 of Nielsen's heuristics.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Spot the usability problems">
+<meta property="og:description" content="An app that breaks all 10 of Nielsen's usability heuristics. Find each problem, name the rule, and watch it repair itself.">
+<meta property="og:url" content="https://eddbr.github.io/playground/usability-heuristics/">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23059669'/%3E%3Cpath d='M4 8.5l2.5 2.5L12 5' stroke='%23fff' stroke-width='1.8' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+/* Matches eddbr.github.io and its playground pages: light only, emerald
+   accent, system font, white cards on an off-white page. */
+:root {
+  --bg: #fdfdfd;
+  --card: #ffffff;
+  --ink: #111111;
+  --heading: #374151;
+  --body: #4b5563;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --rule: #e8e8e8;
+  --track: #f3f4f6;
+  --accent: #059669;
+  --accent-dark: #047857;
+  --accent-soft: #f0fdf4;
+  --bad: #dc2626;
+  --bad-soft: #fef2f2;
+  --signal: #d97706;
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+.foot { font-size: 0.85rem; color: var(--muted); text-align: center; margin: 0; }
+html, body { margin: 0; }
+html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+body { font: 400 16px/1.5 var(--font); color: var(--ink); background: var(--bg); -webkit-font-smoothing: antialiased; }
+a { color: #2a7ae2; text-decoration: none; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button { font: inherit; }
+
+.site-header { border-top: 5px solid #424242; border-bottom: 1px solid var(--rule); min-height: 56px; }
+.site-header .wrapper { max-width: 800px; margin: 0 auto; padding: 0 30px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+.site-title { font-size: 26px; font-weight: 300; line-height: 54px; letter-spacing: -1px; color: #424242; }
+.site-nav a { color: var(--ink); margin-left: 20px; }
+.site-nav a:hover { text-decoration: underline; }
+@media (max-width: 600px) { .site-header .wrapper { padding: 0 15px; } .site-nav a { margin-left: 14px; } }
+
+.wrap {
+  max-width: 1080px; margin: 0 auto; display: grid; gap: 28px; padding-block: 32px 56px;
+  padding-left: max(24px, env(safe-area-inset-left, 0px)); padding-right: max(24px, env(safe-area-inset-right, 0px));
+}
+@media (max-width: 600px) { .wrap { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); } }
+.wrap > * { min-width: 0; }
+
+/* ---------------- intro */
+header.intro { display: grid; gap: 8px; text-align: center; justify-items: center; }
+.eyebrow { font-size: 0.8rem; color: var(--muted); }
+h1 { font-size: 2.2rem; font-weight: 600; line-height: 1.2; color: var(--heading); margin: 0; text-wrap: balance; }
+@media (max-width: 600px) { h1 { font-size: 1.8rem; } }
+h1 .x { color: var(--bad); text-decoration: underline wavy; text-decoration-thickness: 2px; text-underline-offset: 6px; }
+h1 .y { color: var(--accent); }
+.lede { max-width: 62ch; color: var(--muted); margin: 0; font-size: 1.1rem; }
+.how { display: flex; gap: 10px 22px; flex-wrap: wrap; justify-content: center; font-size: 0.9rem; color: var(--body); margin-top: 6px; }
+.how b { color: var(--heading); }
+
+/* ---------------- mock UI kit, used inside stages */
+.ui-btn { font-size: 0.88rem; padding: 0.45rem 0.9rem; border-radius: 6px; border: 1px solid #d1d5db; background: #fff; color: #111; cursor: pointer; }
+.ui-btn:hover { background: #f9fafb; }
+.ui-btn.pri { background: var(--accent); border-color: var(--accent); color: #fff; }
+.ui-btn.pri:hover { background: var(--accent-dark); }
+.ui-btn.red { background: var(--bad); border-color: var(--bad); color: #fff; }
+.ui-btn.grey { background: #9ca3af; border-color: #9ca3af; color: #fff; }
+.ui-btn:disabled { opacity: .55; cursor: not-allowed; }
+.ui-btn.tiny { font-size: 0.75rem; padding: 0.2rem 0.45rem; }
+.ui-row { display: flex; align-items: center; gap: 10px; }
+.ui-col { display: grid; gap: 10px; }
+.ui-input { font: inherit; font-size: 0.9rem; padding: 0.45rem 0.6rem; border: 1px solid #d1d5db; border-radius: 6px; width: 100%; min-width: 0; }
+.ui-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.ui-label { font-size: 0.8rem; color: var(--muted); display: grid; gap: 4px; }
+.ui-file { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--border); border-radius: 8px; }
+.ui-file .icon { width: 38px; height: 46px; border-radius: 4px; background: linear-gradient(135deg, #a7f3d0, #059669); flex: none; display: grid; place-items: center; color: #fff; font-size: 0.65rem; font-weight: 700; }
+.ui-file .meta { flex: 1; min-width: 0; }
+.ui-file .meta b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ui-file .meta small { color: var(--muted); }
+.bar { height: 6px; border-radius: 3px; background: var(--track); overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .12s linear; }
+.toast { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); background: #111827; color: #fff; font-size: 0.85rem; padding: 0.5rem 0.8rem; border-radius: 6px; display: flex; gap: 14px; align-items: center; white-space: nowrap; box-shadow: 0 6px 18px rgba(0,0,0,.25); }
+.toast button { background: none; border: 0; color: #6ee7b7; font-weight: 700; cursor: pointer; padding: 0; }
+.menu { position: absolute; z-index: 3; background: #fff; border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.14); padding: 4px; min-width: 190px; }
+.menu button { display: block; width: 100%; text-align: left; background: none; border: 0; padding: 0.42rem 0.7rem; border-radius: 4px; cursor: pointer; font-size: 0.86rem; }
+.menu button:hover { background: var(--track); }
+.menu button.danger { color: var(--bad); }
+.mail { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; padding: 7px 4px; border-bottom: 1px solid var(--track); }
+.mail b { font-size: 0.86rem; } .mail small { color: var(--muted); display: block; font-size: 0.78rem; }
+.dialog { border: 1px solid var(--border); border-radius: 10px; padding: 16px; box-shadow: 0 8px 24px rgba(0,0,0,.1); max-width: 340px; margin: 0 auto; display: grid; gap: 12px; }
+.dialog h4 { margin: 0; font-size: 1rem; }
+.dialog p { margin: 0; color: var(--muted); font-size: 0.86rem; }
+.dialog .btns { display: flex; gap: 8px; justify-content: flex-end; }
+.dots { display: flex; gap: 6px; justify-content: center; }
+.dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--border); }
+.dots i.on { background: var(--accent); }
+.todo { display: flex; align-items: center; gap: 10px; padding: 5px 2px; border-bottom: 1px solid var(--track); font-size: 0.86rem; position: relative; }
+.todo.done span { text-decoration: line-through; color: var(--muted); }
+.todo span { flex: 1; }
+.clutter { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.clutter > * { font-size: 0.72rem; padding: 0.35rem 0.3rem; border-radius: 4px; border: 1px solid #d1d5db; background: #fff; cursor: pointer; text-align: center; }
+.promo { font-size: 0.75rem; padding: 6px 8px; border-radius: 4px; margin-bottom: 6px; display: flex; justify-content: space-between; gap: 6px; align-items: center; }
+.kbd { font-family: var(--mono); font-size: 0.75rem; border: 1px solid #d1d5db; border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: #fff; }
+.check { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; font-size: 0.83rem; }
+.check li::before { content: "○ "; color: var(--muted); }
+.check li.ok { color: var(--accent-dark); } .check li.ok::before { content: "✓ "; }
+.errbox { font-family: var(--mono); font-size: 0.78rem; background: var(--bad-soft); color: var(--bad); border: 1px solid #fecaca; padding: 8px 10px; border-radius: 6px; }
+.okbox { font-size: 0.86rem; background: var(--accent-soft); color: var(--accent-dark); border: 1px solid #bbf7d0; padding: 8px 10px; border-radius: 6px; }
+.manual { max-height: 200px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; font-size: 0.8rem; line-height: 1.7; }
+.manual a { color: #1d4ed8; cursor: pointer; display: block; }
+.hit { padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.86rem; }
+.hit b { display: block; }
+.photo { width: 100%; aspect-ratio: 16 / 7; border-radius: 6px; background: linear-gradient(160deg, #fde68a 0%, #f59e0b 45%, #b45309 70%, #1e3a8a 100%); position: relative; }
+.photo .more { position: absolute; right: 8px; top: 8px; width: 30px; height: 30px; border-radius: 50%; border: 0; background: rgba(255,255,255,.92); cursor: pointer; font-weight: 700; }
+.gone { height: 100%; min-height: 120px; display: grid; place-items: center; color: var(--muted); font-size: 0.9rem; text-align: center; }
+
+.opt { text-align: left; font-size: 0.88rem; padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid var(--border); background: #fff; color: var(--heading); cursor: pointer; transition: border-color .15s, background .15s; }
+.opt:hover:not(:disabled) { border-color: var(--signal); }
+.shake { animation: shake .35s; }
+@keyframes shake { 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
+@keyframes repair { 0% { box-shadow: 0 0 0 0 rgba(5,150,105,.6); } 100% { box-shadow: 0 0 0 14px rgba(5,150,105,0); } }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); }
+/* ---------------- final boss */
+.boss { display: grid; gap: 14px; scroll-margin-top: 64px; }
+.boss-head { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; align-items: flex-end; }
+.boss-head h2 { margin: 2px 0 6px; font-size: 1.6rem; font-weight: 600; color: var(--heading); }
+.boss-head p { margin: 0; color: var(--muted); max-width: 62ch; }
+.boss-ctl { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.boss-status { font-size: 0.85rem; color: var(--heading); font-weight: 500; font-variant-numeric: tabular-nums; margin-right: 4px; }
+.window { overflow: hidden; }
+.win-bar { display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: var(--track); border-bottom: 1px solid var(--border); font-size: 0.75rem; color: var(--muted); }
+.win-bar i { width: 10px; height: 10px; border-radius: 50%; background: #d1d5db; }
+.win-bar span { margin-left: 10px; background: #fff; border-radius: 4px; padding: 2px 10px; flex: 1; max-width: 360px; }
+.app { padding: 14px; display: grid; gap: 12px; font-size: 0.88rem; }
+.app-top { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.app-top nav { display: flex; gap: 14px; color: var(--muted); flex: 1; }
+.logo { font-size: 1rem; }
+.app-body { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 14px; }
+@media (max-width: 760px) { .app-body { grid-template-columns: minmax(0, 1fr); } }
+.app-main, .app-side { display: grid; gap: 12px; align-content: start; }
+.app-dialogs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 600px) { .app-dialogs { grid-template-columns: minmax(0, 1fr); } }
+.thumbs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.thumbs i { aspect-ratio: 1; border-radius: 6px; background: linear-gradient(150deg, hsl(var(--h) 80% 75%), hsl(calc(var(--h) + 40) 60% 40%)); }
+.promo-big { background: linear-gradient(90deg, #f59e0b, #ef4444, #a855f7); color: #fff; font-weight: 800; text-align: center; padding: 14px; border-radius: 6px; font-size: 1.05rem; letter-spacing: .02em; }
+.promo-big small { display: block; font-weight: 500; font-size: 0.75rem; opacity: .9; }
+.fake-link { color: #1d4ed8; text-decoration: underline; }
+.mini-dialog { border: 1px solid var(--border); border-radius: 8px; padding: 12px; display: grid; gap: 8px; box-shadow: 0 4px 14px rgba(0,0,0,.08); }
+.fixed-note { font-size: 0.8rem; color: var(--muted); font-style: italic; padding: 4px 0; }
+.spot { position: relative; border-radius: 8px; outline: 2px dashed transparent; outline-offset: 3px; cursor: help; transition: outline-color .15s, background .15s; }
+.spot:not(.done):hover, .spot:not(.done):focus-visible { outline-color: var(--signal); background: #fffbeb; }
+.spot.picking { outline: 2px solid var(--signal); background: #fffbeb; }
+.spot > * { pointer-events: none; }
+.spot.done { outline: 2px solid var(--accent); cursor: default; padding-top: 18px; animation: repair .9s; }
+.spot.done > * { pointer-events: auto; }
+.spot .tag { position: absolute; top: 0; left: 0; font-size: 0.68rem; font-weight: 700; color: #fff; background: var(--accent); padding: 1px 6px; border-radius: 4px; pointer-events: none; }
+.spot.pulse { animation: pulse 1.4s 2; }
+@keyframes pulse { 50% { outline-color: var(--signal); background: #fef3c7; } }
+.chooser { position: fixed; z-index: 50; left: 50%; bottom: 16px; transform: translateX(-50%); width: min(560px, calc(100vw - 24px)); padding: 14px; display: grid; gap: 10px; box-shadow: 0 16px 48px rgba(0,0,0,.25); }
+.ch-opts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+@media (max-width: 480px) { .ch-opts { grid-template-columns: minmax(0, 1fr); } }
+.ch-opts .opt { font-size: 0.82rem; padding: 0.4rem 0.6rem; }
+.ch-opts .opt b { color: var(--accent); margin-right: 4px; }
+.ch-close { border: 0; background: none; font-size: 1.4rem; line-height: 1; cursor: pointer; color: var(--muted); }
+.ch-msg { font-size: 0.9rem; }
+.boss-done { padding: 16px 20px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; justify-content: space-between; background: var(--accent-soft); border-color: #bbf7d0; color: var(--heading); font-weight: 500; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } html { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav"><a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a></nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <header class="intro">
+    <h1>Spot the usability problems</h1>
+  </header>
+
+  <section class="boss" id="boss">
+    <div class="boss-head">
+      <div></div>
+      <div class="boss-ctl"><span id="boss-status" class="boss-status"></span><button class="ui-btn" id="boss-hint">💡 Hint</button><button class="ui-btn" id="boss-reset">Start again</button></div>
+    </div>
+    <div class="window card">
+      <div class="win-bar"><i></i><i></i><i></i><span>snapshare.example/upload</span></div>
+      <div id="app" class="app"></div>
+    </div>
+    <div class="card boss-done" id="boss-done" hidden><span id="boss-grade"></span> <button class="ui-btn pri" id="boss-share">Copy my result</button></div>
+  </section>
+
+  <template id="app-tpl">
+    <div class="app-top"><b class="logo">📷 SnapShare</b><nav><span>Photos</span><span>Albums</span><span>Shared</span></nav><div data-spot="1"></div></div>
+    <div data-spot="0"></div>
+    <div class="app-body">
+      <div class="app-main">
+        <div data-spot="2"></div>
+        <div class="thumbs"><i style="--h:30"></i><i style="--h:200"></i><i style="--h:120"></i><i style="--h:330"></i><i style="--h:260"></i></div>
+        <div data-spot="7"></div>
+      </div>
+      <div class="app-side">
+        <div data-spot="3"></div>
+        <div data-spot="6"></div>
+        <div class="ui-row" style="flex-wrap:wrap"><div data-spot="4"></div><div data-spot="5"></div></div>
+      </div>
+    </div>
+    <div class="app-dialogs"><div data-spot="8"></div><div data-spot="9"></div></div>
+  </template>
+
+  <div class="chooser card" id="chooser" hidden role="dialog" aria-label="Name the rule">
+    <div class="ui-row" style="justify-content:space-between"><b class="ch-msg">Which rule does this bit break?</b><button class="ch-close" aria-label="Close">×</button></div>
+    <div class="ch-opts"></div>
+  </div>
+
+  <p class="foot">Based on Jakob Nielsen, "10 Usability Heuristics for User Interface Design", <a href="https://www.nngroup.com/articles/ten-usability-heuristics/">Nielsen Norman Group</a>.</p>
+</main>
+
+<script>
+const $ = (s, el = document) => el.querySelector(s);
+const html = (s) => { const t = document.createElement('template'); t.innerHTML = s.trim(); return t.content.firstElementChild; };
+const shake = (b) => { b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); };
+const H = ['Visibility of system status', 'Match between system and the real world', 'User control and freedom', 'Consistency and standards', 'Error prevention', 'Recognition rather than recall', 'Flexibility and efficiency of use', 'Aesthetic and minimalist design', 'Help users recognise, diagnose and recover from errors', 'Help and documentation'].map((title) => ({ title }));
+const SHORT = ['Status', 'Real world', 'Control', 'Consistency', 'Prevention', 'Recognition', 'Efficiency', 'Minimalism', 'Errors', 'Help'];
+
+// ------------------------------------------------------------ the app
+const SPOTS = [
+  [7, `<div class="promo-big">🔥🔥 PRO IS 50% OFF!!! 🔥🔥 <small>Unlimited storage · AI filters · Stickers · Badges · More!</small></div>`,
+      `<div class="fixed-note">Banner removed. Nothing here was needed to share photos.</div>`],
+  [9, `<a class="fake-link">Help</a>`,
+      `<input class="ui-input" style="max-width:190px;padding:.25rem .5rem;font-size:.8rem" placeholder="🔍 Search help…">`],
+  [6, `<div class="ui-row" style="justify-content:space-between"><b>5 photos</b><small style="color:var(--muted)">Click each photo to select it</small></div>`,
+      `<div class="ui-row" style="justify-content:space-between"><b>5 photos</b><span style="font-size:.8rem"><label><input type="checkbox" checked> Select all</label> · <span class="kbd">Ctrl</span>+<span class="kbd">A</span></span></div>`],
+  [5, `<label class="ui-label">Album ID <span>(shown on the previous page)</span><input class="ui-input" placeholder="e.g. 4f9c2a"></label>`,
+      `<label class="ui-label">Album<select class="ui-input"><option>Summer in Cornwall</option><option>Gran's 90th</option><option>New album…</option></select></label>`],
+  [1, `<button class="ui-btn">Persist to object store</button>`,
+      `<button class="ui-btn">Save to album</button>`],
+  [0, `<button class="ui-btn pri">Share</button> <small style="color:var(--muted)">Please wait…</small>`,
+      `<button class="ui-btn pri" disabled>Sharing 3 of 5…</button> <div class="bar" style="width:120px;display:inline-block;vertical-align:middle"><i style="width:60%"></i></div>`],
+  [8, `<label class="ui-label">Notify by email<input class="ui-input" value="sam.example.com"></label><div class="errbox" style="margin-top:4px">Error 0x80070057</div>`,
+      `<label class="ui-label">Notify by email<input class="ui-input" value="sam.example.com" style="border-color:var(--bad)"></label><div class="errbox" style="margin-top:4px;font-family:var(--font)">This email is missing an @. Did you mean sam@example.com?</div>`],
+  [4, `<div class="ui-row"><button class="ui-btn">Download all</button><button class="ui-btn">Delete all</button></div>`,
+      `<div class="ui-row" style="justify-content:space-between"><button class="ui-btn">Download all</button><button class="ui-btn" style="color:var(--bad);border-color:#fecaca">Delete all… <small>(asks first)</small></button></div>`],
+  [3, `<div class="mini-dialog"><b>Leave without saving?</b><div class="ui-row" style="justify-content:flex-end"><button class="ui-btn pri">Leave</button><button class="ui-btn red">Stay</button></div></div>`,
+      `<div class="mini-dialog"><b>Leave without saving?</b><div class="ui-row" style="justify-content:flex-end"><button class="ui-btn">Stay</button><button class="ui-btn pri">Leave</button></div></div>`],
+  [2, `<div class="mini-dialog trap"><b>Your free trial has ended</b><p style="margin:0;font-size:.8rem;color:var(--muted)">Upgrade to keep using SnapShare.</p><div class="ui-row" style="justify-content:flex-end"><button class="ui-btn pri">Upgrade now</button></div></div>`,
+      `<div class="mini-dialog trap"><b>Your free trial has ended</b><p style="margin:0;font-size:.8rem;color:var(--muted)">Upgrade to keep using SnapShare.</p><div class="ui-row" style="justify-content:flex-end"><button class="ui-btn">Not now</button><button class="ui-btn pri">Upgrade now</button></div></div>`],
+];
+
+(function boss() {
+  const app = $('#app'), chooser = $('#chooser'), status = $('#boss-status');
+  let t0 = null, wrong = 0, hints = 0, found = 0, active = null, timer = null;
+  const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+  const elapsed = () => (t0 ? (performance.now() - t0) / 1000 : 0);
+  const tick = () => { status.textContent = `${found}/10 fixed · ${wrong} wrong · ${hints} ${hints === 1 ? 'hint' : 'hints'} · ${fmt(elapsed())}`; };
+  const start = () => { if (t0) return; t0 = performance.now(); timer = setInterval(tick, 500); };
+
+  // chooser: 10 rules, as a sheet
+  H.forEach((h, k) => {
+    const b = html(`<button class="opt" data-k="${k}"><b>${k + 1}</b> ${h.title}</button>`);
+    b.onclick = () => guess(k, b);
+    $('.ch-opts', chooser).append(b);
+  });
+  const close = () => { chooser.hidden = true; active?.classList.remove('picking'); active = null; };
+  $('.ch-close', chooser).onclick = close;
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !chooser.hidden) close(); });
+
+  function guess(k, b) {
+    const want = +active.dataset.h;
+    if (k !== want) { wrong++; shake(b); $('.ch-msg', chooser).textContent = `Not ${SHORT[k].toLowerCase()}. Look at what this bit makes you do.`; tick(); return; }
+    const spot = active; close();
+    spot.innerHTML = SPOTS[spot.dataset.i][2];
+    spot.classList.add('done');
+    spot.append(html(`<span class="tag">✓ ${want + 1} · ${SHORT[want]}</span>`));
+    found++; tick();
+    if (found === 10) finish();
+  }
+
+  function finish() {
+    clearInterval(timer);
+    const s = elapsed();
+    const grade = wrong === 0 && hints === 0 ? 'Flawless. You could run the usability team.' : wrong + hints <= 4 ? 'Sharp eye. A few slips, but the app is saved.' : 'Fixed, eventually. The users thank you.';
+    $('#boss-done').hidden = false;
+    $('#boss-grade').textContent = `All 10 fixed in ${fmt(s)}, ${wrong} wrong ${wrong === 1 ? 'guess' : 'guesses'}, ${hints} ${hints === 1 ? 'hint' : 'hints'}. ${grade}`;
+    $('#boss-share').onclick = async () => {
+      const text = `I spotted all 10 usability problems in ${fmt(s)} with ${wrong} wrong ${wrong === 1 ? 'guess' : 'guesses'}. Can you beat it? ${location.origin}${location.pathname}`;
+      try { await navigator.clipboard.writeText(text); $('#boss-share').textContent = 'Copied ✓'; } catch { prompt('Copy this:', text); }
+    };
+  }
+
+  function build() {
+    app.innerHTML = $('#app-tpl').innerHTML;
+    app.querySelectorAll('[data-spot]').forEach((slot) => {
+      const i = +slot.dataset.spot;
+      slot.dataset.i = i; slot.dataset.h = SPOTS[i][0];
+      slot.classList.add('spot'); slot.tabIndex = 0; slot.setAttribute('role', 'button');
+      slot.setAttribute('aria-label', 'Something wrong here? Click to name the rule it breaks');
+      slot.innerHTML = SPOTS[i][1];
+      const open = (e) => {
+        e.preventDefault();
+        if (slot.classList.contains('done')) return;
+        start(); active?.classList.remove('picking'); active = slot; slot.classList.add('picking');
+        $('.ch-msg', chooser).textContent = 'Which rule does this bit break?';
+        chooser.hidden = false;
+      };
+      slot.addEventListener('click', open);
+      slot.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') open(e); });
+    });
+  }
+
+  $('#boss-hint').onclick = () => {
+    const left = [...app.querySelectorAll('.spot:not(.done)')];
+    if (!left.length) return;
+    start(); hints++; tick();
+    const s = left[Math.floor(Math.random() * left.length)];
+    s.classList.remove('pulse'); void s.offsetWidth; s.classList.add('pulse');
+    s.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  };
+  $('#boss-reset').onclick = () => { clearInterval(timer); t0 = null; wrong = hints = found = 0; $('#boss-done').hidden = true; $('#boss-share').textContent = 'Copy my result'; close(); build(); tick(); };
+  build(); tick();
+})();
+</script>
+</body>
+</html>

@@ -41,6 +41,16 @@ description: Interactive experiments.
         <a href="{{ '/playground/most-x-sound/' | relative_url }}">Try it →</a>
       </p>
     </li>
+    <li>
+      <h2><a href="{{ '/playground/usability-heuristics/' | relative_url }}">🛠️ Spot the Usability Problems</a></h2>
+      <p>
+        An app that breaks all 10 of Nielsen's usability heuristics. Find each problem, name the
+        rule it breaks, and watch that part of the app repair itself. Against the clock.
+      </p>
+      <p class="playground-links">
+        <a href="{{ '/playground/usability-heuristics/' | relative_url }}">Try it →</a>
+      </p>
+    </li>
   </ul>
 </div>
 
