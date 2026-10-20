@@ -31,7 +31,7 @@ permalink: /about/
     <h2>Projects</h2>
     <div class="startup-item">
       <h3>ProcrastApply</h3>
-      <p>I co-founded ProcrastApply with <a href="https://www.linkedin.com/in/gavin-goldwasser-115310334/" target="_blank" rel="noopener">Gavin</a>, a platform that helped students get better jobs. We raised funding and helped 40 users get jobs.</p>
+      <p>I co-founded ProcrastApply with <a href="https://www.linkedin.com/in/gavin-g-115310334/" target="_blank" rel="noopener">Gavin</a>, a platform that helped students get better jobs. We raised funding and helped 40 users get jobs.</p>
     </div>
     <div class="startup-item">
       <h3>More work on GitHub</h3>
