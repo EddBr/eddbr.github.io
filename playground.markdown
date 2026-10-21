@@ -51,6 +51,17 @@ description: Interactive experiments.
         <a href="{{ '/playground/usability-heuristics/' | relative_url }}">Try it →</a>
       </p>
     </li>
+    <li>
+      <h2><a href="{{ '/playground/handle-atlas/' | relative_url }}">🚪 The Handle Atlas</a></h2>
+      <p>
+        27 door handles from around the world, modelled in 3D. Walk up with W A S D, then press the
+        lever, turn the knob, slide the panel or lift the knocker and let it drop. Every door has its
+        own weight, and the heavy ones fight back.
+      </p>
+      <p class="playground-links">
+        <a href="{{ '/playground/handle-atlas/' | relative_url }}">Try it →</a>
+      </p>
+    </li>
   </ul>
 </div>
 

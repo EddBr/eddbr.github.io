@@ -1,0 +1,1456 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Handle Atlas | Eddie's Blog</title>
+<meta name="description" content="27 door handles from around the world, modelled in 3D. Walk up, grab each one, and open its door the way it is really used.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="The Handle Atlas">
+<meta property="og:description" content="27 door handles from around the world, modelled in 3D. Walk up, grab each one, and open its door the way it is really used.">
+<meta property="og:url" content="https://eddbr.github.io/playground/handle-atlas/">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%232B6B60'/%3E%3Crect x='4' y='2.5' width='8' height='11' rx='1' fill='none' stroke='%23fff' stroke-width='1.4'/%3E%3Ccircle cx='10' cy='8' r='1.1' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800;900&family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
+<style>
+/* Layout: a specimen drawer of hardware tiles; choosing one steps you up to its door, full screen, with a hand for a pointer */
+:root{
+  --bg:#E6E8E2; --panel:#F4F5F1; --ink:#1C2320; --muted:#56615A; --line:#C8CEC4;
+  --accent:#2B6B60; --on-accent:#FFFFFF; --brass:#8E6514; --warn:#B4532A;
+  --hud:rgba(244,245,241,.9); --hud-line:rgba(28,35,32,.14);
+  --f-display:"Big Shoulders Display","Arial Narrow",Impact,sans-serif;
+  --f-body:"Source Serif 4",Georgia,"Times New Roman",serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111513; --panel:#1A201D; --ink:#E4E9E2; --muted:#9AA59D; --line:#2E3732;
+  --accent:#78C6B4; --on-accent:#0D1A16; --brass:#D9AF55; --warn:#F08A5D;
+  --hud:rgba(22,27,25,.9); --hud-line:rgba(228,233,226,.14); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111513; --panel:#1A201D; --ink:#E4E9E2; --muted:#9AA59D; --line:#2E3732;
+  --accent:#78C6B4; --on-accent:#0D1A16; --brass:#D9AF55; --warn:#F08A5D;
+  --hud:rgba(22,27,25,.9); --hud-line:rgba(228,233,226,.14); color-scheme:dark}
+
+*{box-sizing:border-box}
+html{color-scheme:light}
+body{margin:0}
+[hidden]{display:none!important}
+img{max-width:100%}
+.sitelink{font-family:var(--f-mono);font-size:12px;color:var(--accent);text-decoration:none}
+.sitelink:hover{text-decoration:underline}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 56px}
+.wrap{max-width:1280px;margin:0 auto}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* header */
+.top{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px 40px;align-items:end;padding-bottom:24px;border-bottom:2px solid var(--ink);margin-bottom:24px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+h1{font-family:var(--f-display);font-weight:900;text-transform:uppercase;font-size:clamp(3.2rem,9vw,7rem);line-height:.84;letter-spacing:-.01em;margin:0;text-wrap:balance}
+h1 span{color:var(--brass)}
+.lede{max-width:60ch;margin:14px 0 0;color:var(--muted);font-size:17px}
+.passport{display:grid;gap:10px;min-width:240px}
+.pass-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.pass-row b{font-family:var(--f-display);font-size:34px;font-weight:800;color:var(--ink);letter-spacing:0;font-variant-numeric:tabular-nums}
+.meter{height:8px;background:var(--line);border-radius:4px;overflow:hidden}
+.meter i{display:block;height:100%;width:0;background:var(--accent);transition:width .5s}
+.btn{appearance:none;border:1.5px solid var(--ink);background:transparent;border-radius:999px;padding:8px 16px;cursor:pointer;font-family:var(--f-mono);font-size:13px;letter-spacing:.04em;white-space:nowrap}
+.btn:hover{background:var(--ink);color:var(--bg)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:500}
+.btn.primary:hover{filter:brightness(1.08);background:var(--accent);color:var(--on-accent)}
+
+/* filters */
+.filters{display:grid;gap:12px;margin-bottom:18px}
+.search input{width:100%;max-width:520px;font:inherit;font-size:15px;padding:9px 14px;border-radius:999px;border:1.5px solid var(--line);background:var(--panel);color:var(--ink)}
+.search input:focus{border-color:var(--accent);outline:none}
+.chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.chips .lbl{font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);width:92px;flex:none}
+.chip{appearance:none;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:4px 11px;font-size:13px;cursor:pointer;font-family:var(--f-body);white-space:nowrap}
+.chip small{font-family:var(--f-mono);color:var(--muted);margin-left:4px;font-size:11px}
+.chip:hover{border-color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.chip[aria-pressed="true"] small{color:inherit;opacity:.7}
+.count{font-family:var(--f-mono);font-size:12px;color:var(--muted);margin:0 0 10px}
+
+/* grid of specimens */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(176px,1fr));gap:16px}
+.card{appearance:none;text-align:left;border:0;padding:0;background:none;cursor:pointer;display:grid;gap:8px}
+.thumb{position:relative;aspect-ratio:1;border-radius:6px;overflow:hidden;display:grid;place-items:center;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12);transition:transform .2s}
+.thumb::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 50% 45%,transparent 45%,rgba(0,0,0,.28));pointer-events:none}
+.thumb svg{width:74%;height:74%;position:relative;z-index:1;overflow:visible}
+.card:hover .thumb{transform:translateY(-3px)}
+.stamp{position:absolute;z-index:2;right:6px;top:8px;transform:rotate(8deg);font-family:var(--f-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#fff;background:rgba(20,70,60,.88);padding:2px 6px;border-radius:3px}
+.cap{display:grid;gap:1px;padding:0 2px}
+.cap .nm{font-weight:600;font-size:15px;line-height:1.25}
+.cap .mt{font-family:var(--f-mono);font-size:11px;color:var(--muted);letter-spacing:.02em}
+.empty{padding:40px 20px;text-align:center;border:1.5px dashed var(--line);border-radius:8px;color:var(--muted)}
+
+/* ---------- immersive door ---------- */
+.imm{position:fixed;inset:0;z-index:50;background:#1b1d1c;overflow:hidden;--floorH:124px}
+.room{position:absolute;inset:0;cursor:none;user-select:none;-webkit-user-select:none;touch-action:none}
+.room *{cursor:none}
+#gl{position:absolute;left:0;top:0;width:100%;height:calc(100% - var(--floorH));display:block}
+.glfail{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);max-width:420px;padding:20px;border-radius:10px;background:var(--hud);color:var(--ink);text-align:center}
+.wall{position:absolute;inset:0 0 var(--floorH) 0}
+.wall::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 55%,transparent 40%,rgba(0,0,0,.35))}
+.floor{position:absolute;left:0;right:0;bottom:0;height:var(--floorH)}
+.floor::after{content:"";position:absolute;inset:0;background:linear-gradient(rgba(0,0,0,.25),rgba(0,0,0,.55))}
+#scene{position:absolute;left:0;right:0;top:calc(76px + env(safe-area-inset-top,0px));bottom:var(--floorH);display:flex;justify-content:center;align-items:flex-end}
+.frame{position:relative;height:min(100%,calc((100vw - 40px) / .54));aspect-ratio:.54;background:#efece4;padding:3% 3.2% 0;box-shadow:0 0 0 1px rgba(0,0,0,.2),0 30px 60px -20px rgba(0,0,0,.6);transform-style:preserve-3d}
+.frame::after{content:"";position:absolute;left:-6%;right:-6%;bottom:-14px;height:14px;background:radial-gradient(ellipse at 50% 0,rgba(0,0,0,.45),transparent 70%)}
+.opening{position:relative;width:100%;height:100%;perspective:1700px}
+.beyond{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:center;padding:14px;text-align:center;overflow:hidden}
+.beyond span{font-family:var(--f-mono);font-size:12px;color:#2c1a0a;background:rgba(255,255,255,.72);padding:3px 8px;border-radius:3px;letter-spacing:.03em}
+.amb-quiet{background:radial-gradient(ellipse at 50% 30%,#fbe7b8,#e2a961 55%,#9c5f2c)}
+.amb-birds{background:radial-gradient(ellipse at 50% 25%,#f5f8dc,#a9c98a 50%,#4f7a45)}
+.amb-water{background:radial-gradient(ellipse at 50% 30%,#eef8f5,#8fcbc0 50%,#3f7f86)}
+.amb-street{background:linear-gradient(#e3eaf0,#a9b6c2 60%,#6c757d)}
+.amb-crowd{background:radial-gradient(ellipse at 50% 30%,#fff3d6,#e6b980 55%,#8a5a3b)}
+.amb-hum{background:linear-gradient(#f4f8f9,#cfdadd 60%,#93a3a8)}
+.amb-wind{background:linear-gradient(#eaf2f9,#b9cfe2 55%,#c8b48f 56%,#9c8762)}
+.door{position:absolute;inset:0;transform-style:preserve-3d}
+.leaf{position:absolute;inset:0;transform-origin:left center;box-shadow:inset 0 0 0 1px rgba(0,0,0,.25);will-change:transform}
+.leaf .shade{position:absolute;inset:0;background:#000;opacity:0;pointer-events:none}
+.t-double .leaf.l,.t-split .leaf.l{inset:0 50% 0 0}
+.t-double .leaf.r,.t-split .leaf.r{inset:0 0 0 50%;transform-origin:right center}
+.leaf.revolve{transform-origin:center;opacity:.92}
+.leaf.shake{animation:shake .5s}
+@keyframes shake{20%,60%{translate:3px 0}40%,80%{translate:-3px 0}}
+.hw{position:absolute;transform:translate(-50%,-50%);z-index:3}
+.hw svg{display:block;width:100%;height:auto;overflow:visible}
+.hw.hot svg{filter:drop-shadow(0 0 6px rgba(255,236,170,.95)) drop-shadow(0 0 2px rgba(255,236,170,.9))}
+.hw.nudge{animation:nudge .45s}
+@keyframes nudge{30%{scale:1.08}60%{scale:.97}}
+.mv{transform-box:view-box;transform-origin:var(--o);animation:prog 1s linear paused both;animation-delay:calc(var(--p,0) * -1s)}
+@keyframes prog{from{transform:none}to{transform:var(--on)}}
+.ind-on{opacity:0}.on-0 .ind-on{opacity:1}.on-0 .ind-off{opacity:0}
+
+.hand{position:absolute;left:0;top:0;width:64px;height:64px;pointer-events:none;z-index:40;opacity:0;transition:opacity .15s}
+.hand.show{opacity:1}
+.hand svg{display:block;width:100%;height:100%;transition:transform .12s;filter:drop-shadow(0 3px 3px rgba(0,0,0,.4))}
+.hand.press svg{transform:scale(.86)}
+
+.hud-top{position:absolute;left:0;right:0;top:0;z-index:30;display:flex;align-items:center;gap:10px;
+  padding:calc(12px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 12px max(16px,env(safe-area-inset-left,0px));pointer-events:none}
+.hud-top > *{pointer-events:auto}
+.pill{background:var(--hud);color:var(--ink);border:1px solid var(--hud-line);border-radius:999px;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.back{appearance:none;cursor:pointer;padding:8px 14px;font-family:var(--f-mono);font-size:13px;display:flex;gap:6px;align-items:center}
+.titlebox{padding:6px 16px;min-width:0;display:grid}
+.titlebox b{font-family:var(--f-display);font-weight:800;font-size:22px;line-height:1.05;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.titlebox span{font-family:var(--f-mono);font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hud-top .sp{flex:1}
+.icons{display:flex;gap:4px;padding:4px}
+.iconbtn{appearance:none;border:0;background:transparent;border-radius:999px;width:36px;height:36px;display:grid;place-items:center;cursor:pointer;color:var(--ink)}
+.iconbtn:hover{background:var(--hud-line)}
+.iconbtn svg{width:18px;height:18px}
+
+.hud-bot{position:absolute;left:0;right:0;bottom:0;z-index:30;min-height:var(--floorH);display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 20px;align-items:center;
+  padding:14px max(16px,env(safe-area-inset-right,0px)) calc(14px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));
+  background:var(--hud);color:var(--ink);border-top:1px solid var(--hud-line);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.hint{margin:0;font-size:18px;line-height:1.3;font-weight:600;min-height:1.3em}
+.feel{margin:2px 0 0;font-size:14px;font-style:italic;color:var(--muted)}
+.gauges{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px 22px;font-family:var(--f-mono);font-size:12px;font-variant-numeric:tabular-nums}
+.gauges div{display:flex;gap:8px;align-items:center;white-space:nowrap}
+.gauges dt{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.gauges dd{margin:0}
+.effort{width:90px;height:8px;border-radius:4px;background:var(--hud-line);overflow:hidden}
+.effort i{display:block;height:100%;width:0;background:var(--accent)}
+.effort.hard i{background:var(--warn)}
+.acts{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+
+.about{position:absolute;z-index:35;right:max(12px,env(safe-area-inset-right,0px));top:calc(70px + env(safe-area-inset-top,0px));bottom:calc(var(--floorH) + 12px);width:min(380px,calc(100% - 24px));
+  overflow:auto;padding:18px 20px;border-radius:10px;background:var(--hud);color:var(--ink);border:1px solid var(--hud-line);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);touch-action:pan-y;display:grid;gap:10px;align-content:start}
+.about h2{font-family:var(--f-display);font-weight:800;font-size:30px;line-height:1;margin:0;text-transform:uppercase;text-wrap:balance}
+.local{font-family:var(--f-mono);font-size:13px;color:var(--brass)}
+.where{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.note{margin:0;font-size:15.5px;line-height:1.55}
+dl.specs{margin:4px 0 0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 14px;border-top:1px solid var(--hud-line);padding-top:10px;font-size:14px}
+dl.specs dt{font-family:var(--f-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding-top:3px}
+dl.specs dd{margin:0}
+
+/* door materials */
+.mat-oak{background:repeating-linear-gradient(90deg,rgba(0,0,0,.06) 0 1px,transparent 1px 7px),repeating-linear-gradient(90deg,#9a6532 0 calc(20% - 2px),#4f3115 calc(20% - 2px) 20%)}
+.mat-white{background:linear-gradient(160deg,#f7f6f2,#e3e1da)}
+.mat-black{background:linear-gradient(160deg,#2c2e30,#0d0e0f 70%)}
+.mat-green{background:repeating-linear-gradient(90deg,#2f5b45 0 calc(25% - 2px),#1d3a2c calc(25% - 2px) 25%)}
+.mat-teal{background:radial-gradient(circle,#e7cf86 0 2px,#8a6a1c 2.5px,transparent 3.5px) 0 0/25% 12%,linear-gradient(160deg,#3d8fb7,#1f5f86)}
+.mat-fusuma{background:radial-gradient(circle,rgba(170,140,90,.18) 0 18%,transparent 19%) 0 0/22% 14%,#efe5cf;border:5px solid #1c1a17}
+.mat-hanji{background:repeating-linear-gradient(0deg,#6b4626 0 3px,transparent 3px 14%),repeating-linear-gradient(90deg,#6b4626 0 3px,transparent 3px 25%),#f3ecdc;border:6px solid #6b4626}
+.mat-vermilion{background:radial-gradient(circle,#ffe28a 0 3px,#b07a14 4px,transparent 5px) 6% 4%/22% 10%,linear-gradient(160deg,#c3332a,#7e1611)}
+.mat-glass{background:linear-gradient(130deg,rgba(220,240,246,.5),rgba(150,190,205,.18) 50%,rgba(220,240,246,.38));border:7px solid #9aa3a8}
+.mat-steel{background:repeating-linear-gradient(90deg,rgba(255,255,255,.06) 0 1px,transparent 1px 3px),linear-gradient(160deg,#aeb5b9,#80888d)}
+.mat-carved{background:repeating-linear-gradient(45deg,rgba(0,0,0,.25) 0 3px,transparent 3px 14px),repeating-linear-gradient(-45deg,rgba(255,255,255,.06) 0 3px,transparent 3px 14px),linear-gradient(160deg,#6a4529,#3b2414)}
+.mat-tarred{background:repeating-linear-gradient(90deg,#2f2016 0 calc(16.6% - 2px),#120b06 calc(16.6% - 2px) 16.6%)}
+.mat-laminate{background:linear-gradient(160deg,#cfd3d0,#a9aeab)}
+.mat-persian{background:repeating-linear-gradient(45deg,rgba(255,220,160,.12) 0 2px,transparent 2px 18px),repeating-linear-gradient(-45deg,rgba(255,220,160,.12) 0 2px,transparent 2px 18px),linear-gradient(160deg,#6b4527,#3c2412)}
+.mat-haveli{background:radial-gradient(circle,#f0cf73 0 2.5px,#8b6316 3px,transparent 4px) 0 0/20% 9%,linear-gradient(160deg,#8d5a2b,#5a3416)}
+.mat-colonial{background:radial-gradient(circle,#2a2a28 0 3px,#0b0b0a 4px,transparent 5px) 8% 6%/28% 13%,repeating-linear-gradient(90deg,#4a3222 0 calc(33.3% - 2px),#24170e calc(33.3% - 2px) 33.3%)}
+.leaf.panels::before,.leaf.panels::after{content:"";position:absolute;left:13%;right:13%;border:2px solid rgba(0,0,0,.14);box-shadow:inset 0 0 0 5px rgba(255,255,255,.05),1px 1px 0 rgba(255,255,255,.12)}
+.leaf.panels::before{top:7%;bottom:56%}
+.leaf.panels::after{top:52%;bottom:7%}
+
+[hidden]{display:none!important}
+@media (max-width:760px){
+  .top{grid-template-columns:minmax(0,1fr)}
+  .imm{--floorH:168px}
+  .hud-bot{grid-template-columns:minmax(0,1fr)}
+  .acts{justify-content:flex-start}
+  .hint{font-size:16px}
+  .gauges{gap:4px 14px}
+  .titlebox b{font-size:18px}
+  .back span{display:none}
+}
+@media (max-width:480px){
+  .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .chips .lbl{width:100%}
+}
+@media (prefers-reduced-motion:reduce){.thumb,.meter i{transition-duration:.01s!important}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
+  <linearGradient id="steel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbfcfc"/><stop offset=".45" stop-color="#c3c9cc"/><stop offset="1" stop-color="#737c81"/></linearGradient>
+  <linearGradient id="steelX" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#7f888d"/><stop offset=".4" stop-color="#f4f6f7"/><stop offset="1" stop-color="#8a9297"/></linearGradient>
+  <linearGradient id="brass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbe6a6"/><stop offset=".5" stop-color="#c8973c"/><stop offset="1" stop-color="#7d5717"/></linearGradient>
+  <linearGradient id="brassX" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8a6420"/><stop offset=".4" stop-color="#f6dc95"/><stop offset="1" stop-color="#8a6420"/></linearGradient>
+  <linearGradient id="brassD" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c0903f"/><stop offset="1" stop-color="#6e4b14"/></linearGradient>
+  <radialGradient id="knob" cx=".38" cy=".32" r=".75"><stop offset="0" stop-color="#fff1c4"/><stop offset=".35" stop-color="#d7a647"/><stop offset="1" stop-color="#6b4a12"/></radialGradient>
+  <linearGradient id="iron" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6d6d69"/><stop offset=".5" stop-color="#363634"/><stop offset="1" stop-color="#1a1a19"/></linearGradient>
+  <linearGradient id="bronze" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d9a26a"/><stop offset=".5" stop-color="#8f5a2b"/><stop offset="1" stop-color="#4a2b12"/></linearGradient>
+  <linearGradient id="gilt" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff0a8"/><stop offset=".45" stop-color="#e0b03e"/><stop offset="1" stop-color="#9a6a12"/></linearGradient>
+  <radialGradient id="porc" cx=".38" cy=".32" r=".8"><stop offset="0" stop-color="#ffffff"/><stop offset=".6" stop-color="#ece9e1"/><stop offset="1" stop-color="#aaa597"/></radialGradient>
+  <linearGradient id="black" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3b3a38"/><stop offset="1" stop-color="#0c0c0b"/></linearGradient>
+  <radialGradient id="well" cx=".5" cy=".3"><stop offset="0" stop-color="#3a332b"/><stop offset="1" stop-color="#0a0908"/></radialGradient>
+  <linearGradient id="wood" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b98450"/><stop offset="1" stop-color="#7a4c24"/></linearGradient>
+  <linearGradient id="woodD" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#5b381b"/><stop offset=".5" stop-color="#8a5a30"/><stop offset="1" stop-color="#4a2c13"/></linearGradient>
+  <linearGradient id="red" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e2533f"/><stop offset="1" stop-color="#a3241a"/></linearGradient>
+  <filter id="sh" x="-25%" y="-25%" width="150%" height="160%"><feDropShadow dx="0" dy="3" stdDeviation="2.5" flood-color="#000" flood-opacity=".4"/></filter>
+</defs></svg>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <a class="sitelink" href="/playground/">← Playground</a>
+      <p class="eyebrow" id="eyebrow">A field catalogue of door hardware</p>
+      <h1>The Handle <span>Atlas</span></h1>
+      <p class="lede">Levers, knobs, knockers, rings, latches and wooden locks from all over the world. Choose one and you are standing at its door, close enough to touch the handle, in 3D. Your pointer becomes a hand: press, turn, pull and lift each handle the way it is really used, and feel how heavy each door is. Scroll to lean in or step back. Turn your sound on.</p>
+    </div>
+    <div class="passport">
+      <div class="pass-row"><span>Doors opened</span><b id="passN">0 / 0</b></div>
+      <div class="meter" aria-hidden="true"><i id="passBar"></i></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn primary" id="surprise" type="button">Surprise me</button>
+        <button class="btn" id="resetPass" type="button" hidden>Reset</button>
+      </div>
+    </div>
+  </header>
+
+  <section aria-label="Catalogue">
+    <div class="filters">
+      <div class="search"><input id="q" type="search" placeholder="Search by name or material" aria-label="Search handles"></div>
+      <div class="chips" id="mechChips"><span class="lbl">Mechanism</span></div>
+    </div>
+    <p class="count" id="count"></p>
+    <div class="grid" id="grid"></div>
+  </section>
+</div>
+
+<div class="imm" id="imm" hidden role="dialog" aria-modal="true" aria-labelledby="immTitle">
+  <div class="room" id="room">
+    <canvas id="gl" aria-label="The door, seen up close"></canvas>
+    <div class="glfail" id="glfail" hidden>This door needs WebGL, which this browser has turned off. Try another browser, or go back to the catalogue.</div>
+    <div class="hand" id="hand" aria-hidden="true"></div>
+  </div>
+  <header class="hud-top">
+    <button class="pill back" id="back" type="button" aria-label="Back to the catalogue"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 5l-7 7 7 7"/></svg><span>Catalogue</span></button>
+    <div class="pill titlebox"><b id="immTitle"></b><span id="immSub"></span></div>
+    <span class="sp"></span>
+    <div class="pill icons">
+      <button class="iconbtn" id="prev" type="button" aria-label="Previous door" title="Previous door"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <button class="iconbtn" id="next" type="button" aria-label="Next door" title="Next door"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5l7 7-7 7"/></svg></button>
+      <button class="iconbtn" id="zin" type="button" aria-label="Step closer" title="Step closer (or scroll)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5M11 8v6M8 11h6"/></svg></button>
+      <button class="iconbtn" id="zout" type="button" aria-label="Step back" title="Step back (or scroll)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5M8 11h6"/></svg></button>
+      <button class="iconbtn" id="mute" type="button"></button>
+      <button class="iconbtn" id="fs" type="button" aria-label="Full screen" title="Full screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+      <button class="iconbtn" id="aboutBtn" type="button" aria-label="About this handle" title="About this handle" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg></button>
+    </div>
+  </header>
+  <aside class="about" id="about" hidden></aside>
+  <div class="hud-bot">
+    <div><p class="hint" id="hint" aria-live="polite"></p><p class="feel" id="feel"></p></div>
+    <div class="acts" id="acts"></div>
+    <dl class="gauges" id="gauges"></dl>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+<script>
+function star(cx,cy,r1,r2,n){let d='';for(let i=0;i<n*2;i++){const r=i%2?r2:r1,a=Math.PI*i/n-Math.PI/2;d+=(i?'L':'M')+(cx+r*Math.cos(a)).toFixed(1)+' '+(cy+r*Math.sin(a)).toFixed(1)}return d+'Z'}
+function chain(x0,y0,cx,cy,x1,y1,n){let s='';for(let i=0;i<=n;i++){const t=i/n,u=1-t,x=u*u*x0+2*u*t*cx+t*t*x1,y=u*u*y0+2*u*t*cy+t*t*y1,dx=2*u*(cx-x0)+2*t*(x1-cx),dy=2*u*(cy-y0)+2*t*(y1-cy),a=Math.atan2(dy,dx)*180/Math.PI;s+=`<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="${i%2?7.5:7}" ry="${i%2?2.4:4.2}" transform="rotate(${a.toFixed(1)} ${x.toFixed(1)} ${y.toFixed(1)})" fill="none" stroke="url(#iron)" stroke-width="2.6"/>`}return s}
+const mv=(o,on,p=0)=>`<g class="mv" data-part="${p}" style="--o:${o};--on:${on}">`;
+const keyhole=(x,y,c='#2a2a2a')=>`<circle cx="${x}" cy="${y}" r="4" fill="${c}"/><rect x="${x-1.8}" y="${y}" width="3.6" height="11" rx="1.2" fill="${c}"/>`;
+
+const REGIONS={europe:'Europe',americas:'The Americas',eastasia:'East Asia',southasia:'South Asia',mena:'Middle East & N. Africa',africa:'Sub-Saharan Africa',global:'Everywhere'};
+const MECHS={lever:'Lever',knob:'Knob',knocker:'Knocker',ring:'Ring pull',latch:'Latch & bolt',pull:'Pull',push:'Push',free:'Hands-free'};
+
+const ITEMS=[
+{id:'euro-lever',name:'Lever on rose',local:'Türdrücker',place:'Germany',region:'europe',mech:'lever',era:'20th century to today',material:'Brushed stainless steel',
+ note:'The everyday handle of continental Europe. Pressing it down draws back the latch, and a spring brings it level again. The key cylinder sits below on its own escutcheon.',
+ specs:[['Spindle','8 mm square'],['Backset','55 mm is the usual German size'],['Spacing','72 mm from handle to cylinder']],
+ door:'swing',mat:'white',panels:1,beyond:'',pos:[74,52,40],
+ parts:[{label:'Press the lever',kind:'toggle',spring:1,sound:'latch'}],
+ svg:`<g filter="url(#sh)"><circle cx="140" cy="90" r="24" fill="url(#steel)"/><rect x="129" y="138" width="22" height="42" rx="11" fill="url(#steel)"/>${keyhole(140,151,'#2f3438')}
+ ${mv('140px 90px','rotate(-38deg)')}<path d="M140 79 H36 a11 11 0 0 0 0 22 H140 Z" fill="url(#steel)"/><circle cx="140" cy="90" r="14" fill="url(#steel)"/></g></g>`},
+
+{id:'us-knob',name:'Round doorknob',local:'doorknob',place:'United States',region:'americas',mech:'knob',era:'Mid-1800s to today',material:'Polished brass',
+ note:'A knob turns the latch rather than levering it. North American houses used knobs almost everywhere, until accessibility rules began to favour levers, which work with an elbow or a closed fist. Vancouver\'s building code has required levers in new homes since 2013.',
+ specs:[['Backset','2⅜ in (60 mm) or 2¾ in (70 mm)'],['Cross bore','2⅛ in (54 mm)']],
+ door:'swing',mat:'green',panels:1,beyond:'',pos:[80,52,26],
+ parts:[{label:'Turn the knob',kind:'toggle',spring:1,sound:'latch'}],
+ svg:`<g filter="url(#sh)"><circle cx="100" cy="100" r="46" fill="url(#brass)"/><circle cx="100" cy="100" r="41" fill="none" stroke="#7d5717" stroke-opacity=".5"/>
+ ${mv('100px 100px','rotate(85deg)')}<circle cx="100" cy="100" r="34" fill="url(#knob)"/>${keyhole(100,96,'#4a330c')}</g>
+ <ellipse cx="88" cy="84" rx="13" ry="6" fill="#fff" opacity=".45" transform="rotate(-35 88 84)"/></g>`},
+
+{id:'porcelain',name:'Porcelain knob',local:'china knob',place:'England',region:'europe',mech:'knob',era:'1850s to 1920s',material:'Glazed porcelain on a brass rose',
+ note:'Glazed porcelain knobs were a Victorian favourite for interior doors. They were cheap to make, warm in the hand and easy to wipe clean. Many were painted with sprigs of flowers or edged in gilt.',
+ specs:[['Finish','Hand-painted, gilt line'],['Spindle','Square, held by a grub screw']],
+ door:'swing',mat:'white',panels:1,beyond:'',pos:[80,50,28],
+ parts:[{label:'Turn the knob',kind:'toggle',spring:1,sound:'latch'}],
+ svg:`<g filter="url(#sh)"><circle cx="100" cy="92" r="42" fill="url(#brass)"/><ellipse cx="100" cy="170" rx="10" ry="16" fill="url(#brass)"/>${keyhole(100,164,'#4a330c')}
+ ${mv('100px 92px','rotate(-75deg)')}<circle cx="100" cy="92" r="34" fill="url(#porc)"/><circle cx="100" cy="92" r="27" fill="none" stroke="#c9973a" stroke-width="2"/>
+ <path d="M100 68 q7 7 0 14 q-7 -7 0 -14z" fill="#5f7fb0"/><path d="M100 82 q10 2 12 10" stroke="#5d8a52" stroke-width="2" fill="none"/><ellipse cx="110" cy="88" rx="5" ry="2.5" fill="#5d8a52" transform="rotate(40 110 88)"/></g>
+ <ellipse cx="88" cy="76" rx="11" ry="5" fill="#fff" opacity=".7" transform="rotate(-35 88 76)"/></g>`},
+
+{id:'lion',name:'Lion\'s head knocker',local:'door knocker',place:'England',region:'europe',mech:'knocker',era:'1700s to today',material:'Cast brass',
+ note:'A brass lion holds a ring in its mouth; the ring drops onto a striking plate and the sound carries down the hall. The black door of 10 Downing Street has one. Durham Cathedral\'s 12th-century bronze sanctuary knocker shows how old the idea is.',
+ specs:[['Striker','Brass stud below the ring'],['Fixing','Bolted through the door']],
+ door:'swing',mat:'black',panels:1,beyond:'',pos:[50,32,36],
+ parts:[{label:'Knock three times',kind:'knock',sound:['knock',230,.7],msg:'Three brass knocks carry down the hallway. Footsteps, then the latch.'}],
+ svg:`<g filter="url(#sh)"><path d="${star(100,66,46,35,18)}" fill="url(#brass)"/><circle cx="100" cy="68" r="30" fill="url(#brassD)"/>
+ <ellipse cx="89" cy="60" rx="5" ry="3.5" fill="#3d2a08"/><ellipse cx="111" cy="60" rx="5" ry="3.5" fill="#3d2a08"/><path d="M92 69 h16 l-8 10z" fill="#4e3609"/>
+ <path d="M86 84 q14 9 28 0" stroke="#4e3609" stroke-width="3" fill="none"/><circle cx="100" cy="178" r="7" fill="url(#brass)"/>
+ ${mv('100px 92px','scaleY(.42)')}<circle cx="100" cy="130" r="36" fill="none" stroke="url(#brass)" stroke-width="10"/></g></g>`},
+
+{id:'fatima',name:'Hand of Fatima knocker',local:'خمسة · khamsa',place:'Morocco',region:'mena',mech:'knocker',era:'Centuries old, still made',material:'Wrought iron',
+ note:'A hand-shaped knocker, often holding a ball, hinged at the wrist. The khamsa, from the Arabic for five, is a protective sign across North Africa and the Mediterranean, and these knockers are common on doors in Morocco, Tunisia and Andalusia.',
+ specs:[['Striker','Iron stud under the ball'],['Meaning','Protection for the household']],
+ door:'swing',mat:'teal',beyond:'',pos:[50,34,30],
+ parts:[{label:'Knock three times',kind:'knock',sound:['knock',150,.35],msg:'The iron hand thuds on its stud. Someone crosses the courtyard to answer.'}],
+ svg:`<g filter="url(#sh)"><circle cx="100" cy="38" r="16" fill="url(#iron)"/><circle cx="100" cy="188" r="8" fill="url(#iron)"/>
+ ${mv('100px 38px','scaleY(.5)')}<rect x="76" y="44" width="48" height="16" rx="5" fill="url(#iron)"/><rect x="79" y="58" width="42" height="56" rx="12" fill="url(#iron)"/>
+ <rect x="79" y="100" width="9.5" height="58" rx="4.75" fill="url(#iron)"/><rect x="89.5" y="100" width="9.5" height="66" rx="4.75" fill="url(#iron)"/><rect x="100" y="100" width="9.5" height="64" rx="4.75" fill="url(#iron)"/><rect x="110.5" y="100" width="9.5" height="54" rx="4.75" fill="url(#iron)"/>
+ <rect x="116" y="70" width="10" height="42" rx="5" transform="rotate(-22 121 70)" fill="url(#iron)"/><circle cx="100" cy="172" r="10" fill="url(#iron)"/><rect x="89" y="138" width="11" height="5" rx="2" fill="url(#brass)"/></g></g>`},
+
+{id:'hikite',name:'Hikite',local:'引手 · hikite',place:'Japan',region:'eastasia',mech:'pull',era:'Centuries old, still standard',material:'Black lacquer with a gilt rim',
+ note:'A recessed finger pull set into a fusuma, the sliding paper-covered panel of a Japanese room. It sits flush so panels can slide past one another. Fine rooms had hikite of lacquer, cloisonné or gilt metal as small showpieces.',
+ specs:[['Door','Fusuma, sliding'],['Depth','Shallow cup, set flush']],
+ door:'slide',mat:'fusuma',beyond:'',pos:[86,50,20],
+ parts:[{label:'Slide the panel',kind:'toggle',spring:1,sound:'slide'}],
+ svg:`<g filter="url(#sh)"><circle cx="100" cy="100" r="42" fill="url(#gilt)"/><circle cx="100" cy="100" r="36" fill="url(#black)"/></g><circle cx="100" cy="100" r="30" fill="url(#well)"/>
+ <path d="M74 104 q13-13 26 0 t26 0" stroke="url(#gilt)" stroke-width="2.5" fill="none"/><path d="M78 114 q11-10 22 0 t22 0" stroke="url(#gilt)" stroke-width="2" fill="none"/>`},
+
+{id:'pushou',name:'Pushou ring knocker',local:'铺首 · pūshǒu',place:'China',region:'eastasia',mech:'knocker',era:'Han dynasty onward',material:'Gilt bronze',
+ note:'A beast mask holding a ring, fixed to the gates of palaces, temples and grand houses to guard the threshold. On the Forbidden City\'s main gates the rings sit among rows of gilded studs, nine rows of nine.',
+ specs:[['Studs','9 × 9 on imperial gates'],['Motif','Lion or taotie mask']],
+ door:'swing',mat:'vermilion',beyond:'',pos:[50,44,48],
+ parts:[{label:'Strike the ring',kind:'knock',sound:['knock',170,.9],msg:'The heavy ring clangs against the gate. A gatekeeper lifts the bar.'}],
+ svg:`<g filter="url(#sh)"><path d="M66 36 q-16 -18 -6 -28 q2 16 16 22z" fill="url(#gilt)"/><path d="M134 36 q16 -18 6 -28 q-2 16 -16 22z" fill="url(#gilt)"/>
+ <path d="M100 18 L140 32 L152 68 L132 108 H68 L48 68 L60 32Z" fill="url(#gilt)"/>
+ <path d="M68 52 q12 -10 26 0" stroke="#7a5310" stroke-width="4" fill="none"/><path d="M106 52 q14 -10 26 0" stroke="#7a5310" stroke-width="4" fill="none"/>
+ <circle cx="82" cy="63" r="7" fill="#7a5310"/><circle cx="118" cy="63" r="7" fill="#7a5310"/><path d="M91 74 q9 -6 18 0 q-2 11 -9 11 q-7 0 -9 -11z" fill="#9c6c14"/><rect x="84" y="92" width="32" height="10" rx="5" fill="#5e3f08"/>
+ ${mv('100px 98px','scaleY(.42)')}<circle cx="100" cy="138" r="34" fill="none" stroke="url(#gilt)" stroke-width="8"/></g></g>`},
+
+{id:'mungori',name:'Mungori with butterfly plate',local:'문고리 · mungori',place:'Korea',region:'eastasia',mech:'ring',era:'Joseon dynasty onward',material:'Wrought iron',
+ note:'An iron ring on a butterfly-shaped plate, the usual pull on the paper-lined lattice doors of a hanok. Butterflies stand for happiness and a good marriage, so they also appear on furniture fittings.',
+ specs:[['Door','Lattice frame lined with hanji paper'],['Plate','Nabi jangseok, butterfly fitting']],
+ door:'swing',mat:'hanji',beyond:'',pos:[82,50,30],
+ parts:[{label:'Pull the ring',kind:'toggle',spring:1,sound:'clank'}],
+ svg:`<g filter="url(#sh)"><ellipse cx="76" cy="62" rx="26" ry="16" transform="rotate(-28 76 62)" fill="url(#iron)"/><ellipse cx="124" cy="62" rx="26" ry="16" transform="rotate(28 124 62)" fill="url(#iron)"/>
+ <ellipse cx="80" cy="92" rx="18" ry="11" transform="rotate(28 80 92)" fill="url(#iron)"/><ellipse cx="120" cy="92" rx="18" ry="11" transform="rotate(-28 120 92)" fill="url(#iron)"/>
+ <circle cx="70" cy="58" r="3" fill="#888"/><circle cx="130" cy="58" r="3" fill="#888"/><circle cx="76" cy="96" r="2.5" fill="#888"/><circle cx="124" cy="96" r="2.5" fill="#888"/>
+ <ellipse cx="100" cy="76" rx="5" ry="22" fill="url(#iron)"/><circle cx="100" cy="96" r="5" fill="#555"/>
+ ${mv('100px 96px','scaleY(.45)')}<circle cx="100" cy="132" r="32" fill="none" stroke="url(#iron)" stroke-width="6"/></g></g>`},
+
+{id:'ring-turn',name:'Ring turn latch',local:'ring handle',place:'England',region:'europe',mech:'ring',era:'Medieval to today',material:'Black wrought iron',
+ note:'Twist the iron ring and a spindle lifts the latch bar on the inside of the door. A plain, sturdy fitting for the plank doors of cottages, churches and barns.',
+ specs:[['Action','Quarter turn lifts the latch'],['Door','Ledged oak planks']],
+ door:'swing',mat:'oak',beyond:'',pos:[80,50,28],
+ parts:[{label:'Twist the ring',kind:'toggle',spring:1,sound:'latch'}],
+ svg:`<g filter="url(#sh)"><rect x="80" y="24" width="40" height="152" rx="20" fill="url(#iron)"/><circle cx="100" cy="36" r="3" fill="#888"/><circle cx="100" cy="166" r="3" fill="#888"/>
+ ${keyhole(100,148,'#111')}<circle cx="100" cy="64" r="10" fill="url(#iron)" stroke="#111"/>
+ ${mv('100px 104px','scaleX(.22)')}<rect x="96" y="64" width="8" height="10" fill="url(#iron)"/><circle cx="100" cy="104" r="34" fill="none" stroke="url(#iron)" stroke-width="8"/></g></g>`},
+
+{id:'suffolk',name:'Suffolk thumb latch',local:'Suffolk latch',place:'England',region:'europe',mech:'latch',era:'1600s onward',material:'Cast iron',
+ note:'Press the flat thumbpiece and it lifts a bar on the far side of the door out of its catch. The Suffolk type fixes its handle between two cusped ends; the Norfolk type mounts it on a backplate. Both crossed the Atlantic to colonial America.',
+ specs:[['Action','Thumb press lifts the sneck bar'],['Door','Ledged and braced planks']],
+ door:'swing',mat:'green',beyond:'',pos:[80,50,30],
+ parts:[{label:'Press the thumbpiece',kind:'toggle',spring:1,sound:'latch'}],
+ svg:`<g filter="url(#sh)"><path d="M104 18 C118 28 118 46 104 56 C90 46 90 28 104 18Z" fill="url(#iron)"/><path d="M104 144 C118 154 118 172 104 182 C90 172 90 154 104 144Z" fill="url(#iron)"/>
+ <path d="M104 52 C62 68 62 130 104 148" stroke="url(#iron)" stroke-width="11" fill="none" stroke-linecap="round"/></g>
+ <rect x="124" y="38" width="9" height="18" rx="2" fill="#000" opacity=".45"/>
+ <g filter="url(#sh)">${mv('128px 47px','rotate(-16deg)')}<path d="M94 40 Q98 33 107 35 L131 43 L131 51 L105 50 Q94 48 94 40Z" fill="url(#iron)"/></g></g>`},
+
+{id:'cremone',name:'Crémone bolt',local:'crémone · espagnolette',place:'France',region:'europe',mech:'latch',era:'1700s onward',material:'Polished brass',
+ note:'Turn the handle and a gear drives rods up into the head of the frame and down into the sill, locking a tall French door at three points. The espagnolette does the same job by rotating the rod so hooks catch on keepers.',
+ specs:[['Locking points','Head, sill and centre'],['Door','Glazed French door']],
+ door:'swing',mat:'glass',beyond:'',pos:[86,50,30],
+ parts:[{label:'Turn the handle',kind:'toggle',spring:0,sound:'bolt'}],
+ svg:`<g filter="url(#sh)"><rect x="96" y="0" width="8" height="200" fill="url(#brassX)"/><rect x="84" y="80" width="32" height="40" rx="8" fill="url(#brass)"/>
+ ${mv('100px 100px','rotate(-90deg)')}<rect x="94" y="96" width="12" height="62" rx="6" fill="url(#brassX)"/><ellipse cx="100" cy="164" rx="11" ry="15" fill="url(#brass)"/><circle cx="100" cy="100" r="8" fill="url(#brass)"/></g></g>`},
+
+{id:'pull',name:'Pull handle',local:'D pull',place:'Everywhere',region:'global',mech:'pull',era:'20th century to today',material:'Stainless steel',
+ note:'A plain D-shaped bar on standoffs, standard on shop and office doors worldwide. Its shape tells anyone who sees it to pull.',
+ specs:[['Centres','150 to 600 mm'],['Bar','25 mm diameter is typical']],
+ door:'swing',mat:'glass',beyond:'',pos:[82,50,34],
+ parts:[{label:'Pull the handle',kind:'toggle',spring:1,sound:'thunk'}],
+ svg:`<g filter="url(#sh)"><circle cx="122" cy="34" r="9" fill="url(#steel)"/><circle cx="122" cy="166" r="9" fill="url(#steel)"/>
+ ${mv('100px 100px','scale(1.08) translateX(-5px)')}<rect x="84" y="28" width="40" height="12" rx="5" fill="url(#steel)"/><rect x="84" y="160" width="40" height="12" rx="5" fill="url(#steel)"/><rect x="74" y="18" width="20" height="164" rx="10" fill="url(#steelX)"/></g></g>`},
+
+{id:'push',name:'Push plate',local:'finger plate',place:'Everywhere',region:'global',mech:'push',era:'20th century to today',material:'Satin stainless steel',
+ note:'A flat plate with nothing to grab, so your hand knows to push. Don Norman used doors to explain this idea, called an affordance, in his 1988 book The Design of Everyday Things. Doors that send the wrong signal are now called Norman doors.',
+ specs:[['Size','About 300 × 75 mm'],['Fixing','Screws or adhesive']],
+ door:'swing',mat:'steel',beyond:'',pos:[80,48,34],
+ parts:[{label:'Push the door',kind:'toggle',spring:1,sound:'thunk'}],
+ svg:`<g filter="url(#sh)">${mv('100px 100px','scale(.94)')}<rect x="66" y="22" width="68" height="156" rx="6" fill="url(#steelX)"/>
+ <text x="100" y="104" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="17" font-weight="500" fill="#545c61" letter-spacing="2">PUSH</text></g></g>`},
+
+{id:'panic',name:'Panic bar',local:'crash bar · exit device',place:'Indianapolis, USA',region:'americas',mech:'push',era:'1908 to today',material:'Steel with a red push pad',
+ note:'A bar across the door that unlatches when anyone leans on it, so a crowd can get out even in a crush. It followed the Iroquois Theatre fire in Chicago in 1903, where hundreds died at doors that would not open. Vonnegut Hardware of Indianapolis, the novelist\'s family firm, sold the first Von Duprin devices in 1908.',
+ specs:[['Opens','Outward, in the direction of escape'],['Name','Von Duprin: Vonnegut, DuPrey, Prinzler']],
+ door:'swing',mat:'steel',beyond:'',pos:[50,54,92],
+ parts:[{label:'Push the bar',kind:'toggle',spring:1,sound:'latch'}],
+ svg:`<g filter="url(#sh)"><rect x="8" y="80" width="28" height="40" rx="4" fill="url(#steel)"/><rect x="164" y="80" width="28" height="40" rx="4" fill="url(#steel)"/>
+ ${mv('100px 100px','translateY(5px) scaleY(.85)')}<rect x="28" y="88" width="144" height="24" rx="12" fill="url(#steel)"/><rect x="62" y="90" width="76" height="20" rx="10" fill="url(#red)"/>
+ <text x="100" y="103.5" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="8" font-weight="500" fill="#fff" letter-spacing="1">PUSH TO EXIT</text></g></g>`},
+
+{id:'bauhaus',name:'Gropius lever',local:'Bauhaus-Drücker',place:'Weimar, Germany',region:'europe',mech:'lever',era:'Designed 1923',material:'Nickel-plated steel',
+ note:'Walter Gropius designed this lever in 1923 for the Bauhaus, building it from basic shapes: a cylinder for the grip on a square shank. It was among the first designer door handles made in quantity, and it is still produced.',
+ specs:[['Forms','Cylinder, square, circle'],['Designers','Walter Gropius with Adolf Meyer']],
+ door:'swing',mat:'white',panels:1,beyond:'',pos:[74,52,40],
+ parts:[{label:'Press the lever',kind:'toggle',spring:1,sound:'latch'}],
+ svg:`<g filter="url(#sh)"><circle cx="148" cy="90" r="21" fill="url(#steel)"/><circle cx="148" cy="152" r="10" fill="url(#steel)"/>${keyhole(148,148,'#2f3438')}
+ ${mv('148px 90px','rotate(-36deg)')}<rect x="40" y="80" width="110" height="20" rx="2" fill="url(#steel)"/><rect x="136" y="78" width="24" height="24" fill="url(#steel)" stroke="#8a9297"/></g></g>`},
+
+{id:'wittgenstein',name:'Wittgenstein handle',local:'Haus Wittgenstein',place:'Vienna, Austria',region:'europe',mech:'lever',era:'1926–28',material:'Plain metal, no ornament',
+ note:'The philosopher Ludwig Wittgenstein designed a house in Vienna for his sister Margarethe and fussed over every detail, down to the radiators and these slender handles. His sister Hermine wrote of how long he spent getting their proportions exactly right.',
+ specs:[['House','Kundmanngasse, Vienna'],['Form','A plain bent rod']],
+ door:'swing',mat:'white',panels:1,beyond:'',pos:[74,52,40],
+ parts:[{label:'Press the lever',kind:'toggle',spring:1,sound:'latch'}],
+ svg:`<g filter="url(#sh)"><circle cx="150" cy="90" r="13" fill="url(#steel)"/><circle cx="150" cy="140" r="8" fill="url(#steel)"/>${keyhole(150,137,'#2f3438')}
+ ${mv('150px 90px','rotate(-40deg)')}<rect x="56" y="85" width="98" height="10" rx="5" fill="url(#steel)"/><circle cx="150" cy="90" r="8" fill="url(#steel)"/></g></g>`},
+
+{id:'aj',name:'AJ lever',local:'AJ-greb',place:'Copenhagen, Denmark',region:'europe',mech:'lever',era:'Designed 1956',material:'Satin stainless steel',
+ note:'Arne Jacobsen designed this softly curved lever in 1956 for the SAS Royal Hotel in Copenhagen, where he also designed the furniture, lamps and cutlery. The grip is shaped to sit in the curl of the fingers.',
+ specs:[['Building','SAS Royal Hotel, opened 1960'],['Form','Tapered, curved grip']],
+ door:'swing',mat:'oak',beyond:'',pos:[74,52,40],
+ parts:[{label:'Press the lever',kind:'toggle',spring:1,sound:'latch'}],
+ svg:`<g filter="url(#sh)"><circle cx="150" cy="92" r="18" fill="url(#steel)"/><circle cx="150" cy="148" r="10" fill="url(#steel)"/>${keyhole(150,144,'#2f3438')}
+ ${mv('150px 92px','rotate(-36deg)')}<path d="M150 84 C120 82 72 78 46 86 C34 90 34 104 46 105 C72 107 120 102 150 100Z" fill="url(#steel)"/><circle cx="150" cy="92" r="10" fill="url(#steel)"/></g></g>`},
+
+{id:'dogon',name:'Dogon granary lock',local:'Dogon · Bamana lock',place:'Mali',region:'africa',mech:'latch',era:'Long tradition; museum pieces from the 1800s on',material:'Carved wood',
+ note:'Dogon and Bamana carvers in Mali made wooden locks for granaries and houses. A bolt slides through an upright block, and a wooden key with pegs lifts hidden pins to free it. The upright is often carved with figures, sometimes a man and a woman, to watch over what is stored inside.',
+ specs:[['Key','Flat wooden key with pegs'],['Door','Carved granary door']],
+ door:'swing',mat:'carved',beyond:'',pos:[78,48,46],
+ parts:[{label:'Slide the bolt',kind:'toggle',spring:0,sound:'woodbolt'}],
+ svg:`<g filter="url(#sh)">${mv('100px 100px','translateX(-40px)')}<rect x="58" y="100" width="138" height="18" rx="3" fill="url(#wood)"/><path d="M180 100 v18 M168 100 v18" stroke="#5b381b" stroke-width="1.5"/></g>
+ <rect x="86" y="44" width="30" height="136" rx="3" fill="url(#woodD)"/><path d="M90 140 l6 8 l6 -8 l6 8 l6 -8 M90 156 l6 8 l6 -8 l6 8 l6 -8 M90 68 l6 8 l6 -8 l6 8 l6 -8" stroke="#2e1a0a" stroke-width="2" fill="none"/>
+ <circle cx="93" cy="20" r="7" fill="url(#woodD)"/><rect x="88" y="27" width="10" height="20" rx="4" fill="url(#woodD)"/><circle cx="109" cy="20" r="7" fill="url(#woodD)"/><rect x="104" y="27" width="10" height="20" rx="4" fill="url(#woodD)"/>
+ <rect x="97" y="122" width="8" height="10" fill="#1e1006"/></g>`},
+
+{id:'kundi',name:'Saankal door chain',local:'साँकल · saankal',place:'Rajasthan and Old Delhi',region:'southasia',mech:'latch',era:'Centuries old',material:'Hand-forged iron on brass plates',
+ note:'Old double doors in north India often carry an iron chain, the saankal, on one leaf that drops over a staple or hook on the other. From outside it takes a padlock when the house is empty. When someone is home it hangs free, and visitors rattle it against the door to announce themselves.',
+ specs:[['Door','Double-leaf teak with brass studs'],['Locking','Chain over staple, padlock']],
+ door:'double',mat:'haveli',beyond:'',pos:[50,46,58],
+ parts:[{label:'Rattle the chain',kind:'rattle',sound:'jingle',msg:'The chain clatters against the door. Someone is coming.'}],
+ svg:`<g filter="url(#sh)"><rect x="26" y="50" width="34" height="34" rx="4" fill="url(#brass)"/><circle cx="43" cy="67" r="6" fill="url(#iron)"/>
+ <rect x="138" y="72" width="34" height="12" rx="3" fill="url(#brass)"/><path d="M146 82 v16 a9 9 0 0 0 18 0 v-16" fill="none" stroke="url(#iron)" stroke-width="5"/>
+ ${mv('43px 67px','rotate(58deg)')}${chain(43,74,96,150,150,104,13)}<path d="M150 106 q10 -2 10 -11 q0 -9 -9 -9" fill="none" stroke="url(#iron)" stroke-width="4" stroke-linecap="round"/></g></g>`},
+
+{id:'persian',name:'Twin knockers',local:'کوبه kubeh · حلقه halgheh',place:'Yazd and Kashan, Iran',region:'mena',mech:'knocker',era:'Centuries old',material:'Wrought iron',
+ note:'Traditional doors in Iran carry two knockers. The heavy rod (kubeh) gives a low thud and was used by men; the ring (halgheh) gives a lighter, higher sound and was used by women. Hearing which one sounded, the household knew who should go to the door.',
+ specs:[['Left leaf','Kubeh, heavy rod'],['Right leaf','Halgheh, ring']],
+ door:'double',mat:'persian',beyond:'',pos:[50,38,60],
+ parts:[{label:'Heavy knocker',kind:'knock',sound:['knock',85,.15,1.2],msg:'A low, heavy thud. A man of the house comes to the door.'},
+        {label:'Ring knocker',kind:'knock',sound:['knock',540,.9,.6],msg:'A lighter, ringing tap. A woman of the house comes to the door.'}],
+ svg:`<g filter="url(#sh)"><circle cx="60" cy="46" r="11" fill="url(#iron)"/><circle cx="60" cy="176" r="7" fill="url(#iron)"/><circle cx="140" cy="60" r="9" fill="url(#iron)"/><circle cx="140" cy="140" r="6" fill="url(#iron)"/>
+ ${mv('60px 48px','scaleY(.45)',0)}<rect x="54" y="48" width="12" height="96" rx="6" fill="url(#iron)"/><circle cx="60" cy="152" r="14" fill="url(#iron)"/></g>
+ ${mv('140px 66px','scaleY(.45)',1)}<circle cx="140" cy="100" r="30" fill="none" stroke="url(#iron)" stroke-width="6"/></g></g>`},
+
+{id:'egyptian',name:'Wooden pin lock',local:'pin-tumbler lock',place:'Egypt',region:'mena',mech:'latch',era:'Ancient; examples over 2,000 years old',material:'Wood',
+ note:'Among the oldest locks known. Pins drop from a wooden housing into holes in the bolt; a key with matching pegs lifts them so the bolt can slide. In the mid-1800s Linus Yale and his son reworked the same pin-tumbler idea in metal.',
+ specs:[['Pins','Wooden, gravity-dropped'],['Key','Long wooden key with pegs']],
+ door:'swing',mat:'oak',beyond:'',pos:[76,50,46],
+ parts:[{label:'Lift the pins and slide',kind:'toggle',spring:0,sound:'woodbolt'}],
+ svg:`<g filter="url(#sh)">${mv('100px 100px','translateX(-36px)')}<rect x="44" y="98" width="152" height="22" rx="3" fill="url(#wood)"/><rect x="34" y="102" width="30" height="14" rx="3" fill="url(#woodD)"/><rect x="26" y="102" width="10" height="56" rx="4" fill="url(#woodD)"/></g>
+ <rect x="94" y="52" width="40" height="98" rx="4" fill="url(#woodD)"/><rect x="102" y="60" width="5" height="34" fill="#2e1a0a"/><rect x="111.5" y="60" width="5" height="34" fill="#2e1a0a"/><rect x="121" y="60" width="5" height="34" fill="#2e1a0a"/></g>`},
+
+{id:'sensor',name:'Automatic door',local:'no handle at all',place:'Corpus Christi, Texas',region:'americas',mech:'free',era:'1954 to today',material:'Glass, motor and sensor',
+ note:'Dee Horton and Lew Hewitt built an automatic sliding door in Corpus Christi in 1954, after watching people wrestle with doors in the coastal wind. A sensor above the door now does the work of the hand.',
+ specs:[['Sensor','Microwave or infrared'],['First sold','Horton Automatics, 1960']],
+ door:'split',mat:'glass',beyond:'',pos:[50,9,46],
+ parts:[{label:'Walk up to the door',kind:'toggle',spring:1,sound:'chime'}],
+ svg:`<g filter="url(#sh)"><rect x="40" y="70" width="120" height="40" rx="8" fill="url(#black)"/><circle cx="140" cy="90" r="5" fill="#35d07a"/><rect x="54" y="84" width="60" height="12" rx="6" fill="#222"/></g>
+ ${mv('100px 110px','scale(1.25)')}<path d="M74 122 q26 14 52 0 M64 134 q36 20 72 0" stroke="#79d3c0" stroke-width="3" fill="none" stroke-linecap="round" opacity=".85"/></g>`},
+
+{id:'foot',name:'Foot pull',local:'hands-free opener',place:'Everywhere',region:'global',mech:'free',era:'2000s to today',material:'Stainless steel',
+ note:'A bracket near the floor lets you pull a door open with your foot and keep your hands clean. Hospitals and food factories used them first, and they spread quickly in 2020 during the COVID-19 pandemic.',
+ specs:[['Height','Just above the floor'],['Fixing','Screwed to the bottom rail']],
+ door:'swing',mat:'steel',beyond:'',pos:[70,86,44],
+ parts:[{label:'Hook it with your foot',kind:'toggle',spring:1,sound:'thunk'}],
+ svg:`<g filter="url(#sh)"><rect x="40" y="128" width="30" height="56" rx="4" fill="url(#steel)"/><path d="M70 146 H160 a10 10 0 0 1 10 10 v4 a10 10 0 0 1 -10 10 H70z" fill="url(#steel)"/></g>
+ ${mv('130px 120px','translate(-8px,14px) rotate(-6deg)')}<path d="M92 128 q0 -26 22 -30 l12 0 q7 0 9 7 l4 11 q20 4 24 13 l0 5 H92z" fill="#38404a" opacity=".9"/></g>`},
+
+{id:'indicator',name:'Indicator bolt',local:'vacant / engaged',place:'United Kingdom',region:'europe',mech:'latch',era:'20th century to today',material:'Chrome-plated brass',
+ note:'Turning the thumbturn throws a bolt and flips the little window from VACANT to ENGAGED, so people outside can see the cubicle is in use without rattling the door.',
+ specs:[['Outside','Emergency release slot'],['Inside','Thumbturn']],
+ door:'none',mat:'laminate',beyond:'',pos:[78,50,34],
+ parts:[{label:'Lock',off:'Unlock',kind:'toggle',spring:0,sound:'bolt',onMsg:'Engaged. The bolt is thrown and the window shows red.',offMsg:'Vacant. Next, please.'}],
+ svg:`<g filter="url(#sh)"><rect x="40" y="46" width="120" height="108" rx="14" fill="url(#steel)"/></g><rect x="60" y="114" width="80" height="26" rx="4" fill="#f4f2ec"/>
+ <text class="ind-off" x="100" y="132" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="13" font-weight="500" fill="#1d8a4a" letter-spacing="1">VACANT</text>
+ <text class="ind-on" x="100" y="132" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="13" font-weight="500" fill="#c3271b" letter-spacing="1">ENGAGED</text>
+ <g filter="url(#sh)">${mv('100px 80px','rotate(90deg)')}<circle cx="100" cy="80" r="20" fill="url(#steel)"/><rect x="82" y="75" width="36" height="10" rx="5" fill="url(#steelX)"/></g></g>`},
+
+{id:'church',name:'Church door ring',local:'kyrkdörr',place:'Östergötland, Sweden',region:'europe',mech:'ring',era:'1100s onward',material:'Wrought iron',
+ note:'Medieval churches in Sweden were often given heavy plank doors covered in decorative wrought iron, with a large ring to pull them open. The 12th-century door at Rogslösa church in Östergötland is one of the best known.',
+ specs:[['Door','Tarred planks with iron straps'],['Ring','Hand-forged']],
+ door:'swing',mat:'tarred',beyond:'',pos:[72,52,46],
+ parts:[{label:'Pull the ring',kind:'toggle',spring:1,sound:'clank'}],
+ svg:`<g filter="url(#sh)"><path d="M0 34 H200 M0 172 H200" stroke="#2a2a28" stroke-width="7"/><path d="M30 34 q-14 -16 -26 -6 M170 34 q14 -16 26 -6 M30 172 q-14 16 -26 6 M170 172 q14 16 26 6" stroke="#2a2a28" stroke-width="4" fill="none"/>
+ <path d="${star(100,86,20,11,8)}" fill="url(#iron)"/><circle cx="100" cy="86" r="6" fill="#555"/>
+ ${mv('100px 92px','scaleY(.5)')}<circle cx="100" cy="126" r="34" fill="none" stroke="url(#iron)" stroke-width="7"/></g></g>`},
+
+{id:'revolving',name:'Revolving door bar',local:'revolving door',place:'Philadelphia, USA',region:'americas',mech:'push',era:'Patented 1888',material:'Brass on glass',
+ note:'Theophilus Van Kannel of Philadelphia patented the revolving door in 1888. Because it is never open straight through, it keeps out wind, rain and street noise. You lean on the bar of one wing and the whole drum turns.',
+ specs:[['Wings','Usually three or four'],['Benefit','Never open straight through']],
+ door:'revolve',mat:'glass',beyond:'',pos:[50,52,80],
+ parts:[{label:'Push the wing',kind:'toggle',spring:1,sound:'thunk'}],
+ svg:`<g filter="url(#sh)"><rect x="46" y="84" width="10" height="32" rx="3" fill="url(#brass)"/><rect x="144" y="84" width="10" height="32" rx="3" fill="url(#brass)"/>
+ ${mv('100px 100px','translateY(3px) scale(.96)')}<rect x="24" y="91" width="152" height="18" rx="9" fill="url(#brass)"/></g></g>`},
+
+{id:'aldaba',name:'Colonial aldaba',local:'aldaba',place:'Antigua Guatemala',region:'americas',mech:'knocker',era:'1500s to 1800s',material:'Cast bronze',
+ note:'Big Spanish colonial doors were built to let a carriage through, with a smaller door, the postigo, cut into one leaf for people on foot. A bronze knocker hung among the iron studs. Many survive in Antigua Guatemala, Cartagena and Old Havana.',
+ specs:[['Small door','Postigo, for people'],['Studs','Iron clavos']],
+ door:'swing',mat:'colonial',beyond:'',pos:[50,36,40],
+ parts:[{label:'Knock three times',kind:'knock',sound:['knock',160,.6],msg:'Bronze on bronze. Someone opens the postigo to see who is there.'}],
+ svg:`<g filter="url(#sh)"><path d="${star(100,50,28,19,12)}" fill="url(#bronze)"/><circle cx="100" cy="50" r="10" fill="url(#bronze)" stroke="#4a2b12"/><circle cx="100" cy="182" r="7" fill="url(#bronze)"/>
+ ${mv('100px 60px','scaleY(.42)')}<circle cx="100" cy="108" r="42" fill="none" stroke="url(#bronze)" stroke-width="9"/><ellipse cx="100" cy="156" rx="10" ry="13" fill="url(#bronze)"/></g></g>`}
+];
+
+/* ---------- how each fitting is worked ---------- */
+const GEST={
+  'euro-lever':{g:'down',hint:'Grab the lever and drag it down.'},
+  'us-knob':{g:'turn',deg:85,hint:'Grab the knob and turn it clockwise, round its centre.'},
+  porcelain:{g:'turn',deg:-75,hint:'Grab the knob and turn it anticlockwise, round its centre.'},
+  lion:{g:'knock',hint:'Grab the ring, pull it back, and let go.'},
+  fatima:{g:'knock',hint:'Grab the hand, lift it back from the door, and let go.'},
+  hikite:{g:'slide',hint:'Hook a finger in the hikite and slide the panel left.'},
+  pushou:{g:'knock',hint:'Grab the ring, haul it back, and let it fall on the gate.'},
+  mungori:{g:'pull',hint:'Grab the iron ring and pull the door toward you.'},
+  'ring-turn':{g:'turn',deg:0,hint:'Grab the ring and twist it round to lift the latch.'},
+  suffolk:{g:'down',hint:'Put your thumb on the thumbpiece and press it down.'},
+  cremone:{g:'turn',deg:-90,hint:'Grab the handle and swing it round and up to the right.'},
+  pull:{g:'pull',hint:'Grab the bar and pull. It is heavy glass with a closer.'},
+  push:{g:'push',hint:'Put your palm on the plate and push.'},
+  panic:{g:'press',hint:'Press down on the bar and hold it.'},
+  bauhaus:{g:'down',hint:'Grab the lever and drag it down.'},
+  wittgenstein:{g:'down',hint:'Grab the lever and drag it down.'},
+  aj:{g:'down',hint:'Grab the lever and drag it down.'},
+  dogon:{g:'bolt',hint:'Grab the bolt and work it to the left. It sticks.'},
+  kundi:{g:'rattle',hint:'Grab the chain. Lift it away from the door and let it drop, or swing it hard against the wood.'},
+  persian:{g:'knock',hint:'Two knockers. Pull back the heavy rod or the ring, and let go.'},
+  egyptian:{g:'bolt',hint:'Grab the key and work the bolt to the left. Wood sticks.'},
+  sensor:{g:'approach',hint:'Bring your hand up to the glass. No need to touch it.'},
+  foot:{g:'pull',shoe:1,hint:'Hook the bracket with your shoe and pull.'},
+  indicator:{g:'turn',deg:90,hint:'Grab the thumbturn and give it a quarter turn.'},
+  church:{g:'pull',hint:'Grab the iron ring and haul. This door is very heavy.'},
+  revolving:{g:'revolve',hint:'Lean on the bar and push the drum round.'},
+  aldaba:{g:'knock',hint:'Grab the knocker, pull it back, and let it drop.'}
+};
+
+/* ---------- weight, setting and sound of each door ---------- */
+const FEEL={
+  'euro-lever':{kg:30,wall:'plaster',amb:'quiet',creak:.1,feel:'A firm spring under the lever and a crisp click as the latch draws back.'},
+  'us-knob':{kg:35,wall:'clapboard',amb:'birds',creak:.3,feel:'Round and smooth. It takes a real twist of the wrist, more if your hands are wet.'},
+  porcelain:{kg:20,wall:'wallpaper',amb:'quiet',creak:.45,feel:'Cool and glassy in the palm. The old spindle has a little play in it.'},
+  lion:{kg:60,wall:'brick',amb:'street',creak:.15,feel:'The brass ring is heavy. Lift it high and the whole hall rings.'},
+  fatima:{kg:80,wall:'whitewash',amb:'water',creak:.5,feel:'Rough iron. The hand lands with a dull, low thud on thick cedar.'},
+  hikite:{kg:3,wall:'juraku',amb:'birds',creak:0,glide:1,paper:1,feel:'Almost weightless. A flick sends it gliding along its wooden track.'},
+  pushou:{kg:120,wall:'hutong',amb:'birds',creak:.6,feel:'Thick lacquered timber. The bronze ring clangs like a bell.'},
+  mungori:{kg:6,wall:'hanok',amb:'wind',creak:.25,paper:1,feel:'Paper on a light lattice. The cold iron ring weighs more than it seems to.'},
+  'ring-turn':{kg:45,wall:'stone',amb:'birds',creak:.7,feel:'Twist, feel the bar lift on the far side, then lean into the oak.'},
+  suffolk:{kg:40,wall:'boards',amb:'wind',creak:.65,feel:'A thumb press, a clack, and a door that drags a little on the floor.'},
+  cremone:{kg:25,wall:'haussmann',amb:'street',creak:.2,feel:'Turn the olive handle and the rods slide out of the head and sill.'},
+  pull:{kg:50,wall:'subway',amb:'crowd',creak:0,closer:1,feel:'Heavy tempered glass. The closer resists you, then eases it shut.'},
+  push:{kg:40,wall:'office',amb:'hum',creak:0,closer:1,feel:'Flat, cold steel. Lean in and the closer hisses.'},
+  panic:{kg:55,wall:'concrete',amb:'street',creak:.1,closer:1,feel:'The bar drops with a loud clack, made to work even in a crush.'},
+  bauhaus:{kg:25,wall:'plaster',amb:'quiet',creak:.1,feel:'The cylinder fills your fist; the square neck sits under your index finger.'},
+  wittgenstein:{kg:35,wall:'plaster',amb:'quiet',creak:.05,feel:'Thin and exact. Barely there in the hand.'},
+  aj:{kg:45,wall:'hotel',amb:'hum',creak:.05,closer:1,feel:'The curve settles into your fingers. A hotel closer pulls the door home.'},
+  dogon:{kg:10,wall:'adobe',amb:'wind',creak:.5,feel:'The wooden bolt sticks, then jumps. A small door of rough timber.'},
+  kundi:{kg:90,wall:'jaipur',amb:'street',creak:.6,feel:'Iron links clatter against brass studs. Loud enough to carry indoors.'},
+  persian:{kg:70,wall:'yazd',amb:'water',creak:.5,feel:'Two voices on one door: a deep thud and a bright ring.'},
+  egyptian:{kg:30,wall:'mudbrick',amb:'wind',creak:.45,feel:'Wood on wood. The bolt won\'t budge until it suddenly does.'},
+  sensor:{kg:0,wall:'storefront',amb:'hum',creak:0,motor:1,feel:'Nothing to touch. A sensor over the door watches for movement.'},
+  foot:{kg:45,wall:'hospital',amb:'hum',creak:0,closer:1,feel:'Your shoe hooks the bracket. Your hands stay clean.'},
+  indicator:{kg:12,wall:'tiles',amb:'hum',creak:0,feel:'A quarter turn, and the little window flips with a snap.'},
+  church:{kg:250,wall:'stone',amb:'quiet',creak:.95,feel:'Enormous. It takes your whole weight to start it moving, and it groans.'},
+  revolving:{kg:400,wall:'lobby',amb:'street',creak:0,feel:'The drum is heavy. Once it turns, it wants to keep turning.'},
+  aldaba:{kg:150,wall:'colonial',amb:'water',creak:.7,feel:'Bronze on bronze, loud enough to carry across the patio.'}
+};
+const svgURI=s=>`url("data:image/svg+xml,${encodeURIComponent(s)}")`;
+const bricks=(w,h,j,a,b,c)=>svgURI(`<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${h*2}'><rect width='${w}' height='${h*2}' fill='${j}'/><rect x='1' y='1' width='${w-2}' height='${h-2}' fill='${a}'/><rect x='${-w/2+1}' y='${h+1}' width='${w-2}' height='${h-2}' fill='${b}'/><rect x='${w/2+1}' y='${h+1}' width='${w-2}' height='${h-2}' fill='${c}'/></svg>`);
+const FLOORS={wood:'repeating-linear-gradient(90deg,#8a5a34 0 70px,#6e4527 70px 72px)',stone:'linear-gradient(#8e8a82,#77736b)',tile:'repeating-conic-gradient(#d9d6cf 0 25%,#9b978f 0 50%) 0 0/56px 56px',
+  tatami:'repeating-linear-gradient(90deg,#c8b77a 0 90px,#3a3a2a 90px 93px)',earth:'linear-gradient(#a8744a,#7d522f)',carpet:'linear-gradient(#6b2f33,#4d1f22)',concrete:'linear-gradient(#8d8f8c,#6e706d)',marble:'linear-gradient(110deg,#e4e0d8,#c9c3b8)'};
+const WALLS={
+  plaster:['linear-gradient(#e9e4da,#d6cfc1)','wood'],
+  clapboard:['repeating-linear-gradient(180deg,#e8eef0 0 34px,#b9c4c9 34px 37px)','wood'],
+  wallpaper:['radial-gradient(circle,#c7b38a 0 3px,transparent 4px) 0 0/30px 30px,#8fa38b','carpet'],
+  brick:[bricks(64,22,'#cfc6b8','#8e3b2a','#9a4330','#843628'),'stone'],
+  whitewash:['linear-gradient(#e4eff8,#bcd6ec)','tile'],
+  juraku:['radial-gradient(circle,rgba(90,60,20,.25) 0 1px,transparent 1.5px) 0 0/9px 11px,linear-gradient(#ccae80,#b89464)','tatami'],
+  hutong:[bricks(56,18,'#a6a8a4','#757a7b','#6d7273','#7c8182'),'stone'],
+  hanok:['linear-gradient(90deg,#5a3b20 0 18px,transparent 18px calc(100% - 18px),#5a3b20 0) ,linear-gradient(#f3eee4,#e2dbcd)','wood'],
+  stone:[bricks(120,40,'#9a9386','#bdb6a7','#aea797','#b5ae9e'),'stone'],
+  boards:['repeating-linear-gradient(90deg,#5b4636 0 46px,#3e2f24 46px 49px)','earth'],
+  haussmann:['repeating-linear-gradient(180deg,#e9dfcb 0 52px,#cdc0a6 52px 54px)','wood'],
+  subway:[bricks(48,22,'#183229','#2f5d50','#2a5649','#33624f'),'tile'],
+  office:['linear-gradient(#d0d4d6,#bfc4c7)','carpet'],
+  concrete:['radial-gradient(circle,rgba(0,0,0,.12) 0 1px,transparent 1.5px) 0 0/13px 17px,linear-gradient(#b2b4b1,#9c9e9b)','concrete'],
+  hotel:['repeating-linear-gradient(90deg,#d9c9a8 0 20px,#cdb991 20px 40px)','carpet'],
+  adobe:['radial-gradient(circle,rgba(60,25,5,.25) 0 1.5px,transparent 2px) 0 0/14px 12px,linear-gradient(#b8703f,#9a5a30)','earth'],
+  jaipur:['linear-gradient(#e19a7c,#cc7f62)','stone'],
+  yazd:['radial-gradient(circle,rgba(80,50,20,.18) 0 1.5px,transparent 2px) 0 0/16px 13px,linear-gradient(#d6b88f,#c3a074)','earth'],
+  mudbrick:[bricks(60,22,'#d8b88e','#c49a68','#b98d5c','#c29464'),'earth'],
+  storefront:['repeating-linear-gradient(90deg,#8d969b 0 8px,#e7eef1 8px 25%)','marble'],
+  hospital:['linear-gradient(transparent 0 57%,#9fb8b4 57% 60%,transparent 60%),linear-gradient(#e6efed,#d6e2df)','tile'],
+  tiles:[svgURI(`<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40'><rect width='40' height='40' fill='#b9bcb8'/><rect x='1' y='1' width='38' height='38' fill='#f1f2ef'/></svg>`),'tile'],
+  lobby:['linear-gradient(135deg,#d8d4cc,#efece6 40%,#cfc9bf)','marble'],
+  colonial:['linear-gradient(transparent 0 82%,#7d6a4c 82%),linear-gradient(#e8bf58,#d4a640)','stone']
+};
+const glove=sh=>`<svg viewBox="-3 -3 54 54"><g fill="#1d2320" stroke="#1d2320" stroke-width="5" stroke-linejoin="round">${sh}</g><g fill="#fbfaf5">${sh}</g></svg>`;
+const HAND={
+  open:{hx:.5,hy:.25,svg:glove('<rect x="13" y="6" width="5.5" height="20" rx="2.75"/><rect x="19.5" y="3" width="5.5" height="22" rx="2.75"/><rect x="26" y="4.5" width="5.5" height="21" rx="2.75"/><rect x="32.5" y="9" width="5" height="17" rx="2.5"/><rect x="5" y="20" width="5.5" height="15" rx="2.75" transform="rotate(-38 7.75 27.5)"/><rect x="12" y="20" width="26" height="22" rx="9"/>')},
+  point:{hx:.44,hy:.06,svg:glove('<rect x="19" y="1.5" width="6" height="24" rx="3"/><rect x="24" y="16" width="6" height="10" rx="3"/><rect x="29.5" y="17.5" width="6" height="9" rx="3"/><rect x="34.5" y="19.5" width="5" height="8" rx="2.5"/><rect x="9" y="22" width="12" height="6" rx="3" transform="rotate(20 15 25)"/><rect x="13" y="21" width="26" height="21" rx="9"/>')},
+  fist:{hx:.5,hy:.42,svg:glove('<circle cx="16" cy="18" r="5"/><circle cx="22.5" cy="16.5" r="5"/><circle cx="29" cy="17" r="5"/><circle cx="35" cy="19" r="4.5"/><rect x="11" y="17" width="29" height="25" rx="10"/><rect x="9" y="26" width="18" height="7" rx="3.5"/>')},
+  shoe:{hx:.85,hy:.7,svg:`<svg viewBox="0 0 48 48"><path d="M4 36 q0-14 8-18 l8-2 q4 0 6 4 l3 6 q12 2 15 7 v5 H4z" fill="#3a3f46" stroke="#14171a" stroke-width="2.5" stroke-linejoin="round"/><path d="M4 41 h40" stroke="#14171a" stroke-width="4"/><path d="M14 22 l6 4 M17 19 l6 4" stroke="#d9dde0" stroke-width="1.6"/></svg>`}
+};
+
+/* ---------- sound ---------- */
+const A={ctx:null,out:null,on:true,nb:null,loops:null};
+function ac(){
+  try{
+    if(!A.ctx){A.ctx=new (window.AudioContext||window.webkitAudioContext)();A.out=A.ctx.createGain();A.out.gain.value=A.on?.8:0;A.out.connect(A.ctx.destination)}
+    if(A.ctx.state==='suspended')A.ctx.resume();
+    return A.ctx;
+  }catch(e){return null}
+}
+function nbuf(c){if(!A.nb){A.nb=c.createBuffer(1,c.sampleRate*2,c.sampleRate);const d=A.nb.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1}return A.nb}
+function env(g,t,a,peak,d){g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(Math.max(.0002,peak),t+a);g.gain.exponentialRampToValueAtTime(.0001,t+a+d)}
+function osc(c,type,f,t,dur,peak,f2){const o=c.createOscillator(),g=c.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+dur);env(g,t,.004,peak,dur);o.connect(g).connect(A.out);o.start(t);o.stop(t+dur+.05)}
+function noise(c,t,dur,peak,ft,freq,q=1){const s=c.createBufferSource();s.buffer=nbuf(c);const f=c.createBiquadFilter();f.type=ft;f.frequency.value=freq;f.Q.value=q;const g=c.createGain();env(g,t,.003,peak,dur);
+  s.connect(f).connect(g).connect(A.out);s.start(t,Math.random());s.stop(t+dur+.05);return f}
+function metal(c,t,f,dur,peak){[1,2.76,5.4,8.93].forEach((m,i)=>osc(c,'sine',f*m,t,dur*(1-i*.18),peak/(i+1.5)))}
+const SND={
+  latch(c,t,g=1){noise(c,t,.03,.45*g,'highpass',3000);osc(c,'square',1700,t,.02,.06*g);noise(c,t+.08,.05,.35*g,'bandpass',1200,2)},
+  bolt(c,t){noise(c,t,.12,.22,'bandpass',2600,3);noise(c,t+.12,.04,.55,'highpass',2000);osc(c,'triangle',900,t+.12,.05,.14)},
+  woodbolt(c,t){noise(c,t,.2,.35,'bandpass',600,2);osc(c,'sine',230,t+.2,.08,.45,140)},
+  tock(c,t){osc(c,'sine',260,t,.06,.4,170);noise(c,t,.04,.3,'bandpass',900,3)},
+  thunk(c,t,g=1){osc(c,'sine',110,t,.14,.6*g,60);noise(c,t,.05,.3*g,'lowpass',800)},
+  clank(c,t){metal(c,t,330,.45,.45);noise(c,t,.03,.3,'highpass',2500)},
+  rattle(c,t){for(let i=0;i<3;i++){noise(c,t+i*.05,.03,.35,'bandpass',900,4);osc(c,'sine',150,t+i*.05,.05,.3,90)}},
+  slide(c,t,g=1){const f=noise(c,t,.6,.3*g,'bandpass',600,.8);f.frequency.setValueAtTime(500,t);f.frequency.linearRampToValueAtTime(1500,t+.55)},
+  chime(c,t){osc(c,'sine',988,t,.4,.16);osc(c,'sine',784,t+.18,.6,.16)},
+  motor(c,t){const f=noise(c,t+.1,.9,.14,'bandpass',700,.7);f.frequency.linearRampToValueAtTime(1800,t+1)},
+  tink(c,t,g=1){for(let i=0;i<3;i++)metal(c,t+i*.025,1300+Math.random()*1600,.1,.14*g)},
+  tap(c,t,f=200){osc(c,'sine',f,t,.08,.12,f*.7);noise(c,t,.02,.08,'lowpass',1500)},
+  knock(c,t,f,m,g=1){osc(c,'sine',f,t,.22,.8*g,f*.6);noise(c,t,.05,.55*g,'lowpass',f*6);if(m)metal(c,t,f*2.2,.5*m+.1,.28*m*g)},
+  step(c,t,g=1){osc(c,'sine',75,t,.12,.5*g,50);noise(c,t,.06,.2*g,'lowpass',400)},
+  slam(c,t,g=1){osc(c,'sine',72,t,.32,.9*g,38);noise(c,t,.12,.6*g,'lowpass',500);noise(c,t+.02,.04,.4*g,'highpass',2400);metal(c,t+.03,190,.25,.08*g)},
+  bump(c,t,g=1){osc(c,'sine',95,t,.12,.4*g,60);noise(c,t,.04,.2*g,'lowpass',600)},
+  chirp(c,t){for(let i=0;i<3;i++){osc(c,'sine',2600+Math.random()*900,t+i*.09,.06,.035,3800+Math.random()*600)}},
+  horn(c,t){osc(c,'square',330,t,.35,.012);osc(c,'square',415,t,.35,.01)}
+};
+function play(s,...extra){if(!A.on)return;const c=ac();if(!c)return;const [n,...a]=Array.isArray(s)?s:[s];SND[n](c,c.currentTime+.01,...a,...extra)}
+const AMB={quiet:['lowpass',300,1,.025],birds:['bandpass',2600,.5,.02],water:['bandpass',1800,.6,.09],street:['lowpass',450,1,.14],crowd:['bandpass',650,.9,.11],hum:['lowpass',180,1,.08],wind:['lowpass',380,1,.1]};
+function startLoops(){
+  const c=ac();if(!c||A.loops)return;
+  const o=c.createOscillator();o.type='sawtooth';o.frequency.value=80;const bp=c.createBiquadFilter();bp.type='bandpass';bp.frequency.value=1150;bp.Q.value=7;const cg=c.createGain();cg.gain.value=0;
+  o.connect(bp).connect(cg).connect(A.out);o.start();
+  const s=c.createBufferSource();s.buffer=nbuf(c);s.loop=true;const f=c.createBiquadFilter();const ag=c.createGain();ag.gain.value=0;s.connect(f).connect(ag).connect(A.out);s.start();
+  A.loops={o,cg,s,f,ag};
+}
+function setAmb(type){if(!A.loops)return;const [t,fr,q]=AMB[type];A.loops.f.type=t;A.loops.f.frequency.value=fr;A.loops.f.Q.value=q}
+function stopLoops(){if(!A.loops)return;try{A.loops.o.stop();A.loops.s.stop()}catch(e){}A.loops=null}
+
+/* ---------- catalogue ---------- */
+const $=s=>document.querySelector(s);
+const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
+const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const tried=new Set(store.get('ha-tried',[]));
+A.on=store.get('ha-sound',true);
+const F={region:'all',mech:'all',q:''};
+const effortWord=kg=>kg===0?'Motorised':kg<10?'Feather-light':kg<30?'Light':kg<70?'Solid':kg<160?'Heavy':'Massive';
+
+function list(){const q=F.q.trim().toLowerCase();return ITEMS.filter(it=>(F.region==='all'||it.region===F.region)&&(F.mech==='all'||it.mech===F.mech)&&(!q||[it.name,it.local,it.material,MECHS[it.mech]].join(' ').toLowerCase().includes(q)))}
+function renderChips(){
+  const mk=(el,map,key)=>{
+    const counts={};ITEMS.forEach(it=>counts[it[key]]=(counts[it[key]]||0)+1);
+    el.querySelectorAll('.chip').forEach(n=>n.remove());
+    [['all','All',ITEMS.length],...Object.entries(map).filter(([k])=>counts[k]).map(([k,v])=>[k,v,counts[k]])].forEach(([k,v,n])=>{
+      const b=document.createElement('button');b.type='button';b.className='chip';b.setAttribute('aria-pressed',F[key]===k);b.innerHTML=`${v}<small>${n}</small>`;
+      b.onclick=()=>{F[key]=k;renderChips();renderGrid()};el.appendChild(b)});
+  };
+  mk($('#mechChips'),MECHS,'mech');
+}
+function renderGrid(){
+  const L=list(),g=$('#grid');
+  $('#count').textContent=L.length===ITEMS.length?`Showing all ${L.length} doors`:`Showing ${L.length} of ${ITEMS.length} doors`;
+  if(!L.length){g.innerHTML=`<div class="empty" style="grid-column:1/-1">No handles match these filters.<br><br><button class="btn" type="button" id="clearF">Clear filters</button></div>`;
+    $('#clearF').onclick=()=>{F.mech='all';F.q='';$('#q').value='';renderChips();renderGrid()};return}
+  g.innerHTML=L.map(it=>{const fe=FEEL[it.id];return `<button class="card" type="button" data-id="${it.id}" aria-label="Open the door: ${it.name}">
+    <div class="thumb mat-${it.mat}"><svg viewBox="0 0 200 200" aria-hidden="true">${it.svg}</svg>${tried.has(it.id)?'<span class="stamp">Opened</span>':''}</div>
+    <div class="cap"><span class="nm">${it.name}</span><span class="mt">${MECHS[it.mech]} · ${fe.kg?'~'+fe.kg+' kg':'motor'}</span></div></button>`}).join('');
+}
+function renderPass(){$('#passN').textContent=`${tried.size} / ${ITEMS.length}`;$('#passBar').style.width=(tried.size/ITEMS.length*100)+'%';$('#resetPass').hidden=!tried.size}
+
+
+/* ================= 3D: first-person view of the door ================= */
+/* door sizes and where the handle sits, in metres. ax is a fraction of the door's width from the hinge; ay is height above the floor */
+const D3={
+  'euro-lever':{ax:.88,ay:1.02},'us-knob':{ax:.9,ay:.97},porcelain:{ax:.9,ay:.97},
+  lion:{ax:.5,ay:1.45,dist:.5,up:.06},fatima:{W:1,H:2.3,ax:.5,ay:1.42,dist:.55,up:.06},
+  hikite:{H:1.8,ax:.9,ay:.85,dist:.34},pushou:{W:1.2,H:2.7,ax:.5,ay:1.25,dist:.6,up:.05},
+  mungori:{W:.8,H:1.8,ax:.86,ay:.9,dist:.42},'ring-turn':{ax:.85,ay:1,dist:.44},suffolk:{ax:.85,ay:1.05,dist:.42},
+  cremone:{W:.75,H:2.2,ax:.94,ay:1.05,dist:.36},pull:{ax:.85,ay:1.05,dist:.6},push:{ax:.83,ay:1.15,dist:.55},
+  panic:{W:1,ax:.5,ay:.98,dist:.85,up:.2},bauhaus:{ax:.88,ay:1.02},wittgenstein:{ax:.88,ay:1.02},aj:{ax:.88,ay:1.02},
+  dogon:{W:.6,H:1.4,ax:.62,ay:.8,dist:.52},kundi:{W:1.3,H:2.3,ax:.5,ay:1.3,dist:.55,ty:1.2},persian:{W:1.3,H:2.4,ax:.5,ay:1.42,dist:.62,up:.04},
+  egyptian:{W:.8,H:1.9,ax:.7,ay:1.1,dist:.5},sensor:{W:1.6,H:2.2,ax:.5,ay:2.3,dist:2.1,up:.25,ty:1.3},
+  foot:{ax:.7,ay:.14,dist:.42,up:.55},indicator:{W:.7,H:1.9,y0:.15,ax:.85,ay:1,dist:.36},
+  church:{W:1.3,H:2.8,ax:.8,ay:1.1,dist:.62},revolving:{W:.95,H:2.2,ax:.55,ay:1.05,dist:.62,up:.12},
+  aldaba:{W:1.3,H:3,ax:.5,ay:1.5,dist:.6,up:.05}
+};
+const dimsOf=id=>Object.assign({W:.9,H:2.1,T:.045,y0:0,dist:.38,up:.11},D3[id]||{});
+
+const imm=$('#imm'),room=$('#room'),hand=$('#hand'),cv=$('#gl');
+const ANG=80*Math.PI/180;
+let R=null,scene=null,camera,ray,envTex;
+let cur=null,G=null,FE=null,DM=null,S=null,W3={},raf=0,lastT=0,timers=[],lastFocus=null,pose='',hudT=0;
+const later=(fn,ms)=>timers.push(setTimeout(fn,ms));
+function say(t){$('#hint').textContent=t}
+function sayOnce(key,t){if(S.said[key])return;S.said[key]=1;say(t)}
+const V3=(x=0,y=0,z=0)=>new THREE.Vector3(x,y,z);
+const rnd=a=>(Math.random()-.5)*2*a;
+
+function initGL(){
+  if(R)return true;
+  if(!window.THREE)return false;
+  try{R=new THREE.WebGLRenderer({canvas:cv,antialias:true})}catch(e){R=null;return false}
+  R.setPixelRatio(Math.min(2,window.devicePixelRatio||1));R.outputEncoding=THREE.sRGBEncoding;R.toneMapping=THREE.ACESFilmicToneMapping;R.toneMappingExposure=.82;
+  R.shadowMap.enabled=true;R.shadowMap.type=THREE.PCFSoftShadowMap;
+  camera=new THREE.PerspectiveCamera(50,1,.01,80);ray=new THREE.Raycaster();
+  /* a soft studio room for the metal to reflect */
+  const pm=new THREE.PMREMGenerator(R),es=new THREE.Scene();
+  es.add(new THREE.Mesh(new THREE.BoxGeometry(10,6,10),new THREE.MeshBasicMaterial({color:0x5d5a55,side:THREE.BackSide})));
+  const lp=(w,h,x,y,z,rx,ry,c)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({color:new THREE.Color(c,c*.97,c*.92),side:THREE.DoubleSide}));m.position.set(x,y,z);m.rotation.set(rx,ry,0);es.add(m)};
+  lp(5,1.5,0,2.9,0,Math.PI/2,0,7);lp(2.5,3,-4.9,1,1.5,0,Math.PI/2,3.5);lp(2,2,3.5,1.4,4.9,0,Math.PI,2.4);lp(4,1,0,.2,-4.9,0,0,1.4);
+  envTex=pm.fromScene(es,.03).texture;
+  return true;
+}
+function resize(){if(!R)return;const w=cv.clientWidth,h=cv.clientHeight;if(!w||!h)return;R.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}
+window.addEventListener('resize',resize);
+
+/* ---------- materials and textures ---------- */
+const MAT={brass:[0xd8ab52,1,.26],brassD:[0xa47a34,1,.42],steel:[0xe2e6e8,1,.3],brushed:[0xcfd4d6,1,.48],chrome:[0xf4f6f7,1,.1],iron:[0x2e2d2b,.7,.62],
+  bronze:[0x9a6236,1,.4],gilt:[0xf2c552,1,.22],porc:[0xf8f6f0,0,.12],black:[0x0d0d0d,.1,.22],wood:[0xa8763f,0,.72],woodD:[0x5a3519,0,.8],
+  red:[0xc8322a,0,.45],dark:[0x0a0a0a,0,.9],blue:[0x3f64b0,0,.3],green:[0x4f8a45,0,.4],white:[0xf2f2ee,0,.45],grey:[0x3a3f45,.2,.5]};
+function M(k){const [c,m,r]=MAT[k];const mt=new THREE.MeshStandardMaterial({color:c,metalness:m,roughness:r,envMapIntensity:1.1});W3.hwMats&&W3.hwMats.push(mt);return mt}
+function canvasTex(w,h,draw,repeat){
+  const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);
+  const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;t.anisotropy=Math.min(8,R.capabilities.getMaxAnisotropy());
+  if(repeat){t.wrapS=t.wrapT=THREE.RepeatWrapping}return t;
+}
+function speckle(x,w,h,n,a,col='0,0,0'){for(let i=0;i<n;i++){x.fillStyle=`rgba(${col},${Math.random()*a})`;x.fillRect(Math.random()*w,Math.random()*h,1+Math.random()*2.5,1+Math.random()*2.5)}}
+function grain(x,w,h,base,n=220){x.fillStyle=base;x.fillRect(0,0,w,h);for(let i=0;i<n;i++){x.strokeStyle=`rgba(0,0,0,${Math.random()*.09})`;x.lineWidth=.5+Math.random()*2;const s=Math.random()*w;x.beginPath();x.moveTo(s,0);x.bezierCurveTo(s+rnd(12),h*.3,s+rnd(12),h*.65,s+rnd(8),h);x.stroke()}}
+function planks(x,w,h,base,k,joint='rgba(0,0,0,.55)'){grain(x,w,h,base);x.fillStyle=joint;for(let i=1;i<k;i++)x.fillRect(i*w/k-2,0,4,h);for(let i=0;i<k;i++){x.fillStyle=`rgba(${Math.random()<.5?'255,255,255':'0,0,0'},${Math.random()*.06})`;x.fillRect(i*w/k,0,w/k,h)}}
+function panelled(x,w,h,base,glossy){
+  x.fillStyle=base;x.fillRect(0,0,w,h);speckle(x,w,h,1500,.03);
+  [[.13,.07,.74,.37],[.13,.52,.74,.41]].forEach(([a,b,c,d])=>{const X=a*w,Y=b*h,Wd=c*w,Hd=d*h;
+    x.fillStyle='rgba(0,0,0,.22)';x.fillRect(X,Y,Wd,5);x.fillRect(X,Y,5,Hd);
+    x.fillStyle=glossy?'rgba(255,255,255,.16)':'rgba(255,255,255,.35)';x.fillRect(X,Y+Hd-5,Wd,5);x.fillRect(X+Wd-5,Y,5,Hd);
+    x.strokeStyle='rgba(0,0,0,.12)';x.lineWidth=2;x.strokeRect(X+16,Y+16,Wd-32,Hd-32)});
+}
+const LEAF={
+  oak:x=>planks(x,512,1024,'#9a6532',5),white:x=>panelled(x,512,1024,'#eceae3'),black:x=>panelled(x,512,1024,'#16181a',1),
+  green:x=>planks(x,512,1024,'#2f5b45',4),teal:x=>{planks(x,512,1024,'#2f7fae',4,'rgba(10,30,60,.5)')},
+  fusuma:x=>{x.fillStyle='#efe5cf';x.fillRect(0,0,512,1024);for(let i=0;i<120;i++){x.fillStyle=`rgba(170,140,90,${.05+Math.random()*.08})`;x.beginPath();x.arc(Math.random()*512,Math.random()*1024,8+Math.random()*26,0,7);x.fill()}x.strokeStyle='#1c1a17';x.lineWidth=26;x.strokeRect(13,13,486,998)},
+  hanji:x=>{x.fillStyle='#f3ecdc';x.fillRect(0,0,512,1024);speckle(x,512,1024,3000,.05);x.fillStyle='#6b4626';for(let i=0;i<=4;i++)x.fillRect(i*124-6+6,0,12,1024);for(let j=0;j<=8;j++)x.fillRect(0,j*126-6+4,512,12);x.strokeStyle='#5a3a1e';x.lineWidth=30;x.strokeRect(15,15,482,994)},
+  vermilion:x=>{x.fillStyle='#b52a22';x.fillRect(0,0,512,1024);speckle(x,512,1024,4000,.08);const g=x.createLinearGradient(0,0,512,1024);g.addColorStop(0,'rgba(255,255,255,.08)');g.addColorStop(1,'rgba(0,0,0,.2)');x.fillStyle=g;x.fillRect(0,0,512,1024)},
+  glass:x=>{x.fillStyle='#fff';x.fillRect(0,0,4,4)},
+  steel:x=>{x.fillStyle='#a3aaae';x.fillRect(0,0,512,1024);for(let i=0;i<900;i++){x.fillStyle=`rgba(255,255,255,${Math.random()*.08})`;x.fillRect(Math.random()*512,0,1,1024)}},
+  carved:x=>{grain(x,512,1024,'#5b3a22');x.strokeStyle='rgba(0,0,0,.4)';x.lineWidth=6;for(let y=40;y<1024;y+=60){x.beginPath();for(let i=0;i<=8;i++)x.lineTo(i*64,y+(i%2?24:0));x.stroke()}},
+  tarred:x=>planks(x,512,1024,'#2f2016',6,'rgba(0,0,0,.8)'),
+  laminate:x=>{x.fillStyle='#c4c9c6';x.fillRect(0,0,512,1024);speckle(x,512,1024,2500,.05)},
+  persian:x=>{grain(x,512,1024,'#5e3c22');x.strokeStyle='rgba(255,215,150,.22)';x.lineWidth=4;for(let i=-1024;i<1024;i+=64){x.beginPath();x.moveTo(i,0);x.lineTo(i+1024,1024);x.stroke();x.beginPath();x.moveTo(i+1024,0);x.lineTo(i,1024);x.stroke()}},
+  haveli:x=>planks(x,512,1024,'#8d5a2b',3),colonial:x=>planks(x,512,1024,'#4a3222',3,'rgba(0,0,0,.75)')
+};
+/* wall and floor surfaces, drawn as one-metre tiles */
+const WALL3={plaster:['plain','#e2dccf'],clapboard:['siding','#e3ebee'],wallpaper:['dots','#8fa38b','#d0bd92'],brick:['brick','#8e3b2a','#cfc6b8'],
+  whitewash:['plain','#cfe1ef'],juraku:['plain','#c4a476'],hutong:['brick','#747979','#a6a8a4'],hanok:['plain','#efe9de'],stone:['blocks','#b3ac9d','#8f897c'],
+  boards:['boards','#5b4636'],haussmann:['courses','#e6dcc6','#c9bca2'],subway:['brick','#2f5d50','#183229'],office:['plain','#c9ced1'],concrete:['plain','#a9aba8'],
+  hotel:['stripes','#d9c9a8','#ccb88f'],adobe:['plain','#b06b3c'],jaipur:['plain','#dc9175'],yazd:['plain','#d2b289'],mudbrick:['brick','#c49a68','#dcbd93'],
+  storefront:['plain','#d4dadd'],hospital:['plain','#e3ece9'],tiles:['tiles','#f1f2ef','#b9bcb8'],lobby:['plain','#e3ded5'],colonial:['plain','#e3b84f']};
+function drawSurface(x,kind,a,b){
+  const w=512,h=512;x.fillStyle=a;x.fillRect(0,0,w,h);
+  if(kind==='plain'){for(let i=0;i<40;i++){x.fillStyle=`rgba(${Math.random()<.5?'0,0,0':'255,255,255'},${Math.random()*.04})`;x.beginPath();x.arc(Math.random()*w,Math.random()*h,20+Math.random()*80,0,7);x.fill()}speckle(x,w,h,5000,.07)}
+  if(kind==='brick'){const bh=h/14,bw=w/4.6;x.fillStyle=b;x.fillRect(0,0,w,h);for(let r=0;r<14;r++)for(let c=-1;c<6;c++){const off=r%2?bw/2:0;x.fillStyle=a;x.globalAlpha=.85+Math.random()*.15;x.fillRect(c*bw+off+3,r*bh+3,bw-6,bh-6)}x.globalAlpha=1;speckle(x,w,h,6000,.12)}
+  if(kind==='siding'){for(let r=0;r<10;r++){const g=x.createLinearGradient(0,r*51,0,r*51+51);g.addColorStop(0,'rgba(0,0,0,.22)');g.addColorStop(.12,'rgba(0,0,0,0)');x.fillStyle=g;x.fillRect(0,r*51.2,w,51)}}
+  if(kind==='dots'){x.fillStyle=b;for(let i=0;i<w;i+=32)for(let j=0;j<h;j+=32){x.beginPath();x.arc(i+(j/32%2?16:0),j,4,0,7);x.fill()}}
+  if(kind==='stripes'){x.fillStyle=b;for(let i=0;i<w;i+=40)x.fillRect(i,0,20,h)}
+  if(kind==='boards'){planks(x,w,h,a,8,'rgba(0,0,0,.6)')}
+  if(kind==='blocks'){x.fillStyle=b;x.fillRect(0,0,w,h);for(let r=0;r<3;r++)for(let c=-1;c<3;c++){x.fillStyle=a;x.globalAlpha=.8+Math.random()*.2;x.fillRect(c*w/2+(r%2?w/4:0)+4,r*h/3+4,w/2-8,h/3-8)}x.globalAlpha=1;speckle(x,w,h,8000,.12)}
+  if(kind==='courses'){speckle(x,w,h,4000,.06);x.fillStyle=b;x.fillRect(0,h/2-2,w,4);x.fillRect(0,h-4,w,4)}
+  if(kind==='tiles'){x.fillStyle=b;for(let i=0;i<=w;i+=w/6){x.fillRect(i-1.5,0,3,h);x.fillRect(0,i-1.5,w,3)}}
+}
+const FLOOR3={wood:['boards','#8a5a34'],stone:['blocks','#8e8a82','#6f6b64'],tile:['tiles','#d9d6cf','#8f8b84'],tatami:['plain','#c8b77a'],earth:['plain','#9b6a43'],carpet:['plain','#6b2f33'],concrete:['plain','#8d8f8c'],marble:['plain','#ddd8cf']};
+const BEYOND={quiet:['#fbe7b8','#e2a961','#9c5f2c'],birds:['#f5f8dc','#a9c98a','#4f7a45'],water:['#eef8f5','#8fcbc0','#3f7f86'],street:['#e3eaf0','#a9b6c2','#6c757d'],crowd:['#fff3d6','#e6b980','#8a5a3b'],hum:['#f4f8f9','#cfdadd','#93a3a8'],wind:['#eaf2f9','#b9cfe2','#9c8762']};
+function textTex(w,h,draw){return canvasTex(w,h,draw)}
+
+/* ---------- geometry helpers ---------- */
+function mesh(geo,mat,x=0,y=0,z=0){const m=new THREE.Mesh(geo,mat);m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;return m}
+const grp=(x=0,y=0,z=0)=>{const g=new THREE.Group();g.position.set(x,y,z);return g};
+const cylZ=(r,len,mat,x=0,y=0,z=0,seg=48)=>{const g=new THREE.CylinderGeometry(r,r,len,seg);g.rotateX(Math.PI/2);g.translate(0,0,len/2);return mesh(g,mat,x,y,z)};
+const cylX=(r,len,mat,x=0,y=0,z=0)=>{const g=new THREE.CylinderGeometry(r,r,len,40);g.rotateZ(Math.PI/2);return mesh(g,mat,x,y,z)};
+const cylY=(r,len,mat,x=0,y=0,z=0)=>mesh(new THREE.CylinderGeometry(r,r,len,40),mat,x,y,z);
+const capX=(r,len,mat,x=0,y=0,z=0)=>{const g=new THREE.CapsuleGeometry(r,len,10,32);g.rotateZ(Math.PI/2);return mesh(g,mat,x,y,z)};
+const capY=(r,len,mat,x=0,y=0,z=0)=>mesh(new THREE.CapsuleGeometry(r,len,10,32),mat,x,y,z);
+const sph=(r,mat,x=0,y=0,z=0,sx=1,sy=1,sz=1)=>{const m=mesh(new THREE.SphereGeometry(r,40,24),mat,x,y,z);m.scale.set(sx,sy,sz);return m};
+const tor=(R_,r,mat,x=0,y=0,z=0)=>mesh(new THREE.TorusGeometry(R_,r,24,96),mat,x,y,z);
+const bx=(w,h,d,mat,x=0,y=0,z=0)=>mesh(new THREE.BoxGeometry(w,h,d),mat,x,y,z);
+const ext=(shape,depth,mat,z=0,bev=.0025)=>mesh(new THREE.ExtrudeGeometry(shape,{depth,bevelEnabled:true,bevelThickness:bev,bevelSize:bev,bevelSegments:4,curveSegments:32}),mat,0,0,z);
+const tube=(pts,r,mat)=>mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p=>V3(...p))),96,r,20,false),mat);
+const lathe=(pts,mat)=>{const g=new THREE.LatheGeometry(pts.map(p=>new THREE.Vector2(p[0],p[1])),64);g.rotateX(Math.PI/2);return mesh(g,mat)};
+function rrect(w,h,r){const s=new THREE.Shape(),x=-w/2,y=-h/2;s.moveTo(x+r,y);s.lineTo(x+w-r,y);s.quadraticCurveTo(x+w,y,x+w,y+r);s.lineTo(x+w,y+h-r);s.quadraticCurveTo(x+w,y+h,x+w-r,y+h);s.lineTo(x+r,y+h);s.quadraticCurveTo(x,y+h,x,y+h-r);s.lineTo(x,y+r);s.quadraticCurveTo(x,y,x+r,y);return s}
+function starS(r1,r2,n){const s=new THREE.Shape();for(let i=0;i<n*2;i++){const r=i%2?r2:r1,a=Math.PI*i/n+Math.PI/2,px=r*Math.cos(a),py=r*Math.sin(a);i?s.lineTo(px,py):s.moveTo(px,py)}s.closePath();return s}
+function ellS(rx,ry){const s=new THREE.Shape();s.absellipse(0,0,rx,ry,0,Math.PI*2,false,0);return s}
+function leafS(w,h){const s=new THREE.Shape();s.moveTo(0,h/2);s.bezierCurveTo(w*.62,h*.25,w*.62,-h*.25,0,-h/2);s.bezierCurveTo(-w*.62,-h*.25,-w*.62,h*.25,0,h/2);return s}
+function polyS(pts){const s=new THREE.Shape();pts.forEach(([px,py],i)=>i?s.lineTo(px,py):s.moveTo(px,py));s.closePath();return s}
+const at=(o,x,y,z)=>{o.position.set(x,y,z);return o};
+const rot=(o,x,y,z)=>{o.rotation.set(x,y,z);return o};
+function keyhole3(g,y,mat,z){g.add(cylZ(.0035,.001,mat,0,y,z));g.add(at(bx(.003,.008,.001,mat),0,y-.005,z+.0005))}
+function label(text,w,h,fg,bg,font){return new THREE.MeshStandardMaterial({map:textTex(512,Math.round(512*h/w),(x,cw,ch)=>{if(bg){x.fillStyle=bg;x.fillRect(0,0,cw,ch)}x.fillStyle=fg;x.font=font||`600 ${ch*.62}px "IBM Plex Mono",monospace`;x.textAlign='center';x.textBaseline='middle';x.fillText(text,cw/2,ch/2+2)}),transparent:!bg,roughness:.5})}
+
+/* ---------- the handles, modelled. Each returns its group, moving parts, and how each part moves with progress v (0..1) ---------- */
+const BUILD={
+  'euro-lever'(){const s=M('brushed'),k=M('dark'),g=grp();g.add(cylZ(.026,.01,s));const esc=ext(rrect(.026,.054,.013),.005,s);at(esc,0,-.072,0);g.add(esc);keyhole3(g,-.068,k,.0078);
+    const p=grp();p.add(cylZ(.011,.055,s,0,0,.008));p.add(capX(.0095,.112,s,-.064,0,.06));g.add(p);return{g,piv:[p],parts:[v=>{p.rotation.z=v*.66}]}},
+  'us-knob'(){const b=M('brass'),d=M('brassD'),g=grp();g.add(cylZ(.033,.007,b));g.add(cylZ(.029,.002,d,0,0,.007));
+    const p=grp();p.add(lathe([[0,.006],[.009,.006],[.009,.026],[.014,.033],[.025,.044],[.029,.056],[.027,.068],[.017,.077],[.007,.08],[0,.0805]],b));
+    p.add(cylZ(.0065,.0015,d,0,0,.0795));p.add(bx(.0016,.008,.002,M('dark'),0,-.001,.0812));g.add(p);return{g,piv:[p],parts:[v=>{p.rotation.z=-v*1.48}]}},
+  porcelain(){const b=M('brass'),w=M('porc'),gl=M('gilt'),g=grp();g.add(cylZ(.031,.006,b));const esc=ext(ellS(.011,.02),.004,b);at(esc,0,-.08,0);g.add(esc);keyhole3(g,-.077,M('dark'),.0068);
+    const p=grp();p.add(cylZ(.008,.02,b,0,0,.004));p.add(lathe([[0,.012],[.009,.012],[.02,.032],[.03,.048],[.031,.058],[.027,.07],[.014,.077],[0,.079]],w));
+    p.add(tor(.0305,.0011,gl,0,0,.054));p.add(sph(.0045,M('blue'),0,.017,.072,1,1.4,.5));p.add(sph(.0032,M('green'),.008,.012,.073,1.5,.7,.5));g.add(p);return{g,piv:[p],parts:[v=>{p.rotation.z=v*1.31}]}},
+  lion(){const b=M('brass'),d=M('brassD'),k=M('dark'),g=grp();g.add(ext(starS(.078,.06,20),.008,b));g.add(lathe([[0,.035],[.022,.033],[.04,.022],[.049,.012],[.05,.004]],d));
+    g.add(sph(.0055,k,-.017,.012,.032));g.add(sph(.0055,k,.017,.012,.032));g.add(sph(.009,b,0,-.004,.038,1,.75,.8));g.add(tor(.011,.002,d,0,-.022,.031));
+    g.add(sph(.012,b,0,-.17,.005,1,1,.6));
+    const p=grp(0,-.03,.042);p.add(tor(.058,.0095,b,0,-.058,0));g.add(p);return{g,piv:[p],parts:[v=>{p.rotation.x=.32-v*1.55}]}},
+  fatima(){const i=M('iron'),g=grp();g.add(ext(ellS(.026,.026),.006,i));g.add(sph(.012,i,0,-.215,.004,1,1,.6));
+    const p=grp(0,-.012,.022);p.add(bx(.07,.022,.02,i,0,-.02,0));p.add(bx(.06,.075,.018,i,0,-.07,0));
+    [[-.022,.058],[-.0075,.07],[.0075,.066],[.022,.054]].forEach(([fx,l])=>p.add(capY(.0074,l,i,fx,-.105-l/2,0)));
+    p.add(rot(capY(.0085,.04,i,.036,-.08,0),0,0,.45));p.add(sph(.016,i,0,-.192,.002));p.add(at(rot(tor(.009,.0022,M('brass')),Math.PI/2,0,0),-.0075,-.13,0));
+    g.add(p);return{g,piv:[p],parts:[v=>{p.rotation.x=.18-v*1.3}]}},
+  hikite(){const gl=M('gilt'),g=grp();g.add(tor(.032,.0035,gl,0,0,.001));g.add(cylZ(.031,.0012,M('black')));g.add(cylZ(.025,.0014,M('dark')));
+    const wv=M('gilt');g.add(tube([[-.018,-.004,.0016],[-.009,.004,.0016],[0,-.004,.0016],[.009,.004,.0016],[.018,-.004,.0016]],.0011,wv));
+    return{g,piv:[g],parts:[()=>{}]}},
+  pushou(){const gl=M('gilt'),k=M('bronze'),g=grp();const sc=.0012;
+    g.add(ext(polyS([[0,42],[40,28],[52,-8],[32,-48],[-32,-48],[-52,-8],[-40,28]].map(([a,b])=>[a*sc,b*sc])),.014,gl));
+    g.add(ext(polyS([[-34,30],[-58,58],[-44,22]].map(([a,b])=>[a*sc,b*sc])),.008,gl));g.add(ext(polyS([[34,30],[58,58],[44,22]].map(([a,b])=>[a*sc,b*sc])),.008,gl));
+    g.add(sph(.009,k,-.021,.005,.019));g.add(sph(.009,k,.021,.005,.019));g.add(rot(capX(.004,.026,gl,-.021,.022,.019),0,0,-.25));g.add(rot(capX(.004,.026,gl,.021,.022,.019),0,0,.25));
+    g.add(sph(.011,gl,0,-.015,.022,1,.8,.9));g.add(bx(.04,.009,.006,M('dark'),0,-.037,.017));
+    const p=grp(0,-.042,.03);p.add(tor(.078,.011,gl,0,-.078,0));g.add(p);return{g,piv:[p],parts:[v=>{p.rotation.x=.22-v*1.45}]}},
+  mungori(){const i=M('iron'),g=grp();
+    [[-.026,.022,-.5,.028,.017],[.026,.022,.5,.028,.017],[-.024,-.012,.5,.019,.012],[.024,-.012,-.5,.019,.012]].forEach(([x,y,r,a,b])=>{const w=ext(ellS(a,b),.003,i);w.position.set(x,y,0);w.rotation.z=r;g.add(w)});
+    g.add(capY(.005,.04,i,0,.008,.006));[[-.034,.03],[.034,.03],[-.03,-.016],[.03,-.016]].forEach(([x,y])=>g.add(sph(.0028,M('brassD'),x,y,.006)));
+    const p=grp(0,-.016,.012);p.add(tor(.045,.0055,i,0,-.045,0));g.add(p);return{g,piv:[p],parts:[v=>{p.rotation.x=.25-v*1.3}]}},
+  'ring-turn'(){const i=M('iron'),g=grp();const bp=ext(rrect(.05,.2,.025),.006,i);at(bp,0,-.02,0);g.add(bp);g.add(cylZ(.012,.022,i,0,.035,.006));
+    [.06,-.1].forEach(y=>g.add(sph(.004,i,0,y,.009)));keyhole3(g,-.085,M('dark'),.0092);
+    const p=grp(0,.035,.024);const r=tor(.056,.0075,i,0,-.056,0);p.add(r);g.add(p);return{g,piv:[p],parts:[v=>{p.rotation.set(.22,0,v*1.4)}]}},
+  suffolk(){const i=M('iron'),g=grp();[.075,-.075].forEach(y=>{const c=ext(leafS(.034,.065),.004,i);at(c,0,y,0);g.add(c)});
+    g.add(tube([[0,.062,.004],[0,.055,.035],[0,.02,.056],[0,-.02,.056],[0,-.055,.035],[0,-.062,.004]],.0075,i));
+    g.add(bx(.024,.008,.001,M('dark'),0,.122,.0005));
+    const p=grp(0,.122,0);p.add(bx(.018,.006,.05,i,0,0,.025));p.add(bx(.03,.005,.022,i,0,-.002,.052));g.add(p);return{g,piv:[p],parts:[v=>{p.rotation.x=v*.5}]}},
+  cremone(){const b=M('brass'),g=grp();g.add(cylY(.006,2.1,b,0,.05,.012));g.add(bx(.036,.07,.016,b,0,0,.008));
+    const p=grp(0,0,.024);p.add(cylZ(.009,.012,b));p.add(capY(.0075,.075,b,0,-.05,.012));p.add(sph(.012,b,0,-.1,.012,.85,1.25,.85));g.add(p);
+    return{g,piv:[p],parts:[v=>{p.rotation.z=v*Math.PI/2}]}},
+  pull(){const s=M('brushed'),g=grp();[.16,-.16].forEach(y=>g.add(cylZ(.009,.058,s,0,y,0)));const p=grp();p.add(capY(.0125,.33,s,0,0,.068));g.add(p);
+    return{g,piv:[p],parts:[v=>{p.position.z=v*.004}]}},
+  push(){const s=M('brushed'),g=grp();const p=grp();p.add(ext(rrect(.08,.3,.006),.0015,s));
+    const t=new THREE.Mesh(new THREE.PlaneGeometry(.064,.022),label('PUSH',.064,.022,'#59626a'));t.position.set(0,0,.0045);p.add(t);g.add(p);return{g,piv:[p],parts:[v=>{p.position.z=-v*.002}]}},
+  panic(){const s=M('brushed'),g=grp();[-.37,.37].forEach(x=>g.add(bx(.07,.11,.05,s,x,0,.025)));
+    const p=grp();p.add(capX(.016,.66,s,0,0,.06));p.add(bx(.3,.032,.012,M('red'),0,0,.075));
+    const t=new THREE.Mesh(new THREE.PlaneGeometry(.26,.022),label('PUSH TO EXIT',.26,.022,'#ffffff'));t.position.set(0,0,.0815);p.add(t);g.add(p);
+    return{g,piv:[p],parts:[v=>{p.position.set(0,-v*.006,-v*.022)}]}},
+  bauhaus(){const c=M('chrome'),g=grp();g.add(cylZ(.024,.008,c));const e=cylZ(.011,.004,c,0,-.072,0);g.add(e);keyhole3(g,-.07,M('dark'),.0045);
+    const p=grp();p.add(bx(.022,.022,.05,c,0,0,.033));p.add(cylX(.011,.118,c,-.062,0,.047));g.add(p);return{g,piv:[p],parts:[v=>{p.rotation.z=v*.64}]}},
+  wittgenstein(){const s=M('steel'),g=grp();g.add(cylZ(.017,.006,s));g.add(cylZ(.009,.003,s,0,-.065,0));keyhole3(g,-.063,M('dark'),.0035);
+    const p=grp();p.add(tube([[0,0,.002],[0,0,.035],[-.01,0,.05],[-.035,0,.054],[-.13,0,.056]],.0055,s));p.add(sph(.0055,s,-.13,0,.056));g.add(p);return{g,piv:[p],parts:[v=>{p.rotation.z=v*.7}]}},
+  aj(){const s=M('brushed'),g=grp();g.add(cylZ(.02,.008,s));g.add(cylZ(.011,.004,s,0,-.07,0));keyhole3(g,-.068,M('dark'),.0045);
+    const p=grp();const t=tube([[0,0,.004],[0,0,.03],[-.015,-.002,.05],[-.06,-.004,.06],[-.115,-.01,.057],[-.132,-.007,.05]],.009,s);t.scale.set(1,1.15,.85);p.add(t);p.add(sph(.009,s,-.132,-.007,.05,1,1.15,.85));g.add(p);
+    return{g,piv:[p],parts:[v=>{p.rotation.z=v*.63}]}},
+  dogon(){const w=M('wood'),d=M('woodD'),g=grp();g.add(bx(.05,.24,.04,d,0,0,.02));
+    [-.012,.012].forEach(x=>{g.add(sph(.012,d,x,.152,.02,1,1.2,1));g.add(capY(.009,.026,d,x,.124,.02))});
+    for(let y=-.09;y<.09;y+=.03)g.add(rot(bx(.044,.006,.004,M('dark'),0,y,.0405),0,0,y*6%2?.35:-.35));
+    const p=grp();p.add(bx(.3,.034,.028,w,.08,0,.03));p.add(bx(.008,.034,.03,M('dark'),.19,0,.03));g.add(p);return{g,piv:[p],parts:[v=>{p.position.x=-v*.1}]}},
+  kundi(){const b=M('brass'),i=M('iron'),gL=grp(-.09,0,0),gR=grp(.09,.0,0);gL.add(bx(.06,.06,.008,b,0,0,.004));gL.add(sph(.01,i,0,0,.01));
+    gR.add(bx(.06,.018,.008,b,0,.02,.004));gR.add(tube([[-.012,.022,.008],[-.012,-.004,.02],[0,-.014,.024],[.012,-.004,.02],[.012,.022,.008]],.0035,i));
+    const p=grp(0,0,.016);for(let k=0;k<12;k++){const l=tor(.0085,.0022,i,0,-.014-k*.0165,0);l.scale.set(1.5,1,1);l.rotation.set(0,k%2?Math.PI/2:0,Math.PI/2);p.add(l)}
+    p.add(tor(.016,.0035,i,0,-.22,0));p.add(bx(.07,.27,.05,new THREE.MeshBasicMaterial({visible:false}),0,-.12,0));gL.add(p);
+    return{g:gL,gR,piv:[p],parts:[()=>{}]}},
+  persian(){const i=M('iron'),gL=grp(-.13,0,0),gR=grp(.13,0,0);gL.add(sph(.016,i,0,0,.004,1,1,.6));gL.add(sph(.013,i,0,-.235,.004,1,1,.6));
+    const p0=grp(0,-.004,.022);p0.add(capY(.011,.15,i,0,-.09,0));p0.add(sph(.023,i,0,-.185,0));gL.add(p0);
+    gR.add(sph(.012,i,0,0,.004,1,1,.6));gR.add(sph(.009,i,0,-.115,.004,1,1,.6));const p1=grp(0,-.004,.016);p1.add(tor(.05,.006,i,0,-.05,0));gR.add(p1);
+    return{g:gL,gR,piv:[p0,p1],parts:[v=>{p0.rotation.x=.2-v*1.35},v=>{p1.rotation.x=.25-v*1.4}]}},
+  egyptian(){const w=M('wood'),d=M('woodD'),g=grp();g.add(bx(.055,.13,.05,d,0,.02,.025));[-.014,0,.014].forEach(x=>g.add(cylY(.0035,.03,M('wood'),x,.1,.025)));
+    const p=grp();p.add(bx(.32,.032,.03,w,.06,0,.035));p.add(bx(.06,.02,.022,d,-.115,0,.037));p.add(bx(.016,.1,.022,d,-.14,-.05,.037));g.add(p);
+    return{g,piv:[p],parts:[v=>{p.position.x=-v*.09}]}},
+  sensor(){const g=grp();g.add(bx(.3,.07,.07,M('grey'),0,0,.035));g.add(bx(.18,.03,.004,M('black'),0,0,.071));const led=M('green');led.emissive=new THREE.Color(0x00ff66);led.emissiveIntensity=.2;g.add(sph(.006,led,.12,0,.072));
+    return{g,piv:[g],parts:[v=>{led.emissiveIntensity=.2+v*2.5}]}},
+  foot(){const s=M('brushed'),g=grp();g.add(bx(.045,.11,.006,s,0,0,.003));const p=grp();p.add(bx(.1,.012,.085,s,.035,-.035,.045));p.add(bx(.012,.05,.012,s,-.01,-.01,.012));g.add(p);
+    return{g,piv:[p],parts:[v=>{p.position.y=-v*.003}]}},
+  indicator(){const c=M('chrome'),g=grp();g.add(ext(rrect(.12,.1,.016),.005,c));
+    const off=label('VACANT',.08,.024,'#1d8a4a','#f4f2ec'),on=label('ENGAGED',.08,.024,'#c3271b','#f4f2ec');
+    const win=new THREE.Mesh(new THREE.PlaneGeometry(.08,.024),off);win.position.set(0,-.025,.0081);g.add(win);
+    const p=grp(0,.02,.008);p.add(cylZ(.019,.008,c));p.add(bx(.036,.01,.016,c,0,0,.016));g.add(p);
+    return{g,piv:[p],parts:[v=>{p.rotation.z=-v*Math.PI/2;win.material=v>.5?on:off}]}},
+  church(){const i=M('iron'),g=grp();g.add(ext(starS(.055,.03,8),.006,i));g.add(sph(.013,i,0,0,.012));
+    const p=grp(0,-.012,.022);p.add(tor(.09,.011,i,0,-.09,0));g.add(p);return{g,piv:[p],parts:[v=>{p.rotation.x=.28-v*1.2}]}},
+  revolving(){const b=M('brass'),g=grp();[-.21,.21].forEach(x=>g.add(cylZ(.008,.05,b,x,0,0)));const p=grp();p.add(capX(.014,.46,b,0,0,.055));g.add(p);
+    return{g,piv:[p],parts:[v=>{p.position.z=-v*.003}]}},
+  aldaba(){const b=M('bronze'),g=grp();g.add(ext(starS(.055,.038,12),.008,b));g.add(sph(.016,b,0,0,.014));g.add(sph(.014,b,0,-.225,.004,1,1,.6));
+    const p=grp(0,-.012,.03);p.add(tor(.088,.012,b,0,-.088,0));p.add(sph(.017,b,0,-.18,0,1,1.3,1));g.add(p);return{g,piv:[p],parts:[v=>{p.rotation.x=.24-v*1.45}]}}
+};
+
+/* ---------- door leaves, walls and the room beyond ---------- */
+function leafMesh(w,h,t,key,edge){
+  const g=new THREE.Group();
+  if(key==='glass'){
+    const frameMat=new THREE.MeshStandardMaterial({color:cur.id==='cremone'?0xf1efe8:0x5a6168,metalness:cur.id==='cremone'?0:.8,roughness:.4});
+    const glass=new THREE.MeshStandardMaterial({color:0xd8eef4,metalness:0,roughness:.04,transparent:true,opacity:.22,envMapIntensity:1.6,depthWrite:false});
+    const f=cur.id==='cremone'?.07:.05;
+    [[w,f,0,h/2-f/2],[w,f*1.6,0,-h/2+f*.8],[f,h,-w/2+f/2,0],[f,h,w/2-f/2,0]].forEach(([a,b,x,y])=>g.add(bx(a,b,t,frameMat,x+w/2,y+h/2,-t/2)));
+    if(cur.id==='cremone'){for(let k=1;k<4;k++)g.add(bx(w-2*f,.025,t*.7,frameMat,w/2,f*1.6+k*(h-f*2.6)/4,-t/2))}
+    const pane=new THREE.Mesh(new THREE.BoxGeometry(w-2*f,h-2.6*f,.01),glass);pane.position.set(w/2,h/2-.3*f,-t/2);g.add(pane);
+    return g;
+  }
+  const tex=canvasTex(512,1024,x=>LEAF[key](x));
+  const face=new THREE.MeshStandardMaterial({map:tex,roughness:{black:.28,vermilion:.35,laminate:.45,steel:.42,white:.5}[key]||.75,metalness:key==='steel'?.6:0});
+  const side=new THREE.MeshStandardMaterial({color:edge||0x6a4a2c,roughness:.8});
+  const m=mesh(new THREE.BoxGeometry(w,h,t),[side,side,side,side,face,face],w/2,h/2,-t/2);g.add(m);
+  /* studs and straps, in real relief */
+  const studs=(r,mat,cols,rows,shape)=>{const geo=shape==='pyr'?new THREE.ConeGeometry(r,r*1.1,4).rotateX(Math.PI/2).translate(0,0,r*.55):new THREE.SphereGeometry(r,20,12,0,Math.PI*2,0,Math.PI/2).rotateX(Math.PI/2);
+    const im=new THREE.InstancedMesh(geo,mat,cols*rows),o=new THREE.Object3D();let n=0;
+    const hx=DM.ax*w,hy=DM.ay-DM.y0-.08;for(let c=0;c<cols;c++)for(let r_=0;r_<rows;r_++){const sx=w*(c+.5)/cols,sy=h*(r_+.5)/rows;if(cur.door==='swing'&&Math.hypot(sx-hx,sy-hy)<.17)continue;o.position.set(sx,sy,0);o.updateMatrix();im.setMatrixAt(n++,o.matrix)}im.count=n;im.castShadow=true;im.receiveShadow=true;g.add(im)};
+  if(key==='vermilion')studs(.022,M('gilt'),5,9);
+  if(key==='teal')studs(.009,M('brass'),4,8);
+  if(key==='haveli')studs(.01,M('brass'),3,10);
+  if(key==='colonial')studs(.016,M('iron'),3,8,'pyr');
+  if(key==='tarred'){const i=M('iron');[.35,h-.35].forEach(y=>{g.add(bx(w*.86,.045,.006,i,w*.43,y,.003));g.add(sph(.03,i,w*.86,y,.002,1,1,.2))})}
+  return g;
+}
+function buildScene(){
+  if(scene)scene.traverse(o=>{o.geometry&&o.geometry.dispose();if(o.material)[].concat(o.material).forEach(m=>{m.map&&m.map.dispose();m.dispose()})});
+  scene=new THREE.Scene();scene.environment=envTex;W3={hwMats:null,pick:[],leaves:[]};
+  const D=DM,t=cur.door,two=t==='double'||t==='split';
+  const OW=t==='slide'?D.W*2:t==='revolve'?D.W*2:D.W,y0=D.y0;
+  const [wk,wa,wb]=WALL3[FE.wall],floorKind=WALLS[FE.wall][1],[fk,fa,fb]=FLOOR3[floorKind];
+  scene.background=new THREE.Color(BEYOND[FE.amb][2]).multiplyScalar(.35);
+  /* wall around the doorway, and the architrave framing it */
+  const wt=canvasTex(512,512,x=>drawSurface(x,wk,wa,wb),1);
+  const wallMat=(w,h)=>{const t2=wt.clone();t2.needsUpdate=true;t2.repeat.set(w/1.2,h/1.2);return new THREE.MeshStandardMaterial({map:t2,roughness:.92})};
+  const top=y0+D.H,blocks=[[-7,-OW/2,0,5],[OW/2,7,0,5],[-OW/2,OW/2,top,5]];
+  blocks.forEach(([x1,x2,y1,y2])=>{const w=x2-x1,h=y2-y1,m=mesh(new THREE.BoxGeometry(w,h,.25),wallMat(w,h),(x1+x2)/2,(y1+y2)/2,-.125);m.castShadow=false;scene.add(m)});
+  const stoneWall=['brick','blocks','courses'].includes(wk),metalFrame=t==='split'||t==='revolve';
+  const frMat=new THREE.MeshStandardMaterial({color:metalFrame?0x60676d:stoneWall?0xc9c1b1:0xefece4,roughness:.6,metalness:metalFrame?.7:0});
+  const fw=.085;[[-OW/2-fw/2,top/2+fw/2,fw,top+fw],[OW/2+fw/2,top/2+fw/2,fw,top+fw],[0,top+fw/2,OW,fw]].forEach(([x,y,w,h])=>scene.add(mesh(new THREE.BoxGeometry(w,h,.026),frMat,x,y,.013)));
+  /* floor and the world beyond */
+  const ft=canvasTex(512,512,x=>drawSurface(x,fk,fa,fb),1);ft.repeat.set(16/1.5,12/1.5);
+  const fl=mesh(new THREE.PlaneGeometry(16,12),new THREE.MeshStandardMaterial({map:ft,roughness:.85}),0,0,0);fl.rotation.x=-Math.PI/2;fl.castShadow=false;scene.add(fl);
+  const [c1,c2,c3]=BEYOND[FE.amb];
+  const bt=canvasTex(1024,512,(x,w,h)=>{const g=x.createRadialGradient(w/2,h*.3,10,w/2,h*.4,w*.6);g.addColorStop(0,c1);g.addColorStop(.5,c2);g.addColorStop(1,c3);x.fillStyle=g;x.fillRect(0,0,w,h);
+});
+  const back=new THREE.Mesh(new THREE.PlaneGeometry(5,3.2),new THREE.MeshBasicMaterial({map:bt}));back.position.set(0,1.6,-3.4);scene.add(back);
+  /* a room on the other side to walk into */
+  const inMat=new THREE.MeshStandardMaterial({color:new THREE.Color(c2).lerp(new THREE.Color(0xeee6d8),.7),roughness:.95,side:THREE.DoubleSide});
+  [[-2.5,Math.PI/2],[2.5,-Math.PI/2]].forEach(([x,ry])=>{const p=new THREE.Mesh(new THREE.PlaneGeometry(3.2,3.2),inMat);p.position.set(x,1.6,-1.82);p.rotation.y=ry;p.receiveShadow=true;scene.add(p)});
+  const ceil=new THREE.Mesh(new THREE.PlaneGeometry(5,3.2),inMat);ceil.position.set(0,3.2,-1.82);ceil.rotation.x=Math.PI/2;scene.add(ceil);
+  /* the sign naming the place beyond: sized to fit inside the doorway, far enough back to read whole */
+  if(false){const tx=cur.beyond.charAt(0).toUpperCase()+cur.beyond.slice(1);const sw=Math.min(.8,OW*.8),long=tx.length>26,sh_=sw*(long?.26:.16);
+    const st=canvasTex(1024,Math.round(1024*sh_/sw),(x,w,h)=>{x.fillStyle='rgba(255,255,255,.82)';const r=Math.min(h/2,60);x.beginPath();x.moveTo(r,0);x.lineTo(w-r,0);x.arc(w-r,r,r,-Math.PI/2,Math.PI/2);x.lineTo(r,h);x.arc(r,r,r,Math.PI/2,Math.PI*1.5);x.fill();
+      let lines=[tx];if(long){const mid=tx.length/2;let cut=tx.lastIndexOf(' ',mid);const c2=tx.indexOf(' ',mid);if(cut<0||(c2>0&&c2-mid<mid-cut))cut=c2;lines=[tx.slice(0,cut),tx.slice(cut+1)]}
+      const lh=h/(lines.length+.6);let fs=lh*.78;const fit=()=>lines.every(l=>x.measureText(l).width<w-h*.5);x.font=`500 ${fs}px "IBM Plex Mono",monospace`;while(!fit()&&fs>10){fs-=2;x.font=`500 ${fs}px "IBM Plex Mono",monospace`}
+      x.fillStyle='#2c1a0a';x.textAlign='center';x.textBaseline='middle';lines.forEach((l,k)=>x.fillText(l,w/2,h/2+(k-(lines.length-1)/2)*lh+2))});
+    const sign=new THREE.Mesh(new THREE.PlaneGeometry(sw,sh_),new THREE.MeshBasicMaterial({map:st,transparent:true}));sign.position.set(OW*.08,Math.min(1.45,y0+D.H*.6),-1.8);scene.add(sign)}
+  const front=new THREE.Mesh(new THREE.PlaneGeometry(16,8),new THREE.MeshStandardMaterial({color:new THREE.Color(wa).multiplyScalar(.6),roughness:1}));front.position.set(0,3,5.5);front.rotation.y=Math.PI;scene.add(front);
+  /* light */
+  scene.add(new THREE.HemisphereLight(0xfff4e6,0x40362c,.3));
+  W3.key=new THREE.DirectionalLight(0xfff1dd,1.25);W3.key.castShadow=true;W3.key.shadow.mapSize.set(2048,2048);W3.key.shadow.bias=-.0004;W3.key.shadow.normalBias=.004;
+  const sc=W3.key.shadow.camera;sc.left=-.9;sc.right=.9;sc.top=.9;sc.bottom=-.9;sc.near=.1;sc.far=8;scene.add(W3.key,W3.key.target);
+  const fill=new THREE.DirectionalLight(0xdfe8ff,.3);fill.position.set(2,2,3);scene.add(fill);
+  W3.spill=new THREE.PointLight(0xffd8a0,0,7,1.5);W3.spill.position.set(0,1.5,-1.4);scene.add(W3.spill);
+  /* door */
+  const T=t==='slide'?.028:t==='split'||t==='revolve'?.02:D.T,leafKey=cur.mat,edge=leafKey==='black'?0x111111:leafKey==='white'?0xe8e6df:undefined;
+  const mk=(w,side)=>{const l=leafMesh(w,D.H,T,leafKey,edge);l.traverse(o=>{o.userData.leaf=side});return l};
+  const piv=[];
+  if(t==='swing'||t==='none'){const p=grp(-D.W/2,y0,0);p.add(mk(D.W,'l'));scene.add(p);piv.push(p)}
+  else if(t==='double'){const pl=grp(-D.W/2,y0,0),pr=grp(D.W/2,y0,0);pl.add(mk(D.W/2,'l'));const rl=mk(D.W/2,'r');rl.position.x=-D.W/2;pr.add(rl);scene.add(pl,pr);piv.push(pl,pr)}
+  else if(t==='slide'){const fixed=mk(D.W,'x');fixed.position.set(-D.W,y0,-.032);scene.add(fixed);const p=grp(0,y0,0);p.add(mk(D.W,'l'));scene.add(p);piv.push(p)}
+  else if(t==='split'){const pl=grp(-D.W/2,y0,0),pr=grp(0,y0,0);pl.add(mk(D.W/2,'l'));pr.add(mk(D.W/2,'r'));scene.add(pl,pr);piv.push(pl,pr);
+    const st=new THREE.Mesh(new THREE.PlaneGeometry(.36,.05),label('AUTOMATIC DOOR',.36,.05,'#ffffff','rgba(30,90,80,.85)'));st.position.set(D.W/4,1.45,.002);pl.add(st)}
+  else if(t==='revolve'){const drum=grp(0,0,0);const wa_=mk(D.W*2,'l');wa_.position.x=-D.W;drum.add(wa_);const wb_=mk(D.W*2,'l');wb_.position.x=-D.W;
+    const wbG=grp();wbG.add(wb_);wbG.rotation.y=Math.PI/2;drum.add(wbG);scene.add(drum);piv.push(drum);
+    const glass=new THREE.MeshStandardMaterial({color:0xd8eef4,roughness:.05,transparent:true,opacity:.16,side:THREE.DoubleSide,depthWrite:false});
+    [[Math.PI*1.25],[Math.PI*.25]].forEach(([s])=>{const c=new THREE.Mesh(new THREE.CylinderGeometry(D.W+.03,D.W+.03,D.H,48,1,true,s,Math.PI/2),glass);c.position.y=D.H/2;scene.add(c)});
+    const cap=mesh(new THREE.CylinderGeometry(D.W+.06,D.W+.06,.12,48),new THREE.MeshStandardMaterial({color:0x8c6a2a,metalness:1,roughness:.35}),0,D.H+.06,0);scene.add(cap)}
+  W3.OW=OW;W3.piv=piv;scene.traverse(o=>{if(o.userData.leaf&&o.isMesh)W3.pick.push(o)});
+  /* the handle */
+  W3.hwMats=[];const B=BUILD[cur.id]();W3.hwMatsDone=W3.hwMats;W3.hwMats=null;
+  const ax=-OW/2+D.ax*OW;
+  const place=(g,parent,wx)=>{g.userData.hw=true;const pw=parent.position;g.position.x+=wx-(parent===scene?0:pw.x);g.position.y+=D.ay-(parent===scene?0:pw.y);parent.add(g)};
+  if(t==='split'){B.g.position.set(0,D.ay,.02);B.g.userData.hw=true;scene.add(B.g)}
+  else if(t==='revolve'){B.g.userData.hw=true;B.g.position.set(D.W*.5,D.ay,0);piv[0].add(B.g)}
+  else if(t==='slide'){place(B.g,piv[0],D.W*D.ax)}
+  else if(t==='double'){place(B.g,piv[0],ax);if(B.gR)place(B.gR,piv[1],ax)}
+  else place(B.g,piv[0],ax);
+  B.g.traverse(o=>{o.userData.hwRoot=true});if(B.gR)B.gR.traverse(o=>{o.userData.hwRoot=true});
+  B.piv.forEach((p,i)=>p.traverse(o=>{o.userData.part=i}));
+  scene.traverse(o=>{if(o.userData.hwRoot&&o.isMesh)W3.pick.push(o)});
+  W3.B=B;scene.updateMatrixWorld(true);
+  const tg=V3();B.g.getWorldPosition(tg);if(D.ty!=null){tg.set(0,D.ty,0)}
+  W3.target=tg;W3.key.position.set(tg.x-1.1,tg.y+1.5,tg.z+1.7);W3.key.target.position.copy(tg);
+}
+
+/* ---------- state ---------- */
+function newState(){return{th:0,om:0,latched:true,answered:false,answering:false,h:[0,0],hv:[0,0],grip:null,
+  kn:[{p:0,v:0},{p:0,v:0}],knocks:0,lastKnock:0,ch:{a:0,v:0,p:0,pv:0,hits:0},rv:{p:0,w:0,revs:0},
+  motor:null,effort:0,strainT:0,presence:false,leaveAt:0,engagedAt:0,outsideTried:false,opened:false,said:{},
+  hx:-100,hy:-100,lx:0,ly:0,clx:0,cly:0,zoom:1,px:0,pz:0,hot:false}}
+function openImm(id,fromCard){
+  const it=ITEMS.find(x=>x.id===id);if(!it)return;
+  lastFocus=fromCard||lastFocus;
+  if(imm.hidden){imm.hidden=false;document.documentElement.style.overflow='hidden';try{history.pushState({door:1},'')}catch(e){}}
+  if(!initGL()){$('#glfail').hidden=false;cur=it;$('#immTitle').textContent=it.name;return}
+  resize();ac();startLoops();load(it);
+  cancelAnimationFrame(raf);lastT=performance.now();raf=requestAnimationFrame(loop);
+  $('#back').focus({preventScroll:true});store.set('ha-last',id);
+}
+function closeImm(fromPop){
+  if(imm.hidden)return;
+  if(fromPop!==true){try{if(history.state&&history.state.door){history.back();return}}catch(e){}}
+  imm.hidden=true;document.documentElement.style.overflow='';cancelAnimationFrame(raf);stopLoops();timers.forEach(clearTimeout);timers=[];
+  if(document.fullscreenElement)document.exitFullscreen?.().catch(()=>{});
+  const c=lastFocus&&document.body.contains(lastFocus)?lastFocus:cur&&document.querySelector(`.card[data-id="${cur.id}"]`);c&&c.focus({preventScroll:true});
+}
+function load(it){
+  timers.forEach(clearTimeout);timers=[];
+  cur=it;G=GEST[it.id];FE=FEEL[it.id];DM=dimsOf(it.id);const z=S?S.zoom:1;S=newState();S.zoom=z;
+  buildScene();
+  $('#immTitle').textContent=it.name;$('#immSub').textContent=it.local;
+  $('#about').innerHTML=`<div><h2>${it.name}</h2><div class="local">${it.local}</div></div>
+    <div class="where">${it.era}</div>
+    <p class="note">${it.note}</p>
+    <dl class="specs"><dt>Material</dt><dd>${it.material}</dd><dt>Type</dt><dd>${MECHS[it.mech]}</dd>${it.specs.map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`;
+  say(G.hint);$('#feel').textContent=FE.feel;
+  setAmb(FE.amb);renderActs();applyState(0);hud(true);
+}
+function step(d){const L=list().length?list():ITEMS;const ix=L.findIndex(x=>x.id===cur.id);load(L[(ix+d+L.length)%L.length]);store.set('ha-last',cur.id)}
+const swingsOut=()=>G.g==='pull';
+const spring=i=>!!(cur.parts[i]||cur.parts[0]).spring;
+
+/* ---------- applying state to the model ---------- */
+function applyState(dt){
+  const t=cur.door,th=S.th,P=W3.piv,D=DM;
+  if(t==='swing')P[0].rotation.y=(swingsOut()?-1:1)*th*ANG;
+  else if(t==='double'){P[0].rotation.y=th*ANG;P[1].rotation.y=-th*ANG}
+  else if(t==='slide')P[0].position.x=-th*D.W*.92;
+  else if(t==='split'){P[0].position.x=-D.W/2-th*D.W*.48;P[1].position.x=th*D.W*.48}
+  else if(t==='revolve')P[0].rotation.y=S.rv.p*Math.PI/180;
+  const B=W3.B;
+  if(G.g==='knock')S.kn.forEach((k,i)=>B.parts[i]&&B.parts[i](k.p));
+  else if(G.g==='rattle'){B.piv[0].rotation.set(.07-S.ch.p*1.25,0,S.ch.a*Math.PI/180)}
+  else if(G.g==='approach')B.parts[0](S.presence?1:0);
+  else B.parts[0](clamp(S.h[0],-.1,1));
+  const open=t==='revolve'?clamp(Math.abs(S.rv.p)/90):t==='none'?0:th;
+  W3.spill.intensity=open*1.4;
+  /* camera: at arm's length, looking at the handle; drifts with the pointer like a turning head */
+  const look=S.grip?.3:1;S.clx+=(S.lx*look-S.clx)*Math.min(1,dt*4);S.cly+=(S.ly*look-S.cly)*Math.min(1,dt*4);
+  const tg=W3.target,asp=camera.aspect;let dist=D.dist*S.zoom*(asp<1?Math.pow(1/Math.max(.45,asp),.85):1);
+  const back=t==='swing'&&swingsOut()?th*.8:0;
+  /* walking carries your view with you: you move, the direction you face stays the same
+     (the pointer turns your head a little), and once you are well away your eyes settle to eye level */
+  const pos=V3(tg.x+dist*.22+S.clx*.06*dist,tg.y+(D.up+dist*.22)*S.zoom,tg.z+dist+back),aim=V3(tg.x+S.clx*.35*dist,tg.y-S.cly*.28*dist,tg.z);
+  W3.base=pos.clone();
+  if(S.px||S.pz){const far=clamp(Math.hypot(S.px,S.pz)/.7);pos.x+=S.px;pos.z+=S.pz;aim.x+=S.px;aim.z+=S.pz;
+    pos.y+=(1.5-pos.y)*far;aim.y+=(pos.y-.12-aim.y)*far}
+  if(t==='revolve'){const a=S.rv.p*Math.PI/180,rotY=(v)=>{const c=Math.cos(a),s=Math.sin(a);return V3(v.x*c+v.z*s,v.y,-v.x*s+v.z*c)};pos.copy(rotY(pos));aim.copy(rotY(aim))}
+  camera.position.copy(pos);camera.lookAt(aim);
+}
+function hud(force){
+  const n=performance.now();if(!force&&n-hudT<90)return;hudT=n;
+  let pos;const t=cur.door;
+  if(t==='revolve')pos=`${Math.abs(S.rv.w/6).toFixed(1)} rpm`;
+  else if(t==='slide')pos=`${Math.round(S.th*DM.W*92)} cm open`;
+  else if(t==='split')pos=`${Math.round(S.th*100)}% open`;
+  else if(t==='none')pos=S.h[0]>.5?'Engaged':'Vacant';
+  else pos=`${Math.round(S.th*80)}°`;
+  const handing=t==='swing'?(swingsOut()?'LHR · opens toward you':'LH · opens away'):t==='double'?'Pair, opens inward':t==='slide'?'Sliding':t==='split'?'Bi-parting slide':t==='revolve'?'Revolving':'Inward';
+  const e=Math.round(S.effort*100);
+  $('#gauges').innerHTML=`<div><dt>Weight</dt><dd>${FE.kg?'~'+FE.kg+' kg':'Motor'} · ${effortWord(FE.kg)}</dd></div>
+    <div><dt>Effort</dt><dd><span class="effort${e>85?' hard':''}"><i style="width:${e}%"></i></span></dd></div>
+    <div><dt>${t==='none'?'Lock':t==='revolve'?'Speed':'Open'}</dt><dd>${pos}</dd></div>
+    <div><dt>Latch</dt><dd>${t==='revolve'||t==='split'||t==='slide'?'None':S.latched?'Shut':'Free'}</dd></div>
+    <div><dt>Handing</dt><dd>${handing}</dd></div>
+    <div><dt>Closer</dt><dd>${FE.closer?'Yes, hydraulic':'No'}</dd></div>
+    <div><dt>Walk</dt><dd>W A S D</dd></div>`;
+}
+function renderActs(){
+  const el=$('#acts');el.innerHTML='';
+  const add=(label_,fn,primary)=>{const b=document.createElement('button');b.type='button';b.className='btn'+(primary?' primary':'');b.textContent=label_;b.onclick=fn;el.appendChild(b)};
+  const open=cur.door==='revolve'?Math.abs(S.rv.w)>3:S.th>.05;
+  if(open&&cur.door!=='none'&&cur.door!=='revolve')add('Close it for me',autoClose);
+  else add('Show me',demo);
+}
+let actsT=0;function renderActsLazy(){const n=performance.now();if(n-actsT>400){actsT=n;renderActs()}}
+
+/* ---------- walking: W A S D ---------- */
+const keys=new Set();let stepT=0,wallSaid=0;
+function passable(){const t=cur.door;if(t==='none'||t==='revolve')return false;return S.th>(t==='swing'&&!swingsOut()||t==='double'?.5:.6)}
+function canStand(x,z){
+  if(Math.abs(x)>2.6||z>3.2||z<-2.9||(z<-.4&&Math.abs(x)>2.2))return false;
+  if(cur.door==='revolve')return Math.abs(x-W3.base.x)<.3&&Math.abs(z-W3.base.z)<.3;
+  const half=W3.OW/2-.16;
+  if(z<.16&&z>-.4)return passable()&&Math.abs(x)<half;
+  return true;
+}
+/* walking into a door leans your weight on it: it swings away if it is free, rattles if it is latched */
+function bodyPush(f){
+  const t=cur.door,x=W3.base.x+S.px,inGap=Math.abs(x)<W3.OW/2-.08;
+  const note=(m)=>{if(Date.now()-wallSaid>2500){wallSaid=Date.now();say(m)}};
+  if(!inGap){note('That is the wall.');return}
+  if(t==='none'){note('That is a cubicle door. Lock it from the inside.');return}
+  if(t==='slide'){note('A sliding panel. Hook a finger in the hikite and slide it.');return}
+  if(t==='split'||t==='revolve')return;
+  if(swingsOut()){note('You lean on it, but this door opens toward you. Pull it.');return}
+  if(G.g==='press'&&S.th<.02&&S.h[0]<.85){S.h[0]=1;S.hv[0]=0;play('latch');S.latched=false;note('Your hip hits the bar, the latch drops, and the door gives.')}
+  if(S.latched||computeLatch()){if(Date.now()-(S.rattleAt||0)>500){S.rattleAt=Date.now();play('rattle')}
+    note(G.g==='knock'||G.g==='rattle'?'You lean on it. Bolted from inside. Someone has to let you in.':'You lean on it, but the latch holds. Work the handle first.');return}
+  S.pushF=FMAX*.85*f;
+}
+function walk(dt){
+  if(!keys.size||!W3.base)return;
+  let f=0,s=0;if(keys.has('w'))f++;if(keys.has('s'))f--;if(keys.has('a'))s--;if(keys.has('d'))s++;if(!f&&!s)return;
+  const dir=V3();camera.getWorldDirection(dir);dir.y=0;if(dir.lengthSq()<1e-6)dir.set(0,0,-1);dir.normalize();
+  if(cur.door==='revolve'){const a=-S.rv.p*Math.PI/180,c=Math.cos(a),sn=Math.sin(a);dir.set(dir.x*c+dir.z*sn,0,-dir.x*sn+dir.z*c)}
+  const len=Math.hypot(f,s),sp=1.15*dt/len,dx=(dir.x*f-dir.z*s)*sp,dz=(dir.z*f+dir.x*s)*sp;
+  const bx_=W3.base.x,bz=W3.base.z;let moved=false;
+  if(canStand(bx_+S.px+dx,bz+S.pz)){S.px+=dx;moved=true}
+  if(canStand(bx_+S.px,bz+S.pz+dz)){S.pz+=dz;moved=true}
+  else if(dz<0)bodyPush(f);
+  if(cur.door==='revolve'&&f>0)S.pushR=260*f;
+  if(moved){stepT-=dt;if(stepT<0){stepT=.42;play('step',.18)}}
+  const beyond=bz+S.pz<-.4;if(beyond!==!!S.beyond){S.beyond=beyond;if(beyond){say('You are through, on the other side.');if(!S.opened){S.opened=1;markTried()}}}
+}
+document.addEventListener('keydown',e=>{if(imm.hidden||e.target.matches('input')||e.metaKey||e.ctrlKey)return;const k=e.key.toLowerCase();if('wasd'.includes(k)&&k.length===1){keys.add(k);e.preventDefault()}});
+document.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
+window.addEventListener('blur',()=>keys.clear());
+
+/* ---------- physics ---------- */
+const KD=90,FMAX=14;
+function loop(n){
+  const dt=Math.min(.033,(n-lastT)/1000);lastT=n;
+  if(dt>0){sim(dt);walk(dt)}applyState(dt);hud();audioFrame(dt);drawHand();
+  R.render(scene,camera);
+  raf=requestAnimationFrame(loop);
+}
+function computeLatch(){
+  const t=cur.door;if(t==='none'||t==='revolve'||t==='split'||t==='slide')return false;
+  if(S.th>.02)return false;
+  switch(G.g){case 'down':case 'turn':case 'press':return S.h[0]<.85;case 'bolt':return S.h[0]<.95;case 'knock':case 'rattle':return !S.answered;default:return false}
+}
+function sim(dt){
+  const g=S.grip,m=Math.max(.1,FE.kg/30);
+  if(G.g==='down'||G.g==='turn'||G.g==='press'){
+    if(g&&g.phase==='handle'){
+      if(G.g==='press')S.h[0]=Math.min(1,S.h[0]+dt*4);else S.h[0]+=(g.ht-S.h[0])*Math.min(1,dt*22);
+      if(S.h[0]>=.85&&!g.clicked&&cur.door!=='none'){g.clicked=1;play('latch',FE.kg>50?1.3:1);toDoorPhase(g);
+        say(swingsOut()?'Latch free. Now drag toward the hinges to pull it open.':'Latch free. Keep holding and drag toward the hinges to push it open.')}
+    }else if(g&&g.phase==='door'){if(spring(0))S.h[0]=1}
+    else if(spring(0)&&!S.hold){S.hv[0]+=(-260*S.h[0]-15*S.hv[0])*dt;S.h[0]+=S.hv[0]*dt;if(Math.abs(S.h[0])<.002&&Math.abs(S.hv[0])<.02){S.h[0]=0;S.hv[0]=0}}
+  }
+  if(G.g==='pull'||G.g==='push'){const want=g?clamp(.35+S.effort*.8):0;S.h[0]+=(want-S.h[0])*Math.min(1,dt*14)}
+  if(G.g==='knock')S.kn.forEach((k,i)=>{
+    if(g&&g.mode==='knock'&&g.part===i){const t=clamp(Math.hypot(g.x-g.x0,g.y-g.y0)/g.L+g.p0);k.v=(t-k.p)/dt;k.p=t}
+    else if(k.p>0||k.v){k.v-=20*dt;k.p+=k.v*dt;if(k.p<=0){const s=-k.v;k.p=0;if(s>.35)impact(i,s);k.v=s>.8?s*.2:0}}
+  });
+  if(G.g==='rattle'){const c=S.ch;
+    if(g&&g.mode==='chain'){const dxm=(g.x-g.x0)/g.ppm,tgt=clamp(Math.atan2(dxm,.22)*180/Math.PI,-50,50);c.v+=(500*(tgt-c.a)-16*c.v)*dt;
+      const lp=clamp((g.y0-g.y)/g.L);c.pv=(lp-c.p)/Math.max(dt,.001);c.p=lp}
+    else{c.v+=(-70*c.a-.9*c.v)*dt;
+      if(c.p>0||c.pv){c.pv-=18*dt;c.p+=c.pv*dt;if(c.p<=0){const s=-c.pv;c.p=0;c.pv=s>.7?s*.25:0;if(s>.4)chainHit(clamp(s/5.5))}}}
+    const a0=c.a;c.a+=c.v*dt;
+    if(Math.sign(a0)!==Math.sign(c.a)&&Math.abs(c.v)>90)chainHit(clamp(Math.abs(c.v)/420))}
+  if(FE.motor){
+    const want=S.presence||(W3.base&&W3.base.z+S.pz<1.3&&Math.abs(W3.base.x+S.px)<1.1);
+    if(want&&(!S.motor||S.motor.to!==1)&&S.th<1){if(S.th<.05){play('chime');play('motor')}S.motor={to:1,v:1.1};S.leaveAt=0;if(!S.opened){S.opened=1;markTried()}say(`It slides open.`);renderActsLazy()}
+    if(want)S.leaveAt=0;
+    if(!want&&S.th>0&&(!S.motor||S.motor.to!==0)){if(!S.leaveAt)S.leaveAt=performance.now()+1500;else if(performance.now()>S.leaveAt){S.motor={to:0,v:.7};play('motor');say('No one there, so it closes.')}}
+  }
+  if(cur.door==='none'){if(S.h[0]>.5&&!g){if(!S.engagedAt)S.engagedAt=performance.now();else if(!S.outsideTried&&performance.now()-S.engagedAt>3500){S.outsideTried=1;play('rattle');S.shakeT=.5;say('Someone outside tries the handle. "Oh, sorry!" Engaged, as the window says.')}}else S.engagedAt=0;
+    if(S.shakeT>0){S.shakeT-=dt;W3.piv[0].position.x=-DM.W/2+Math.sin(S.shakeT*90)*.003*S.shakeT*2}return}
+  if(cur.door==='revolve'){
+    const I=FE.kg/30,r=S.rv;let Fr=0;
+    if(g&&g.mode==='rev'){const tgt=g.p0+(g.x-g.x0)*.3;Fr=clamp(7*(tgt-r.p)-2*Math.sqrt(7*I)*.8*r.w,-300,300);S.effort=Math.abs(Fr)/300}else S.effort*=.9;
+    if(S.pushR){Fr+=S.pushR;S.effort=Math.max(S.effort,.7);S.pushR=0}
+    Fr+=-.18*I*r.w;r.w+=Fr/I*dt;
+    if(Math.abs(r.w)>72){r.w=72*Math.sign(r.w);sayOnce('gov','A speed governor stops the drum from spinning too fast.')}
+    r.p+=r.w*dt;const revs=Math.floor(Math.abs(r.p)/360);
+    if(Math.abs(r.p)>45&&!S.opened){S.opened=1;markTried();say('The drum turns and carries you round with it.')}
+    if(Math.abs(r.p)%360>150&&Math.abs(r.p)%360<210)sayOnce('in'+revs,`You are inside. Keep pushing to go round again.`);
+    if(revs>r.revs){r.revs=revs;say(revs===1?'One full turn, back where you started.':revs<4?`${revs} turns. Round and round.`:`${revs} turns. The doorman is watching you.`)}
+    return;
+  }
+  /* decide the latch before the door moves, so a shove can never carry it past the catch */
+  S.latched=computeLatch();
+  if(S.motor&&!(g&&g.phase==='door')){
+    const d=S.motor.to-S.th,stp=S.motor.v*dt;S.om=0;
+    if(Math.abs(d)<=stp){S.th=S.motor.to;const done=S.motor.done;S.motor=null;done&&done()}else S.th+=Math.sign(d)*stp;
+  }else{
+    let Fd=0;const gripping=g&&g.phase==='door';
+    if(gripping){S.motor=null;const tgt=doorTarget(g);const c=2*Math.sqrt(KD*m)*.75;Fd=clamp(KD*(tgt-S.th)-c*S.om,-FMAX,FMAX);S.effort=Math.abs(Fd)/FMAX;
+      if(S.effort>.95&&m>2.5){S.strainT+=dt;if(S.strainT>.6)sayOnce('heavy',FE.kg>=200?'It barely moves. Keep hauling, it will come.':'Heavy. Keep at it.')}else S.strainT=0}
+    else S.effort*=.88;
+    if(S.pushF){Fd+=S.pushF;S.effort=Math.max(S.effort,S.pushF/FMAX);S.pushF=0}
+    Fd+=-(FE.glide?.08:(.5+.25*m))*S.om;
+    if(FE.closer&&!gripping)Fd+=-6*S.th-3.2*S.om;
+    S.om+=Fd/m*dt;S.th+=S.om*dt;
+  }
+  if(S.latched&&S.th>.006){if(S.om>.2){play('rattle');sayOnce('latched',G.g==='knock'||G.g==='rattle'?'Bolted from inside. Someone has to let you in.':'It is latched. Work the handle first.')}S.th=.006;S.om=0}
+  if(S.th<0){
+    const sp=-S.om;S.th=0;S.om=0;
+    if(cur.door==='slide'||cur.door==='split'){if(sp>.2)play('thunk',clamp(sp/2,.3,1))}
+    else if(sp>.7){const gn=clamp(sp/2.5)*(.45+.55*clamp(m/4));play('slam',gn);say(gn>.5?(m>4?'BOOM. The frame shakes and dust drifts down.':'Slam! That carried through the whole building.'):'Shut, with a firm thud.')}
+    else if(sp>.12){play('bump',.4);play('latch',.7)}
+    onClosed();
+  }
+  if(S.th>1){if(S.om>.4)play(cur.door==='slide'?'thunk':'bump',clamp(S.om/2,.2,1));S.th=1;S.om=-S.om*(cur.door==='slide'?.3:.15)}
+  if(S.th>.15&&!S.opened){S.opened=1;markTried();if(!S.answering)say(cur.door==='slide'?'The panel glides open.':`It ${swingsOut()?'swings toward you':'swings away from you'}.`)}
+  if(FE.closer&&S.opened&&!g&&S.th>.1&&S.om<-.05)sayOnce('closer','The closer takes over and eases it shut.');
+}
+function onClosed(){
+  if(!S.opened)return;
+  S.opened=false;S.said={};
+  if((G.g==='knock'||G.g==='rattle')&&S.answered){S.answered=false;S.knocks=0;S.ch.hits=0;later(()=>{play('bolt');say('Someone slides the bolt again. Knock to call them back.')},500)}
+  renderActs();
+}
+/* pixels per metre at the door, so a drag moves the door about as far as your hand moved */
+function ppm(){return cv.clientHeight/(2*camera.position.distanceTo(W3.target)*Math.tan(camera.fov*Math.PI/360))}
+function doorTarget(g){
+  if(cur.door==='slide')return clamp(g.th0-(g.x-g.x0)/(g.ppm*DM.W*.92),-.05,1.05);
+  const sgn=g.side==='r'?-1:1;return clamp(g.th0-sgn*(g.x-g.x0)/(g.ppm*g.r*1.1),-.03,1.05);
+}
+function toDoorPhase(g){
+  g.phase='door';g.th0=S.th;g.x0=g.x;g.ppm=ppm();
+  const leafW=cur.door==='double'?DM.W/2:DM.W;
+  if(g.hitR!=null){g.r=clamp(g.hitR,leafW*.25,leafW)}else g.r=cur.door==='double'?leafW*.9:DM.W*DM.ax;
+  if(g.side==null)g.side='l';
+}
+
+/* the chain striking the door: a lifted drop or a hard swing both count, soft ones don't */
+function chainHit(gn){
+  play('tink',Math.max(.15,gn));play('thunk',gn*.6);
+  if(S.answered||S.answering)return;const c=S.ch;
+  if(gn<.3){sayOnce('soft'+c.hits,'A faint jingle. Nobody inside heard that.');return}
+  c.hits++;
+  if(c.hits===1)say('Clank.');else if(c.hits===3)say('Clank, clank. Keep going, louder.');
+  if(c.hits>=5)answer(0);
+}
+/* knocking and answering */
+function impact(i,s){
+  const p=cur.parts[i]||cur.parts[0],gn=clamp(s/6.3);
+  const [,f,mm,gg=1]=p.sound;play(['knock',f,mm,gg*Math.max(.12,gn)]);
+  if(S.answered||S.answering)return;
+  const now=performance.now();if(now-S.lastKnock>7000)S.knocks=0;
+  if(gn<.45){say(gn<.25?'A timid tap. Nobody heard that. Pull it further back.':'Too soft to carry. Lift it higher before you let go.');return}
+  S.knocks++;S.lastKnock=now;
+  say(S.knocks===1?(gn>.85?'BANG. That will wake the house.':'Knock.'):S.knocks===2?'Knock, knock.':'Knock, knock, knock.');
+  if(S.knocks>=3)answer(i);
+}
+function answer(i){
+  S.answering=true;const p=cur.parts[i]||cur.parts[0],heavy=FE.kg>60;
+  later(()=>say('Footsteps inside…'),700);
+  [0,1,2,3,4].forEach(k=>later(()=>play('step',.25+k*.15),900+k*380));
+  later(()=>{play(G.g==='rattle'?'clank':'bolt');say(p.msg)},2900);
+  later(()=>{S.answered=true;S.answering=false;S.latched=false;play('creak');S.motor={to:.75,v:heavy?.35:.55};
+    if(!S.opened){S.opened=1;markTried()}renderActs()},3400);
+  later(()=>{if(S.answered&&!S.grip)say(`The door stands open. Push it wider, step through, or swing it shut.`)},6200);
+}
+
+/* ---------- pointer: the hand ---------- */
+function setPose(p,press){if(p!==pose){pose=p;hand.innerHTML=HAND[p].svg}hand.classList.toggle('press',!!press)}
+function drawHand(){
+  if(!pose)setPose('open');const h=HAND[pose],sz=hand.offsetWidth||64;
+  const sh=S.effort>.8&&FE.kg>50?(S.effort-.8)*14:0;
+  hand.style.transform=`translate(${S.hx-h.hx*sz+(sh?rnd(sh/2):0)}px,${S.hy-h.hy*sz+(sh?rnd(sh/2):0)}px)`;
+}
+function pick(cx,cy){
+  const r=cv.getBoundingClientRect();if(cx<r.left||cx>r.right||cy<r.top||cy>r.bottom)return null;
+  const nd=new THREE.Vector2((cx-r.left)/r.width*2-1,-(cy-r.top)/r.height*2+1);ray.setFromCamera(nd,camera);
+  const hits=ray.intersectObjects(W3.pick,false);if(!hits.length)return null;const h=hits[0],o=h.object;
+  if(o.userData.hwRoot)return{kind:'hw',part:o.userData.part??0,point:h.point};
+  if(o.userData.leaf&&o.userData.leaf!=='x')return{kind:'leaf',side:o.userData.leaf,point:h.point};
+  return null;
+}
+function setHot(b){if(S.hot===b)return;S.hot=b;(W3.hwMatsDone||[]).forEach(m=>{if(m.emissive&&m.emissiveIntensity<1)m.emissive.setHex(b?0x2e2410:0)})}
+function idlePose(hit){
+  const onHw=hit&&hit.kind==='hw';setHot(onHw&&G.g!=='approach');
+  if(G.shoe&&onHw)setPose('shoe');
+  else setPose(onHw?(G.g==='push'||G.g==='approach'||G.g==='revolve'?'open':G.g==='knock'||G.g==='rattle'?'fist':'point'):'open');
+}
+function partScreen(i){const v=V3();W3.B.piv[i].getWorldPosition(v);v.project(camera);const r=cv.getBoundingClientRect();return{x:r.left+(v.x+1)/2*r.width,y:r.top+(1-v.y)/2*r.height}}
+function startGrip(e,mode,part,phase,hit){
+  e.preventDefault();try{room.setPointerCapture(e.pointerId)}catch(_){}
+  const g=S.grip={mode,part,phase,x0:e.clientX,y0:e.clientY,x:e.clientX,y:e.clientY,ht:S.h[0],start:S.h[0],acc:0};
+  setHot(false);
+  setPose(G.shoe?'shoe':(G.g==='push'||G.g==='revolve'||G.g==='press'||mode==='leafpush')?'open':'fist',true);
+  const P=ppm();
+  if(hit&&hit.kind==='leaf'){g.side=hit.side;const pv=W3.piv[hit.side==='r'?1:0],lp=pv.worldToLocal(hit.point.clone());g.hitR=Math.abs(lp.x)}
+  if(mode==='chain'){g.ppm=P;g.L=Math.max(40,.08*P);S.ch.v=0}
+  if(mode==='knock'){g.L=Math.max(40,.09*P);g.p0=S.kn[part].p;S.kn[part].v=0}
+  if(phase==='handle'){
+    if(G.g==='down')g.L=Math.max(36,.07*P);
+    if(G.g==='turn'){g.c=partScreen(0);g.a=Math.atan2(e.clientY-g.c.y,e.clientX-g.c.x)}
+    if(G.g==='bolt')g.L=Math.max(40,.09*P);
+    if(G.g==='press')play('thunk',.4);
+  }
+  if(phase==='door')toDoorPhase(g);
+  if(mode==='rev')g.p0=S.rv.p;
+  if(cur.door==='slide'&&phase==='door'&&S.th<.02)play('slide',.4);
+}
+room.addEventListener('pointerdown',e=>{
+  if(!R||!S)return;ac();const r=room.getBoundingClientRect();S.hx=e.clientX-r.left;S.hy=e.clientY-r.top;hand.classList.add('show');
+  if(S.answering)return;
+  const hit=pick(e.clientX,e.clientY);
+  if(G.g==='approach'){S.presence=true;return}
+  if(cur.door==='revolve'){if(hit)startGrip(e,'rev',0,'rev',null);else say(G.hint);return}
+  if(hit&&hit.kind==='hw'){
+    const part=hit.part;
+    if(G.g==='knock')return startGrip(e,'knock',part);
+    if(G.g==='rattle')return startGrip(e,'chain',0);
+    if(cur.door==='none')return startGrip(e,'handle',0,'handle');
+    if(S.th>.02||['pull','push','slide'].includes(G.g))return startGrip(e,'handle',part,'door');
+    return startGrip(e,'handle',0,'handle');
+  }
+  if(hit&&hit.kind==='leaf'&&cur.door!=='none'){
+    if(FE.paper&&S.th<.5){say(cur.door==='slide'?'Careful, that is paper. Use the hikite.':'Careful, that is paper. Use the iron ring.');return}
+    if(S.latched){S.om=.6;S.said={};return}
+    if(swingsOut()&&S.th<.05){say('Nothing to grab on a flat door. Use the handle.');return}
+    return startGrip(e,'leafpush',0,'door',hit);
+  }
+  say(G.hint);
+});
+room.addEventListener('pointermove',e=>{
+  if(!R||!S)return;const r=room.getBoundingClientRect();S.hx=e.clientX-r.left;S.hy=e.clientY-r.top;hand.classList.add('show');
+  S.lx=clamp((e.clientX-r.left)/r.width*2-1,-1,1);S.ly=clamp((e.clientY-r.top)/r.height*2-1,-1,1);
+  const g=S.grip;
+  if(G.g==='approach'&&e.pointerType==='mouse'){const hit=pick(e.clientX,e.clientY);S.presence=!!hit||Math.abs(S.lx)<.45&&S.ly>-.6}
+  if(!g){idlePose(pick(e.clientX,e.clientY));return}
+  g.x=e.clientX;g.y=e.clientY;
+  if(g.phase==='handle'){
+    if(G.g==='down')g.ht=clamp((g.y-g.y0)/g.L);
+    if(G.g==='turn'){const a=Math.atan2(e.clientY-g.c.y,e.clientX-g.c.x);let da=a-g.a;if(da>Math.PI)da-=2*Math.PI;if(da<-Math.PI)da+=2*Math.PI;g.acc+=da*180/Math.PI;g.a=a;
+      g.ht=clamp(g.start+(G.deg?g.acc/G.deg:Math.abs(g.acc)/90));if(!spring(0)||cur.door==='none')S.h[0]=g.ht}
+    if(G.g==='bolt'){const want=clamp(g.start-(g.x-g.x0)/g.L);
+      if(Math.abs(want-S.h[0])>.12){S.h[0]=clamp(want-.03*Math.sign(want-S.h[0]));play('tock')}
+      if(S.h[0]>=.95&&!g.clicked){g.clicked=1;S.h[0]=1;play(cur.parts[0].sound);toDoorPhase(g);say('Unbolted. Keep hold and drag toward the hinges.')}}
+  }
+});
+function endGrip(){
+  const g=S&&S.grip;if(!g)return;S.grip=null;hand.classList.remove('press');setPose('open');
+  if(g.mode==='knock'&&S.kn[g.part].p<.06){play('tap');say('A tap with the knuckles. Pull the knocker back and let it fall.')}
+  if(cur.door==='none'&&g.phase==='handle'){const v=S.h[0]>.5;S.h[0]=v?1:0;const was=!!S.engaged;S.engaged=v;
+    if(v!==was){play(cur.parts[0].sound);say(v?cur.parts[0].onMsg:cur.parts[0].offMsg);markTried();S.outsideTried=false}}
+  if(g.phase==='handle'&&(G.g==='down'||G.g==='turn')&&!g.clicked&&cur.door!=='none')say(G.g==='down'?'Not far enough. Drag it all the way down.':'Not far enough. Keep turning. '+G.hint);
+  if(g.phase==='handle'&&G.g==='press'&&!g.clicked)say('Hold the bar down a moment longer.');
+  renderActs();
+}
+room.addEventListener('pointerup',e=>{endGrip();if(G&&G.g==='approach'&&e.pointerType!=='mouse')later(()=>{S.presence=false},1600)});
+room.addEventListener('pointercancel',endGrip);
+room.addEventListener('pointerleave',e=>{if(!S)return;if(!S.grip)hand.classList.remove('show');S.lx=0;S.ly=0;if(G.g==='approach'&&e.pointerType==='mouse')S.presence=false});
+room.addEventListener('wheel',e=>{if(!S)return;e.preventDefault();S.zoom=clamp(S.zoom*(1+e.deltaY*.0012),.6,2.6)},{passive:false});
+room.addEventListener('contextmenu',e=>e.preventDefault());
+
+/* ---------- "show me": the motions done for you ---------- */
+function demo(){
+  if(S.answering||S.grip)return;
+  const m=Math.max(.1,FE.kg/30),slow=clamp(.9/Math.sqrt(m),.18,1.2);
+  switch(G.g){
+    case 'knock':[0,1,2].forEach(k=>later(()=>{const kn=S.kn[0];kn.p=.85;kn.v=0},k*700));say('Lift it back and let it fall. Three times.');break;
+    case 'rattle':[0,1,2,3].forEach(k=>later(()=>{S.ch.p=.75;S.ch.pv=0;S.ch.v+=(k%2?1:-1)*160},k*650));say('Lift the chain away from the door and let it drop. Or swing it hard.');break;
+    case 'approach':S.presence=true;later(()=>{S.presence=false},2600);break;
+    case 'revolve':S.rv.w=40;say('Lean on the bar and walk. The drum carries on turning.');break;
+    default:
+      if(cur.door==='none'){const v=!(S.h[0]>.5);S.h[0]=v?1:0;S.engaged=v;play(cur.parts[0].sound);say(v?cur.parts[0].onMsg:cur.parts[0].offMsg);markTried();S.outsideTried=false;break}
+      const go=()=>{S.latched=false;S.motor={to:.8,v:slow,done:()=>renderActs()};play('creak');say('Like this. Now close it and try it with your own hand.')};
+      if(['down','turn','press','bolt'].includes(G.g)){S.hold=true;let t=0;const id=setInterval(()=>{t+=.05;S.h[0]=Math.min(1,t);if(t>=1){clearInterval(id);play(cur.parts[0].sound);go();later(()=>{S.hold=false},900)}},16);timers.push(id)}
+      else{if(cur.door==='slide')play('slide');go()}
+  }
+}
+function autoClose(){if(S.grip)return;S.motor={to:0,v:.7,done:()=>{play(cur.door==='slide'||cur.door==='split'?'thunk':'close');onClosed();
+  cur.parts.forEach((p,i)=>{if(!p.spring&&S.h[i]>0){later(()=>{play(p.sound);S.h[i]=0},300)}});say('Closed. '+G.hint)}}}
+SND.close=(c,t)=>{SND.bump(c,t,.6);SND.latch(c,t+.03,.8)};
+SND.creak=(c,t)=>{if(!FE||FE.creak<.1)return;const o=c.createOscillator(),f=c.createBiquadFilter(),g=c.createGain();o.type='sawtooth';
+  const v=new Float32Array(24);for(let i=0;i<24;i++)v[i]=70+40*Math.sin(i*.9)+i*2;o.frequency.setValueCurveAtTime(v,t,.9);
+  f.type='bandpass';f.frequency.value=1100;f.Q.value=5;env(g,t,.08,.07*FE.creak,.85);o.connect(f).connect(g).connect(A.out);o.start(t);o.stop(t+1)};
+let birdT=0;
+function audioFrame(dt){
+  const L=A.loops;if(!L||!A.ctx)return;const c=A.ctx,now=c.currentTime;
+  const sp=cur.door==='revolve'?Math.abs(S.rv.w)/60:Math.abs(S.om)+(S.motor?S.motor.v*.6:0);
+  L.cg.gain.setTargetAtTime(FE.creak*clamp(sp*.9)*.07,now,.05);
+  L.o.frequency.setTargetAtTime(55+sp*60+Math.sin(now*13)*12+Math.random()*6,now,.03);
+  const open=cur.door==='revolve'?clamp(Math.abs(S.rv.w)/50+.1):cur.door==='none'?0:Math.max(S.th,clamp(-(S.pz)/1.2));
+  L.ag.gain.setTargetAtTime(AMB[FE.amb][3]*clamp(open*1.4),now,.15);
+  if(open>.2&&A.on){birdT-=dt;if(birdT<0){birdT=1.5+Math.random()*3;if(FE.amb==='birds')play('chirp');if(FE.amb==='street'&&Math.random()<.25)play('horn')}}
+}
+function markTried(){if(!tried.has(cur.id)){tried.add(cur.id);store.set('ha-tried',[...tried]);renderPass();renderGrid()}}
+function renderMute(){
+  const b=$('#mute');b.setAttribute('aria-pressed',String(!A.on));b.setAttribute('aria-label',A.on?'Mute sound':'Turn sound on');b.title=A.on?'Mute sound':'Turn sound on';
+  b.innerHTML=A.on?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>'
+                  :'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9l5 6M22 9l-5 6"/></svg>';
+}
+
+/* ---------- wire up ---------- */
+$('#grid').addEventListener('click',e=>{const c=e.target.closest('.card');if(c)openImm(c.dataset.id,c)});
+$('#q').addEventListener('input',e=>{F.q=e.target.value;renderGrid()});
+$('#back').onclick=()=>closeImm();
+window.addEventListener('popstate',()=>{if(!imm.hidden)closeImm(true)});
+$('#prev').onclick=()=>step(-1);$('#next').onclick=()=>step(1);
+$('#zin').onclick=()=>{S.zoom=clamp(S.zoom/1.25,.6,2.6)};$('#zout').onclick=()=>{S.zoom=clamp(S.zoom*1.25,.6,2.6)};
+$('#mute').onclick=()=>{A.on=!A.on;store.set('ha-sound',A.on);if(A.out)A.out.gain.value=A.on?.8:0;renderMute()};
+$('#aboutBtn').onclick=()=>{const a=$('#about');a.hidden=!a.hidden;$('#aboutBtn').setAttribute('aria-expanded',String(!a.hidden))};
+const fsb=$('#fs');if(!document.fullscreenEnabled||!imm.requestFullscreen)fsb.hidden=true;
+fsb.onclick=()=>{try{(document.fullscreenElement?document.exitFullscreen():imm.requestFullscreen()).then(()=>setTimeout(resize,100)).catch(()=>{fsb.hidden=true})}catch(e){fsb.hidden=true}};
+document.addEventListener('fullscreenchange',()=>setTimeout(resize,60));
+$('#surprise').onclick=e=>{const pool=ITEMS.filter(x=>!tried.has(x.id));const L=pool.length?pool:ITEMS;openImm(L[Math.floor(Math.random()*L.length)].id,e.currentTarget)};
+$('#resetPass').onclick=()=>{tried.clear();store.set('ha-tried',[]);renderPass();renderGrid()};
+document.addEventListener('keydown',e=>{
+  if(imm.hidden||e.target.matches('input'))return;
+  if(e.key==='Escape'){if(!$('#about').hidden){$('#about').hidden=true;$('#aboutBtn').setAttribute('aria-expanded','false')}else closeImm()}
+  else if(e.key==='ArrowRight')step(1);else if(e.key==='ArrowLeft')step(-1);
+  else if(e.key==='+'||e.key==='=')S.zoom=clamp(S.zoom/1.25,.6,2.6);else if(e.key==='-')S.zoom=clamp(S.zoom*1.25,.6,2.6);
+});
+$('#eyebrow').textContent=`A field catalogue · ${ITEMS.length} doors`;
+renderChips();renderMute();renderPass();renderGrid();
+{const h=location.hash.slice(1);if(ITEMS.some(x=>x.id===h))openImm(h)}
+</script>
+</body>
+</html>
