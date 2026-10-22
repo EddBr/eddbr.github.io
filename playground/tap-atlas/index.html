@@ -1,0 +1,1570 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Tap Atlas | Eddie's Blog</title>
+<meta name="description" content="28 taps, pumps and fountains, modelled in 3D. Twist, lift, pump or wave to work each one, then hold your hand under the running water.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="The Tap Atlas">
+<meta property="og:description" content="28 taps, pumps and fountains, modelled in 3D. Twist, lift, pump or wave to work each one, then hold your hand under the running water.">
+<meta property="og:url" content="https://eddbr.github.io/playground/tap-atlas/">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23059669'/%3E%3Cpath d='M3 6h6a2 2 0 0 1 2 2v1' fill='none' stroke='%23fff' stroke-width='1.6'/%3E%3Cpath d='M5 4h3' stroke='%23fff' stroke-width='1.4'/%3E%3Ccircle cx='11' cy='12' r='1.2' fill='%23fff'/%3E%3C/svg%3E">
+<style>
+/* Layout: a plumber's catalogue of fixture tiles; choosing one puts you at the basin, full screen, in 3D, with a hand for a pointer */
+:root{
+  /* matches eddbr.github.io and its playground pages: light only, emerald accent, system font, white cards */
+  --bg:#fdfdfd; --panel:#ffffff; --ink:#111111; --muted:#6b7280; --line:#e5e7eb;
+  --accent:#059669; --on-accent:#ffffff; --hot:#c2410c; --cold:#2563eb;
+  --hud:rgba(255,255,255,.94); --hud-line:#e5e7eb;
+  --f-display:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji";
+  --f-body:var(--f-display);
+  --f-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+
+*{box-sizing:border-box}
+html{color-scheme:light}
+body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 56px}
+.wrap{max-width:1280px;margin:0 auto}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* header */
+.top{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px 40px;align-items:end;padding-bottom:22px;border-bottom:1px solid var(--ink);margin-bottom:24px;position:relative}
+.top::after{content:"";position:absolute;left:0;right:0;bottom:-5px;border-bottom:1px solid var(--ink)}
+.eyebrow{font-family:var(--f-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+h1{font-family:var(--f-display);font-weight:800;font-size:clamp(3rem,8.4vw,6.6rem);line-height:.9;letter-spacing:-.02em;margin:0;text-wrap:balance}
+h1 em{font-style:italic;font-weight:900;color:var(--accent)}
+.lede{max-width:62ch;margin:14px 0 0;color:var(--muted);font-size:17px}
+.stats{display:grid;gap:10px;min-width:250px}
+.row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.row b{font-family:var(--f-display);font-size:32px;font-weight:800;color:var(--ink);letter-spacing:0;font-variant-numeric:tabular-nums;text-transform:none}
+.meter{height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.meter i{display:block;height:100%;width:0;background:var(--accent);transition:width .5s}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.btn{appearance:none;border:1.5px solid var(--ink);background:transparent;border-radius:999px;padding:7px 15px;cursor:pointer;font-family:var(--f-mono);font-size:12px;letter-spacing:.02em;white-space:nowrap}
+.btn:hover{background:var(--ink);color:var(--bg)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn.primary:hover{filter:brightness(1.08);background:var(--accent);color:var(--on-accent)}
+.btn[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+
+/* filters */
+.filters{display:grid;gap:10px;margin-bottom:18px}
+.search input{width:100%;max-width:520px;font:inherit;font-size:15px;padding:9px 16px;border-radius:999px;border:1.5px solid var(--line);background:var(--panel);color:var(--ink)}
+.search input:focus{border-color:var(--accent);outline:none}
+.chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.chips .lbl{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);width:84px;flex:none}
+.chip{appearance:none;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:4px 11px;font-size:13px;cursor:pointer;white-space:nowrap}
+.chip small{font-family:var(--f-mono);color:var(--muted);margin-left:5px;font-size:10px}
+.chip:hover{border-color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.chip[aria-pressed="true"] small{color:inherit;opacity:.7}
+.count{font-family:var(--f-mono);font-size:11px;color:var(--muted);margin:0 0 10px}
+
+/* grid */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(176px,1fr));gap:18px 16px}
+.card{appearance:none;text-align:left;border:0;padding:0;background:none;cursor:pointer;display:grid;gap:8px;align-content:start}
+.thumb{position:relative;aspect-ratio:1;border-radius:4px;overflow:hidden;display:grid;place-items:center;box-shadow:inset 0 0 0 1px rgba(0,0,0,.14);transition:transform .2s}
+.thumb::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 50% 45%,transparent 50%,rgba(0,0,0,.22));pointer-events:none}
+.thumb svg{position:relative;z-index:1;width:82%;height:82%;overflow:hidden}
+.card:hover .thumb{transform:translateY(-3px)}
+.stamp{position:absolute;z-index:2;left:6px;top:6px;font-family:var(--f-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:rgba(20,60,110,.86);padding:2px 6px;border-radius:2px}
+.cap{display:grid;gap:1px;padding:0 2px}
+.cap .nm{font-weight:600;font-size:15px;line-height:1.25}
+.cap .mt{font-family:var(--f-mono);font-size:10.5px;color:var(--muted)}
+.empty{padding:40px 20px;text-align:center;border:1.5px dashed var(--line);border-radius:8px;color:var(--muted)}
+
+/* thumbnail walls */
+.scene{background:var(--wl)}
+.scene::before{content:"";position:absolute;left:0;right:0;top:90%;bottom:0;background:var(--fl);z-index:0}
+.w-tile{--wl:repeating-linear-gradient(0deg,#cdd6d2 0 1px,transparent 1px 18px),repeating-linear-gradient(90deg,#cdd6d2 0 1px,transparent 1px 36px),#eef2ef;--fl:repeating-linear-gradient(90deg,#7d8781 0 1px,#949e98 1px 30px)}
+.w-kitchen{--wl:repeating-linear-gradient(0deg,#16242a 0 1.5px,transparent 1.5px 18px),repeating-linear-gradient(90deg,#16242a 0 1.5px,transparent 1.5px 36px),#2a4550;--fl:#4a3b2d}
+.w-hospital{--wl:repeating-linear-gradient(0deg,#bccfc6 0 1px,transparent 1px 26px),repeating-linear-gradient(90deg,#bccfc6 0 1px,transparent 1px 26px),#dce9e3;--fl:#8fa69b}
+.w-marble{--wl:linear-gradient(115deg,transparent 38%,rgba(140,128,106,.22) 39%,transparent 41%),linear-gradient(64deg,transparent 64%,rgba(140,128,106,.18) 65%,transparent 66.5%),#ede7dc;--fl:#b3a68f}
+.w-zellige{--wl:conic-gradient(rgba(255,255,255,.09) 25%,transparent 0 50%,rgba(0,0,0,.08) 0 75%,transparent 0) 0 0/32px 32px,repeating-linear-gradient(0deg,#e4dfcc 0 1.5px,transparent 1.5px 16px),repeating-linear-gradient(90deg,#e4dfcc 0 1.5px,transparent 1.5px 16px),#21705f;--fl:#8c6c48}
+.w-street{--wl:radial-gradient(ellipse at 30% 30%,rgba(255,255,255,.18),transparent 60%),#d49a52;--fl:radial-gradient(circle,#77716a 52%,#3f3b36 56%) 0 0/13px 13px}
+.w-limestone{--wl:repeating-linear-gradient(0deg,#c6b691 0 1px,transparent 1px 44px),linear-gradient(#e3d6ba,#d8c9a8);--fl:#4b4e52}
+.w-ancient{--wl:repeating-linear-gradient(45deg,#a98e64 0 1.5px,transparent 1.5px 15px),repeating-linear-gradient(-45deg,#a98e64 0 1.5px,transparent 1.5px 15px),#ccb48b;--fl:#86765a}
+.w-garden{--wl:repeating-linear-gradient(90deg,#8d8a3e 0 1.5px,#b2ad5c 1.5px 11px,#a29c4c 11px 12px),#b2ad5c;--fl:repeating-linear-gradient(0deg,#c7c1ae 0 2px,#d8d3c2 2px 6px)}
+.w-village{--wl:linear-gradient(#a9d3ea,#f0e2c4 85%);--fl:#b2683a}
+.w-wood{--wl:repeating-linear-gradient(0deg,#5f4128 0 2px,#8f6a43 2px 24px),#8f6a43;--fl:#6a8a3c}
+.w-sento{--wl:repeating-linear-gradient(0deg,#f4f8fa 0 1.5px,transparent 1.5px 20px),repeating-linear-gradient(90deg,#f4f8fa 0 1.5px,transparent 1.5px 20px),#93c3df;--fl:repeating-linear-gradient(90deg,#a7b1b5 0 1px,#c4ccd0 1px 10px)}
+.w-kiosk{--wl:linear-gradient(transparent 62%,#2e7d5a 62% 64%,#d6cfc0 64%),#b8b2a5;--fl:#9c5530}
+.w-brick{--wl:repeating-linear-gradient(0deg,#d6cbbb 0 2px,transparent 2px 16px),repeating-linear-gradient(90deg,#d6cbbb 0 2px,transparent 2px 34px),#a5503a;--fl:#5b7a39}
+.w-station{--wl:linear-gradient(#e7ead9 56%,#2c6a50 56% 57.5%,#86ad94 57.5%);--fl:#bdb6a8}
+.w-bath{--wl:repeating-linear-gradient(0deg,#f2f4f2 0 1px,transparent 1px 20px),repeating-linear-gradient(90deg,#f2f4f2 0 1px,transparent 1px 20px),#bfdcd4;--fl:repeating-linear-gradient(90deg,#77827f 0 1px,#8f9a97 1px 20px)}
+
+/* ---------- immersive basin ---------- */
+.imm{position:fixed;inset:0;z-index:50;background:#16191a;overflow:hidden}
+.room{position:absolute;inset:0;cursor:none;user-select:none;-webkit-user-select:none;touch-action:none}
+.room *{cursor:none}
+#gl{position:absolute;inset:0;width:100%;height:100%;display:block}
+.glfail{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);max-width:420px;padding:20px;border-radius:10px;background:var(--hud);color:var(--ink);text-align:center}
+.hand{position:absolute;left:0;top:0;width:64px;height:64px;pointer-events:none;z-index:40;opacity:0;transition:opacity .15s}
+.hand.show{opacity:1}
+.hand svg{display:block;width:100%;height:100%;transition:transform .12s;filter:drop-shadow(0 3px 3px rgba(0,0,0,.4))}
+.hand.press svg{transform:scale(.86)}
+
+.hud-top{position:absolute;left:0;right:0;top:0;z-index:30;display:flex;align-items:center;gap:10px;
+  padding:calc(12px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 12px max(16px,env(safe-area-inset-left,0px));pointer-events:none}
+.hud-top > *{pointer-events:auto}
+.pill{background:var(--hud);color:var(--ink);border:1px solid var(--hud-line);border-radius:999px;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.back{appearance:none;cursor:pointer;padding:8px 14px;font-family:var(--f-mono);font-size:12px;display:flex;gap:6px;align-items:center}
+.titlebox{padding:5px 18px 6px;min-width:0;display:grid}
+.titlebox b{font-family:var(--f-display);font-weight:800;font-size:22px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.titlebox span{font-family:var(--f-mono);font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hud-top .sp{flex:1}
+.icons{display:flex;gap:4px;padding:4px}
+.iconbtn{appearance:none;border:0;background:transparent;border-radius:999px;width:36px;height:36px;display:grid;place-items:center;cursor:pointer;color:var(--ink)}
+.iconbtn:hover{background:var(--hud-line)}
+.iconbtn svg{width:18px;height:18px}
+
+.hud-bot{position:absolute;left:0;right:0;bottom:0;z-index:30;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 20px;align-items:center;
+  padding:14px max(16px,env(safe-area-inset-right,0px)) calc(14px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));
+  background:var(--hud);color:var(--ink);border-top:1px solid var(--hud-line);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.hint{margin:0;font-size:17px;line-height:1.3;font-weight:600;min-height:1.3em}
+.feel{margin:2px 0 0;font-size:13.5px;color:var(--muted);font-family:var(--f-mono)}
+.gauges{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px 22px;margin:0;font-family:var(--f-mono);font-size:12px;font-variant-numeric:tabular-nums}
+.gauges div{display:flex;gap:8px;align-items:center;white-space:nowrap}
+.gauges dt{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.gauges dd{margin:0}
+.tbar{width:90px;height:6px;border-radius:3px;background:linear-gradient(90deg,var(--cold),#c9c2c0 45%,var(--hot));position:relative;display:inline-block}
+.tbar i{position:absolute;top:-4px;width:3px;height:14px;border-radius:2px;background:var(--ink);left:0;transform:translateX(-50%)}
+.acts{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+
+.about{position:absolute;z-index:35;right:max(12px,env(safe-area-inset-right,0px));top:calc(70px + env(safe-area-inset-top,0px));bottom:150px;width:min(380px,calc(100% - 24px));
+  overflow:auto;padding:18px 20px;border-radius:10px;background:var(--hud);color:var(--ink);border:1px solid var(--hud-line);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);touch-action:pan-y;display:grid;gap:10px;align-content:start}
+.about h2{font-family:var(--f-display);font-weight:800;font-size:30px;line-height:1;margin:0;text-wrap:balance}
+.local{font-family:var(--f-mono);font-size:12px;color:var(--hot)}
+.where{font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+.note{margin:0;font-size:15.5px;line-height:1.55}
+dl.specs{margin:4px 0 0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 14px;border-top:1px solid var(--hud-line);padding-top:10px;font-size:14px}
+dl.specs dt{font-family:var(--f-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding-top:3px}
+dl.specs dd{margin:0}
+
+[hidden]{display:none!important}
+@media (max-width:760px){
+  .top{grid-template-columns:minmax(0,1fr)}
+  .hud-bot{grid-template-columns:minmax(0,1fr)}
+  .acts{justify-content:flex-start}
+  .hint{font-size:15px}
+  .gauges{gap:4px 14px}
+  .titlebox b{font-size:18px}
+  .back span{display:none}
+  .about{bottom:210px}
+  .icons .opt{display:none}
+}
+@media (max-width:480px){
+  .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 10px}
+  .chips .lbl{width:100%}
+}
+@media (prefers-reduced-motion:reduce){.thumb,.meter i{transition-duration:.01s!important}}
+
+/* ---------- site theme (minima header, emerald accent, white cards) ---------- */
+body{padding:0;-webkit-font-smoothing:antialiased}
+.site-header{border-top:5px solid #424242;border-bottom:1px solid #e8e8e8;min-height:56px;background:#fff}
+.site-header .wrapper{max-width:800px;margin:0 auto;padding:0 30px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap}
+.site-title{font-size:26px;font-weight:300;line-height:54px;letter-spacing:-1px;color:#424242;text-decoration:none}
+.site-nav a{color:#111;margin-left:20px;text-decoration:none}
+.site-nav a:hover{text-decoration:underline}
+@media (max-width:600px){.site-header .wrapper{padding:0 15px}.site-nav a{margin-left:14px}}
+.wrap{max-width:1080px;padding-block:32px 56px;padding-left:max(24px,env(safe-area-inset-left,0px));padding-right:max(24px,env(safe-area-inset-right,0px))}
+@media (max-width:600px){.wrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}}
+.top{grid-template-columns:minmax(0,1fr);justify-items:center;text-align:center;border-bottom:1px solid var(--line);gap:16px;padding-bottom:28px;margin-bottom:24px}
+.top::after{display:none}
+.eyebrow{font-family:var(--f-body);font-size:.8rem;letter-spacing:0;text-transform:none;margin:0 0 8px}
+h1{font-family:var(--f-body);font-size:2.2rem;font-weight:600;line-height:1.2;color:#374151;letter-spacing:0}
+@media (max-width:600px){h1{font-size:1.8rem}}
+h1 em{font-style:normal;font-weight:600;color:var(--accent)}
+.lede{margin:10px auto 0;font-size:1.1rem;max-width:62ch;color:var(--muted)}
+.stats{min-width:0;width:min(340px,100%)}
+.stats .btns{justify-content:center}
+.row{text-transform:none;letter-spacing:0;font-family:var(--f-body);font-size:.9rem}
+.row b{font-family:var(--f-body);font-size:1.3rem;font-weight:600;color:#374151}
+.meter{background:#f3f4f6}
+.btn{border-radius:6px;border:1px solid #d1d5db;background:#fff;color:#111;font-family:var(--f-body);font-size:.88rem;padding:.45rem .9rem;letter-spacing:0}
+.btn:hover{background:#f9fafb;color:#111}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:500}
+.btn.primary:hover{background:#047857;border-color:#047857;filter:none;color:#fff}
+.btn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.search input{border-radius:6px;border:1px solid #d1d5db;background:#fff;max-width:420px}
+.chips .lbl,.count{letter-spacing:0;text-transform:none;font-family:var(--f-body);font-size:.85rem}
+.chip{border-radius:6px;background:#fff;border-color:#e5e7eb;font-family:var(--f-body)}
+.chip small{font-family:var(--f-body)}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.card{background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:8px 8px 10px;transition:border-color .2s,box-shadow .2s}
+.card:hover{border-color:#bbf7d0;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.card:hover .thumb{transform:none}
+.cap .nm{font-size:.95rem;color:#374151}
+.cap .mt{font-family:var(--f-body);font-size:.8rem}
+.stamp{background:var(--accent);font-family:var(--f-body);letter-spacing:.04em}
+.titlebox b{font-family:var(--f-body);font-size:18px;font-weight:600;color:#374151}
+.titlebox span,.back{font-family:var(--f-body)}
+.hint{color:#374151}
+.feel,.gauges,dl.specs dt,.where{font-family:var(--f-body)}
+.gauges dt,dl.specs dt{letter-spacing:.04em}
+.about h2{font-family:var(--f-body);font-size:1.6rem;font-weight:600;color:#374151}
+.local{font-family:var(--f-body);color:var(--accent)}
+.foot{font-size:.85rem;color:var(--muted);text-align:center;margin:28px 0 0}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
+  <linearGradient id="chrome" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fdfefe"/><stop offset=".45" stop-color="#c4cbcf"/><stop offset="1" stop-color="#6f797f"/></linearGradient>
+  <linearGradient id="chromeX" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#7a848a"/><stop offset=".38" stop-color="#f6f8f9"/><stop offset=".62" stop-color="#d3d9dc"/><stop offset="1" stop-color="#848d93"/></linearGradient>
+  <radialGradient id="chromeR" cx=".38" cy=".32" r=".8"><stop offset="0" stop-color="#ffffff"/><stop offset=".45" stop-color="#bcc4c8"/><stop offset="1" stop-color="#5f686e"/></radialGradient>
+  <linearGradient id="brass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbe5a2"/><stop offset=".5" stop-color="#c8963b"/><stop offset="1" stop-color="#7a5416"/></linearGradient>
+  <linearGradient id="brassX" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#86601e"/><stop offset=".4" stop-color="#f6dc95"/><stop offset="1" stop-color="#86601e"/></linearGradient>
+  <radialGradient id="brassR" cx=".38" cy=".32" r=".8"><stop offset="0" stop-color="#fff1c4"/><stop offset=".4" stop-color="#d6a547"/><stop offset="1" stop-color="#6b4a12"/></radialGradient>
+  <linearGradient id="bronze" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9fb08a"/><stop offset=".45" stop-color="#7d6a3c"/><stop offset="1" stop-color="#3f3418"/></linearGradient>
+  <linearGradient id="bronzeX" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#46391a"/><stop offset=".4" stop-color="#a99a64"/><stop offset=".7" stop-color="#7f8f68"/><stop offset="1" stop-color="#3e3418"/></linearGradient>
+  <radialGradient id="bronzeR" cx=".38" cy=".32" r=".8"><stop offset="0" stop-color="#c3c28e"/><stop offset="1" stop-color="#3e3418"/></radialGradient>
+  <linearGradient id="lead" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a7adb2"/><stop offset=".5" stop-color="#737a80"/><stop offset="1" stop-color="#4a5055"/></linearGradient>
+  <linearGradient id="iron" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6b6d6a"/><stop offset=".5" stop-color="#363836"/><stop offset="1" stop-color="#191a19"/></linearGradient>
+  <linearGradient id="ironX" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#1b1c1b"/><stop offset=".38" stop-color="#6e716d"/><stop offset="1" stop-color="#1e1f1e"/></linearGradient>
+  <radialGradient id="ironR" cx=".38" cy=".32" r=".8"><stop offset="0" stop-color="#8a8c88"/><stop offset="1" stop-color="#1a1b1a"/></radialGradient>
+  <linearGradient id="porcV" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".6" stop-color="#eceae4"/><stop offset="1" stop-color="#c9c5ba"/></linearGradient>
+  <radialGradient id="porcR" cx=".38" cy=".32" r=".8"><stop offset="0" stop-color="#ffffff"/><stop offset=".6" stop-color="#ece9e1"/><stop offset="1" stop-color="#aaa597"/></radialGradient>
+  <linearGradient id="bowlIn" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c9ccc8"/><stop offset=".3" stop-color="#e6e8e4"/><stop offset="1" stop-color="#f7f8f6"/></linearGradient>
+  <linearGradient id="steelIn" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6c767c"/><stop offset="1" stop-color="#b7bfc3"/></linearGradient>
+  <linearGradient id="wood" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b98450"/><stop offset="1" stop-color="#7a4c24"/></linearGradient>
+  <linearGradient id="woodX" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#5b381b"/><stop offset=".5" stop-color="#9a6a3a"/><stop offset="1" stop-color="#4a2c13"/></linearGradient>
+  <linearGradient id="bamboo" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d9d68a"/><stop offset=".5" stop-color="#a9a24a"/><stop offset="1" stop-color="#6b6a26"/></linearGradient>
+  <linearGradient id="bambooX" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#6b6a26"/><stop offset=".45" stop-color="#d4d083"/><stop offset="1" stop-color="#6b6a26"/></linearGradient>
+  <linearGradient id="yellow" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#d9a915"/><stop offset=".4" stop-color="#ffd84a"/><stop offset="1" stop-color="#c69610"/></linearGradient>
+  <linearGradient id="red" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e8573f"/><stop offset="1" stop-color="#9f2216"/></linearGradient>
+  <linearGradient id="blue" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4f9de0"/><stop offset="1" stop-color="#1b4f8f"/></linearGradient>
+  <linearGradient id="paint" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#284a5e"/><stop offset=".4" stop-color="#5f8fa8"/><stop offset="1" stop-color="#2a4c60"/></linearGradient>
+  <linearGradient id="pumpRed" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#5e1b12"/><stop offset=".4" stop-color="#b7412d"/><stop offset="1" stop-color="#5a1a11"/></linearGradient>
+  <linearGradient id="wgreen" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#16302a"/><stop offset=".42" stop-color="#47735f"/><stop offset="1" stop-color="#15302a"/></linearGradient>
+  <linearGradient id="enamel" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#6f9c94"/><stop offset=".4" stop-color="#b9dad2"/><stop offset="1" stop-color="#6a958d"/></linearGradient>
+  <linearGradient id="atm" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#153f73"/><stop offset=".4" stop-color="#2e6cb3"/><stop offset="1" stop-color="#143c6e"/></linearGradient>
+  <linearGradient id="stone" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a8a497"/><stop offset="1" stop-color="#6a675d"/></linearGradient>
+  <linearGradient id="galv" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#7c8681"/><stop offset=".4" stop-color="#d7ddd9"/><stop offset="1" stop-color="#78827d"/></linearGradient>
+  <filter id="sh" x="-25%" y="-25%" width="150%" height="160%"><feDropShadow dx="0" dy="3" stdDeviation="2.5" flood-color="#000" flood-opacity=".35"/></filter>
+</defs></svg>
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav"><a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a></nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow" id="eyebrow">A working catalogue of taps, pumps, spigots and fountains</p>
+      <h1>The Tap <em>Atlas</em></h1>
+      <p class="lede">Twenty-eight ways people get water out of a pipe, a tank or the ground, from a bronze stopcock nearly two thousand years old to a water ATM you pay for by phone. Choose one and you are standing at the basin in 3D, close enough to touch it. Your pointer becomes a hand: twist, lift, pump, press or wave, then hold your hand in the stream to feel how hot it runs. Scroll to lean in or step back. Turn your sound on.</p>
+    </div>
+    <div class="stats">
+      <div class="row"><span>Taps tried</span><b id="triedN">0 / 0</b></div>
+      <div class="meter" aria-hidden="true"><i id="triedBar"></i></div>
+      <div class="row"><span>Water run</span><b id="litres">0.0 L</b></div>
+      <div class="btns">
+        <button class="btn primary" id="surprise" type="button">Surprise me</button>
+        <button class="btn" id="reset" type="button" hidden>Reset</button>
+      </div>
+    </div>
+  </header>
+
+  <section aria-label="Catalogue">
+    <div class="filters">
+      <div class="search"><input id="q" type="search" placeholder="Search by name or material" aria-label="Search taps"></div>
+      <div class="chips" id="kindChips"><span class="lbl">Action</span></div>
+      <div class="chips" id="eraChips"><span class="lbl">Age</span></div>
+    </div>
+    <p class="count" id="count"></p>
+    <div class="grid" id="grid"></div>
+  </section>
+  <p class="foot">Flow rates and temperatures are approximate. Sound works best with headphones.</p>
+</main>
+
+<div class="imm" id="imm" hidden role="dialog" aria-modal="true" aria-labelledby="immTitle">
+  <div class="room" id="room">
+    <canvas id="gl" aria-label="The tap, seen up close"></canvas>
+    <div class="glfail" id="glfail" hidden>This view needs WebGL, which this browser has turned off. Try another browser, or go back to the catalogue.</div>
+    <div class="hand" id="hand" aria-hidden="true"></div>
+  </div>
+  <header class="hud-top">
+    <button class="pill back" id="back" type="button" aria-label="Back to the catalogue"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 5l-7 7 7 7"/></svg><span>Catalogue</span></button>
+    <div class="pill titlebox"><b id="immTitle"></b><span id="immSub"></span></div>
+    <span class="sp"></span>
+    <div class="pill icons">
+      <button class="iconbtn" id="prev" type="button" aria-label="Previous tap" title="Previous tap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <button class="iconbtn" id="next" type="button" aria-label="Next tap" title="Next tap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5l7 7-7 7"/></svg></button>
+      <button class="iconbtn opt" id="zin" type="button" aria-label="Lean in" title="Lean in (or scroll)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5M11 8v6M8 11h6"/></svg></button>
+      <button class="iconbtn opt" id="zout" type="button" aria-label="Step back" title="Step back (or scroll)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5M8 11h6"/></svg></button>
+      <button class="iconbtn" id="mute" type="button"></button>
+      <button class="iconbtn opt" id="fs" type="button" aria-label="Full screen" title="Full screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+      <button class="iconbtn" id="aboutBtn" type="button" aria-label="About this tap" title="About this tap" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg></button>
+    </div>
+  </header>
+  <aside class="about" id="about" hidden></aside>
+  <div class="hud-bot">
+    <div><p class="hint" id="hint" aria-live="polite"></p><p class="feel" id="feel"></p></div>
+    <div class="acts" id="acts"></div>
+    <dl class="gauges" id="gauges"></dl>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+<script>
+/* ---------- drawing helpers ---------- */
+const C=(ci,j,inner,extra='')=>`<g data-ctl="${ci}" data-anim="${ci}-${j}" ${extra}>${inner}</g>`;
+const SP=(ci,j)=>`<g data-ctl="${ci}" data-anim="${ci}-${j}" data-spin="1"></g>`;
+function star(cx,cy,r1,r2,n){let d='';for(let i=0;i<n*2;i++){const r=i%2?r2:r1,a=Math.PI*i/n-Math.PI/2;d+=(i?'L':'M')+(cx+r*Math.cos(a)).toFixed(1)+' '+(cy+r*Math.sin(a)).toFixed(1)}return d+'Z'}
+
+function spinSVG(a,th){
+  const {cx,cy,L,n=4,style='cross',g='chrome',k=5,hub=14,ry=8}=a;
+  const pts=[];for(let i=0;i<n;i++){const t=th+i*2*Math.PI/n;pts.push({x:cx+L*Math.sin(t),y:cy+k*Math.cos(t),d:Math.cos(t)})}
+  pts.sort((p,q)=>p.d-q.d);
+  const arm=p=>{const x=p.x.toFixed(1),y=p.y.toFixed(1);
+    if(style==='cross')return `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="url(#${g})" stroke-width="6.5" stroke-linecap="round"/><circle cx="${x}" cy="${y}" r="5.6" fill="url(#${g}R)"/>`;
+    if(style==='tee')return `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="url(#${g})" stroke-width="8" stroke-linecap="round"/>`;
+    if(style==='wing'){const mx=(cx+p.x)/2,my=(cy+p.y)/2,rx=Math.max(2.2,Math.abs(p.x-cx)/2+2.5);return `<ellipse cx="${mx.toFixed(1)}" cy="${(my-1).toFixed(1)}" rx="${rx.toFixed(1)}" ry="${ry}" fill="url(#${g})" stroke="rgba(0,0,0,.3)" stroke-width=".8"/>`}
+    if(style==='knurl')return p.d>0?`<line x1="${x}" y1="${cy-ry+2}" x2="${x}" y2="${cy+ry-2}" stroke="#454d52" stroke-opacity="${(p.d*.6).toFixed(2)}" stroke-width="1.6"/>`:'';
+    return '';
+  };
+  if(style==='knurl'){const s=Math.sin(th),c=Math.cos(th);
+    return `<rect x="${cx-L}" y="${cy-ry}" width="${2*L}" height="${2*ry}" rx="3" fill="url(#chromeX)"/>${pts.map(arm).join('')}${c>0?`<circle cx="${(cx+L*.9*s).toFixed(1)}" cy="${cy}" r="2.4" fill="#d8432f"/>`:''}`}
+  const back=pts.filter(p=>p.d<0).map(arm).join(''),front=pts.filter(p=>p.d>=0).map(arm).join('');
+  return `${back}<rect x="${cx-6}" y="${cy-1}" width="12" height="${hub}" fill="url(#${g}X)"/>${front}${a.cap||`<ellipse cx="${cx}" cy="${cy-1}" rx="6.5" ry="3" fill="url(#${g}R)"/>`}`;
+}
+const capDisc=(x,y,txt,col)=>`<ellipse cx="${x}" cy="${y}" rx="9" ry="4.6" fill="url(#porcR)" stroke="#9a948a" stroke-width=".6"/><text x="${x}" y="${y+1.7}" font-family="Bodoni Moda,Georgia,serif" font-size="${txt.length>1?4.2:6}" font-weight="800" text-anchor="middle" fill="${col}">${txt}</text>`;
+
+const KINDS={twist:'Turn',lever:'Lever',push:'Push & hold',pump:'Pump',foot:'Foot & elbow',sensor:'Sensor',open:'Always running'};
+const ERAS={ancient:'Ancient',old:'1500 to 1945',modern:'Since 1945'};
+
+/* ---------- the catalogue ----------
+   tap svg is drawn in a 200×200 box placed on a 400×430 stage at box=[x,y,scale]
+   spouts: outlet points in tap coords; velocities in stage units per second
+   parts: the things your hand works */
+const ITEMS=[
+{id:'pillar',name:'Pillar taps',local:'hot and cold taps',kind:'twist',era:'old',eraText:'Victorian to today',material:'Chrome-plated brass, cross heads',wall:'tile',basin:'sink',lpm:8,
+ note:'Many older basins still have two taps, hot on the left and cold on the right. Older homes stored hot water in a tank fed from a cistern in the loft, at lower pressure than the cold mains, and water rules kept the two supplies from mixing inside a fitting. So you choose between very hot and very cold, and dart your hands between them.',
+ specs:[['Hot side','Left, by convention'],['Hot water','Stored at 60 °C to keep Legionella down'],['Valve','Rubber washer on a screw spindle']],
+ hint:'Grab a cross head and drag sideways to turn it. Then try to wash your hands.',
+ handMsg:{hot:'That is the hot tap on its own, close to 60 °C. Snatch your hand back.',cold:'The cold tap on its own, straight off the mains. Bracing.',warm:'Both running, hands darting between them. The two-tap compromise.'},
+ spouts:[{x:68,y:199,vy:30,w:6.5},{x:132,y:199,vy:30,w:6.5}],
+ parts:[{label:'Hot tap',kind:'drag',axis:[1,0],dist:110,spout:0,temp:60,squeak:1,anim:[{t:'spin',cx:40,cy:148,L:20,g:'chrome',k:6,turn:540,cap:capDisc(40,147,'H','#b3271b')}]},
+        {label:'Cold tap',kind:'drag',axis:[1,0],dist:110,spout:1,temp:10,squeak:1,anim:[{t:'spin',cx:160,cy:148,L:20,g:'chrome',k:6,turn:540,cap:capDisc(160,147,'C','#1f5fa8')}]}],
+ svg:()=>[[40,0,1],[160,1,-1]].map(([X,ci,d])=>`<g filter="url(#sh)"><ellipse cx="${X}" cy="219" rx="21" ry="5" fill="url(#chrome)"/><rect x="${X-11}" y="160" width="22" height="59" rx="3" fill="url(#chromeX)"/>
+ <path d="M${X+10*d} 170 h${12*d} q${12*d} 0 ${12*d} 12 v16 h${-12*d} v-9 q0 -4 ${-4*d} -4 h${-8*d}z" fill="url(#chrome)"/><rect x="${X-9}" y="150" width="18" height="12" fill="url(#chromeX)"/></g>${SP(ci,0)}`).join('')},
+
+{id:'bridge',name:'Bridge mixer',local:'crosshead bridge mixer',kind:'twist',era:'old',eraText:'Late 1800s to today',material:'Unlacquered brass, porcelain indices',wall:'tile',basin:'sink',lpm:9,
+ note:'Two valves joined by a bridge pipe, with one swan-neck spout between them. Each cross head opens its own supply, so you set the temperature yourself, a little more hot, a little less cold. Unlacquered brass is left to dull and darken where hands touch it.',
+ specs:[['Indices','Porcelain: HOT and COLD'],['Valves','Compression, several turns'],['Spout','Swan neck']],
+ hint:'Drag across each cross head to open it. Mix the two until the stream feels right.',
+ spouts:[{x:144,y:143,vy:30,w:7}],
+ parts:[{label:'Hot',kind:'drag',axis:[1,0],dist:110,spout:0,temp:60,squeak:1,anim:[{t:'spin',cx:50,cy:150,L:21,g:'brass',k:6,turn:540,cap:capDisc(50,149,'HOT','#b3271b')}]},
+        {label:'Cold',kind:'drag',axis:[1,0],dist:110,spout:0,temp:10,squeak:1,anim:[{t:'spin',cx:150,cy:150,L:21,g:'brass',k:6,turn:540,cap:capDisc(150,149,'COLD','#1f5fa8')}]}],
+ svg:()=>`<g filter="url(#sh)">${[50,150].map(X=>`<ellipse cx="${X}" cy="219" rx="18" ry="5" fill="url(#brass)"/><rect x="${X-9}" y="164" width="18" height="55" fill="url(#brassX)"/>`).join('')}
+ <rect x="50" y="180" width="100" height="13" rx="6" fill="url(#brass)"/><rect x="92" y="172" width="16" height="24" rx="4" fill="url(#brassX)"/>
+ <path d="M100 176 V122 Q100 98 122 98 Q144 98 144 120 V134" fill="none" stroke="url(#brassX)" stroke-width="11"/><rect x="137" y="131" width="14" height="10" rx="2" fill="url(#brassX)"/></g>${SP(0,0)}${SP(1,0)}`},
+
+{id:'moen',name:'Single-lever mixer',local:'single-handle faucet',kind:'lever',era:'modern',eraText:'Invented 1937, sold from 1947',material:'Chrome-plated brass',wall:'kitchen',basin:'kitchen',lpm:8,
+ note:'Al Moen scalded his hands on a two-handle faucet in the late 1930s and set out to make one handle that controlled both flow and temperature. His single-handle mixing faucet went on sale in 1947, and the idea is now standard in kitchens almost everywhere. Lift to open; swing left for hot, right for cold.',
+ specs:[['Lift','More water'],['Swing','Left hot, right cold'],['Inventor','Alfred M. Moen']],
+ hint:'Grab the lever. Drag up to open, then left or right to change the temperature.',
+ spouts:[{x:64,y:161,vy:40,w:8}],
+ parts:[{label:'Lever',kind:'joy',dist:55,distT:90,spout:0,anim:[{t:'rot',o:[140,124],deg:-24}]}],
+ svg:()=>`<g filter="url(#sh)"><ellipse cx="140" cy="219" rx="26" ry="6" fill="url(#chrome)"/><rect x="124" y="124" width="32" height="95" rx="6" fill="url(#chromeX)"/>
+ <path d="M124 134 H72 Q56 134 56 150 V160 H72 V154 Q72 150 76 150 H124Z" fill="url(#chrome)"/><circle data-temp="1" cx="140" cy="176" r="4.5" fill="#999"/></g>
+ ${C(0,0,`<g filter="url(#sh)"><path d="M128 120 L190 106 Q198 105 198 112 L197 117 Q196 120 192 121 L132 130Z" fill="url(#chrome)"/><ellipse cx="140" cy="124" rx="17" ry="6" fill="url(#chrome)"/></g>`)}`},
+
+{id:'vola',name:'Vola mixer',local:'Vola HV1',kind:'lever',era:'modern',eraText:'Designed 1968',material:'Chrome-plated brass',wall:'tile',basin:'sink',lpm:6,
+ note:'Arne Jacobsen designed this wall-mounted tap in 1968 for a central bank building, made with I. P. Lund. The valve body hides in the wall, so all you see is a slim stick, a disc and a plain tube. Jacobsen also designed the AJ lever in the Handle Atlas.',
+ specs:[['Mounting','Concealed in the wall'],['Control','One stick for flow and temperature']],
+ hint:'Grab the stick. Drag up for flow, sideways for temperature.',
+ spouts:[{x:100,y:178,vy:35,w:6.5}],
+ parts:[{label:'Stick',kind:'joy',dist:55,distT:90,spout:0,anim:[{t:'joy',o:[100,96],sw:-70,lift:.35}]}],
+ svg:()=>`<g filter="url(#sh)"><circle cx="100" cy="96" r="24" fill="url(#chrome)"/><circle cx="100" cy="96" r="15" fill="url(#chromeR)"/>
+ <circle cx="100" cy="152" r="13" fill="url(#chrome)"/><rect x="93" y="150" width="14" height="26" rx="2" fill="url(#chromeX)"/><ellipse cx="100" cy="176" rx="7" ry="2.5" fill="#3a4045"/></g>
+ ${C(0,0,`<g filter="url(#sh)"><rect x="97" y="52" width="6" height="44" rx="3" fill="url(#chromeX)"/><circle cx="100" cy="53" r="4.5" fill="url(#chromeR)"/></g>`)}`},
+
+{id:'pressmatic',name:'Timed push tap',local:'non-concussive tap',kind:'push',era:'modern',eraText:'20th century to today',material:'Chrome-plated brass',wall:'tile',basin:'sink',lpm:5,
+ note:'Common in schools, stations and public toilets. One press releases water for a few seconds, then the valve closes slowly by itself, so nobody can leave it running. Closing slowly avoids water hammer, the bang a pipe makes when flow stops suddenly. That is what non-concussive means.',
+ specs:[['Run time','A few seconds per press'],['Water','Pre-mixed, warm'],['Stops','Taps left running']],
+ hint:'Press the dome. Wash fast.',
+ spouts:[{x:62,y:188,vy:35,w:6}],
+ parts:[{label:'Press',kind:'press',dur:6,spout:0,temp:36,anim:[{t:'move',d:[0,7]}]}],
+ svg:()=>`<g filter="url(#sh)"><ellipse cx="100" cy="219" rx="24" ry="6" fill="url(#chrome)"/><rect x="82" y="158" width="36" height="61" rx="5" fill="url(#chromeX)"/>
+ <path d="M82 166 H62 Q56 166 56 172 V186 H68 V178 H82Z" fill="url(#chrome)"/></g>
+ ${C(0,0,`<g filter="url(#sh)"><rect x="88" y="146" width="24" height="14" fill="url(#chromeX)"/><path d="M74 152 Q100 120 126 152Z" fill="url(#chromeR)"/></g>`)}`},
+
+{id:'sensor',name:'Sensor tap',local:'infrared faucet',kind:'sensor',era:'modern',eraText:'Late 20th century on',material:'Chrome, infrared sensor',wall:'tile',basin:'sink',lpm:5,
+ note:'An infrared sensor in the body notices your hands under the spout and opens an electric valve. Nothing to touch and nothing left running, at least when it sees you. Sometimes it needs a second wave.',
+ specs:[['Sensor','Infrared, reflected off your hands'],['Valve','Electric solenoid'],['Power','Battery or mains']],
+ hint:'Put your hand under the spout and wait.',
+ spouts:[{x:64,y:113,vy:35,w:6}],
+ parts:[{label:'Hands under',kind:'hover',spout:0,temp:34,zone:[28,116,104,216],flaky:1}],
+ svg:()=>`<g filter="url(#sh)"><ellipse cx="130" cy="219" rx="22" ry="6" fill="url(#chrome)"/><rect x="120" y="96" width="20" height="123" rx="9" fill="url(#chromeX)"/>
+ <rect x="56" y="92" width="84" height="14" rx="7" fill="url(#chrome)"/><rect x="56" y="100" width="16" height="12" rx="2" fill="url(#chromeX)"/>
+ <ellipse cx="130" cy="160" rx="5" ry="7.5" fill="#15181a"/><circle data-led="1" cx="131" cy="157" r="1.3" fill="#c33"/></g>`},
+
+{id:'airblade',name:'Airblade Tap',local:'tap with hand dryer',kind:'sensor',era:'modern',eraText:'Launched 2013',material:'Stainless steel',wall:'tile',basin:'sink',lpm:4,
+ note:'Dyson put the hand dryer into the tap. Hands under the middle get water; move them under the two arms and sheets of fast air blow them dry over the basin, so nothing drips across the floor between sink and dryer.',
+ specs:[['Centre','Water, sensor-controlled'],['Arms','Air, sensor-controlled']],
+ hint:'Wash under the middle, then move your hand under an arm to dry it.',
+ spouts:[{x:100,y:122,vy:35,w:6},{x:52,y:121,type:'air',w:24},{x:148,y:121,type:'air',w:24}],
+ parts:[{label:'Wash',kind:'hover',spout:0,temp:34,zone:[78,124,122,214]},{label:'Dry left',kind:'hover',spout:1,zone:[22,124,77,214],nobtn:1},{label:'Dry',kind:'hover',spout:2,zone:[123,124,178,214]}],
+ svg:()=>`<g filter="url(#sh)"><ellipse cx="100" cy="219" rx="20" ry="5" fill="url(#chrome)"/><rect x="92" y="118" width="16" height="101" rx="6" fill="url(#chromeX)"/>
+ <rect x="32" y="104" width="136" height="16" rx="8" fill="url(#chrome)"/><ellipse cx="100" cy="120" rx="5" ry="2" fill="#2a2f33"/>
+ <rect x="38" y="117" width="28" height="3" rx="1.5" fill="#2a2f33"/><rect x="134" y="117" width="28" height="3" rx="1.5" fill="#2a2f33"/></g>`},
+
+{id:'waterfall',name:'Waterfall spout',local:'cascade tap',kind:'lever',era:'modern',eraText:'2000s to today',material:'Chrome and glass',wall:'kitchen',basin:'sink',lpm:10,
+ note:'Water runs out over a flat glass lip as a wide, thin sheet instead of a round jet. With no aerator mixing air in, the sheet is smooth and quiet. It is mostly for show, and it splashes more than you would hope.',
+ specs:[['Outlet','Open glass lip'],['Stream','Laminar sheet']],
+ hint:'Lift the lever on the right. Drag sideways for temperature.',
+ spouts:[{x:100,y:123,vy:45,w:62,type:'sheet'}],
+ parts:[{label:'Lever',kind:'joy',dist:55,distT:90,spout:0,anim:[{t:'joy',o:[168,88],sw:-60,lift:.3}]}],
+ svg:()=>`<g filter="url(#sh)"><rect x="58" y="66" width="84" height="44" rx="3" fill="url(#chrome)"/><circle cx="168" cy="88" r="14" fill="url(#chromeR)"/></g>
+ <path d="M60 110 H140 L146 122 H54Z" fill="rgba(200,235,245,.6)" stroke="rgba(255,255,255,.8)"/>
+ ${C(0,0,`<g filter="url(#sh)"><rect x="165" y="48" width="6" height="40" rx="3" fill="url(#chromeX)"/><circle cx="168" cy="50" r="4" fill="url(#chromeR)"/></g>`)}`},
+
+{id:'elbow',name:'Elbow lever tap',local:'clinical tap',kind:'foot',era:'modern',eraText:'20th century to today',material:'Chrome, long lever arm',wall:'hospital',basin:'sink',lpm:6,
+ note:'A long lever lets surgeons and nurses open and close the tap with an elbow or forearm, so freshly washed hands never touch the handle. Clinical basins usually have no plug, so dirty water never stands in the bowl.',
+ specs:[['Operated by','Elbow or forearm'],['Water','Thermostatic, about 41 °C'],['Basin','No plug']],
+ hint:'Push the long lever round with your elbow. Grab it and sweep it upward.',
+ spouts:[{x:126,y:173,vy:35,w:6.5}],
+ parts:[{label:'Lever',kind:'circle',spout:0,temp:41,anim:[{t:'rot',o:[100,105],deg:75}]}],
+ svg:()=>`<g filter="url(#sh)"><rect x="74" y="86" width="52" height="38" rx="6" fill="url(#chrome)"/>
+ <path d="M100 124 V146 Q100 160 116 160 H124" fill="none" stroke="url(#chrome)" stroke-width="11"/><rect x="120" y="154" width="12" height="18" rx="2" fill="url(#chromeX)"/></g>
+ ${C(0,0,`<g filter="url(#sh)"><path d="M100 105 L30 150" stroke="url(#chrome)" stroke-width="9" stroke-linecap="round"/><ellipse cx="28" cy="152" rx="11" ry="7" fill="url(#chromeR)" transform="rotate(-33 28 152)"/><circle cx="100" cy="105" r="10" fill="url(#chromeR)"/></g>`)}`},
+
+{id:'quooker',name:'Boiling-water tap',local:'kokendwaterkraan',kind:'twist',era:'modern',eraText:'1970s on',material:'Stainless steel, knurled ring',wall:'kitchen',basin:'kitchen',lpm:3,
+ note:'A small insulated tank under the sink holds water near 110 °C under pressure, so the tap pours at a rolling 100 °C, ready for tea or pasta. The best-known maker, Quooker, was founded by the engineer Henri Peteri. The ring is child-proof: push it down, then turn, and it springs shut the moment you let go.',
+ specs:[['Temperature','100 °C at the spout'],['Safety','Push and turn; springs back'],['Tank','Insulated, under the sink']],
+ hint:'Grab the knurled ring and hold for a moment to push it down, then drag sideways to turn it.',
+ spouts:[{x:48,y:107,vy:30,w:5}],
+ parts:[{label:'Push and turn',kind:'pushturn',dist:60,spout:0,temp:100,anim:[{t:'spin',cx:100,cy:150,L:12,n:10,style:'knurl',ry:9,turn:90,push:3}]}],
+ svg:()=>`<g filter="url(#sh)"><ellipse cx="100" cy="219" rx="20" ry="5" fill="url(#chrome)"/><rect x="91" y="104" width="18" height="115" rx="4" fill="url(#chromeX)"/>
+ <path d="M100 110 Q100 66 72 66 Q48 66 48 92 V100" fill="none" stroke="url(#chrome)" stroke-width="12"/><rect x="42" y="98" width="12" height="8" rx="2" fill="url(#chromeX)"/></g>${SP(0,0)}`},
+
+{id:'stopcock',name:'Bronze stopcock',local:'bronze plug valve',kind:'twist',era:'ancient',eraText:'1st century AD',material:'Bronze on lead pipe',wall:'ancient',basin:'trough',basinOpt:{cx:225,yt:290,c:'stone'},lpm:4,
+ note:'Ancient plumbers fitted lead water pipes with bronze stopcocks: a tapered plug with a hole through it, turned a quarter turn to open or shut. Examples survive from the first century AD, preserved under volcanic ash. The word plumber comes from plumbum, Latin for lead.',
+ specs:[['Action','Quarter turn'],['Pipe','Lead fistula'],['Wall','Opus reticulatum, a net of stone squares']],
+ hint:'Grab the bronze key and drag sideways a quarter turn.',
+ spouts:[{x:147,y:129,vy:30,w:5}],
+ parts:[{label:'Key',kind:'drag',axis:[1,0],dist:60,spout:0,temp:16,anim:[{t:'spin',cx:105,cy:80,L:22,n:2,style:'tee',g:'bronze',k:4,turn:90,hub:9}]}],
+ svg:()=>`<g filter="url(#sh)"><rect x="0" y="104" width="92" height="14" fill="url(#lead)"/><rect x="84" y="101" width="10" height="20" rx="2" fill="url(#bronze)"/>
+ <rect x="90" y="88" width="30" height="46" rx="5" fill="url(#bronzeX)"/><rect x="118" y="104" width="30" height="12" fill="url(#bronze)"/><rect x="140" y="104" width="14" height="24" rx="3" fill="url(#bronzeX)"/></g>${SP(0,0)}`},
+
+{id:'nasone',name:'Nasone',local:'nasone · “big nose”',kind:'open',era:'old',eraText:'Since 1874',material:'Cast iron',wall:'street',basin:'grate',basinOpt:{cx:262,y:390},box:[90,80,1.5],lpm:4,
+ note:'Some cities have thousands of these cast-iron street fountains, nicknamed nasoni, big noses, for their curved spouts. The water never stops. Block the end of the spout with a finger and the water jumps out of a small hole on top, so you can drink from the arc.',
+ specs:[['First installed','1874'],['Flow','Always on'],['Trick','Finger over the spout']],
+ hint:'Water runs all day. Press and hold your finger over the end of the spout.',
+ spouts:[{x:113,y:107,vy:20,w:4},{x:110,y:69,vx:85,vy:-640,w:3,arc:1}],
+ parts:[{kind:'always',spout:0,level:.55,temp:14},{label:'Block the spout',kind:'block',spout:1,from:0,zone:[96,90,132,120]}],
+ svg:()=>`<g filter="url(#sh)"><rect x="26" y="190" width="48" height="12" rx="2" fill="url(#iron)"/><rect x="30" y="26" width="40" height="166" fill="url(#ironX)"/>
+ <path d="M28 27 Q50 6 72 27Z" fill="url(#iron)"/><rect x="28" y="24" width="44" height="6" rx="2" fill="url(#iron)"/>
+ <path d="M70 64 Q112 62 118 96 L118 106 L108 106 L108 98 Q104 78 70 78Z" fill="url(#ironX)"/><circle cx="110" cy="70" r="1.6" fill="#0a0a0a"/></g>`},
+
+{id:'wallace',name:'Wallace fountain',local:'fontaine Wallace',kind:'open',era:'old',eraText:'Since 1872',material:'Cast iron, painted green',wall:'limestone',basin:'catch',basinOpt:{x0:184,x1:216,y:351},box:[70,135,1.3],lpm:2,
+ note:'Paid for by the philanthropist Sir Richard Wallace and sculpted by Charles-Auguste Lebourg, these fountains brought free drinking water to the city streets in the 1870s. Four caryatids hold up a dome, and a thin stream falls from its centre. Tin cups once hung on chains for drinking; they were removed in 1952.',
+ specs:[['Figures','Four caryatids: kindness, simplicity, charity, sobriety'],['Colour','Dark green'],['Height','About 2.7 m']],
+ hint:'A thin stream falls from the dome all day. Cup your hand under it.',
+ spouts:[{x:100,y:64,vy:20,w:4.6}],
+ parts:[{kind:'always',spout:0,level:.4,temp:13}],
+ svg:()=>`<g filter="url(#sh)"><rect x="66" y="166" width="68" height="34" fill="url(#wgreen)"/><rect x="62" y="162" width="76" height="6" rx="2" fill="url(#wgreen)"/><rect x="62" y="196" width="76" height="6" rx="2" fill="url(#wgreen)"/>
+ ${[[92,.6],[108,.6],[78,1],[122,1]].map(([x,o])=>`<g opacity="${o}"><circle cx="${x}" cy="72" r="5.2" fill="url(#wgreen)"/><path d="M${x-5} 78 Q${x-8} 120 ${x-7} 162 H${x+7} Q${x+8} 120 ${x+5} 78Z" fill="url(#wgreen)"/><path d="M${x-3} 76 L${x-6} 62 M${x+3} 76 L${x+6} 62" stroke="#244638" stroke-width="2.4"/></g>`).join('')}
+ <path d="M60 64 Q64 34 100 24 Q136 34 140 64Z" fill="url(#wgreen)"/><rect x="58" y="60" width="84" height="6" rx="2" fill="url(#wgreen)"/><circle cx="100" cy="20" r="4.5" fill="url(#wgreen)"/>
+ <rect x="86" y="160" width="28" height="4" fill="#0f1f19"/></g>`},
+
+{id:'wallfountain',name:'Public wall fountain',local:'سقاية · saqqaya',kind:'open',era:'old',eraText:'1700s',material:'Zellige tile, carved stucco, brass',wall:'zellige',basin:'trough',basinOpt:{cx:200,yt:300,c:'zellige'},lpm:3,
+ note:'Public fountains are set into the walls of old walled quarters, for passers-by, for households without their own supply, and for animals. The finest, some from the 18th century, have zellige tilework beneath a carved cedar canopy. The water runs all day.',
+ specs:[['Tilework','Zellige, hand-cut glazed tile'],['Water','Always running'],['For','Anyone passing']],
+ hint:'Water runs here all day. Cup your hand under the spout.',
+ spouts:[{x:100,y:145,vy:25,w:4.5}],
+ parts:[{kind:'always',spout:0,level:.45,temp:15}],
+ svg:()=>`<path d="M24 200 V88 Q24 26 100 22 Q176 26 176 88 V200Z" fill="#e8dab9"/><path d="M24 200 V88 Q24 26 100 22 Q176 26 176 88 V200" fill="none" stroke="#b8a27a" stroke-width="2"/>
+ <path d="M32 200 V90 Q32 36 100 32 Q168 36 168 90 V200" fill="none" stroke="#c9b48c" stroke-width="1.5" stroke-dasharray="3 3"/>
+ <path d="M44 200 V96 Q44 50 100 46 Q156 50 156 96 V200Z" fill="#1d6a59"/>
+ <path d="${star(100,96,30,14,8)}" fill="#f0e7cf"/><path d="${star(100,96,20,9,8)}" fill="#c6862d"/><path d="${star(100,96,10,5,8)}" fill="#1a3f6b"/>
+ ${[[62,150],[138,150],[62,182],[138,182],[100,182]].map(([x,y])=>`<path d="${star(x,y,10,5,8)}" fill="#f0e7cf"/><circle cx="${x}" cy="${y}" r="3" fill="#c6862d"/>`).join('')}
+ <g filter="url(#sh)"><circle cx="100" cy="128" r="7" fill="url(#brassR)"/><rect x="97" y="128" width="6" height="16" fill="url(#brassX)"/></g>`},
+
+{id:'sadirvan',name:'Ablution tap',local:'şadırvan musluğu',kind:'twist',era:'old',eraText:'Centuries old, still in use',material:'Brass on marble',wall:'marble',basin:'trough',basinOpt:{cx:210,yt:325,c:'marble',stool:1},lpm:4,
+ note:'Mosque courtyards have a şadırvan, a fountain ringed with taps and low stone seats, for wudu, the washing before prayer. Hands, mouth, nose, face, arms, head, ears and feet are washed in turn, so the taps sit low and you sit to use them.',
+ specs:[['Use','Wudu before prayer'],['Height','Low, with a stone seat'],['Handle','Brass wing handle']],
+ hint:'Grab the wing handle and drag sideways to open the tap.',
+ spouts:[{x:118,y:131,vy:30,w:5}],
+ parts:[{label:'Tap',kind:'drag',axis:[1,0],dist:70,spout:0,temp:18,anim:[{t:'spin',cx:98,cy:98,L:16,n:2,style:'wing',g:'brass',k:4,turn:180,hub:8,ry:6}]}],
+ svg:()=>`<path d="M44 200 V100 Q44 54 100 44 Q156 54 156 100 V200Z" fill="#f4efe6" stroke="#cfc6b4" stroke-width="2"/><path d="M56 200 V104 Q56 66 100 58 Q144 66 144 104 V200" fill="none" stroke="#d8cfbe" stroke-width="1.5"/>
+ <g filter="url(#sh)"><circle cx="84" cy="112" r="9" fill="url(#brassR)"/><rect x="84" y="106" width="36" height="12" fill="url(#brass)"/><rect x="112" y="112" width="12" height="18" rx="2" fill="url(#brassX)"/></g>${SP(0,0)}`},
+
+{id:'samovar',name:'Samovar tap',local:'самовар · samovar',kind:'twist',era:'old',eraText:'1700s to today',material:'Brass with stamped medals',wall:'wood',basin:'cup',basinOpt:{cx:269},lpm:2,tC:[10,95],
+ note:'A samovar keeps water hot for hours. A small teapot of very strong tea warms on top; you pour a little into a glass and top it up from the tap, as strong or weak as you like. Samovar making grew into a large craft in the 1700s, and several cultures have their own samovar traditions.',
+ specs:[['Heat','Charcoal in a central flue, later electric'],['On top','Teapot of zavarka, strong brew'],['Glass','In a metal holder, a podstakannik']],
+ hint:'Grab the little key on the tap and drag sideways to fill the glass.',
+ spouts:[{x:169,y:151,vy:25,w:4}],
+ parts:[{label:'Key',kind:'drag',axis:[1,0],dist:55,spout:0,temp:95,anim:[{t:'spin',cx:158,cy:127,L:9,n:2,style:'wing',g:'brass',k:3,turn:90,hub:6,ry:4}]}],
+ svg:()=>`<g filter="url(#sh)"><path d="M68 198 L76 176 M132 198 L124 176" stroke="url(#brassX)" stroke-width="6"/><path d="M70 180 Q100 170 130 180 L124 164 H76Z" fill="url(#brass)"/>
+ <path d="M56 52 Q36 108 62 162 H138 Q164 108 144 52Z" fill="url(#brassX)"/><rect x="52" y="48" width="96" height="8" rx="3" fill="url(#brass)"/><rect x="58" y="156" width="84" height="8" rx="3" fill="url(#brass)"/>
+ <path d="M54 72 q-18 0 -18 14 q0 12 14 14 M146 72 q18 0 18 14 q0 12 -14 14" fill="none" stroke="url(#brass)" stroke-width="5"/>
+ ${[80,90,100,110,120].map(x=>`<circle cx="${x}" cy="72" r="3.6" fill="url(#brassR)"/>`).join('')}
+ <path d="M78 48 L84 36 H116 L122 48Z" fill="url(#brass)"/><ellipse cx="100" cy="24" rx="18" ry="12" fill="url(#porcR)"/><path d="M118 22 q10 -2 12 -10" stroke="#e8e4da" stroke-width="4" fill="none"/>
+ <circle cx="100" cy="12" r="3" fill="url(#porcR)"/><circle cx="94" cy="24" r="2.3" fill="#3b6fb3"/><circle cx="104" cy="27" r="2" fill="#c0392b"/><circle cx="100" cy="21" r="1.5" fill="#3b6fb3"/>
+ <rect x="142" y="130" width="28" height="8" rx="3" fill="url(#brass)"/><rect x="164" y="134" width="10" height="16" rx="2" fill="url(#brassX)"/></g>${SP(0,0)}`},
+
+{id:'rukomoynik',name:'Dacha washstand',local:'рукомойник · rukomoynik',kind:'push',era:'old',eraText:'1800s to today',material:'Enamelled steel tank',wall:'wood',basin:'enamel',lpm:1,
+ note:'A small tank on the wall of a country cottage or garden shed. A metal pin hangs from the bottom; push it up with your palm and water trickles down over your hand, and when you let go it drops shut. No plumbing at all: you refill it with a bucket.',
+ specs:[['Valve','A gravity pin'],['Plumbing','None'],['Refill','From a bucket or well']],
+ hint:'Press and hold the pin under the tank to push it up.',
+ spouts:[{x:100,y:184,vy:10,w:4,att:[0,0]}],
+ parts:[{label:'Push the pin',kind:'hold',spout:0,temp:14,map:p=>p>.4?(p-.4)/.6*.55:0,anim:[{t:'move',d:[0,-10]}]}],
+ svg:()=>`<rect x="46" y="18" width="108" height="12" rx="2" fill="url(#wood)"/><g filter="url(#sh)"><rect x="60" y="30" width="80" height="92" rx="4" fill="url(#enamel)"/><rect x="56" y="26" width="88" height="8" rx="3" fill="#5f8a82"/>
+ <circle cx="76" cy="60" r="3" fill="#2a3633" opacity=".6"/><circle cx="124" cy="98" r="2.2" fill="#2a3633" opacity=".6"/><path d="M60 120 L92 146 H108 L140 120Z" fill="#5f8a82"/></g>
+ ${C(0,0,`<rect x="97" y="140" width="6" height="36" rx="2" fill="url(#chromeX)"/><circle cx="100" cy="178" r="5" fill="url(#chromeR)"/><rect x="82" y="136" width="36" height="58" fill="transparent"/>`)}`},
+
+{id:'kaishui',name:'Boiling-water heater',local:'开水器 · kāishuǐ qì',kind:'push',era:'modern',eraText:'20th century to today',material:'Stainless steel',wall:'station',basin:'jar',lpm:3,tC:[10,100],
+ note:'In many places railway stations, trains, offices and dormitories offer free boiling water, kāishuǐ, for tea, instant noodles, or simply a cup of hot water, which many people prefer to cold. Travellers carry a flask or a tea jar to fill on the way.',
+ specs:[['Temperature','100 °C'],['Found on','Trains, stations, offices'],['Price','Free']],
+ hint:'Press and hold the red paddle. Mind the steam.',
+ spouts:[{x:100,y:177,vy:25,w:5}],
+ parts:[{label:'Hold the paddle',kind:'hold',spout:0,temp:100,anim:[{t:'rot',o:[104,156],deg:22}]}],
+ svg:()=>`<g filter="url(#sh)"><rect x="36" y="10" width="128" height="140" rx="6" fill="url(#chromeX)"/><rect x="54" y="24" width="92" height="36" rx="3" fill="#b3241b"/>
+ <text x="100" y="51" font-size="21" fill="#fff" text-anchor="middle" font-family="'Noto Serif SC','Songti SC',serif" font-weight="700">开水</text>
+ <circle cx="76" cy="98" r="13" fill="#f4f2ea" stroke="#555"/><line x1="76" y1="98" x2="84" y2="90" stroke="#b3241b" stroke-width="1.5"/>
+ <rect x="102" y="89" width="44" height="18" rx="3" fill="#10261c"/><text x="124" y="102" font-size="10" fill="#56f096" text-anchor="middle" font-family="Martian Mono,monospace">100℃</text>
+ <rect x="92" y="150" width="16" height="20" rx="3" fill="url(#chromeX)"/><rect x="96" y="168" width="8" height="8" fill="url(#chromeX)"/></g>
+ ${C(0,0,`<g filter="url(#sh)"><rect x="104" y="151" width="40" height="9" rx="4" fill="url(#red)"/><circle cx="104" cy="156" r="5" fill="url(#chromeR)"/></g>`)}`},
+
+{id:'tank',name:'Tank-top basin',local:'手洗い付きタンク · tearai-tsuki tanku',kind:'lever',era:'modern',eraText:'Late 20th century on',material:'Vitreous china',wall:'tile',basin:'tank',box:[100,130,1],lpm:6,
+ note:'After you flush, the clean water refilling the cistern first runs out of a spout into a small basin on the lid. You wash your hands in it, and it drains into the tank to become the next flush. Common in small homes; it saves space and water.',
+ specs:[['Water source','The cistern refill'],['Runs for','As long as the tank fills'],['Saves','A separate basin']],
+ hint:'Press the flush lever on the tank, then wash your hands in the water that comes out.',
+ spouts:[{x:126,y:101,vy:25,w:5}],
+ parts:[{label:'Flush',kind:'press',dur:9,spout:0,temp:12,once:1,sound:'flush',anim:[{t:'rot',o:[30,172],deg:-35}]}],
+ svg:()=>`<g filter="url(#sh)"><path d="M100 134 V92 Q100 78 114 78 Q126 78 126 90 V96" fill="none" stroke="url(#chrome)" stroke-width="8"/><rect x="121" y="94" width="10" height="7" rx="2" fill="url(#chromeX)"/></g>
+ ${C(0,0,`<g filter="url(#sh)"><rect x="4" y="168" width="28" height="8" rx="4" fill="url(#chromeX)"/><circle cx="30" cy="172" r="7" fill="url(#chromeR)"/></g>`)}`},
+
+{id:'karan',name:'Karan',local:'カラン · karan',kind:'push',era:'modern',eraText:'20th century to today',material:'Chrome, push buttons',wall:'sento',basin:'oke',lpm:10,tC:[15,58],
+ note:'In a sentō, a public bath, you wash sitting on a low stool before you get in the bath. Each washing place has push taps, red 湯 for hot and blue 水 for cold, and each press runs for a few seconds into a wooden bucket. The word karan is a loanword from kraan, meaning tap.',
+ specs:[['湯 · yu','Hot water'],['水 · mizu','Cold water'],['Bucket','Oke, wooden or plastic']],
+ hint:'Press the red and blue buttons to fill the bucket. Mix them for a comfortable temperature.',
+ spouts:[{x:100,y:151,vy:35,w:6}],
+ parts:[{label:'湯 Hot',kind:'press',dur:4,spout:0,temp:58,anim:[{t:'scale',o:[60,119],s:.14}]},{label:'水 Cold',kind:'press',dur:4,spout:0,temp:15,anim:[{t:'scale',o:[140,119],s:.14}]}],
+ svg:()=>`<rect x="52" y="6" width="96" height="84" rx="3" fill="#dfe9ee" stroke="#c2cdd2" stroke-width="3"/><path d="M60 80 L84 14 M100 80 L124 14" stroke="#fff" stroke-width="3" opacity=".6"/>
+ <g filter="url(#sh)"><rect x="20" y="112" width="160" height="14" rx="7" fill="url(#chrome)"/><rect x="94" y="124" width="12" height="26" rx="3" fill="url(#chromeX)"/><ellipse cx="100" cy="150" rx="7" ry="2.5" fill="#3a4045"/>
+ <circle cx="60" cy="119" r="17" fill="url(#chromeR)"/><circle cx="140" cy="119" r="17" fill="url(#chromeR)"/></g>
+ ${C(0,0,`<circle cx="60" cy="119" r="11" fill="url(#red)"/><text x="60" y="122.5" font-size="9" fill="#fff" text-anchor="middle" font-weight="700">湯</text>`)}
+ ${C(1,0,`<circle cx="140" cy="119" r="11" fill="url(#blue)"/><text x="140" y="122.5" font-size="9" fill="#fff" text-anchor="middle" font-weight="700">水</text>`)}`},
+
+{id:'tsukubai',name:'Tsukubai',local:'蹲踞 · tsukubai',kind:'open',era:'old',eraText:'1500s on',material:'Stone basin, bamboo spout',wall:'garden',basin:'tsukubai',basinOpt:{cx:246},lpm:1,
+ note:'A low stone basin at the entrance to a tea garden. Guests crouch, tsukubau, to rinse their hands and mouth before the tea ceremony, which gives the basin its name. Water arrives through a bamboo pipe called a kakei and overflows into the gravel. The rinsing steps are the same as at a Shinto shrine.',
+ specs:[['Spout','Kakei, a bamboo pipe'],['Ladle','Hishaku'],['Posture','Crouching']],
+ hint:'Water trickles from the bamboo all day. Hold your hand under it, or follow the rinsing steps.',
+ spouts:[{x:133,y:86,vx:45,vy:5,w:3.5}],
+ parts:[{kind:'always',spout:0,level:.35,temp:12},{label:'Next step',kind:'steps',steps:['Left hand: take water with the ladle in your right hand and rinse your left.','Right hand: switch the ladle over and rinse your right.','Mouth: pour a little into your cupped left hand and rinse your mouth. Never drink from the ladle.','Ladle: tip it upright so the last water runs down the handle, then set it back face down.']}],
+ svg:()=>`<g filter="url(#sh)"><rect x="24" y="60" width="14" height="140" fill="url(#bambooX)"/><rect x="24" y="110" width="14" height="3" fill="#6b6a26"/><rect x="24" y="160" width="14" height="3" fill="#6b6a26"/>
+ <path d="M20 74 H128 L134 88 H20Z" fill="url(#bamboo)"/><rect x="62" y="74" width="3" height="14" fill="#6b6a26"/><rect x="104" y="74" width="3" height="14" fill="#6b6a26"/><ellipse cx="20" cy="81" rx="3" ry="7" fill="#8c8a3e"/></g>`},
+
+{id:'markii',name:'Mark II hand pump',local:'हैंडपंप · handpump',kind:'pump',era:'modern',eraText:'Developed in the 1970s',material:'Galvanised steel',wall:'village',basin:'bucket',basinOpt:{cx:136},box:[70,95,1.5],lpm:12,
+ note:'Developed in the 1970s with UNICEF support, the Mark II is the most widely used hand pump in the world, built to survive heavy daily use in villages. Push the handle down and a piston deep in the well lifts a slug of water to the surface. The first few strokes bring nothing up.',
+ specs:[['Lift','Wells up to about 50 m deep'],['Standard','IS 9301'],['Output','Roughly a bucket a minute']],
+ hint:'Grab the end of the handle and pump it: drag down, let it up, again.',
+ spouts:[{x:44,y:106,vy:40,w:7}],
+ parts:[{label:'Pump',kind:'pump',axis:[0,1],dist:50,lead:2,spout:0,temp:22,anim:[{t:'rot',o:[134,64],deg:32}]}],
+ svg:()=>`<g filter="url(#sh)"><rect x="40" y="192" width="120" height="9" fill="#a39d90"/><path d="M86 192 L90 100 H110 L114 192Z" fill="url(#paint)"/>
+ <rect x="66" y="52" width="68" height="50" rx="4" fill="url(#paint)"/><rect x="62" y="48" width="76" height="8" rx="2" fill="#2a4c60"/>${[74,126].map(x=>`<circle cx="${x}" cy="94" r="2.2" fill="#1b3442"/>`).join('')}
+ <path d="M66 82 H44 Q38 82 38 88 V104 H50 V94 H66Z" fill="url(#paint)"/></g>
+ ${C(0,0,`<g filter="url(#sh)"><path d="M134 64 L196 36" stroke="url(#iron)" stroke-width="8" stroke-linecap="round"/><path d="M176 45 L198 35" stroke="#2b2b2b" stroke-width="11" stroke-linecap="round"/><circle cx="134" cy="64" r="7" fill="url(#ironR)"/></g>`)}`},
+
+{id:'pitcher',name:'Pitcher pump',local:'kitchen pump',kind:'pump',era:'old',eraText:'1800s',material:'Cast iron',wall:'wood',basin:'trough',basinOpt:{cx:200,yt:278,c:'soapstone'},box:[110,78,1.2],lpm:8,
+ note:'Before running water, many farm kitchens had one of these on the sink, drawing from a shallow well or a rain cistern. It is a suction pump, and it only seals when the leather cup inside is wet. If it has dried out, you pour a little water in the top first. That is priming the pump.',
+ specs:[['Lift','About 7 m at most, the limit of suction'],['Seal','A leather cup'],['Sink','Soapstone']],
+ hint:'Pump the handle. If nothing comes, prime it first.',
+ spouts:[{x:28,y:105,vy:40,w:7},{x:96,y:-40,vy:20,w:4,die:126}],
+ parts:[{label:'Pump',kind:'pump',axis:[0,1],dist:45,lead:1,prime:1,spout:0,temp:12,anim:[{t:'rot',o:[134,46],deg:30}]},{label:'Prime it',kind:'prime',spout:1,temp:12}],
+ svg:()=>`<g filter="url(#sh)"><rect x="62" y="150" width="76" height="10" rx="2" fill="url(#iron)"/><path d="M64 54 H136 L130 150 H70Z" fill="url(#pumpRed)"/>
+ <path d="M68 84 L26 94 Q22 96 24 100 L28 104 L68 104Z" fill="url(#pumpRed)"/><rect x="60" y="46" width="80" height="10" rx="3" fill="url(#iron)"/><rect x="98" y="34" width="4" height="14" fill="url(#iron)"/><rect x="128" y="38" width="10" height="14" fill="url(#iron)"/>
+ <text x="100" y="118" font-family="Bodoni Moda,Georgia,serif" font-size="8" font-weight="800" fill="rgba(255,230,200,.45)" text-anchor="middle">No. 2</text></g>
+ ${C(0,0,`<g filter="url(#sh)"><path d="M100 40 L196 6" stroke="url(#iron)" stroke-width="7" stroke-linecap="round"/><circle cx="134" cy="46" r="5" fill="url(#ironR)"/></g>`)}`},
+
+{id:'tippy',name:'Tippy tap',local:'tippy tap',kind:'foot',era:'modern',eraText:'1980s on',material:'Jerrycan, sticks and string',wall:'village',basin:'ground',basinOpt:{cx:200},box:[60,105,1.4],lpm:1,
+ note:'A jerrycan hangs from a frame of sticks. Step on the pedal and a string tips it, so a thin stream pours from a small hole and your hands never touch the container. Dr Jim Watt developed it, and it is now built at homes and schools in many countries. It costs almost nothing and uses far less water than a running tap.',
+ specs:[['Cost','Almost nothing'],['Water','A trickle, a fraction of a tap'],['Hands','Never touch the can']],
+ hint:'Press and hold the foot pedal on the ground. Wash under the stream.',
+ spouts:[{x:118,y:50,vx:35,vy:0,w:3.6,att:[0,0]}],
+ parts:[{label:'Step on the pedal',kind:'hold',ms:350,spout:0,temp:24,map:p=>p>.6?(p-.6)/.4*.5:0,anim:[{t:'rot',o:[90,40],deg:55},{t:'rot',o:[40,198],deg:6},{t:'string',a:[118,56,0],b:[124,189,1]}]}],
+ svg:()=>`<rect x="12" y="16" width="9" height="186" fill="url(#woodX)"/><rect x="179" y="16" width="9" height="186" fill="url(#woodX)"/><rect x="6" y="14" width="188" height="9" rx="4" fill="url(#wood)"/>
+ <line x1="160" y1="22" x2="160" y2="62" stroke="#6b5b45" stroke-width="1.2"/><rect x="152" y="62" width="16" height="10" rx="3" fill="#e8d3a0"/>
+ <line x1="90" y1="22" x2="90" y2="40" stroke="#6b5b45" stroke-width="1.4"/><line data-anim="0-2" x1="118" y1="56" x2="124" y2="189" stroke="#6b5b45" stroke-width="1.4"/>
+ <ellipse cx="40" cy="201" rx="11" ry="4" fill="#8d8a80"/>
+ ${C(0,0,`<g filter="url(#sh)"><path d="M76 44 V38 Q90 30 104 38 V44" stroke="#c9a21c" fill="none" stroke-width="4"/><rect x="60" y="44" width="60" height="66" rx="8" fill="url(#yellow)"/><circle cx="118" cy="50" r="2.6" fill="#222"/></g>`)}
+ ${C(0,1,`<line x1="40" y1="198" x2="152" y2="186" stroke="#5b381b" stroke-width="6" stroke-linecap="round"/><rect x="100" y="170" width="60" height="30" fill="transparent"/>`)}`},
+
+{id:'atm',name:'Water ATM',local:'maji ATM',kind:'push',era:'modern',eraText:'2015 on',material:'Steel kiosk, smart card',wall:'kiosk',basin:'jerrycan',basinOpt:{cx:200},box:[100,110,1],lpm:20,
+ note:'In some informal settlements, residents top up a smart card with mobile money and tap it on a kiosk to fill a jerrycan with treated water at any hour. The first were installed in 2015, selling water for a fraction of what private vendors charged.',
+ specs:[['Payment','Prepaid card, topped up by phone'],['Typical fill','A 20 L jerrycan'],['Maji','Swahili for water']],
+ hint:'Tap your card on the reader.',
+ spouts:[{x:100,y:148,vy:40,w:7}],
+ parts:[{label:'Tap card',kind:'press',dur:9,once:1,spout:0,temp:20,sound:'beep',anim:[{t:'scale',o:[130,47],s:.06}]}],
+ screen:1,
+ svg:()=>`<g filter="url(#sh)"><rect x="28" y="-60" width="144" height="232" rx="6" fill="url(#atm)"/><rect x="56" y="-42" width="88" height="46" rx="3" fill="#0b1d15"/>
+ <text data-screen="0" x="100" y="-22" font-size="11" fill="#5cf0a2" text-anchor="middle" font-family="Martian Mono,monospace">KARIBU</text>
+ <text data-screen="1" x="100" y="-7" font-size="6.5" fill="#5cf0a2" text-anchor="middle" font-family="Martian Mono,monospace">Tap card</text>
+ <text x="64" y="44" font-size="15" font-weight="800" fill="#fff" font-family="Instrument Sans,Arial,sans-serif" letter-spacing="1">MAJI</text><path d="M72 58 q6 -10 12 0 a6 6 0 1 1 -12 0z" fill="#8fd0ff"/>
+ <rect x="92" y="120" width="16" height="26" rx="3" fill="url(#chromeX)"/></g>
+ ${C(0,0,`<rect x="110" y="24" width="40" height="46" rx="5" fill="#1b2b3a"/><path d="M124 38 q6 9 0 18 M130 34 q9 13 0 26 M136 30 q12 17 0 34" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/>`)}`},
+
+{id:'bubbler',name:'Bubbler',local:'drinking fountain',kind:'push',era:'old',eraText:'1888 on',material:'Vitreous china and chrome',wall:'tile',basin:'bowl',lpm:1.5,
+ note:'The Kohler Water Works sold a drinking fountain called the Bubbler from 1888. Its jet bubbled straight up, and drinkers’ lips touched the nozzle, so later designs angled the jet and added a guard. In some places people still call any drinking fountain a bubbler.',
+ specs:[['Jet','Angled, with a guard'],['Button','Front of the pedestal']],
+ hint:'Press and hold the button on the pedestal.',
+ spouts:[{x:103,y:204,vx:120,vy:-470,w:4.5,arc:1}],
+ parts:[{label:'Hold the button',kind:'hold',spout:0,temp:12,anim:[{t:'scale',o:[100,278],s:.12}]}],
+ svg:()=>`<g filter="url(#sh)"><rect x="95" y="208" width="10" height="16" rx="3" fill="url(#chromeX)"/><path d="M93 211 Q100 199 107 211Z" fill="url(#chrome)"/><path d="M86 222 Q84 196 98 194" stroke="url(#chrome)" stroke-width="3" fill="none"/></g>
+ ${C(0,0,`<circle cx="100" cy="278" r="11" fill="url(#chromeR)"/><circle cx="100" cy="278" r="6.5" fill="url(#chrome)"/>`)}`},
+
+{id:'health',name:'Health faucet',local:'bidet shower · shattaf',kind:'push',era:'modern',eraText:'Late 20th century on',material:'Chrome, braided hose',wall:'bath',basin:'floor',basinOpt:{cx:300},lpm:6,
+ note:'Beside the toilet in many homes hangs a hand sprayer for washing, used instead of paper or as well as it. Squeeze the lever for a spray; the small valve on the wall sets the pressure.',
+ specs:[['Also called','Shattaf, bidet sprayer'],['Control','Squeeze lever'],['Supply','Angle valve on the wall']],
+ hint:'Press and hold the lever on the sprayer.',
+ spouts:[{x:150,y:122,vx:240,vy:80,w:4,type:'spray'}],
+ parts:[{label:'Squeeze',kind:'hold',spout:0,temp:20,anim:[{t:'rot',o:[128,74],deg:-18}]}],
+ svg:()=>`<g filter="url(#sh)"><circle cx="40" cy="172" r="10" fill="url(#chromeR)"/><rect x="36" y="172" width="8" height="14" fill="url(#chromeX)"/></g>
+ <path d="M40 184 C40 222 118 222 118 150 L118 116" stroke="#b9c0c4" stroke-width="5" fill="none"/><path d="M40 184 C40 222 118 222 118 150 L118 116" stroke="#e8ecee" stroke-width="2" stroke-dasharray="2 2" fill="none"/>
+ <g filter="url(#sh)"><rect x="104" y="60" width="32" height="12" rx="3" fill="url(#chrome)"/><path d="M112 70 L128 70 L131 104 Q131 112 124 114 L116 114 Q110 112 110 104Z" fill="url(#chromeX)"/>
+ <rect x="116" y="106" width="34" height="14" rx="6" fill="url(#chrome)" transform="rotate(18 120 112)"/></g>
+ ${C(0,0,`<path d="M129 74 L143 98" stroke="url(#chrome)" stroke-width="5" stroke-linecap="round"/><rect x="124" y="70" width="26" height="34" fill="transparent"/>`)}`},
+
+{id:'hosebib',name:'Garden tap',local:'hose bib · sillcock',kind:'twist',era:'old',eraText:'1900s to today',material:'Brass, cast-iron wheel',wall:'brick',basin:'can',basinOpt:{cx:200},lpm:15,
+ note:'The outside tap on a house wall, threaded for a hose. Turn the wheel anticlockwise and its threaded spindle lifts a rubber washer off the seat. Frost-free versions put the valve deep inside the warm wall, so the pipe outside drains and cannot freeze and split.',
+ specs:[['Thread','¾ in garden hose thread'],['Open','Anticlockwise, about two turns'],['Frost-free','Valve set inside the wall']],
+ hint:'Grab the wheel and turn it round, like steering. Fill the watering can.',
+ spouts:[{x:100,y:139,vy:40,w:8}],
+ parts:[{label:'Wheel',kind:'circle',spout:0,temp:14,squeak:1,anim:[{t:'rot',o:[100,80],deg:-720}]}],
+ svg:()=>`<g filter="url(#sh)"><circle cx="100" cy="92" r="26" fill="url(#brassR)"/><circle cx="100" cy="92" r="16" fill="url(#brass)"/>
+ <rect x="92" y="104" width="16" height="34" rx="3" fill="url(#brassX)"/><path d="M92 124 h16 M92 129 h16 M92 134 h16" stroke="#7d5717" stroke-width="1"/></g>
+ ${C(0,0,`<g filter="url(#sh)"><circle cx="100" cy="80" r="22" fill="none" stroke="url(#red)" stroke-width="6"/>${[0,90,180,270].map(a=>`<line x1="100" y1="80" x2="${(100+20*Math.cos(a*Math.PI/180)).toFixed(1)}" y2="${(80+20*Math.sin(a*Math.PI/180)).toFixed(1)}" stroke="url(#red)" stroke-width="4"/>`).join('')}${[45,135,225,315].map(a=>`<circle cx="${(100+22*Math.cos(a*Math.PI/180)).toFixed(1)}" cy="${(80+22*Math.sin(a*Math.PI/180)).toFixed(1)}" r="3.4" fill="#a3261a"/>`).join('')}<circle cx="100" cy="80" r="6" fill="url(#red)"/><circle cx="100" cy="80" r="2" fill="#5a120c"/></g>`)}`}
+];
+
+/* ---------- sound ---------- */
+const A={ctx:null,out:null,on:true};
+function ac(){
+  if(!A.on)return null;
+  try{
+    if(!A.ctx){
+      const c=A.ctx=new (window.AudioContext||window.webkitAudioContext)();A.out=c.createGain();A.out.gain.value=.8;A.out.connect(c.destination);
+      A.nb=c.createBuffer(1,c.sampleRate*2,c.sampleRate);const d=A.nb.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+      const src=(ft,f,q)=>{const s=c.createBufferSource();s.buffer=A.nb;s.loop=true;const fl=c.createBiquadFilter();fl.type=ft;fl.frequency.value=f;fl.Q.value=q;const g=c.createGain();g.gain.value=0;s.connect(fl).connect(g).connect(A.out);s.start();return{f:fl,g}};
+      A.water=src('bandpass',900,.8);A.water2=src('bandpass',2600,1.2);A.hiss=src('highpass',2500,.7);
+      const o=c.createOscillator();o.type='sawtooth';o.frequency.value=380;const fl=c.createBiquadFilter();fl.type='bandpass';fl.frequency.value=1500;fl.Q.value=7;const g=c.createGain();g.gain.value=0;o.connect(fl).connect(g).connect(A.out);o.start();A.sq={o,g};
+    }
+    if(A.ctx.state==='suspended')A.ctx.resume();
+    return A.ctx;
+  }catch(e){return null}
+}
+function env(g,t,a,peak,d){g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(peak,t+a);g.gain.exponentialRampToValueAtTime(.0001,t+a+d)}
+function osc(c,type,f,t,dur,peak,f2){const o=c.createOscillator(),g=c.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+dur);env(g,t,.004,peak,dur);o.connect(g).connect(A.out);o.start(t);o.stop(t+dur+.05)}
+function burst(c,t,dur,peak,ft,freq,q=1){const s=c.createBufferSource();s.buffer=A.nb;const f=c.createBiquadFilter();f.type=ft;f.frequency.value=freq;f.Q.value=q;const g=c.createGain();env(g,t,.003,peak,dur);s.connect(f).connect(g).connect(A.out);s.start(t,Math.random());s.stop(t+dur+.05);return f}
+function metal(c,t,f,dur,peak){[1,2.76,5.4].forEach((m,i)=>osc(c,'sine',f*m,t,dur*(1-i*.2),peak/(i+1.5)))}
+const SND={
+  click(c,t){burst(c,t,.03,.4,'highpass',2500);osc(c,'square',1500,t,.02,.05)},
+  clunk(c,t){osc(c,'sine',120,t,.12,.5,70);burst(c,t,.04,.3,'bandpass',900,2)},
+  clank(c,t){metal(c,t,260+Math.random()*40,.35,.35);burst(c,t,.03,.25,'highpass',2500)},
+  gurgle(c,t){for(let i=0;i<4;i++)osc(c,'sine',140+Math.random()*160,t+i*.07,.06,.25,90)},
+  plink(c,t,f=1000){osc(c,'sine',f,t,.06,.12,f*2.2)},
+  tick(c,t){burst(c,t,.015,.12,'bandpass',3500,3)},
+  beep(c,t){osc(c,'sine',1760,t,.09,.18);osc(c,'sine',2350,t+.12,.12,.16)},
+  flush(c,t){const f=burst(c,t,1.6,.35,'lowpass',500);f.frequency.linearRampToValueAtTime(1800,t+.5);f.frequency.linearRampToValueAtTime(400,t+1.6);burst(c,t,.04,.4,'bandpass',1200,2)},
+  pour(c,t){const f=burst(c,t,1.3,.25,'bandpass',500,1);f.frequency.linearRampToValueAtTime(1400,t+1.2)}
+};
+function play(n,...a){const c=ac();if(!c)return;SND[n](c,c.currentTime+.01,...a)}
+document.addEventListener('visibilitychange',()=>{if(!A.ctx)return;document.hidden?A.ctx.suspend():A.on&&A.ctx.resume()});
+
+
+/* ---------- state and catalogue ---------- */
+const $=s=>document.querySelector(s);
+const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
+const lerp=(a,b,t)=>a+(b-a)*t;
+const rnd=a=>(Math.random()-.5)*2*a;
+const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const tried=new Set(store.get('ta-tried',[]));let litres=store.get('ta-litres',0);
+A.on=store.get('ta-sound',true);
+const F={kind:'all',era:'all',q:''};
+
+function staticSVG(it){
+  const host=document.createElementNS('http://www.w3.org/2000/svg','g');host.innerHTML=it.svg();
+  it.parts.forEach((c,ci)=>(c.anim||[]).forEach((a,j)=>{if(a.t==='spin'){const el=host.querySelector(`[data-anim="${ci}-${j}"]`);if(el)el.innerHTML=spinSVG(a,0)}}));
+  return host.innerHTML;
+}
+function list(){const q=F.q.trim().toLowerCase();return ITEMS.filter(it=>(F.kind==='all'||it.kind===F.kind)&&(F.era==='all'||it.era===F.era)&&(!q||[it.name,it.local,it.material,KINDS[it.kind],it.eraText].join(' ').toLowerCase().includes(q)))}
+function renderChips(){
+  const mk=(el,map,key)=>{const counts={};ITEMS.forEach(it=>counts[it[key]]=(counts[it[key]]||0)+1);
+    el.querySelectorAll('.chip').forEach(n=>n.remove());
+    [['all','All',ITEMS.length],...Object.entries(map).filter(([k])=>counts[k]).map(([k,v])=>[k,v,counts[k]])].forEach(([k,v,n])=>{
+      const b=document.createElement('button');b.type='button';b.className='chip';b.setAttribute('aria-pressed',F[key]===k);b.innerHTML=`${v}<small>${n}</small>`;
+      b.onclick=()=>{F[key]=k;renderChips();renderGrid()};el.appendChild(b)})};
+  mk($('#kindChips'),KINDS,'kind');mk($('#eraChips'),ERAS,'era');
+}
+const thumbCache={};
+function renderGrid(){
+  const L=list(),g=$('#grid');
+  $('#count').textContent=`${L.length} of ${ITEMS.length} taps`;
+  if(!L.length){g.innerHTML='<div class="empty">No taps match. Clear a filter or try another search.</div>';return}
+  g.innerHTML=L.map(it=>{thumbCache[it.id]=thumbCache[it.id]||staticSVG(it);
+    return `<button class="card" type="button" data-id="${it.id}" aria-label="${it.name}"><div class="thumb scene w-${it.wall}">${tried.has(it.id)?'<span class="stamp">tried</span>':''}<svg viewBox="${it.vb||'-12 -12 224 224'}" aria-hidden="true">${thumbCache[it.id]}</svg></div><div class="cap"><span class="nm">${it.name}</span><span class="mt">${it.eraText} · ${KINDS[it.kind]}</span></div></button>`}).join('');
+}
+function renderStats(){$('#triedN').textContent=`${tried.size} / ${ITEMS.length}`;$('#triedBar').style.width=(tried.size/ITEMS.length*100)+'%';$('#reset').hidden=!tried.size&&litres<.05;$('#litres').textContent=litres.toFixed(1)+' L'}
+function markTried(){if(!tried.has(cur.id)){tried.add(cur.id);store.set('ta-tried',[...tried]);renderStats();renderGrid()}}
+
+/* ================= 3D: standing at the basin ================= */
+const imm=$('#imm'),room=$('#room'),handEl=$('#hand'),cv=$('#gl');
+let R=null,scene=null,camera,ray,envTex;
+let cur=null,X=null,S=null,W3={},raf=0,lastT=0,timers=[],lastFocus=null,pose='',hudT=0;
+const later=(fn,ms)=>timers.push(setTimeout(fn,ms));
+const V3=(x=0,y=0,z=0)=>new THREE.Vector3(x,y,z);
+function say(t){$('#hint').textContent=t}
+
+function initGL(){
+  if(R)return true;
+  if(!window.THREE)return false;
+  try{R=new THREE.WebGLRenderer({canvas:cv,antialias:true})}catch(e){R=null;return false}
+  R.setPixelRatio(Math.min(2,window.devicePixelRatio||1));R.outputEncoding=THREE.sRGBEncoding;R.toneMapping=THREE.ACESFilmicToneMapping;R.toneMappingExposure=.78;
+  R.shadowMap.enabled=true;R.shadowMap.type=THREE.PCFSoftShadowMap;
+  camera=new THREE.PerspectiveCamera(50,1,.01,60);ray=new THREE.Raycaster();
+  /* a soft bathroom-studio for chrome and water to reflect */
+  const pm=new THREE.PMREMGenerator(R),es=new THREE.Scene();
+  es.add(new THREE.Mesh(new THREE.BoxGeometry(10,6,10),new THREE.MeshBasicMaterial({color:0x6a6e70,side:THREE.BackSide})));
+  const lp=(w,h,x,y,z,rx,ry,c)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({color:new THREE.Color(c*.95,c*.98,c),side:THREE.DoubleSide}));m.position.set(x,y,z);m.rotation.set(rx,ry,0);es.add(m)};
+  lp(5,1.4,0,2.9,0,Math.PI/2,0,4.5);lp(2.5,3,-4.9,1,1.5,0,Math.PI/2,2.6);lp(2,2,3.5,1.4,4.9,0,Math.PI,1.8);lp(4,.6,0,.3,-4.9,0,0,1.5);lp(1.2,3,4.9,1.5,-1,0,-Math.PI/2,2.2);
+  envTex=pm.fromScene(es,.03).texture;
+  return true;
+}
+function resize(){if(!R)return;const w=cv.clientWidth,h=cv.clientHeight;if(!w||!h)return;R.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}
+window.addEventListener('resize',resize);
+
+/* ---------- materials ---------- */
+const MAT={chrome:[0xf4f6f7,1,.07],brushed:[0xcfd4d6,1,.32],brass:[0xdcae55,1,.22],oldbrass:[0xb58a3e,1,.42],bronze:[0x7c7048,.9,.5],lead:[0x7d838a,.7,.55],
+  iron:[0x2c2c2a,.6,.58],porc:[0xf1eee6,0,.12],red:[0xc8322a,.1,.35],blue:[0x2a62b4,.1,.35],paint:[0x3f7088,.25,.5],pumpred:[0x8f2a1c,.25,.55],wgreen:[0x26493c,.45,.42],
+  yellow:[0xf2c21c,0,.4],wood:[0xa8763f,0,.7],woodD:[0x5a3519,0,.8],bamboo:[0x9a923f,0,.55],stone:[0x6c6960,0,.95],marble:[0xefe9df,0,.28],enamel:[0x9cc6bd,0,.22],
+  enamelW:[0xf4f3ee,0,.18],galv:[0xb4bdb9,.85,.45],dark:[0x0a0a0a,0,.9],black:[0x151515,.1,.3],white:[0xf2f2ee,0,.4],box:[0xd5d9db,.9,.28],concrete:[0x9a9890,0,.95],green:[0x4f8a45,0,.4],soap:[0x5e6a63,0,.55]};
+function M(k,o){const [c,m,r]=MAT[k];return new THREE.MeshStandardMaterial(Object.assign({color:c,metalness:m,roughness:r,envMapIntensity:m>.5?1.3:r>.5?.45:.8},o||{}))}
+const glassMat=()=>new THREE.MeshStandardMaterial({color:0xe6f3f6,metalness:0,roughness:.03,transparent:true,opacity:.22,envMapIntensity:1.8,depthWrite:false,side:THREE.DoubleSide});
+function canvasTex(w,h,draw,repeat){
+  const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);
+  const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;t.anisotropy=Math.min(8,R.capabilities.getMaxAnisotropy());
+  if(repeat){t.wrapS=t.wrapT=THREE.RepeatWrapping}return t;
+}
+function speckle(x,w,h,n,a,col='0,0,0'){for(let i=0;i<n;i++){x.fillStyle=`rgba(${col},${Math.random()*a})`;x.fillRect(Math.random()*w,Math.random()*h,1+Math.random()*2.5,1+Math.random()*2.5)}}
+function texLabel(text,fg,bg,font,w=512,h=128){return canvasTex(w,h,(x,cw,ch)=>{if(bg){x.fillStyle=bg;x.fillRect(0,0,cw,ch)}x.fillStyle=fg;x.font=font||`600 ${ch*.6}px "Martian Mono",monospace`;x.textAlign='center';x.textBaseline='middle';x.fillText(text,cw/2,ch/2+2)})}
+function labelMat(text,fg,bg,font,w,h){return new THREE.MeshStandardMaterial({map:texLabel(text,fg,bg,font,w,h),transparent:!bg,roughness:.4})}
+
+/* wall and floor surfaces: each tile is 1.2 m square */
+function surface(kind,a,b){return canvasTex(512,512,(x,w,h)=>{
+  x.fillStyle=a;x.fillRect(0,0,w,h);
+  const grout=(cols,rows,bond,lw=3)=>{x.fillStyle=b;for(let r=0;r<=rows;r++)x.fillRect(0,r*h/rows-lw/2,w,lw);
+    for(let r=0;r<rows;r++)for(let c=0;c<=cols;c++){const off=bond&&r%2?w/cols/2:0;x.fillRect(c*w/cols+off-lw/2,r*h/rows,lw,h/rows)}};
+  if(kind==='plain'){for(let i=0;i<40;i++){x.fillStyle=`rgba(${Math.random()<.5?'0,0,0':'255,255,255'},${Math.random()*.04})`;x.beginPath();x.arc(Math.random()*w,Math.random()*h,20+Math.random()*80,0,7);x.fill()}speckle(x,w,h,5000,.06)}
+  if(kind==='subway'){for(let r=0;r<16;r++)for(let c=0;c<5;c++){x.fillStyle=`rgba(255,255,255,${Math.random()*.12})`;x.fillRect(c*w/4+(r%2?w/8:0),r*h/16,w/4,h/16)}grout(4,16,1,3)}
+  if(kind==='square'){for(let r=0;r<8;r++)for(let c=0;c<8;c++){x.fillStyle=`rgba(${Math.random()<.5?'255,255,255':'0,0,0'},${Math.random()*.05})`;x.fillRect(c*w/8,r*h/8,w/8,h/8)}grout(8,8,0,3)}
+  if(kind==='small'){grout(16,16,0,2)}
+  if(kind==='brick'){const bh=h/18,bw=w/5.3;x.fillStyle=b;x.fillRect(0,0,w,h);for(let r=0;r<18;r++)for(let c=-1;c<7;c++){const off=r%2?bw/2:0;x.fillStyle=a;x.globalAlpha=.8+Math.random()*.2;x.fillRect(c*bw+off+3,r*bh+3,bw-6,bh-6)}x.globalAlpha=1;speckle(x,w,h,6000,.12)}
+  if(kind==='marble'){x.strokeStyle='rgba(120,108,90,.25)';for(let i=0;i<14;i++){x.lineWidth=.5+Math.random()*2;x.beginPath();let px=Math.random()*w,py=0;x.moveTo(px,py);while(py<h){px+=rnd(30);py+=20+Math.random()*30;x.lineTo(px,py)}x.stroke()}speckle(x,w,h,2000,.03)}
+  if(kind==='zellige'){const n=16,s=w/n,cols=['#1f6f5c','#19584a','#2a8a73','#e8dfc6','#c6862d','#1a3f6b'];for(let r=0;r<n;r++)for(let c=0;c<n;c++){const k=(r+c)%4===0?(r%8===0?4:3):(Math.random()<.85?Math.floor(Math.random()*3):5);x.fillStyle=cols[k];x.fillRect(c*s+1.5,r*s+1.5,s-3,s-3);x.fillStyle=`rgba(255,255,255,${Math.random()*.15})`;x.fillRect(c*s+3,r*s+3,s*.4,s*.25)}}
+  if(kind==='reticulatum'){x.save();x.translate(w/2,h/2);x.rotate(Math.PI/4);const s=w/9;for(let i=-10;i<10;i++)for(let j=-10;j<10;j++){x.fillStyle=`hsl(36,${25+Math.random()*15}%,${55+Math.random()*12}%)`;x.fillRect(i*s+2,j*s+2,s-4,s-4)}x.restore();speckle(x,w,h,5000,.12)}
+  if(kind==='bamboo'){for(let c=0;c<18;c++){const X=c*w/18,g=x.createLinearGradient(X,0,X+w/18,0);g.addColorStop(0,'#6b6a26');g.addColorStop(.45,'#cfc97c');g.addColorStop(1,'#6b6a26');x.fillStyle=g;x.fillRect(X+1,0,w/18-2,h);for(let k=0;k<3;k++){x.fillStyle='rgba(60,60,20,.6)';x.fillRect(X,(k*h/3+c*37)%h,w/18,4)}}x.fillStyle='#3a2a18';x.fillRect(0,h*.3,w,8);x.fillRect(0,h*.75,w,8)}
+  if(kind==='planks'){for(let r=0;r<10;r++){x.fillStyle=`rgba(${Math.random()<.5?'255,255,255':'0,0,0'},${Math.random()*.08})`;x.fillRect(0,r*h/10,w,h/10);for(let i=0;i<20;i++){x.strokeStyle=`rgba(0,0,0,${Math.random()*.1})`;x.beginPath();const y=r*h/10+Math.random()*h/10;x.moveTo(0,y);x.bezierCurveTo(w*.3,y+rnd(4),w*.6,y+rnd(4),w,y+rnd(3));x.stroke()}x.fillStyle='rgba(0,0,0,.5)';x.fillRect(0,r*h/10,w,3)}}
+  if(kind==='boards'){for(let c=0;c<6;c++){x.fillStyle=`rgba(${Math.random()<.5?'255,255,255':'0,0,0'},${Math.random()*.08})`;x.fillRect(c*w/6,0,w/6,h);x.fillStyle='rgba(0,0,0,.45)';x.fillRect(c*w/6,0,3,h)}speckle(x,w,h,3000,.08)}
+  if(kind==='courses'){speckle(x,w,h,5000,.06);x.fillStyle=b;[0,1,2].forEach(r=>{x.fillRect(0,r*h/3,w,4);for(let c=0;c<3;c++)x.fillRect(c*w/2.5+(r%2?w/5:0),r*h/3,4,h/3)})}
+  if(kind==='cobbles'){x.fillStyle=b;x.fillRect(0,0,w,h);const s=w/14;for(let r=0;r<14;r++)for(let c=0;c<15;c++){x.fillStyle=`hsl(30,${4+Math.random()*6}%,${30+Math.random()*16}%)`;x.beginPath();x.ellipse(c*s+(r%2?s/2:0),r*s+s/2,s*.46,s*.44,0,0,7);x.fill()}}
+  if(kind==='gravel'){speckle(x,w,h,16000,.25);speckle(x,w,h,6000,.4,'255,255,255');x.strokeStyle='rgba(0,0,0,.12)';x.lineWidth=3;for(let y=10;y<h;y+=22){x.beginPath();x.moveTo(0,y);x.lineTo(w,y);x.stroke()}}
+  if(kind==='earth'){for(let i=0;i<60;i++){x.fillStyle=`rgba(${Math.random()<.5?'60,30,10':'230,190,150'},${Math.random()*.08})`;x.beginPath();x.arc(Math.random()*w,Math.random()*h,10+Math.random()*60,0,7);x.fill()}speckle(x,w,h,9000,.18)}
+  if(kind==='grass'){speckle(x,w,h,20000,.25,'20,50,10');speckle(x,w,h,8000,.25,'190,220,120')}
+  if(kind==='terrazzo'){for(let i=0;i<2500;i++){x.fillStyle=['#7d776e','#d8d1c4','#99695a','#55524d'][i%4];x.globalAlpha=.6;x.beginPath();x.arc(Math.random()*w,Math.random()*h,1+Math.random()*3.5,0,7);x.fill()}x.globalAlpha=1}
+},1)}
+/* scenes: [wall kind, colour, colour], [floor kind, colour, colour], outdoors */
+const SCENES={
+  tile:{wall:['subway','#dfe6e3','#b4bfba'],floor:['square','#959e98','#6f7772']},
+  kitchen:{wall:['subway','#2a4550','#16242a'],floor:['boards','#6e5034','#000']},
+  hospital:{wall:['square','#dce9e3','#b8cbc2'],floor:['plain','#8fa69b']},
+  marble:{wall:['marble','#ede7dc'],floor:['square','#cfc6b4','#a99f8b']},
+  zellige:{wall:['zellige','#21705f'],floor:['square','#a8714a','#7a5234']},
+  street:{wall:['plain','#d49a52'],floor:['cobbles','#55514b','#2d2a27'],out:1,sky:['#cfe4f2','#f4e3c4']},
+  limestone:{wall:['courses','#e1d3b6','#c4b08c'],floor:['courses','#6c6e70','#4c4e50'],out:1,sky:['#d6e2ec','#efe8dc']},
+  ancient:{wall:['reticulatum','#b99d72'],floor:['plain','#86765a'],out:1,sky:['#bfe0f2','#f6ead2']},
+  garden:{wall:['bamboo','#b2ad5c'],floor:['gravel','#cfc9b6'],out:1,sky:['#d9ead6','#f1efe1']},
+  village:{wall:null,floor:['earth','#b2683a'],out:1,sky:['#7fbbe3','#f3e4c3'],far:'#c48a5a'},
+  wood:{wall:['planks','#8f6a43'],floor:['boards','#6c4a2c','#000']},
+  sento:{wall:['square','#93c3df','#eef6fa'],floor:['small','#b9c2c6','#8a9498']},
+  kiosk:{wall:['plain','#b8b2a5'],floor:['earth','#9c5530'],out:1,sky:['#9dcbe8','#f2e6cc']},
+  brick:{wall:['brick','#a5503a','#d6cbbb'],floor:['grass','#5b7a39'],out:1,sky:['#bcdcf0','#eef3e6']},
+  station:{wall:['plain','#e7ead9'],floor:['terrazzo','#bdb6a8'],dado:'#7fa58c'},
+  bath:{wall:['square','#bfdcd4','#eef3f1'],floor:['square','#8f9a97','#5f6866']}
+};
+
+/* ---------- geometry helpers (metres; the wall is z=0, the viewer is +z) ---------- */
+function mesh(geo,mat,x=0,y=0,z=0){const m=new THREE.Mesh(geo,mat);m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;return m}
+const grp=(x=0,y=0,z=0)=>{const g=new THREE.Group();g.position.set(x,y,z);return g};
+const cylY=(r,h,mat,x=0,y=0,z=0,seg=40)=>mesh(new THREE.CylinderGeometry(r,r,h,seg),mat,x,y,z);
+const coneY=(r1,r2,h,mat,x=0,y=0,z=0,seg=40)=>mesh(new THREE.CylinderGeometry(r1,r2,h,seg),mat,x,y,z);
+const cylZ=(r,len,mat,x=0,y=0,z=0,seg=40)=>{const g=new THREE.CylinderGeometry(r,r,len,seg);g.rotateX(Math.PI/2);g.translate(0,0,len/2);return mesh(g,mat,x,y,z)};
+const cylX=(r,len,mat,x=0,y=0,z=0)=>{const g=new THREE.CylinderGeometry(r,r,len,32);g.rotateZ(Math.PI/2);return mesh(g,mat,x,y,z)};
+const capX=(r,len,mat,x=0,y=0,z=0)=>{const g=new THREE.CapsuleGeometry(r,len,8,24);g.rotateZ(Math.PI/2);return mesh(g,mat,x,y,z)};
+const capY=(r,len,mat,x=0,y=0,z=0)=>mesh(new THREE.CapsuleGeometry(r,len,8,24),mat,x,y,z);
+const capZ=(r,len,mat,x=0,y=0,z=0)=>{const g=new THREE.CapsuleGeometry(r,len,8,24);g.rotateX(Math.PI/2);return mesh(g,mat,x,y,z)};
+const sph=(r,mat,x=0,y=0,z=0,sx=1,sy=1,sz=1)=>{const m=mesh(new THREE.SphereGeometry(r,32,20),mat,x,y,z);m.scale.set(sx,sy,sz);return m};
+const tor=(R_,r,mat,x=0,y=0,z=0)=>mesh(new THREE.TorusGeometry(R_,r,16,64),mat,x,y,z);
+const torY=(R_,r,mat,x=0,y=0,z=0)=>{const g=new THREE.TorusGeometry(R_,r,16,64);g.rotateX(Math.PI/2);return mesh(g,mat,x,y,z)};
+const bx=(w,h,d,mat,x=0,y=0,z=0)=>mesh(new THREE.BoxGeometry(w,h,d),mat,x,y,z);
+const ext=(shape,depth,mat,bev=.002)=>mesh(new THREE.ExtrudeGeometry(shape,{depth,bevelEnabled:bev>0,bevelThickness:bev,bevelSize:bev,bevelSegments:3,curveSegments:32}),mat);
+const tube=(pts,r,mat,seg=64)=>mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p=>V3(...p))),seg,r,16,false),mat);
+const latheY=(pts,mat,x=0,z=0,seg=56)=>{const m=mesh(new THREE.LatheGeometry(pts.map(p=>new THREE.Vector2(p[0],p[1])),seg),mat,x,0,z);m.material.side=THREE.DoubleSide;return m};
+function rrect(w,h,r){const s=new THREE.Shape(),x=-w/2,y=-h/2;s.moveTo(x+r,y);s.lineTo(x+w-r,y);s.quadraticCurveTo(x+w,y,x+w,y+r);s.lineTo(x+w,y+h-r);s.quadraticCurveTo(x+w,y+h,x+w-r,y+h);s.lineTo(x+r,y+h);s.quadraticCurveTo(x,y+h,x,y+h-r);s.lineTo(x,y+r);s.quadraticCurveTo(x,y,x+r,y);return s}
+function ellS(rx,ry){const s=new THREE.Shape();s.absellipse(0,0,rx,ry,0,Math.PI*2,false,0);return s}
+const at=(o,x,y,z)=>{o.position.set(x,y,z);return o};
+const rot=(o,x,y,z)=>{o.rotation.set(x,y,z);return o};
+const mark=(parent,x,y,z)=>{const o=grp(x,y,z);parent.add(o);return o};
+/* a porcelain index disc with a word on top */
+function indexDisc(r,h,text,col,x,y,z){
+  const side=M('porc'),top=new THREE.MeshStandardMaterial({roughness:.12,map:canvasTex(256,256,(c,w,hh)=>{c.fillStyle='#f8f6f0';c.fillRect(0,0,w,hh);c.strokeStyle='#b39a62';c.lineWidth=8;c.beginPath();c.arc(w/2,hh/2,w/2-10,0,7);c.stroke();
+    c.fillStyle=col;c.font=`800 ${text.length>1?62:130}px "Bodoni Moda",Georgia,serif`;c.textAlign='center';c.textBaseline='middle';c.fillText(text,w/2,hh/2+6)})});
+  return mesh(new THREE.CylinderGeometry(r,r,h,40),[side,top,side],x,y,z);
+}
+/* a disc facing the viewer, with a glyph */
+function frontDisc(r,h,text,bgc,x,y,z){
+  const m=new THREE.MeshStandardMaterial({roughness:.3,map:canvasTex(256,256,(c,w,hh)=>{c.fillStyle=bgc;c.fillRect(0,0,w,hh);c.fillStyle='#fff';c.font=`700 140px "Hiragino Mincho ProN","Noto Serif JP",serif`;c.textAlign='center';c.textBaseline='middle';c.fillText(text,w/2,hh/2+8)})});
+  const g=new THREE.CylinderGeometry(r,r,h,40);g.rotateX(Math.PI/2);return mesh(g,[M('chrome'),m,m],x,y,z);
+}
+/* a cross head that turns about its vertical axis */
+function crossHead(mat,letter,col,Rr=.034){
+  const h=grp();h.add(cylY(.0095,.026,mat,0,.013,0));
+  for(let i=0;i<4;i++){const a=grp();a.rotation.y=i*Math.PI/2+Math.PI/4;a.add(capX(.0045,Rr*.8,mat,Rr*.5,.017,0));a.add(sph(.0078,mat,Rr,.017,0));h.add(a)}
+  h.add(indexDisc(.0125,.006,letter,col,0,.029,0));return h;
+}
+
+/* ---------- vessels. Each returns its meshes and a container record C the water simulation uses ---------- */
+/* C.shape: round (x,z,yb,yt,rb,rt) | rect (x0..x1,z0..z1,yb,yt) | vol (x,z,yb,yt,r, see-through) | box (see-through) | drain (x,z,r,y) */
+function sinkPedestal(){
+  const g=grp(),p=M('porc');
+  g.add(latheY([[0,.6],[.1,.615],[.19,.69],[.245,.78],[.262,.84],[.256,.862],[.222,.862],[.212,.84],[.19,.78],[.13,.725],[.045,.706],[0,.706]],p,0,.32));
+  g.add(latheY([[0,0],[.12,0],[.11,.025],[.08,.1],[.062,.45],[.075,.55],[.11,.62],[0,.62]],p,0,.3));
+  const deck=bx(.5,.034,.14,p,0,.845,.07);g.add(deck);
+  g.add(cylY(.022,.002,M('chrome'),0,.707,.32));
+  return{g,deck:{y:.862,z:.075},C:{shape:'round',x:0,z:.32,yb:.706,yt:.84,rb:.06,rt:.212,rim:{r:.262,y:.862},fill:.5,drain:1.1,snd:1100}};
+}
+function kitchenSink(){
+  const g=grp(),top=M('stone',{color:0x3b4246,roughness:.35}),st=M('brushed',{side:THREE.DoubleSide});
+  [[-.9,-.27,0,.62],[.27,.9,0,.62],[-.27,.27,0,.11],[-.27,.27,.49,.62]].forEach(([x0,x1,z0,z1])=>g.add(bx(x1-x0,.03,z1-z0,top,(x0+x1)/2,.885,(z0+z1)/2)));
+  const cab=M('white',{color:0xd8d0c2,roughness:.6});g.add(bx(1.8,.68,.6,cab,0,.34,.3));g.add(bx(1.8,.19,.03,cab,0,.775,.6));
+  [-.45,.45].forEach(x=>{g.add(bx(.86,.6,.01,M('white',{color:0xcfc6b6,roughness:.55}),x,.35,.605));g.add(sph(.012,M('brushed'),x+(x<0?.38:-.38),.58,.62))});
+  g.add(bx(.54,.005,.38,st,0,.7,.3));[[-.27,.3,.005,.38],[.27,.3,.005,.38]].forEach(([x,z,w,d])=>g.add(bx(w,.19,d,st,x,.795,z)));[[0,.11],[0,.49]].forEach(([x,z])=>g.add(bx(.54,.19,.005,st,x,.795,z)));
+  g.add(cylY(.03,.003,M('chrome'),0,.703,.3));
+  return{g,mount:{y:.9,z:.055},C:{shape:'rect',x0:-.265,x1:.265,z0:.115,z1:.485,yb:.703,yt:.88,rim:{x0:-.3,x1:.3,z0:.09,z1:.51,y:.9},fill:.32,drain:1,snd:800}};
+}
+function trough(style,x0,x1,z0,z1,yt,depth){
+  const g=grp(),c={stone:['stone',0x9c9480],marble:['marble',0xefe9df],zellige:['stone',0xe8dfc6],soapstone:['soap',0x5e6a63]}[style];
+  const m=M(c[0],{color:c[1]}),w=x1-x0,d=z1-z0,t=.05,yb=yt-depth;
+  g.add(bx(w,yb,d,m,(x0+x1)/2,yb/2,(z0+z1)/2));
+  g.add(bx(w,depth,t,m,(x0+x1)/2,yb+depth/2,z1-t/2));g.add(bx(w,depth,t,m,(x0+x1)/2,yb+depth/2,z0+t/2));
+  g.add(bx(t,depth,d,m,x0+t/2,yb+depth/2,(z0+z1)/2));g.add(bx(t,depth,d,m,x1-t/2,yb+depth/2,(z0+z1)/2));
+  if(style==='zellige'){const tx=canvasTex(512,128,(x,W,H)=>{const s=H/2;for(let i=0;i<W/s;i++)for(let j=0;j<2;j++){x.fillStyle=['#1f6f5c','#e8dfc6','#c6862d','#1a3f6b'][(i+j*2)%4];x.fillRect(i*s+2,j*s+2,s-4,s-4)}});
+    const f=new THREE.Mesh(new THREE.PlaneGeometry(w,yt*.6),new THREE.MeshStandardMaterial({map:tx,roughness:.25}));f.position.set((x0+x1)/2,yt*.62,z1+.001);g.add(f)}
+  return{g,C:{shape:'rect',x0:x0+t,x1:x1-t,z0:z0+t,z1:z1-t,yb,yt:yt-.01,rim:{x0,x1,z0,z1,y:yt},fill:.22,drain:.6,snd:800}};
+}
+function grate(x,z,s,y=.003){const g=grp(),k=M('iron');g.add(bx(s,.006,s,k,x,y,z));for(let i=0;i<6;i++)g.add(bx(s*.9,.007,.006,M('dark'),x,y+.001,z-s*.4+i*s*.16));
+  return{g,C:{shape:'drain',x,z,r:s*.62,y:y+.004,snd:650}}}
+function glassVessel(x,z,y0,r,h,o={}){
+  const g=grp();g.add(mesh(new THREE.CylinderGeometry(r,r*.92,h,36,1,true),glassMat(),x,y0+h/2,z));g.add(cylY(r*.92,.004,glassMat(),x,y0+.002,z));
+  if(o.holder){const hm=M('chrome',{roughness:.25});g.add(mesh(new THREE.CylinderGeometry(r+.003,r*.95,h*.5,36,1,true),hm,x,y0+h*.25,z));g.add(cylY(r*.97,.006,hm,x,y0+.003,z));
+    g.add(at(rot(tor(.022,.003,hm),0,Math.PI/2,0),x+r+.016,y0+h*.3,z))}
+  return{g,C:Object.assign({shape:'vol',x,z,yb:y0+.005,yt:y0+h-.008,r:r*.9,snd:900,rng:1700,full:1,fill:.55},o.C||{})};
+}
+function enamelBowl(x,z,yt){
+  const g=grp(),w=M('enamelW'),b=M('blue');
+  g.add(latheY([[0,yt-.09],[.1,yt-.088],[.17,yt-.05],[.2,yt-.005],[.205,yt],[.19,yt],[.17,yt-.045],[.1,yt-.08],[0,yt-.082]],w,x,z));
+  g.add(torY(.198,.005,b,x,yt,z));
+  const s=M('wood');g.add(bx(.36,.03,.36,s,x,yt-.105,z));[[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([a,c])=>g.add(bx(.03,yt-.12,.03,s,x+a*.15,(yt-.12)/2,z+c*.15)));
+  return{g,C:{shape:'round',x,z,yb:yt-.082,yt:yt-.005,rb:.1,rt:.19,rim:{r:.205,y:yt},fill:.18,drain:.02,full:1,snd:900,rng:500,fullMsg:'Basin full. Out it goes, onto the cucumber bed.'}};
+}
+function oke(x,z){
+  const g=grp(),w=M('wood',{color:0xc89a62}),cu=M('oldbrass',{color:0xb87333});
+  g.add(latheY([[0,0],[.12,0],[.135,.2],[.125,.2],[.112,.012],[0,.012]],w,x,z));
+  [.04,.16].forEach(y=>g.add(torY(.123+y*.06,.004,cu,x,y,z)));
+  return{g,C:{shape:'round',x,z,yb:.012,yt:.19,rb:.11,rt:.124,rim:{r:.136,y:.2},fill:.2,full:1,snd:500,rng:900,fullMsg:'The oke is full. Pour it over your shoulders, then fill it again.'}};
+}
+function bucket(x,z,y0=0){
+  const g=grp(),m=M('galv',{side:THREE.DoubleSide});
+  g.add(latheY([[0,y0],[.11,y0],[.14,y0+.28],[.135,y0+.28],[.105,y0+.008],[0,y0+.008]],m,x,z));
+  g.add(torY(.14,.004,m,x,y0+.28,z));g.add(at(rot(tor(.14,.0025,M('iron'),0,0,0),0,0,0),x,y0+.28,z));
+  g.children[g.children.length-1].scale.set(1,.9,1);g.children[g.children.length-1].geometry=new THREE.TorusGeometry(.14,.0025,8,48,Math.PI);
+  return{g,C:{shape:'round',x,z,yb:y0+.008,yt:y0+.27,rb:.105,rt:.135,rim:{r:.142,y:y0+.28},fill:.05,full:1,snd:380,rng:1500,fullMsg:'Bucket full, about 15 litres. Carried home on someone’s head; next in the queue.'}};
+}
+function wateringCan(x,z){
+  const g=grp(),m=M('galv',{side:THREE.DoubleSide});
+  g.add(latheY([[0,0],[.1,0],[.1,.26],[.094,.26],[.094,.006],[0,.006]],m,x,z));
+  g.add(tube([[x+.08,.05,z],[x+.2,.15,z],[x+.3,.27,z]],.012,m));g.add(at(rot(cylY(.03,.02,m),0,0,-.8),x+.31,.28,z));
+  g.add(tube([[x-.1,.22,z],[x-.06,.34,z],[x+.06,.34,z],[x+.09,.26,z]],.007,m));
+  return{g,C:{shape:'round',x,z,yb:.006,yt:.25,rb:.094,rt:.094,rim:{r:.1,y:.26},fill:.08,full:1,snd:420,rng:1300,fullMsg:'Can full, about 10 litres. Off to the tomatoes.'}};
+}
+function gravelPit(x,z,r){const g=grp(),m=M('stone',{color:0x8a7a68});
+  for(let i=0;i<90;i++){const a=Math.random()*7,d=Math.sqrt(Math.random())*r;g.add(sph(.008+Math.random()*.012,m,x+Math.cos(a)*d,.004,z+Math.sin(a)*d,1,.5,1))}
+  return{g,C:{shape:'drain',x,z,r,y:.012,snd:450}}}
+function jerrycan(x,z){
+  const g=grp(),m=new THREE.MeshStandardMaterial({color:0xf2c21c,roughness:.35,transparent:true,opacity:.62,depthWrite:false,side:THREE.DoubleSide});
+  g.add(mesh(new THREE.BoxGeometry(.3,.36,.16),m,x,.18,z));g.add(cylY(.024,.05,M('yellow'),x+.08,.385,z));
+  g.add(tube([[x-.12,.36,z],[x-.1,.41,z],[x,.41,z],[x+.02,.36,z]],.012,M('yellow')));
+  return{g,C:{shape:'box',x,z,w:.28,d:.14,yb:.01,yt:.35,mouth:{x:x+.08,z,r:.022,y:.405},fill:.05,full:1,snd:300,rng:1500,fullMsg:'Twenty litres. A jerrycan this full weighs 20 kg; heave it home.'}};
+}
+function floorDrain(x,z){const g=grp();g.add(cylY(.06,.004,M('brushed'),x,.002,z));for(let i=-2;i<=2;i++)g.add(bx(.08,.005,.006,M('dark'),x,.004,z+i*.018));return{g,C:{shape:'none',snd:1300}}}
+
+/* ---------- the fixtures, modelled ----------
+   build() returns { g, parts:[{obj, apply(v,T,pv), pivot?}], out:[outlet markers], C }
+   spouts: per outlet, velocity (m/s, world), stream width w (m); lv: velocity in the outlet's own frame */
+const SINKCAM={t:[0,.96,.2],d:.5};
+const D3={
+pillar:{cam:SINKCAM,spouts:[{v:[0,-.25,.12],w:.011},{v:[0,-.25,.12],w:.011}],build(){
+  const c=M('chrome'),g=grp(),B=sinkPedestal();g.add(B.g);const out=[],parts=[];
+  [[-.13,'H','#b3271b'],[.13,'C','#1f5fa8']].forEach(([x,l,col])=>{
+    const t=grp(x,B.deck.y,B.deck.z);t.add(cylY(.028,.006,c,0,.003,0));t.add(cylY(.016,.09,c,0,.05,0));
+    t.add(tube([[0,.07,0],[0,.071,.045],[0,.064,.07],[0,.048,.078]],.0095,c));t.add(cylY(.0095,.012,c,0,.044,.078));
+    out.push(mark(t,0,.036,.078));const h=crossHead(M('chrome'),l,col);h.position.y=.095;t.add(h);
+    parts.push({obj:h,apply:v=>{h.rotation.y=-v*Math.PI*3}});g.add(t)});
+  return{g,parts,out,C:B.C}}},
+bridge:{cam:SINKCAM,spouts:[{v:[0,-.25,.1],w:.012}],build(){
+  const b=M('oldbrass'),g=grp(),B=sinkPedestal();g.add(B.g);const y=B.deck.y,z=B.deck.z,parts=[];
+  [-.1,.1].forEach(x=>{g.add(cylY(.024,.006,b,x,y+.003,z));g.add(cylY(.013,.07,b,x,y+.04,z))});
+  g.add(capX(.008,.19,b,0,y+.045,z));g.add(cylY(.013,.05,b,0,y+.03,z));
+  g.add(tube([[0,y+.05,z],[0,y+.17,z],[0,y+.205,z+.035],[0,y+.19,z+.085],[0,y+.152,z+.105]],.0085,b));g.add(cylY(.0105,.014,b,0,y+.146,z+.106));
+  const o=mark(g,0,y+.137,z+.106);
+  [[-.1,'HOT','#b3271b'],[.1,'COLD','#1f5fa8']].forEach(([x,l,col])=>{const h=crossHead(M('oldbrass'),l,col,.036);h.position.set(x,y+.075,z);g.add(h);parts.push({obj:h,apply:v=>{h.rotation.y=-v*Math.PI*3}})});
+  return{g,parts,out:[o],C:B.C}}},
+moen:{cam:{t:[0,1.04,.24],d:.72},spouts:[{v:[0,-.3,0],w:.013}],build(){
+  const c=M('chrome'),g=grp(),K=kitchenSink();g.add(K.g);const y=K.mount.y,z=K.mount.z;
+  g.add(cylY(.033,.008,c,0,y+.004,z));g.add(cylY(.025,.19,c,0,y+.1,z));
+  g.add(tube([[0,y+.15,z],[0,y+.165,z+.06],[0,y+.165,z+.17],[0,y+.152,z+.215],[0,y+.128,z+.226]],.0115,c));
+  const o=mark(g,0,y+.118,z+.227);
+  const yaw=grp(0,y+.198,z),pitch=grp();yaw.add(pitch);pitch.add(sph(.026,c,0,0,0,1,.45,1));pitch.add(capZ(.0085,.09,c,0,.012,.055));g.add(yaw);
+  const ind=sph(.006,new THREE.MeshStandardMaterial({color:0x888888,emissive:0x000000}),0,y+.15,z+.025);g.add(ind);
+  return{g,parts:[{obj:yaw,apply:(v,T)=>{pitch.rotation.x=-v*.5;yaw.rotation.y=-(T-.5)*1.1;const col=tempCol(lerp(10,60,T));ind.material.color.copy(col);ind.material.emissive.copy(col).multiplyScalar(.5)}}],out:[o],C:K.C}}},
+vola:{cam:{t:[0,.98,.22],d:.6},spouts:[{v:[0,-.25,.05],w:.011}],build(){
+  const c=M('chrome'),g=grp(),B=sinkPedestal();g.add(B.g);const y=1.06;
+  g.add(cylZ(.034,.006,c,0,y,0));g.add(cylZ(.019,.035,c,0,y,.006));g.add(sph(.019,c,0,y,.041,1,1,.35));
+  const piv=grp(0,y,.044),sw=grp();piv.add(sw);sw.add(capY(.0036,.065,c,0,.04,0));sw.add(sph(.0055,c,0,.077,0));g.add(piv);
+  g.add(cylZ(.022,.005,c,0,y-.13,0));g.add(cylZ(.0095,.17,c,0,y-.13,.005));const o=mark(g,0,y-.14,.168);
+  return{g,parts:[{obj:piv,apply:(v,T)=>{piv.rotation.z=(T-.5)*1.1;sw.rotation.x=v*.65}}],out:[o],C:B.C}}},
+pressmatic:{cam:SINKCAM,spouts:[{v:[0,-.25,.1],w:.01}],build(){
+  const c=M('chrome'),g=grp(),B=sinkPedestal();g.add(B.g);const y=B.deck.y,z=B.deck.z;
+  g.add(cylY(.03,.006,c,0,y+.003,z));g.add(cylY(.022,.075,c,0,y+.04,z));g.add(capZ(.008,.06,c,0,y+.055,z+.04));g.add(cylY(.009,.02,c,0,y+.046,z+.074));
+  const o=mark(g,0,y+.035,z+.075);
+  const cap=grp(0,y+.078,z);cap.add(cylY(.016,.012,c,0,0,0));cap.add(sph(.027,c,0,.006,0,1,.5,1));g.add(cap);
+  return{g,parts:[{obj:cap,apply:v=>{cap.position.y=y+.078-v*.009}}],out:[o],C:B.C}}},
+sensor:{cam:SINKCAM,spouts:[{v:[0,-.3,0],w:.01}],build(){
+  const c=M('chrome'),g=grp(),B=sinkPedestal();g.add(B.g);const y=B.deck.y,z=B.deck.z;
+  g.add(cylY(.028,.006,c,0,y+.003,z));g.add(cylY(.017,.2,c,0,y+.1,z));
+  g.add(tube([[0,y+.19,z],[0,y+.218,z+.03],[0,y+.218,z+.11],[0,y+.205,z+.14]],.011,c));g.add(cylY(.011,.012,c,0,y+.2,z+.142));
+  const o=mark(g,0,y+.192,z+.142);g.add(bx(.012,.02,.004,M('black'),0,y+.12,z+.017));
+  const led=sph(.0022,new THREE.MeshStandardMaterial({color:0xff2222,emissive:0xff0000,emissiveIntensity:1}),0,y+.135,z+.018);g.add(led);
+  return{g,parts:[{obj:led,apply:v=>{led.material.color.setHex(v>.5?0x33ff55:0xff2222);led.material.emissive.setHex(v>.5?0x00ff33:0xff0000)}}],out:[o],C:B.C,zones:[{spout:0,hw:.065,depth:.18}]}}},
+airblade:{cam:{t:[0,.98,.24],d:.68},spouts:[{v:[0,-.3,0],w:.01},{type:'air',v:[0,-4,0],w:.06},{type:'air',v:[0,-4,0],w:.06}],build(){
+  const c=M('brushed'),g=grp(),B=sinkPedestal();g.add(B.g);const y=B.deck.y,z=B.deck.z;
+  g.add(cylY(.026,.006,c,0,y+.003,z));g.add(tube([[0,y,z],[0,y+.19,z],[0,y+.228,z+.04],[0,y+.228,z+.13]],.013,c));
+  g.add(capX(.014,.22,c,0,y+.228,z+.13));
+  const k=M('dark');g.add(bx(.008,.002,.004,k,0,y+.214,z+.13));[-.1,.1].forEach(x=>g.add(bx(.06,.002,.004,k,x,y+.214,z+.13)));
+  const o=[mark(g,0,y+.212,z+.13),mark(g,-.1,y+.212,z+.13),mark(g,.1,y+.212,z+.13)];
+  return{g,parts:[{obj:null,apply:()=>{}},{obj:null,apply:()=>{}},{obj:null,apply:()=>{}}],out:o,C:B.C,zones:[{spout:0,hw:.04,depth:.18},{spout:1,hw:.05,depth:.18},{spout:2,hw:.05,depth:.18}]}}},
+waterfall:{cam:{t:[0,.98,.24],d:.62},spouts:[{v:[0,-.1,.25],w:.12,type:'sheet'}],build(){
+  const c=M('chrome'),g=grp(),B=sinkPedestal();g.add(B.g);const y=1.02;
+  g.add(bx(.18,.08,.025,c,0,y,.0125));g.add(bx(.14,.007,.115,glassMat(),0,y-.043,.08));g.add(bx(.14,.007,.115,new THREE.MeshStandardMaterial({color:0x9fd3dc,transparent:true,opacity:.35,roughness:.05}),0,y-.043,.08));
+  const o=mark(g,0,y-.047,.138);
+  g.add(cylZ(.022,.03,c,.16,y,0));const piv=grp(.16,y,.03),sw=grp();piv.add(sw);sw.add(capY(.004,.06,c,0,.038,0));sw.add(sph(.006,c,0,.07,0));g.add(piv);
+  return{g,parts:[{obj:piv,apply:(v,T)=>{piv.rotation.z=(T-.5)*1.1;sw.rotation.x=v*.6}}],out:[o],C:B.C}}},
+elbow:{cam:{t:[-.05,1,.24],d:.72},spouts:[{v:[0,-.3,0],w:.011}],build(){
+  const c=M('chrome'),g=grp(),B=sinkPedestal();g.add(B.g);
+  g.add(bx(.12,.065,.06,c,0,1.08,.03));g.add(tube([[0,1.06,.05],[0,1.03,.08],[0,1.03,.15],[0,1.01,.19],[0,.985,.2]],.0105,c));g.add(cylY(.011,.014,c,0,.983,.2));
+  const o=mark(g,0,.974,.2);
+  const piv=grp(0,1.085,.066);piv.add(cylZ(.016,.012,c,0,0,-.006));piv.add(tube([[0,0,.006],[-.1,-.07,.012],[-.21,-.15,.016]],.007,c));piv.add(sph(.016,c,-.215,-.155,.016,1.3,.8,.8));g.add(piv);
+  return{g,parts:[{obj:piv,pivot:piv,apply:v=>{piv.rotation.z=-v*1.2}}],out:[o],C:B.C}}},
+quooker:{cam:{t:[0,1.08,.22],d:.75},spouts:[{v:[0,-.3,0],w:.009}],build(){
+  const c=M('chrome'),g=grp(),K=kitchenSink();g.add(K.g);const y=K.mount.y,z=K.mount.z;
+  g.add(cylY(.028,.006,c,0,y+.003,z));g.add(cylY(.016,.3,c,0,y+.15,z));
+  g.add(tube([[0,y+.28,z],[0,y+.335,z+.03],[0,y+.335,z+.1],[0,y+.3,z+.135],[0,y+.255,z+.138]],.012,c));const o=mark(g,0,y+.24,z+.138);
+  const kn=canvasTex(256,64,(x,w,h)=>{x.fillStyle='#c9cfd2';x.fillRect(0,0,w,h);for(let i=0;i<w;i+=8){x.fillStyle='#6d767b';x.fillRect(i,0,3,h)}x.fillStyle='#d8432f';x.fillRect(0,h*.42,w*.04,h*.16)},1);kn.repeat.set(2,1);
+  const rg=grp(0,y+.16,z);rg.add(cylY(.021,.034,new THREE.MeshStandardMaterial({map:kn,metalness:1,roughness:.3,envMapIntensity:1.2})));rg.add(sph(.003,M('red'),0,0,.021));g.add(rg);
+  return{g,parts:[{obj:rg,apply:(v,T,pv)=>{rg.rotation.y=v*Math.PI/2;rg.position.y=y+.16-pv*.005}}],out:[o],C:K.C}}},
+stopcock:{cam:{t:[0,.82,.28],d:.85},spouts:[{v:[0,-.2,.08],w:.012}],build(){
+  const b=M('bronze'),l=M('lead'),g=grp(),T=trough('stone',-.45,.45,.08,.56,.6,.3);g.add(T.g);
+  g.add(cylX(.022,.6,l,-.33,.92,.06));g.add(cylX(.03,.03,b,-.04,.92,.06));g.add(cylY(.034,.12,b,0,.92,.06));g.add(cylY(.04,.012,b,0,.86,.06));g.add(cylY(.04,.012,b,0,.98,.06));
+  g.add(cylZ(.017,.16,b,0,.905,.06));g.add(tube([[0,.905,.21],[0,.905,.25],[0,.89,.275],[0,.86,.28]],.016,b));const o=mark(g,0,.845,.28);
+  const kg=grp(0,.995,.06);kg.add(cylY(.013,.03,b,0,0,0));kg.add(capX(.009,.09,b,0,.02,0));g.add(kg);
+  return{g,parts:[{obj:kg,apply:v=>{kg.rotation.y=v*Math.PI/2}}],out:[o],C:T.C}}},
+nasone:{cam:{t:[.02,.72,.3],d:1.15},spouts:[{v:[0,-.2,0],w:.012},{v:[.5,2.35,.4],w:.008}],build(){
+  const i=M('iron'),g=grp(),G=grate(.15,.3,.26);g.add(G.g);const X0=-.13,Z=.3;
+  g.add(cylY(.13,.06,i,X0,.03,Z,12));g.add(cylY(.1,.98,i,X0,.55,Z));g.add(sph(.1,i,X0,1.04,Z,1,.5,1));g.add(torY(.102,.012,i,X0,1.02,Z));g.add(torY(.105,.012,i,X0,.12,Z));
+  g.add(tube([[X0+.09,.8,Z],[.06,.81,Z],[.13,.77,Z],[.15,.69,Z]],.021,i));const o=mark(g,.15,.665,Z),h=mark(g,.112,.803,Z);
+  g.add(sph(.003,M('dark'),.112,.8,Z));
+  const tip=sph(.045,new THREE.MeshBasicMaterial({visible:false}),.15,.68,Z);g.add(tip);
+  return{g,parts:[{obj:null,apply:()=>{}},{obj:tip,apply:()=>{}}],out:[o,h],C:G.C}}},
+wallace:{cam:{t:[0,1.12,.7],d:2.2,up:.12},spouts:[{v:[0,-.1,0],w:.016}],build(){
+  const m=M('wgreen'),g=grp(),Z=.7;
+  g.add(cylY(.34,.5,m,0,.25,Z,8));g.add(cylY(.37,.04,m,0,.02,Z,8));g.add(cylY(.36,.04,m,0,.5,Z,8));g.add(cylY(.25,.08,m,0,.56,Z,24));g.add(cylY(.08,.004,M('dark'),0,.601,Z));
+  for(let k=0;k<4;k++){const a=Math.PI/4+k*Math.PI/2,x=Math.cos(a)*.15,z=Z+Math.sin(a)*.15;
+    g.add(coneY(.032,.06,.82,m,x,1.0,z,20));g.add(sph(.045,m,x,1.45,z,1,1.15,1));g.add(rot(capY(.012,.12,m,x*.75,1.5,Z+(z-Z)*.75),0,0,0))}
+  g.add(latheY([[0,1.68],[.12,1.67],[.25,1.63],[.31,1.57],[.31,1.55],[.27,1.54],[0,1.54]],m,0,Z));g.add(sph(.04,m,0,1.71,Z));
+  const o=mark(g,0,1.53,Z);
+  return{g,parts:[{obj:null,apply:()=>{}}],out:[o],C:{shape:'drain',x:0,z:Z,r:.08,y:.602,snd:700}}}},
+wallfountain:{cam:{t:[0,.82,.3],d:1.75,up:.14},spouts:[{v:[0,-.2,.1],w:.009}],build(){
+  const g=grp(),T=trough('zellige',-.55,.55,.04,.45,.55,.25);g.add(T.g);
+  const s=new THREE.Shape();s.moveTo(-.6,0);s.lineTo(.6,0);s.lineTo(.6,1.7);s.lineTo(-.6,1.7);s.closePath();
+  const h=new THREE.Path();h.moveTo(-.34,0);h.lineTo(-.34,.95);h.absarc(0,1.1,.37,Math.PI+.41,-.41,true);h.lineTo(.34,0);h.closePath();s.holes.push(h);
+  const panel=ext(s,.05,M('white',{color:0xe8dab9,roughness:.85}),.004);panel.position.set(0,.55,0);g.add(panel);
+  const zt=canvasTex(512,1024,(x,w,hh)=>{x.fillStyle='#1d6a59';x.fillRect(0,0,w,hh);const st=(cx,cy,r1,r2,c)=>{x.fillStyle=c;x.beginPath();for(let i=0;i<16;i++){const r=i%2?r2:r1,a=Math.PI*i/8-Math.PI/2;x.lineTo(cx+r*Math.cos(a),cy+r*Math.sin(a))}x.fill()};
+    for(let r=0;r<6;r++)for(let c=0;c<3;c++){const cx=w*(c+.5)/3,cy=hh*(r+.5)/6;st(cx,cy,70,34,'#f0e7cf');st(cx,cy,46,22,'#c6862d');st(cx,cy,22,11,'#1a3f6b')}});
+  const back=new THREE.Mesh(new THREE.PlaneGeometry(.74,1.5),new THREE.MeshStandardMaterial({map:zt,roughness:.25}));back.position.set(0,1.3,.002);g.add(back);
+  const cw=M('woodD');g.add(bx(1.5,.1,.42,cw,0,2.34,.21));for(let i=0;i<9;i++)g.add(bx(.04,.18,.04,cw,-.64+i*.16,2.22,.4));
+  const b=M('brass');g.add(sph(.03,b,0,1.0,.02));g.add(cylZ(.011,.09,b,0,1.0,.02));g.add(cylY(.012,.03,b,0,.985,.1));const o=mark(g,0,.968,.1);
+  return{g,parts:[{obj:null,apply:()=>{}}],out:[o],C:T.C}}},
+sadirvan:{cam:{t:[0,.52,.24],d:.82,up:.3},spouts:[{v:[0,-.2,.05],w:.011}],build(){
+  const g=grp(),T=trough('marble',-.5,.5,.05,.4,.3,.15);g.add(T.g);g.add(bx(.3,.36,.3,M('marble'),.78,.18,.3));
+  const s=new THREE.Shape();s.moveTo(-.45,0);s.lineTo(.45,0);s.lineTo(.45,1.3);s.lineTo(-.45,1.3);s.closePath();
+  const h=new THREE.Path();h.moveTo(-.3,0);h.lineTo(-.3,.8);h.absarc(0,.8,.3,Math.PI,0,true);h.lineTo(.3,0);h.closePath();s.holes.push(h);
+  const p=ext(s,.03,M('marble',{color:0xf6f2ea}),.004);g.add(p);
+  const b=M('brass');g.add(sph(.024,b,0,.63,.004));g.add(capZ(.012,.07,b,0,.63,.05));g.add(cylY(.012,.04,b,0,.61,.095));const o=mark(g,0,.588,.095);
+  const hg=grp(0,.655,.05);hg.add(cylY(.007,.02,b,0,0,0));[-1,1].forEach(sx=>{const w=ext(ellS(.024,.012),.004,M('brass'),.001);w.position.set(sx*.026,.02,-.002);hg.add(w)});g.add(hg);
+  return{g,parts:[{obj:hg,apply:v=>{hg.rotation.y=v*Math.PI}}],out:[o],C:T.C}}},
+samovar:{cam:{t:[0,.95,.38],d:.85,up:.2},spouts:[{v:[0,-.2,0],w:.007}],build(){
+  const g=grp(),b=M('brass'),wd=M('wood'),X0=-.05,Z=.26;
+  g.add(bx(1.2,.04,.6,wd,0,.73,.3));[[-.55,.05],[.55,.05],[-.55,.55],[.55,.55]].forEach(([x,z])=>g.add(bx(.05,.71,.05,M('woodD'),x,.355,z)));
+  g.add(latheY([[0,.75],[.09,.75],[.08,.77],[.05,.8],[.05,.83],[.12,.86],[.15,.92],[.155,1.0],[.14,1.08],[.1,1.12],[.05,1.13],[0,1.13]],b,X0,Z));
+  [-1,1].forEach(s=>g.add(at(rot(tor(.03,.006,b),0,Math.PI/2,0),X0+s*.17,1.02,Z)));
+  for(let i=0;i<5;i++){const a=-.5+i*.25;g.add(at(rot(cylY(.011,.003,M('brass',{roughness:.15})),Math.PI/2,0,0),X0+Math.sin(a)*.155,1.0,Z+Math.cos(a)*.152))}
+  const pc=M('porc');g.add(latheY([[0,1.13],[.06,1.135],[.075,1.17],[.06,1.21],[.03,1.22],[.035,1.235],[0,1.24]],pc,X0,Z));g.add(tube([[X0+.065,1.16,Z],[X0+.1,1.19,Z],[X0+.115,1.215,Z]],.008,pc));
+  [[.02,1.18],[-.03,1.165],[.0,1.2]].forEach(([dx,y],k)=>g.add(sph(.008,M(k===1?'red':'blue'),X0+dx,y,Z+.072,1,1,.3)));
+  g.add(cylZ(.009,.09,b,X0,.88,Z+.11));g.add(cylY(.009,.03,b,X0,.865,Z+.195));const o=mark(g,X0,.848,Z+.195);
+  const kg=grp(X0,.895,Z+.17);kg.add(cylY(.005,.014,b));[-1,1].forEach(s=>{const w=ext(ellS(.012,.006),.003,M('brass'),.001);w.position.set(s*.013,.008,-.0015);kg.add(w)});g.add(kg);
+  const V=glassVessel(X0,Z+.195,.75,.03,.1,{holder:1,C:{tint:'tea',start:.22,fill:.35,snd:900,rng:1700,fullMsg:'Glass full: strong tea from the teapot, topped up with boiling water, just as you like it.'}});g.add(V.g);
+  return{g,parts:[{obj:kg,apply:v=>{kg.rotation.y=v*Math.PI/2}}],out:[o],C:V.C}}},
+rukomoynik:{cam:{t:[0,.98,.18],d:.95,up:.25},spouts:[{v:[0,-.05,0],w:.006}],build(){
+  const g=grp(),E=enamelBowl(0,.2,.72);g.add(E.g);const em=M('enamel');
+  g.add(bx(.32,.04,.1,M('wood'),0,1.34,.05));g.add(bx(.22,.22,.14,em,0,1.2,.08));g.add(bx(.235,.02,.155,M('enamel',{color:0x6f9c94}),0,1.315,.08));
+  g.add(coneY(.075,.016,.06,em,0,1.06,.08,32));[[-.06,1.25],[.07,1.14]].forEach(([x,y])=>g.add(sph(.006,M('dark'),x,y,.15,1,1,.2)));
+  const pg=grp(0,1.03,.08);pg.add(capY(.0035,.06,M('chrome'),0,-.03,0));pg.add(sph(.0075,M('chrome'),0,-.066,0));const o=mark(pg,0,-.075,0);g.add(pg);
+  return{g,parts:[{obj:pg,apply:v=>{pg.position.y=1.03+v*.022}}],out:[o],C:E.C}}},
+kaishui:{cam:{t:[0,1.08,.25],d:.9,up:.15},spouts:[{v:[0,-.2,0],w:.008}],build(){
+  const g=grp(),s=M('box');g.add(bx(.42,.46,.2,s,0,1.35,.1));
+  const pl=new THREE.Mesh(new THREE.PlaneGeometry(.3,.11),labelMat('开水','#ffffff','#b3241b','700 92px "Noto Serif SC","Songti SC",serif',512,190));pl.position.set(0,1.48,.2015);g.add(pl);
+  const led=new THREE.Mesh(new THREE.PlaneGeometry(.12,.045),new THREE.MeshBasicMaterial({map:texLabel('100℃','#56f096','#0b2316','500 64px "Martian Mono",monospace',256,96)}));led.position.set(.08,1.33,.2015);g.add(led);
+  g.add(cylZ(.035,.008,M('white'),-.08,1.33,.2));g.add(at(rot(bx(.002,.03,.002,M('red')),0,0,-.8),-.074,1.336,.209));
+  g.add(cylY(.012,.05,M('chrome'),0,1.1,.15));const o=mark(g,0,1.072,.15);
+  const pg=grp(.012,1.105,.15);pg.add(bx(.09,.014,.022,M('red'),.05,0,0));g.add(pg);
+  g.add(bx(.5,.03,.3,M('woodD'),0,.86,.17));g.add(bx(.04,.86,.04,M('woodD'),-.22,.43,.17));g.add(bx(.04,.86,.04,M('woodD'),.22,.43,.17));
+  const V=glassVessel(0,.15,.875,.045,.15,{C:{tint:'green',fill:.22,snd:800,rng:1500,fullMsg:'Jar full. Screw the lid on; you can top it up again at the next station.'}});g.add(V.g);
+  for(let i=0;i<6;i++)g.add(sph(.009,M('green',{color:0x6f7f2a}),rnd(.025),.884,.15+rnd(.025),1,.3,.6));
+  return{g,parts:[{obj:pg,apply:v=>{pg.rotation.z=-v*.35}}],out:[o],C:V.C}}},
+tank:{cam:{t:[0,.95,.2],d:.78,up:.3},spouts:[{v:[0,-.2,0],w:.008}],build(){
+  const g=grp(),p=M('porc');
+  g.add(latheY([[0,0],[.12,0],[.1,.15],[.17,.3],[.2,.38],[.19,.4],[0,.4]],p,0,.45));g.add(torY(.19,.016,M('white'),0,.415,.45));
+  g.add(bx(.44,.42,.2,p,0,.62,.11));g.add(bx(.46,.03,.22,p,0,.845,.11));
+  g.add(latheY([[0,.836],[.06,.838],[.11,.848],[.13,.862],[.142,.866],[.14,.86]],M('porc'),0,.12));
+  g.add(cylY(.012,.002,M('chrome'),0,.837,.12));
+  const c=M('chrome');g.add(tube([[0,.86,.03],[0,.96,.03],[0,.99,.055],[0,.975,.095]],.008,c));const o=mark(g,0,.965,.096);
+  const lg=grp(-.17,.79,.222);lg.add(cylZ(.012,.012,c));lg.add(capX(.006,.06,c,-.04,0,.014));g.add(lg);
+  return{g,parts:[{obj:lg,apply:v=>{lg.rotation.z=v*.6}}],out:[o],C:{shape:'round',x:0,z:.12,yb:.837,yt:.86,rb:.06,rt:.13,rim:{r:.142,y:.866},fill:.6,drain:1,snd:1200}}}},
+karan:{cam:{t:[0,.55,.25],d:.92,up:.35},spouts:[{v:[0,-.2,.0],w:.013}],build(){
+  const g=grp(),c=M('chrome'),O=oke(0,.15);g.add(O.g);
+  g.add(capX(.013,.5,c,0,.6,.04));g.add(tube([[0,.6,.04],[0,.6,.1],[0,.575,.13],[0,.545,.13]],.011,c));const o=mark(g,0,.53,.13);
+  g.add(bx(.46,.36,.01,M('chrome',{roughness:.02}),0,1.0,.006));
+  const parts=[];[[-.13,'湯','#c0302a'],[.13,'水','#2a62b4']].forEach(([x,t,col])=>{g.add(cylZ(.032,.03,c,x,.6,.0));const bg=grp(x,.6,.03);bg.add(frontDisc(.022,.012,t,col,0,0,.006));g.add(bg);parts.push({obj:bg,apply:v=>{bg.position.z=.03-v*.008}})});
+  g.add(bx(.3,.03,.22,M('white',{color:0xe9e1cf}),.42,.2,.3));[[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([a,b2])=>g.add(bx(.03,.19,.03,M('white',{color:0xd8ceb8}),.42+a*.12,.095,.3+b2*.08)));
+  return{g,parts,out:[o],C:O.C}}},
+tsukubai:{cam:{t:[-.1,.5,.42],d:1.3,up:.3},spouts:[{v:[.35,0,0],w:.012}],build(){
+  const g=grp(),s=M('stone'),X0=.03,Z=.42;
+  g.add(latheY([[0,0],[.26,0],[.285,.14],[.272,.3],[.25,.38],[.17,.385],[.15,.34],[0,.32]],s,X0,Z,20));
+  for(let i=0;i<9;i++){const a=i*.7+.3;g.add(sph(.05+Math.random()*.05,s,X0+Math.cos(a)*(.38+Math.random()*.12),.02,Z+Math.sin(a)*(.32+Math.random()*.1),1.3,.5,1))}
+  const bm=M('bamboo');g.add(cylY(.03,.9,bm,-.45,.45,.38));g.add(cylX(.028,.44,bm,-.23,.76,.38));[-.38,-.25,-.1].forEach(x=>g.add(at(rot(tor(.029,.003,M('bamboo',{color:0x7f7a2e})),0,Math.PI/2,0),x,.76,.38)));
+  const o=mark(g,-.008,.752,.38);
+  g.add(at(rot(cylY(.006,.42,bm),0,0,Math.PI/2-.08),X0+.02,.395,Z-.1));g.add(cylY(.028,.035,bm,X0+.21,.405,Z-.1));
+  return{g,parts:[{obj:null,apply:()=>{}},{obj:null,apply:()=>{}}],out:[o],C:{shape:'round',x:X0,z:Z,yb:.32,yt:.378,rb:.1,rt:.166,rim:{r:.25,y:.385},fill:.3,drain:.3,start:.75,snd:1000}}}},
+markii:{cam:{t:[.05,.72,.35],d:1.45,up:.2},spouts:[{v:[0,-.3,0],w:.02}],build(){
+  const g=grp(),p=M('paint'),X0=-.12;g.add(cylY(.5,.08,M('concrete'),0,.04,.3,32));
+  g.add(cylY(.065,.7,p,X0,.43,.2));g.add(cylY(.1,.02,p,X0,.09,.2));g.add(bx(.22,.17,.17,p,X0,.86,.2));g.add(bx(.25,.02,.2,p,X0,.955,.2));
+  [[-.08,.79],[.08,.79]].forEach(([dx,y])=>g.add(sph(.008,M('iron'),X0+dx,y,.288)));
+  g.add(tube([[X0,.82,.26],[X0,.82,.34],[X0,.79,.38],[X0,.74,.385]],.022,p));const o=mark(g,X0,.71,.385);
+  const hg=grp(X0+.11,.9,.2);hg.add(cylZ(.02,.04,M('iron'),0,0,-.02));hg.add(tube([[0,0,0],[.3,.07,0],[.56,.13,0]],.013,M('iron')));hg.add(capX(.019,.1,M('black'),.56,.13,0));g.add(hg);
+  const Bk=bucket(X0,.385,.08);g.add(Bk.g);
+  return{g,parts:[{obj:hg,apply:v=>{hg.rotation.z=-v*.42}}],out:[o],C:Bk.C}}},
+pitcher:{cam:{t:[.05,1.02,.3],d:1.0,up:.2},spouts:[{v:[0,-.2,.18],w:.016},{v:[0,-.3,0],w:.008,die:1.15}],build(){
+  const g=grp(),T=trough('soapstone',-.45,.45,.05,.5,.8,.14);g.add(T.g);const r=M('pumpred'),i=M('iron');
+  g.add(cylY(.08,.02,i,0,.81,.15));g.add(latheY([[0,0],[.06,0],[.055,.02],[.05,.2],[.065,.27],[.07,.3],[0,.3]].map(([a,b])=>[a,b+.82]),r,0,.15));g.add(cylY(.076,.02,i,0,1.13,.15));
+  g.add(tube([[0,.98,.2],[0,.98,.27],[0,.968,.305]],.021,r));const o=mark(g,0,.95,.305);
+  const rod=cylY(.006,.07,i,-.02,1.17,.15);g.add(rod);
+  const hg=grp(.07,1.155,.15);hg.add(cylZ(.012,.03,i,0,0,-.015));hg.add(tube([[-.09,-.02,0],[0,0,0],[.2,.08,0],[.38,.15,0]],.01,i));g.add(hg);
+  const cup=grp(-.04,1.33,.15);cup.add(mesh(new THREE.CylinderGeometry(.035,.03,.07,24,1,true),M('enamelW',{side:THREE.DoubleSide})));cup.add(torY(.035,.003,M('blue'),0,.035,0));cup.add(at(rot(tor(.02,.004,M('enamelW')),0,0,0),.045,0,0));cup.visible=false;g.add(cup);
+  const po=mark(cup,-.035,.03,0);
+  return{g,parts:[{obj:hg,apply:v=>{hg.rotation.z=-v*.5;rod.position.y=1.17+v*.03}},{obj:null,apply:v=>{cup.visible=v>0;cup.rotation.z=v*1.5}}],out:[o,po],C:T.C}}},
+tippy:{cam:{t:[0,.82,.35],d:1.6,up:.15},spouts:[{lv:[.35,.1,0],w:.006}],build(){
+  const g=grp(),w=M('wood'),Z=.3;
+  [-.45,.45].forEach(x=>{g.add(cylY(.025,1.42,w,x,.71,Z));g.add(at(rot(capY(.012,.1,w),0,0,x<0?.5:-.5),x+(x<0?-.03:.03),1.44,Z))});
+  g.add(cylX(.022,1.02,w,0,1.4,Z));
+  const cg=grp(0,1.2,Z);cg.add(at(rot(tor(.035,.006,M('yellow')),0,0,0),0,-.01,0));cg.add(bx(.15,.2,.1,M('yellow'),0,-.13,0));cg.add(cylY(.012,.012,M('yellow'),.065,-.03,0));
+  const o=mark(cg,.07,-.025,0);g.add(cg);
+  const pg=grp(-.15,.035,.42);pg.add(capX(.013,.45,M('woodD'),.24,0,0));g.add(pg);g.add(sph(.04,M('stone'),-.15,.02,.42,1.3,.6,1));
+  const lm=new THREE.LineBasicMaterial({color:0x6b5b45});const ln=(a,b)=>{const L=new THREE.Line(new THREE.BufferGeometry().setFromPoints([a,b]),lm);g.add(L);return L};
+  ln(V3(0,1.4,Z),V3(0,1.225,Z));const str=ln(V3(),V3());
+  ln(V3(.3,1.4,Z),V3(.3,1.12,Z));g.add(bx(.06,.035,.04,M('white',{color:0xe8d3a0}),.3,1.1,Z));
+  const GP=gravelPit(.12,Z+.05,.25);g.add(GP.g);
+  const pa=V3(),pb=V3();
+  return{g,parts:[{obj:pg,extra:[cg],apply:v=>{cg.rotation.z=-v*1.05;pg.rotation.z=-v*.12;cg.updateMatrixWorld();pg.updateMatrixWorld();
+    pa.set(.07,-.06,0);cg.localToWorld(pa);pb.set(.42,0,0);pg.localToWorld(pb);str.geometry.setFromPoints([pa,pb])}}],out:[o],C:GP.C}}},
+atm:{cam:{t:[0,.85,.42],d:1.4,up:.15},spouts:[{v:[0,-.3,0],w:.016}],build(){
+  const g=grp();g.add(bx(.6,1.5,.3,M('blue',{color:0x1d4f8f,metalness:.4,roughness:.4}),0,.75,.15));
+  const sc=document.createElement('canvas');sc.width=512;sc.height=288;const st=new THREE.CanvasTexture(sc);st.encoding=THREE.sRGBEncoding;
+  const scr=new THREE.Mesh(new THREE.PlaneGeometry(.3,.17),new THREE.MeshBasicMaterial({map:st}));scr.position.set(0,1.25,.3015);g.add(scr);
+  const draw=(a,b)=>{const x=sc.getContext('2d');x.fillStyle='#0b1d15';x.fillRect(0,0,512,288);x.fillStyle='#5cf0a2';x.textAlign='center';x.font='500 92px "Martian Mono",monospace';x.fillText(a,256,150);x.font='400 38px "Martian Mono",monospace';x.fillText(b,256,225);st.needsUpdate=true};
+  draw('KARIBU','Tap card');
+  const lab=new THREE.Mesh(new THREE.PlaneGeometry(.2,.06),labelMat('MAJI','#ffffff',null,'800 100px "Instrument Sans",Arial,sans-serif',512,150));lab.position.set(-.12,1.02,.3015);g.add(lab);
+  const rg=grp(.15,1.02,.3);rg.add(bx(.1,.13,.02,M('black'),0,0,.01));const ic=new THREE.Mesh(new THREE.PlaneGeometry(.07,.07),new THREE.MeshBasicMaterial({transparent:true,map:canvasTex(128,128,(x)=>{x.strokeStyle='#fff';x.lineWidth=7;x.lineCap='round';[22,40,58].forEach(r=>{x.beginPath();x.arc(30,64,r,-.9,.9);x.stroke()})})}));ic.position.z=.0205;rg.add(ic);g.add(rg);
+  g.add(tube([[0,.82,.3],[0,.82,.38],[0,.79,.42],[0,.75,.42]],.016,M('chrome')));const o=mark(g,0,.735,.42);
+  const J=jerrycan(-.08,.42);g.add(J.g);
+  return{g,parts:[{obj:rg,apply:v=>{rg.position.z=.3-v*.004}}],out:[o],C:J.C,screen:draw}}},
+bubbler:{cam:{t:[0,.95,.3],d:.62,up:.35},spouts:[{v:[0,1.45,.62],w:.009}],build(){
+  const g=grp(),p=M('porc'),c=M('chrome');
+  g.add(latheY([[0,0],[.14,0],[.12,.03],[.08,.1],[.065,.6],[.08,.78],[.05,.83],[0,.83]],p,0,.3));
+  g.add(latheY([[0,.83],[.05,.83],[.14,.86],[.2,.92],[.212,.95],[.19,.956],[.175,.93],[.12,.885],[.04,.866],[0,.866]],p,0,.3));
+  g.add(cylY(.008,.05,c,0,.89,.24));g.add(sph(.011,c,0,.915,.24,1,.7,1));g.add(tube([[-.03,.87,.24],[-.035,.94,.25],[0,.965,.245]],.0035,c));
+  const o=mark(g,0,.922,.242);
+  const bg=grp(0,.9,.506);bg.add(cylZ(.02,.008,c,0,0,-.008));bg.add(cylZ(.014,.012,c,0,0,0));g.add(bg);
+  return{g,parts:[{obj:bg,apply:v=>{bg.position.z=.506-v*.007}}],out:[o],C:{shape:'round',x:0,z:.3,yb:.866,yt:.93,rb:.04,rt:.175,rim:{r:.212,y:.956},fill:.3,drain:2,snd:1300}}}},
+health:{cam:{t:[.25,.62,.2],d:.85,up:.18},spouts:[{v:[1.55,.15,.35],w:.004,type:'spray'}],build(){
+  const g=grp(),c=M('chrome'),D=floorDrain(.72,.38);g.add(D.g);
+  g.add(cylZ(.018,.04,c,-.3,.42,0));g.add(at(rot(capX(.006,.03,c),0,0,0),-.3,.44,.03));
+  g.add(tube([[-.3,.42,.04],[-.26,.25,.12],[-.08,.28,.12],[-.01,.55,.07],[0,.72,.05]],.006,M('brushed')));
+  g.add(bx(.06,.025,.045,c,0,.87,.022));
+  const sg=grp(0,.8,.05);sg.add(capY(.014,.1,c,0,0,0));sg.add(capX(.017,.05,c,.035,-.065,0));const o=mark(sg,.068,-.065,0);g.add(sg);
+  const tg=grp(-.014,.03,0);tg.add(capY(.004,.07,c,-.004,-.035,0));sg.add(tg);
+  return{g,parts:[{obj:tg,apply:v=>{tg.rotation.z=-v*.22}}],out:[o],C:D.C}}},
+hosebib:{cam:{t:[0,.45,.2],d:.85,up:.25},spouts:[{v:[0,-.3,0],w:.016}],build(){
+  const g=grp(),b=M('brass');g.add(cylZ(.04,.008,b,0,.55,0));g.add(cylZ(.022,.1,b,0,.55,.008));g.add(cylZ(.016,.03,b,0,.55,.105));
+  g.add(cylY(.014,.08,b,0,.505,.07));[0,1,2].forEach(k=>g.add(torY(.0145,.0018,b,0,.48+k*.008,.07)));const o=mark(g,0,.462,.07);
+  const wg=grp(0,.55,.14);wg.add(tor(.038,.0055,M('red')));for(let k=0;k<4;k++)wg.add(rot(bx(.072,.006,.006,M('red')),0,0,k*Math.PI/4));wg.add(cylZ(.01,.012,M('red'),0,0,-.006));g.add(wg);
+  const Wc=wateringCan(0,.12);g.add(Wc.g);
+  return{g,parts:[{obj:wg,pivot:wg,apply:v=>{wg.rotation.z=v*Math.PI*4}}],out:[o],C:Wc.C}}}
+};
+/* circle gestures: which way opens (screen clockwise = 1) */
+const CIRCLE={elbow:{cw:1,range:1.2},hosebib:{cw:-1,range:Math.PI*4}};
+
+/* ---------- scene ---------- */
+function tempCol(C){const t=clamp((C-12)/50);return new THREE.Color().setRGB(lerp(.16,.85,t),lerp(.48,.27,t),lerp(.78,.18,t))}
+function dispose(){if(scene)scene.traverse(o=>{o.geometry&&o.geometry.dispose();if(o.material)[].concat(o.material).forEach(m=>{m.map&&m.map.dispose();m.dispose()})})}
+function buildScene(){
+  dispose();
+  scene=new THREE.Scene();scene.environment=envTex;
+  const SC=SCENES[cur.wall];
+  if(SC.out){scene.background=canvasTex(16,256,(x,w,h)=>{const g=x.createLinearGradient(0,0,0,h);g.addColorStop(0,SC.sky[0]);g.addColorStop(1,SC.sky[1]);x.fillStyle=g;x.fillRect(0,0,w,h)})}
+  else scene.background=new THREE.Color(0x1a1d1e);
+  /* floor */
+  const [fk,fa,fb]=SC.floor,ft=surface(fk,fa,fb);ft.repeat.set(12/1.2,10/1.2);
+  const fl=mesh(new THREE.PlaneGeometry(12,10),new THREE.MeshStandardMaterial({map:ft,roughness:.85,envMapIntensity:.5}),0,0,2);fl.rotation.x=-Math.PI/2;fl.castShadow=false;scene.add(fl);
+  /* wall */
+  if(SC.wall){const [wk,wa,wb]=SC.wall,wt=surface(wk,wa,wb);wt.repeat.set(8/1.2,4/1.2);
+    const wl=mesh(new THREE.PlaneGeometry(8,4),new THREE.MeshStandardMaterial({map:wt,roughness:wk==='subway'||wk==='square'||wk==='zellige'?.25:.9,envMapIntensity:.55}),0,2,0);wl.castShadow=false;scene.add(wl);
+    if(!SC.out){const side=new THREE.MeshStandardMaterial({map:wt.clone(),roughness:.6});side.map.needsUpdate=true;side.map.repeat.set(4/1.2,4/1.2);
+      [-1.6,1.6].forEach(x=>{const s=mesh(new THREE.PlaneGeometry(4,4),side,x,2,2);s.rotation.y=x<0?Math.PI/2:-Math.PI/2;s.castShadow=false;scene.add(s)})}
+    if(SC.dado){const d=bx(8,1.1,.01,M('white',{color:SC.dado,roughness:.5}),0,.55,.005);d.castShadow=false;scene.add(d);scene.add(bx(8,.03,.012,M('white',{color:0x2c6a50}),0,1.1,.006))}}
+  else if(SC.far){const m=new THREE.MeshStandardMaterial({map:surface('plain',SC.far),roughness:1});const h=mesh(new THREE.BoxGeometry(5,2.2,.3),m,.6,1.1,-3.2);scene.add(h);
+    const roof=mesh(new THREE.BoxGeometry(5.4,.12,1),M('wood',{color:0x6b5038}),.6,2.25,-3.1);scene.add(roof)}
+  /* light */
+  scene.add(new THREE.HemisphereLight(0xfff4e6,0x40362c,SC.out?.45:.25));
+  W3.key=new THREE.DirectionalLight(0xfff1dd,SC.out?1.5:1.2);W3.key.castShadow=true;W3.key.shadow.mapSize.set(2048,2048);W3.key.shadow.bias=-.0004;W3.key.shadow.normalBias=.003;
+  const sc=W3.key.shadow.camera;sc.left=-1.2;sc.right=1.2;sc.top=1.2;sc.bottom=-1.2;sc.near=.1;sc.far=8;scene.add(W3.key,W3.key.target);
+  const fill=new THREE.DirectionalLight(0xdfe8ff,.35);fill.position.set(2,2,3);scene.add(fill);
+  /* the fixture */
+  const B=X.build();W3.B=B;scene.add(B.g);W3.C=B.C;W3.pick=[];
+  B.parts.forEach((p,i)=>{if(!p.obj)return;[p.obj,...(p.extra||[])].forEach(o=>o.traverse(m=>{if(m.isMesh){m.userData.ci=i;W3.pick.push(m)}}));
+    p.mats=[];p.obj.traverse(m=>{if(m.isMesh&&m.material&&m.material.emissive)p.mats.push(m.material)})});
+  scene.updateMatrixWorld(true);
+  const t=X.cam.t;W3.target=V3(...t);W3.key.position.set(t[0]-1,t[1]+1.6,t[2]+1.6);W3.key.target.position.copy(W3.target);
+  const op=V3();B.out[0].getWorldPosition(op);W3.handZ=op.z;
+  /* water: instanced streams, sheets, drops, air and steam */
+  const wm=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.02,metalness:.1,transparent:true,opacity:.86,envMapIntensity:2.6,depthWrite:false});
+  const inst=(geo,mat,n)=>{const m=new THREE.InstancedMesh(geo,mat,n);m.frustumCulled=false;m.count=0;m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);m.setColorAt(0,new THREE.Color());scene.add(m);return m};
+  W3.seg=inst(new THREE.CylinderGeometry(1,1,1,10,1,true),wm,1600);
+  W3.sheet=inst(new THREE.BoxGeometry(1,1,1),wm.clone(),500);W3.sheet.material.opacity=.5;
+  W3.drop=inst(new THREE.SphereGeometry(1,10,8),wm.clone(),1500);
+  W3.air=inst(new THREE.CylinderGeometry(1,1,1,6,1,true),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.28,depthWrite:false}),400);
+  const sp=canvasTex(64,64,(x,w,h)=>{const g=x.createRadialGradient(w/2,h/2,0,w/2,h/2,w/2);g.addColorStop(0,'rgba(255,255,255,.9)');g.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=g;x.fillRect(0,0,w,h)});
+  const sg=new THREE.BufferGeometry();sg.setAttribute('position',new THREE.BufferAttribute(new Float32Array(600),3));
+  W3.steam=new THREE.Points(sg,new THREE.PointsMaterial({map:sp,size:.07,transparent:true,opacity:.28,depthWrite:false,color:0xffffff}));W3.steam.frustumCulled=false;scene.add(W3.steam);
+  /* the pool of water in the vessel */
+  const C=W3.C,pm=new THREE.MeshStandardMaterial({color:C.tint==='tea'?0x7a3e0e:C.tint==='green'?0x9aa34a:0x4f93c2,roughness:.05,metalness:0,transparent:true,opacity:C.tint==='tea'?.9:.55,envMapIntensity:2});
+  let geo=null;
+  if(C.shape==='round'){geo=new THREE.CircleGeometry(1,48);geo.rotateX(-Math.PI/2)}
+  else if(C.shape==='rect'){geo=new THREE.PlaneGeometry(1,1);geo.rotateX(-Math.PI/2)}
+  else if(C.shape==='vol'){geo=new THREE.CylinderGeometry(1,1,1,32);geo.translate(0,.5,0)}
+  else if(C.shape==='box'){geo=new THREE.BoxGeometry(1,1,1);geo.translate(0,.5,0)}
+  W3.pool=geo?new THREE.Mesh(geo,pm):null;if(W3.pool){W3.pool.renderOrder=2;scene.add(W3.pool)}
+  W3.rings=[];for(let i=0;i<10;i++){const r=new THREE.Mesh(new THREE.RingGeometry(.85,1,32).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0,depthWrite:false}));r.visible=false;scene.add(r);W3.rings.push({m:r,t:1})}
+}
+
+/* ---------- the session at one fixture ---------- */
+function newState(){return{p:[],T:[],pv:[],t0:[],hold:[],pumpF:[],strokes:[],low:[],tin:[],tout:[],on:[],missed:[],forced:[],active:[],done:0,
+  sps:[],parts:[],level:0,emptying:0,primed:false,steps:0,grip:null,hx:-100,hy:-100,hin:false,lx:0,ly:0,clx:0,cly:0,zoom:1,hot:-1,
+  hitAcc:0,hitRate:0,hand:{win:0,tsum:0,run:0,lastMsg:0,key:''},userT:0,sq:0,tw:{},frame:0,lastPlink:0,said:{}}}
+function openImm(id,fromCard){
+  const it=ITEMS.find(x=>x.id===id);if(!it)return;
+  lastFocus=fromCard||lastFocus;
+  if(imm.hidden){imm.hidden=false;document.documentElement.style.overflow='hidden';try{history.pushState({tap:1},'')}catch(e){}}
+  if(!initGL()){$('#glfail').hidden=false;cur=it;$('#immTitle').textContent=it.name;return}
+  resize();ac();load(it);
+  cancelAnimationFrame(raf);lastT=performance.now();raf=requestAnimationFrame(loop);
+  $('#back').focus({preventScroll:true});store.set('ta-last',id);
+}
+function closeImm(fromPop){
+  if(imm.hidden)return;
+  if(fromPop!==true){try{if(history.state&&history.state.tap){history.back();return}}catch(e){}}
+  imm.hidden=true;document.documentElement.style.overflow='';cancelAnimationFrame(raf);timers.forEach(clearTimeout);timers=[];quiet();
+  if(document.fullscreenElement)document.exitFullscreen?.().catch(()=>{});
+  const c=lastFocus&&document.body.contains(lastFocus)?lastFocus:cur&&document.querySelector(`.card[data-id="${cur.id}"]`);c&&c.focus({preventScroll:true});
+}
+function load(it){
+  timers.forEach(clearTimeout);timers=[];
+  cur=it;X=D3[it.id];const z=S?S.zoom:1;S=newState();S.zoom=z;
+  buildScene();
+  const n=it.parts.length;['p','pv','t0','pumpF','strokes','tin','tout'].forEach(k=>S[k]=Array(n).fill(0));['hold','on','missed','forced','active'].forEach(k=>S[k]=Array(n).fill(false));S.T=Array(n).fill(.5);S.low=Array(n).fill(true);
+  S.sps=X.spouts.map(()=>({f:0,tC:14,list:[],seq:0,acc:0}));S.level=W3.C.start||0;
+  $('#immTitle').textContent=it.name;$('#immSub').textContent=it.local;
+  $('#about').innerHTML=`<div><h2>${it.name}</h2><div class="local">${it.local}</div></div>
+    <div class="where">${it.eraText}</div><p class="note">${it.note}</p>
+    <dl class="specs"><dt>Material</dt><dd>${it.material}</dd><dt>Action</dt><dd>${KINDS[it.kind]}</dd>${it.specs.map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`;
+  say(it.hint);$('#feel').textContent='';
+  it.parts.forEach((_,i)=>applyPart(i));renderActs();if(W3.B.screen)W3.B.screen('KARIBU','Tap card');
+  placeCamera(0);hud(true);
+}
+function step(d){const L=list().length?list():ITEMS;const ix=L.findIndex(x=>x.id===cur.id);load(L[(ix+d+L.length)%L.length]);store.set('ta-last',cur.id)}
+function applyPart(i){const p=W3.B.parts[i];p&&p.apply(S.p[i],S.T[i],S.pv[i])}
+function tempOf(c,i){return c.kind==='joy'?lerp((cur.tC||[10,60])[0],(cur.tC||[10,60])[1],S.T[i]):(c.temp??14)}
+
+/* every change to a control goes through here, so pumps count strokes and old valves squeak */
+function setP(i,p,T){
+  const c=cur.parts[i],dp=p-S.p[i];S.p[i]=p;if(T!=null)S.T[i]=T;
+  if(c.kind==='pump'){
+    if(dp>0){if(c.prime&&!S.primed){if(Math.random()<dp*6)play('gurgle')}else if(S.strokes[i]>=c.lead)S.pumpF[i]=Math.min(1.25,S.pumpF[i]+dp*3)}
+    if(p<.25)S.low[i]=true;
+    if(p>.8&&S.low[i]){S.low[i]=false;S.strokes[i]++;play('clank');
+      if(c.prime&&!S.primed){say('Sucking air. The leather seal has dried out: prime it first.');S.strokes[i]=0}
+      else if(S.strokes[i]<=c.lead)say(S.strokes[i]<c.lead?'Nothing yet. The water is still rising up the pipe.':'Almost there. One more stroke.');
+      else if(S.strokes[i]===c.lead+1)say('Water. Keep a steady rhythm.')}
+  }
+  if(c.squeak&&p>0&&p<1)S.sq=Math.min(1,S.sq+Math.abs(dp)*14);
+  applyPart(i);
+}
+function tween(key,from,to,ms,fn,done){S.tw[key]={from,to,t0:performance.now(),ms,fn,done}}
+function tweenP(i,to,ms=260,done){tween('p'+i,S.p[i],to,ms,v=>setP(i,v),done)}
+function runTweens(now){for(const k in S.tw){const t=S.tw[k],e=clamp((now-t.t0)/t.ms),v=t.from+(t.to-t.from)*(1-Math.pow(1-e,3));t.fn(v);if(e>=1){delete S.tw[k];t.done&&t.done()}}}
+function press(i){const c=cur.parts[i],now=performance.now();if(c.once&&S.t0[i]&&now-S.t0[i]<c.dur*1000)return;S.t0[i]=now;play(c.sound||'click');if(cur.id==='atm')S.done=0}
+function pressFlow(c,i,now){if(!S.t0[i])return 0;const e=(now-S.t0[i])/1000;if(e<c.dur-1.2)return 1;if(e<c.dur)return(c.dur-e)/1.2;S.t0[i]=0;if(cur.id==='atm'){S.done=1;say('Asante. Twenty litres, any time of day.')}return 0}
+function holdOn(i){S.hold[i]=true;tweenP(i,1,cur.parts[i].ms||200);play('click')}
+function holdOff(i){if(!S.hold[i])return;S.hold[i]=false;tweenP(i,0,260)}
+function stroke(i){tweenP(i,1,280,()=>tweenP(i,0,360))}
+function prime(i){if(S.primed){say('Already primed. Pump away.');return}S.t0[i]=performance.now();play('pour');say('A cup of water down the top to wet the leather seal...');
+  later(()=>{if(cur.id==='pitcher'){S.primed=true;say('Primed. Now pump: the first stroke or two bring the water up.')}},1500)}
+function stepNext(i){const c=cur.parts[i];say(c.steps[S.steps%c.steps.length]);S.steps++;markTried();renderActs()}
+
+/* ---------- camera: close to the tap, drifting with the pointer like a turning head ---------- */
+function placeCamera(dt){
+  const look=S.grip?.25:1;S.clx+=(S.lx*look-S.clx)*Math.min(1,dt*4||1);S.cly+=(S.ly*look-S.cly)*Math.min(1,dt*4||1);
+  const tg=W3.target,asp=camera.aspect,cam=X.cam,d=cam.d*S.zoom*(asp<1?Math.pow(1/Math.max(.45,asp),.8):1),up=cam.up??.38;
+  camera.position.set(tg.x+d*.16+S.clx*.12*d,tg.y+up*d,tg.z+d);
+  camera.lookAt(tg.x+S.clx*.25*d,tg.y-S.cly*.16*d,tg.z);
+}
+function ppm(){return cv.clientHeight/(2*camera.position.distanceTo(W3.target)*Math.tan(camera.fov*Math.PI/360))}
+
+/* ---------- simulation ---------- */
+const G=9.81,_v=V3(),_q=new THREE.Quaternion(),_m=new THREE.Matrix4(),_s=V3(),_up=V3(0,1,0),_d=V3(),_c=new THREE.Color();
+function surfY(){const C=W3.C;return C.yb+S.level*(C.yt-C.yb)}
+function rAt(y){const C=W3.C;return C.rb+(C.rt-C.rb)*clamp((y-C.yb)/(C.yt-C.yb))}
+function insideOpen(x,z,y){const C=W3.C;
+  if(C.shape==='round')return Math.hypot(x-C.x,z-C.z)<rAt(y)*.98;
+  if(C.shape==='rect')return x>C.x0&&x<C.x1&&z>C.z0&&z<C.z1;
+  if(C.shape==='vol')return Math.hypot(x-C.x,z-C.z)<C.r;
+  return false}
+function onRim(x,z){const C=W3.C,r=C.rim;if(!r)return false;
+  if(C.shape==='rect')return x>r.x0&&x<r.x1&&z>r.z0&&z<r.z1;return Math.hypot(x-C.x,z-C.z)<r.r}
+function splash(x,y,z,n,tC){for(let i=0;i<n;i++)S.parts.push({x,y:y+.002,z,vx:rnd(.7),vy:.4+Math.random()*1.1,vz:rnd(.7),r:.0012+Math.random()*.0015,t:'drop',sp:1,tC})}
+function handWorld(){
+  if(!S.hin)return null;const r=cv.getBoundingClientRect(),h=HANDS[pose||'open'],sz=handEl.offsetWidth||64;
+  const px=S.hx+(h.px-h.hx)*sz,py=S.hy+(h.py-h.hy)*sz;
+  ray.setFromCamera(new THREE.Vector2(px/r.width*2-1,-(py/r.height)*2+1),camera);
+  const pl=new THREE.Plane(V3(0,0,1),-W3.handZ),o=V3();return ray.ray.intersectPlane(pl,o)?o:null;
+}
+function sim(dt,now){
+  runTweens(now);
+  const tg=X.spouts.map(()=>({f:0,cs:0}));let userF=0;
+  const hw=handWorld();S.hw=hw;
+  cur.parts.forEach((c,i)=>{let f=0;
+    switch(c.kind){
+      case 'drag':case 'circle':case 'joy':case 'pushturn':f=S.p[i];break;
+      case 'hold':f=c.map?c.map(S.p[i]):S.p[i];break;
+      case 'press':{f=pressFlow(c,i,now);const a=f>0?Math.min(1,(now-S.t0[i])/120,f*1.5):0;if(Math.abs(a-S.p[i])>.004)setP(i,a);break}
+      case 'pump':S.pumpF[i]*=Math.exp(-dt*4);f=Math.min(1,S.pumpF[i]);break;
+      case 'hover':{const z=W3.B.zones.find(z=>z.spout===c.spout),o=V3();W3.B.out[z.spout].getWorldPosition(o);
+        const inz=S.forced[i]||(hw&&Math.abs(hw.x-o.x)<z.hw&&hw.y<o.y-.01&&hw.y>o.y-z.depth);
+        if(inz){S.tout[i]=0;if(!S.on[i]){if(S.tin[i]===0&&c.flaky&&Math.random()<.22){S.missed[i]=true;say('Nothing. Wave your hand a little.')}S.tin[i]+=dt;if(S.tin[i]>.3&&(!S.missed[i]||S.forced[i]))S.on[i]=true}}
+        else{S.tin[i]=0;S.missed[i]=false;if(S.on[i]){S.tout[i]+=dt;if(S.tout[i]>.5)S.on[i]=false}}
+        f=S.on[i]?1:0;if(c.flaky)W3.B.parts[i].apply(f);break}
+      case 'always':f=c.level;break;
+      case 'prime':{f=S.t0[i]&&now-S.t0[i]<1300?.6:0;W3.B.parts[i].apply(f?1:0);break}
+    }
+    if(f>0){tg[c.spout].f+=f;tg[c.spout].cs+=f*tempOf(c,i);if(c.kind!=='always'&&c.kind!=='prime')userF+=f}
+  });
+  cur.parts.forEach((c,i)=>{if(c.kind==='block'&&S.active[i]){const a=tg[c.from],b=tg[c.spout];b.f+=a.f;b.cs+=a.cs;a.f=0;a.cs=0}});
+  if(userF>.25){S.userT+=dt;if(S.userT>.4)markTried()}else S.userT=0;
+
+  /* outlets emit */
+  let flowL=0,tw=0,tws=0,air=0,spray=0;
+  S.sps.forEach((P,k)=>{const d=X.spouts[k],t=tg[k],type=d.type||'water';
+    P.f+=(t.f-P.f)*Math.min(1,dt*(type==='air'?20:9));if(t.f>0)P.tC=t.cs/t.f;
+    const f=P.f;if(type!=='air'&&d.die==null){flowL+=f*cur.lpm;tw+=f*P.tC;tws+=f}
+    if(f<.006){P.seq++;return}
+    const o=W3.B.out[k];o.getWorldPosition(_v);
+    let vx,vy,vz;if(d.lv){_d.set(...d.lv).applyQuaternion(o.getWorldQuaternion(_q));vx=_d.x;vy=_d.y;vz=_d.z}else[vx,vy,vz]=d.v;
+    if(type==='air'){air+=f;for(let i=0;i<2;i++)S.parts.push({x:_v.x+rnd(d.w/2),y:_v.y,z:_v.z+rnd(.01),vx:0,vy:vy*(.8+Math.random()*.4),vz:0,life:.12,t:'air'});return}
+    if(type==='spray'){spray+=f;const n=1+Math.round(5*f);for(let i=0;i<n;i++){const s=.55+.45*f;S.parts.push({x:_v.x,y:_v.y,z:_v.z,vx:vx*s*(1+rnd(.15)),vy:vy*s+rnd(.35),vz:vz*s+rnd(.35),r:.0022+Math.random()*.0018,t:'drop',tC:P.tC,vol:f*dt/n})}return}
+    const arc=vy>0,vs=arc?(.5+.5*f):1;
+    if(f<.1&&type==='water'&&!arc){P.acc+=dt*f*30;P.seq++;if(P.acc>=1){P.acc=0;S.parts.push({x:_v.x,y:_v.y-.003,z:_v.z,vx:0,vy:-.1,vz:0,r:.0026,t:'drop',drip:1,tC:P.tC,vol:.02})}return}
+    /* several drops per frame, spaced in time, so a slow frame rate still draws a smooth stream */
+    const n=Math.max(1,Math.min(5,Math.round(dt*90)));
+    for(let j=n-1;j>=0;j--){const tau=j/n*dt;P.seq++;const q={x:_v.x+vx*vs*tau,y:_v.y+vy*vs*tau-G*tau*tau/2,z:_v.z+vz*vs*tau,vx:vx*vs,vy:vy*vs-G*tau,vz:vz*vs,r:d.w*(.32+.68*Math.sqrt(f))/2,s:k,seq:P.seq,age:tau,t:type==='sheet'?'sheet':'stream',tC:P.tC,vol:f*dt/n,die:d.die,v0:Math.max(.35,Math.hypot(vx,vy,vz)*vs),fresh:1};
+      if(type==='sheet')q.w=d.w;S.parts.push(q);P.list.push(q)}
+    P.head=[_v.x,_v.y,_v.z];
+  });
+  litres+=flowL/60*dt;S.flowL=flowL;S.tC=tws>.01?tw/tws:null;
+
+  /* particles move, land, splash */
+  const C=W3.C,hx=hw?hw.x:0,hy=hw?hw.y:0,hz=hw?hw.z:0;let hits=0,hT=0,airHits=0;
+  for(const p of S.parts){
+    if(p.dead)continue;
+    if(p.t==='air'){p.y+=p.vy*dt;p.life-=dt;if(hw&&Math.abs(p.x-hx)<.055&&Math.abs(p.y-hy)<.02){p.dead=1;airHits++;continue}if(p.y<0||p.life<0)p.dead=1;continue}
+    if(p.fresh){p.fresh=0;continue}
+    p.age=(p.age||0)+dt;const py=p.y;
+    p.vy-=G*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.z+=p.vz*dt;
+    if(p.die!=null&&p.y<=p.die){p.dead=1;p.land=S.frame;p.y=p.die;continue}
+    if(hw&&!p.run&&p.vy<0){const dx=(p.x-hx)/.05,dy=(p.y-hy)/.022,dz=(p.z-hz)/.06;if(dx*dx+dy*dy+dz*dz<1){p.dead=1;p.land=S.frame;p.y=hy+.02;hits++;hT+=p.tC;S.hand.run+=(p.vol||.01);if(Math.random()<.15)splash(p.x,p.y,p.z,1,p.tC);continue}}
+    if(C.mouth){const m=C.mouth;if(py>m.y&&p.y<=m.y&&Math.hypot(p.x-m.x,p.z-m.z)<m.r){p.dead=1;p.land=S.frame;p.y=m.y;land(p,m.y);continue}}
+    else if(C.shape==='drain'){if(p.y<=C.y&&py>C.y-.03&&Math.hypot(p.x-C.x,p.z-C.z)<C.r){p.dead=1;p.land=S.frame;p.y=C.y;land(p,C.y);continue}}
+    else if(C.shape!=='none'){const sy=surfY();
+      if((py>C.yt&&p.y<=C.yt&&insideOpen(p.x,p.z,C.yt))||(p.y<=sy&&insideOpen(p.x,p.z,sy)&&py>sy-.06)){p.dead=1;p.land=S.frame;p.y=Math.min(p.y,sy);land(p,sy);continue}
+      if(C.rim&&py>C.rim.y&&p.y<=C.rim.y&&onRim(p.x,p.z)&&!insideOpen(p.x,p.z,C.yt)){p.dead=1;p.land=S.frame;p.y=C.rim.y;if(!p.sp)splash(p.x,p.y,p.z,2,p.tC);S.hitAcc+=p.r*400;continue}}
+    if(p.y<=0){p.dead=1;p.land=S.frame;p.y=0;if(!p.sp&&Math.random()<.5)splash(p.x,0,p.z,1,p.tC);S.hitAcc+=(p.r||.002)*500;continue}
+    if(p.z<0)p.dead=1;
+  }
+  if(S.hand.run>0&&hw){const n=Math.min(3,Math.ceil(S.hand.run*40));for(let i=0;i<n;i++)S.parts.push({x:hx+rnd(.04),y:hy-.022,z:hz+rnd(.03),vx:rnd(.05),vy:-.05,vz:rnd(.05),r:.0016+Math.random()*.0012,t:'drop',run:1,tC:14,vol:S.hand.run/n*.9})}
+  S.hand.run=0;if(hits)S.hitAcc+=hits*2.4;
+  handFeedback(dt,hits,hits?hT/hits:0,airHits,now);
+
+  /* steam off very hot water */
+  if(!S.steam)S.steam=[];
+  S.sps.forEach((P,k)=>{if(P.f>.08&&P.tC>70&&Math.random()<.45+P.f*.4&&P.head){const y0=W3.C.mouth?W3.C.mouth.y:(W3.C.yt||P.head[1]-.2);S.steam.push({x:P.head[0]+rnd(.01),y:lerp(P.head[1],y0,Math.random()),z:P.head[2]+rnd(.01),vy:.05+Math.random()*.06,vx:rnd(.02),life:1.6})}});
+  S.steam.forEach(s=>{s.y+=s.vy*dt;s.x+=s.vx*dt;s.life-=dt});S.steam=S.steam.filter(s=>s.life>0).slice(-190);
+
+  /* vessel level */
+  if(C.fill){if(C.drain)S.level=Math.max(0,S.level-C.drain*Math.sqrt(S.level)*dt);
+    if(S.emptying>0){S.emptying-=dt;S.level=Math.max(C.start||0,S.level-dt*.9)}
+    else if(C.full&&S.level>=.96){S.emptying=1.4;say(C.fullMsg);play('pour')}
+    S.level=Math.min(1,S.level)}
+  S.frame++;
+  if(S.frame%2===0){S.parts=S.parts.filter(p=>!p.dead||p.land===S.frame-1);S.sps.forEach(P=>{P.list=P.list.filter(p=>!p.dead||p.land>=S.frame-1)})}
+  if(S.parts.length>1800)S.parts.splice(0,S.parts.length-1800);
+
+  /* sound */
+  S.hitRate=lerp(S.hitRate,S.hitAcc/dt,.12);S.hitAcc=0;
+  if(A.ctx&&A.on&&A.water){const t=A.ctx.currentTime,g=clamp(S.hitRate*.0016,0,.5),f=(C.snd||900)+(C.fill&&C.rng?S.level*C.rng:0)+(hits?400:0);
+    A.water.g.gain.setTargetAtTime(g,t,.06);A.water.f.frequency.setTargetAtTime(f,t,.1);A.water2.g.gain.setTargetAtTime(g*.35,t,.06);A.water2.f.frequency.setTargetAtTime(f*2.6,t,.1);
+    A.hiss.g.gain.setTargetAtTime(clamp(air*.16+spray*.08+(S.steam.length>8?.03:0),0,.2),t,.05);
+    S.sq*=Math.exp(-dt*9);A.sq.g.gain.setTargetAtTime(S.sq*.05,t,.03);A.sq.o.frequency.setTargetAtTime(300+S.sq*260+Math.random()*60,t,.02)}
+  if(W3.B.screen&&S.frame%6===0){const i=0;let a='KARIBU',b='Tap card';if(S.t0[i]){const e=(now-S.t0[i])/1000;a=Math.min(20,e/cur.parts[0].dur*20).toFixed(1)+' L';b='Dispensing'}else if(S.done){a='ASANTE';b='20.0 L'}
+    if(a!==S.scr){S.scr=a;W3.B.screen(a,b)}}
+  if(S.frame%30===0){$('#litres').textContent=litres.toFixed(1)+' L';store.set('ta-litres',litres)}
+}
+function land(p,sy){
+  const C=W3.C;
+  if(C.fill&&!S.emptying)S.level+=(p.vol||0)*C.fill;
+  S.hitAcc+=p.t==='drop'?p.r*200:p.r*420;
+  if(p.t==='drop'&&(p.drip||p.run)){const now=performance.now();if(now-S.lastPlink>70){S.lastPlink=now;C.fill&&S.level>.03?play('plink',700+Math.random()*900):play('tick')}}
+  if(!p.sp&&Math.random()<(p.t==='drop'?.3:.35))splash(p.x,sy,p.z,1,p.tC);
+  if(C.fill&&S.level>.03&&Math.random()<.1){const r=W3.rings.find(r=>r.t>=1);if(r){r.t=0;r.m.position.set(p.x,sy+.001,p.z);r.m.visible=true}}
+}
+function handFeedback(dt,hits,t,airHits,now){
+  const H=S.hand;H.win=lerp(H.win,hits/dt,.1);if(hits)H.tsum=lerp(H.tsum||t,t,.2);
+  if(hits>0&&H.win>4)markTried();
+  let key='',msg='';
+  if(airHits>2){key='air';msg='Air at about 690 km/h scrapes the water off your skin. Dry in seconds.'}
+  else if(H.win>12){const T=H.tsum,m=cur.handMsg||{};
+    if(T>=90){key='boil';msg=`${Math.round(T)} °C. That is boiling water: hands away, cup under.`}
+    else if(T>=52){key='hot';msg=m.hot||`About ${Math.round(T)} °C. Too hot to hold.`}
+    else if(T<=16){key='cold';msg=m.cold||`About ${Math.round(T)} °C. Cold and clean.`}
+    else{key='warm';msg=m.warm||`About ${Math.round(T)} °C. Pleasant.`}}
+  if(key&&key!==H.key&&now-H.lastMsg>1600){H.key=key;H.lastMsg=now;say(msg)}
+  if(!key&&now-H.lastMsg>3000)H.key='';
+}
+
+/* ---------- drawing the water ---------- */
+function waterCol(C,out){const t=clamp((C-12)/60);return out.setRGB(lerp(.42,.95,t),lerp(.7,.86,t),lerp(.95,.8,t))}
+function drawWater(){
+  let n=0,ns=0,nd=0,na=0;const seg=W3.seg,sh=W3.sheet,dr=W3.drop,ai=W3.air;
+  const put=(mesh,i,ax,ay,az,bx_,by,bz,r,w)=>{_d.set(bx_-ax,by-ay,bz-az);const L=_d.length();if(L<1e-5)return false;_d.multiplyScalar(1/L);_q.setFromUnitVectors(_up,_d);
+    _v.set((ax+bx_)/2,(ay+by)/2,(az+bz)/2);_s.set(w||r,L,w?.0025:r);_m.compose(_v,_q,_s);mesh.setMatrixAt(i,_m);return true};
+  S.sps.forEach((P,k)=>{const L=P.list,sheet=(X.spouts[k].type==='sheet');
+    for(let i=1;i<L.length;i++){const a=L[i-1],b=L[i];if(b.seq!==a.seq+1)continue;
+      const sp=Math.hypot(a.vx,a.vy,a.vz),tp=clamp(Math.sqrt(a.v0/Math.max(sp,.01)),.55,1),r=Math.max(.0016,Math.min(a.r,b.r)*tp);
+      if(sheet){if(ns<500&&put(sh,ns,a.x,a.y,a.z,b.x,b.y,b.z,0,a.w*(.6+.4*tp))){sh.setColorAt(ns,waterCol(a.tC,_c));ns++}}
+      else if(n<1600&&put(seg,n,a.x,a.y,a.z,b.x,b.y,b.z,r)){seg.setColorAt(n,waterCol(a.tC,_c));n++}}
+    /* join the newest drop to the mouth of the spout */
+    const last=L[L.length-1];if(last&&P.f>.1&&!last.dead&&P.head&&last.seq===P.seq){const r=last.r;
+      if(sheet){if(ns<500&&put(sh,ns,P.head[0],P.head[1],P.head[2],last.x,last.y,last.z,0,last.w)){sh.setColorAt(ns,waterCol(last.tC,_c));ns++}}
+      else if(n<1600&&put(seg,n,P.head[0],P.head[1],P.head[2],last.x,last.y,last.z,r)){seg.setColorAt(n,waterCol(last.tC,_c));n++}}
+  });
+  for(const p of S.parts){if(p.dead)continue;
+    if(p.t==='drop'&&nd<1500){_v.set(p.x,p.y,p.z);_s.set(p.r,p.r*1.2,p.r);_q.identity();_m.compose(_v,_q,_s);dr.setMatrixAt(nd,_m);dr.setColorAt(nd,waterCol(p.tC||14,_c));nd++}
+    else if(p.t==='air'&&na<400&&put(ai,na,p.x,p.y+.035,p.z,p.x,p.y,p.z,.0011))na++}
+  seg.count=n;sh.count=ns;dr.count=nd;ai.count=na;
+  [seg,sh,dr,ai].forEach(m=>{m.instanceMatrix.needsUpdate=true;if(m.instanceColor)m.instanceColor.needsUpdate=true});
+  /* steam */
+  const pos=W3.steam.geometry.attributes.position;let k=0;(S.steam||[]).forEach(s=>{if(k<200){pos.setXYZ(k,s.x,s.y,s.z);k++}});W3.steam.geometry.setDrawRange(0,k);pos.needsUpdate=true;
+  /* pool */
+  const C=W3.C,pl=W3.pool;
+  if(pl){const vis=S.level>.004;pl.visible=vis;if(vis){const y=surfY();
+    if(C.shape==='round'){const r=rAt(y)*.99;pl.position.set(C.x,y,C.z);pl.scale.set(r,1,r)}
+    else if(C.shape==='rect'){pl.position.set((C.x0+C.x1)/2,y,(C.z0+C.z1)/2);pl.scale.set(C.x1-C.x0,1,C.z1-C.z0)}
+    else if(C.shape==='vol'){pl.position.set(C.x,C.yb,C.z);pl.scale.set(C.r*.97,Math.max(.001,y-C.yb),C.r*.97)}
+    else if(C.shape==='box'){pl.position.set(C.x,C.yb,C.z);pl.scale.set(C.w,Math.max(.001,y-C.yb),C.d)}}}
+  W3.rings.forEach(r=>{if(r.t<1){r.t+=1/60*1.6;const s=.004+r.t*.04;r.m.scale.set(s,1,s);r.m.material.opacity=.5*(1-r.t);if(r.t>=1)r.m.visible=false}});
+}
+
+/* ---------- HUD ---------- */
+function hud(force){
+  const n=performance.now();if(!force&&n-hudT<120)return;hudT=n;
+  const t=S.tC,pos=t==null?0:clamp((t-8)/92)*100,main=cur.parts.findIndex(c=>['drag','circle','joy','pushturn','hold','pump','press'].includes(c.kind));
+  const C=W3.C,lev=C.fill&&C.full?`<div><dt>Vessel</dt><dd>${Math.round(S.level*100)}% full</dd></div>`:'';
+  $('#gauges').innerHTML=`<div><dt>Flow</dt><dd>${(S.flowL||0).toFixed(1)} L/min</dd></div>
+    <div><dt>Temp</dt><dd><span class="tbar"><i style="left:${pos}%;opacity:${t==null?0:1}"></i></span> ${t==null?'–':Math.round(t)} °C</dd></div>
+    ${main>=0&&cur.parts[main].kind!=='press'?`<div><dt>Valve</dt><dd>${Math.round(S.p[main]*100)}% open</dd></div>`:''}${lev}
+    <div><dt>Water run</dt><dd>${litres.toFixed(1)} L</dd></div>`;
+}
+function renderActs(){
+  const host=$('#acts');host.innerHTML='';
+  cur.parts.forEach((c,i)=>{
+    if(c.kind==='always'||(c.kind==='hover'&&W3.B.zones&&cur.id==='airblade'&&i===1))return;
+    const b=document.createElement('button');b.className='btn';b.type='button';
+    const holdish=c.kind==='hold'||c.kind==='block'||c.kind==='pushturn';
+    if(c.kind==='steps'){b.textContent=S.steps>=c.steps.length?'Start again':`Step ${S.steps%c.steps.length+1} of ${c.steps.length}`;b.onclick=()=>stepNext(i)}
+    else if(c.kind==='press'){b.textContent=c.label;b.onclick=()=>{ac();press(i)}}
+    else if(c.kind==='pump'){b.textContent='Pump once';b.onclick=()=>{ac();stroke(i)}}
+    else if(c.kind==='prime'){b.textContent=c.label;b.onclick=()=>{ac();prime(i)}}
+    else if(c.kind==='hover'){b.textContent=c.label;b.setAttribute('aria-pressed',S.forced[i]);b.onclick=()=>{ac();S.forced[i]=!S.forced[i];b.setAttribute('aria-pressed',S.forced[i])}}
+    else if(holdish){b.textContent=c.label+' (hold)';
+      const on=e=>{e.preventDefault();ac();if(c.kind==='block')S.active[i]=true;else if(c.kind==='pushturn'){S.pv[i]=1;tweenP(i,1,500)}else holdOn(i);b.setAttribute('aria-pressed','true')};
+      const off=()=>{if(c.kind==='block')S.active[i]=false;else if(c.kind==='pushturn'){S.pv[i]=0;tweenP(i,0,250)}else holdOff(i);b.setAttribute('aria-pressed','false')};
+      b.addEventListener('pointerdown',on);b.addEventListener('pointerup',off);b.addEventListener('pointerleave',off);
+      b.addEventListener('keydown',e=>{if((e.key===' '||e.key==='Enter')&&!e.repeat)on(e)});b.addEventListener('keyup',e=>{if(e.key===' '||e.key==='Enter')off()})}
+    else{const open=S.p[i]>.1;b.textContent=(open?'Close ':'Open ')+c.label.toLowerCase();b.setAttribute('aria-pressed',open);
+      b.onclick=()=>{ac();const to=S.p[i]>.1?0:.8;if(c.kind==='joy')S.T[i]=.5;tweenP(i,to,600,renderActs)}}
+    host.appendChild(b);
+  });
+}
+
+/* ---------- pointer: the hand ---------- */
+const glove=sh=>`<svg viewBox="0 0 52 52"><g fill="#1d2320" stroke="#1d2320" stroke-width="4.5" stroke-linejoin="round">${sh}</g><g fill="#fbfaf5">${sh}</g><path d="M17 43 h20" stroke="#c9c6bb" stroke-width="1.2"/></svg>`;
+const HANDS={
+  open:{hx:.5,hy:.58,px:.5,py:.58,svg:glove('<rect x="14" y="7" width="6.4" height="24" rx="3.2"/><rect x="20.6" y="3" width="6.4" height="27" rx="3.2"/><rect x="27.2" y="4" width="6.4" height="26" rx="3.2"/><rect x="33.6" y="9" width="6" height="21" rx="3"/><rect x="3" y="24" width="17" height="7" rx="3.5" transform="rotate(-40 11.5 27.5)"/><rect x="14" y="18" width="25.6" height="24" rx="9"/><rect x="15.5" y="40" width="22.5" height="10" rx="2.5"/>')},
+  point:{hx:.43,hy:.04,px:.5,py:.6,svg:glove('<rect x="19" y="1" width="7" height="30" rx="3.5"/><rect x="25.6" y="17" width="6.6" height="13" rx="3.3"/><rect x="31.6" y="19" width="6.2" height="12" rx="3.1"/><rect x="3" y="24" width="17" height="7" rx="3.5" transform="rotate(-40 11.5 27.5)"/><rect x="14" y="18" width="25.6" height="24" rx="9"/><rect x="15.5" y="40" width="22.5" height="10" rx="2.5"/>')},
+  fist:{hx:.48,hy:.45,px:.48,py:.55,svg:glove('<circle cx="17" cy="19" r="5"/><circle cx="23.5" cy="17.5" r="5"/><circle cx="30" cy="18" r="5"/><circle cx="36" cy="20" r="4.5"/><rect x="12" y="18" width="29" height="24" rx="10"/><rect x="9" y="27" width="18" height="7" rx="3.5"/><rect x="15.5" y="40" width="22.5" height="10" rx="2.5"/>')}
+};
+function setPose(p,press){if(p!==pose){pose=p;handEl.innerHTML=HANDS[p].svg}handEl.classList.toggle('press',!!press)}
+function drawHand(){if(!pose)setPose('open');const h=HANDS[pose],sz=handEl.offsetWidth||64;handEl.style.transform=`translate(${S.hx-h.hx*sz}px,${S.hy-h.hy*sz}px)`}
+function pick(cx,cy){
+  const r=cv.getBoundingClientRect();const nd=new THREE.Vector2((cx-r.left)/r.width*2-1,-(cy-r.top)/r.height*2+1);ray.setFromCamera(nd,camera);
+  const hits=ray.intersectObjects(W3.pick,false);return hits.length?hits[0].object.userData.ci:null;
+}
+function setHot(i){if(S.hot===i)return;const prev=W3.B.parts[S.hot];if(prev&&prev.mats)prev.mats.forEach(m=>m.emissive.setHex(0));S.hot=i;const p=W3.B.parts[i];if(p&&p.mats)p.mats.forEach(m=>m.emissive.setHex(0x1c2a38))}
+function screenOf(obj){const v=V3();obj.getWorldPosition(v);v.project(camera);const r=cv.getBoundingClientRect();return{x:r.left+(v.x+1)/2*r.width,y:r.top+(1-v.y)/2*r.height}}
+room.addEventListener('pointerdown',e=>{
+  if(!R||!S)return;ac();const r=room.getBoundingClientRect();S.hx=e.clientX-r.left;S.hy=e.clientY-r.top;S.hin=true;handEl.classList.add('show');
+  const i=pick(e.clientX,e.clientY);if(i==null)return;
+  const c=cur.parts[i];if(!c||c.kind==='always'||c.kind==='hover'||c.kind==='steps')return;
+  e.preventDefault();try{room.setPointerCapture(e.pointerId)}catch(_){}
+  setHot(-1);setPose(c.kind==='press'||c.kind==='hold'||c.kind==='block'?'point':'fist',true);
+  const P=ppm(),g=S.grip={i,x0:e.clientX,y0:e.clientY,p0:S.p[i],T0:S.T[i],P};
+  if(c.kind==='circle'){const cc=CIRCLE[cur.id],pv=screenOf(W3.B.parts[i].pivot);g.c=pv;g.a=Math.atan2(e.clientY-pv.y,e.clientX-pv.x);g.acc=0;g.cw=cc.cw;g.range=cc.range}
+  else if(c.kind==='pushturn'){later(()=>{if(S.grip&&S.grip.i===i){S.pv[i]=1;applyPart(i);play('click');S.grip.x0=S.grip.x??S.grip.x0}},200)}
+  else if(c.kind==='hold')holdOn(i);
+  else if(c.kind==='block'){S.active[i]=true;say('Water jumps out of the hole on top. Lean in and drink from the arc.');markTried()}
+  else if(c.kind==='press')press(i);
+});
+room.addEventListener('pointermove',e=>{
+  if(!R||!S)return;const r=room.getBoundingClientRect();S.hx=e.clientX-r.left;S.hy=e.clientY-r.top;S.hin=true;handEl.classList.add('show');
+  S.lx=clamp((e.clientX-r.left)/r.width*2-1,-1,1);S.ly=clamp((e.clientY-r.top)/r.height*2-1,-1,1);
+  const g=S.grip;
+  if(!g){const i=pick(e.clientX,e.clientY),c=i!=null&&cur.parts[i];const ok=c&&!['always','hover','steps'].includes(c.kind);setHot(ok?i:-1);setPose(ok?'point':'open');return}
+  g.x=e.clientX;const c=cur.parts[g.i],dx=e.clientX-g.x0,dy=e.clientY-g.y0,i=g.i;
+  if(c.kind==='drag')setP(i,clamp(g.p0+dx/(g.P*(c.dist3||.09))));
+  else if(c.kind==='pump')setP(i,clamp(g.p0+dy/(g.P*(c.dist3||.18))));
+  else if(c.kind==='joy')setP(i,clamp(g.p0-dy/(g.P*.07)),clamp(g.T0-dx/(g.P*.1)));
+  else if(c.kind==='circle'){const a=Math.atan2(e.clientY-g.c.y,e.clientX-g.c.x);let d=a-g.a;if(d>Math.PI)d-=2*Math.PI;if(d<-Math.PI)d+=2*Math.PI;g.a=a;g.acc+=d*g.cw;setP(i,clamp(g.p0+g.acc/g.range))}
+  else if(c.kind==='pushturn'){if(S.pv[i])setP(i,clamp(g.p0+(e.clientX-g.x0)/(g.P*.06)));else if(Math.abs(dx)>8)say('Push the ring down first: hold still for a moment, then turn.')}
+  else if(c.kind==='block'){S.active[i]=pick(e.clientX,e.clientY)===i}
+});
+function endGrip(){
+  const g=S&&S.grip;if(!g)return;S.grip=null;handEl.classList.remove('press');setPose('open');
+  const c=cur.parts[g.i],i=g.i;
+  if(c.kind==='hold')holdOff(i);
+  else if(c.kind==='block')S.active[i]=false;
+  else if(c.kind==='pushturn'){S.pv[i]=0;tweenP(i,0,220);say('It springs shut as soon as you let go.')}
+  else if(c.kind==='pump'&&S.p[i]>0)tweenP(i,0,420);
+  renderActs();
+}
+room.addEventListener('pointerup',endGrip);room.addEventListener('pointercancel',endGrip);
+room.addEventListener('pointerleave',()=>{if(!S)return;if(!S.grip){S.hin=false;handEl.classList.remove('show')}S.lx=0;S.ly=0});
+room.addEventListener('wheel',e=>{if(!S)return;e.preventDefault();S.zoom=clamp(S.zoom*(1+e.deltaY*.0012),.45,2.4)},{passive:false});
+room.addEventListener('contextmenu',e=>e.preventDefault());
+
+/* ---------- loop ---------- */
+function quiet(){if(A.ctx&&A.water){const t=A.ctx.currentTime;[A.water,A.water2,A.hiss].forEach(n=>n.g.gain.setTargetAtTime(0,t,.05));A.sq.g.gain.setTargetAtTime(0,t,.05)}}
+function loop(n){
+  const dt=Math.min(.033,(n-lastT)/1000);lastT=n;
+  if(dt>0)sim(dt,n);placeCamera(dt);drawWater();hud();drawHand();
+  R.render(scene,camera);
+  raf=requestAnimationFrame(loop);
+}
+function renderMute(){
+  const b=$('#mute');b.setAttribute('aria-pressed',String(!A.on));b.setAttribute('aria-label',A.on?'Mute sound':'Turn sound on');b.title=A.on?'Mute sound':'Turn sound on';
+  b.innerHTML=A.on?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>'
+                  :'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9l5 6M22 9l-5 6"/></svg>';
+}
+
+/* ---------- wire up ---------- */
+$('#grid').addEventListener('click',e=>{const c=e.target.closest('.card');if(c)openImm(c.dataset.id,c)});
+$('#q').addEventListener('input',e=>{F.q=e.target.value;renderGrid()});
+$('#back').onclick=()=>closeImm();
+window.addEventListener('popstate',()=>{if(!imm.hidden)closeImm(true)});
+$('#prev').onclick=()=>step(-1);$('#next').onclick=()=>step(1);
+$('#zin').onclick=()=>{S.zoom=clamp(S.zoom/1.25,.45,2.4)};$('#zout').onclick=()=>{S.zoom=clamp(S.zoom*1.25,.45,2.4)};
+$('#mute').onclick=()=>{A.on=!A.on;store.set('ta-sound',A.on);if(A.ctx)A.on?A.ctx.resume():A.ctx.suspend();if(A.on)ac();renderMute()};
+$('#aboutBtn').onclick=()=>{const a=$('#about');a.hidden=!a.hidden;$('#aboutBtn').setAttribute('aria-expanded',String(!a.hidden))};
+const fsb=$('#fs');if(!document.fullscreenEnabled||!imm.requestFullscreen)fsb.hidden=true;
+fsb.onclick=()=>{try{(document.fullscreenElement?document.exitFullscreen():imm.requestFullscreen()).then(()=>setTimeout(resize,100)).catch(()=>{fsb.hidden=true})}catch(e){fsb.hidden=true}};
+document.addEventListener('fullscreenchange',()=>setTimeout(resize,60));
+$('#surprise').onclick=e=>{const pool=ITEMS.filter(x=>!tried.has(x.id));const L=pool.length?pool:ITEMS;openImm(L[Math.floor(Math.random()*L.length)].id,e.currentTarget)};
+$('#reset').onclick=()=>{tried.clear();litres=0;store.set('ta-tried',[]);store.set('ta-litres',0);renderStats();renderGrid()};
+document.addEventListener('keydown',e=>{
+  if(imm.hidden||e.target.matches('input'))return;
+  if(e.key==='Escape'){if(!$('#about').hidden){$('#about').hidden=true;$('#aboutBtn').setAttribute('aria-expanded','false')}else closeImm()}
+  else if(e.key==='ArrowRight')step(1);else if(e.key==='ArrowLeft')step(-1);
+  else if(e.key==='+'||e.key==='=')S.zoom=clamp(S.zoom/1.25,.45,2.4);else if(e.key==='-')S.zoom=clamp(S.zoom*1.25,.45,2.4);
+});
+$('#eyebrow').textContent=`A working catalogue · ${ITEMS.length} taps`;
+renderChips();renderMute();renderStats();renderGrid();
+{const h=location.hash.slice(1);if(ITEMS.some(x=>x.id===h))openImm(h)}
+</script>
+
+</body>
+</html>

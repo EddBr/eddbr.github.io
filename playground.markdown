@@ -62,6 +62,17 @@ description: Interactive experiments.
         <a href="{{ '/playground/handle-atlas/' | relative_url }}">Try it →</a>
       </p>
     </li>
+    <li>
+      <h2><a href="{{ '/playground/tap-atlas/' | relative_url }}">🚰 The Tap Atlas</a></h2>
+      <p>
+        28 taps, pumps and fountains, modelled in 3D: a bronze stopcock nearly two thousand years old,
+        a hand pump, a tippy tap, a boiling-water tap and a water ATM. Twist, lift, pump or wave to
+        work each one, then hold your hand under the running water to feel how hot it is.
+      </p>
+      <p class="playground-links">
+        <a href="{{ '/playground/tap-atlas/' | relative_url }}">Try it →</a>
+      </p>
+    </li>
   </ul>
 </div>
 
