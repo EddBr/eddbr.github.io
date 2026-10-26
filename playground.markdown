@@ -73,6 +73,17 @@ description: Interactive experiments.
         <a href="{{ '/playground/tap-atlas/' | relative_url }}">Try it →</a>
       </p>
     </li>
+    <li>
+      <h2><a href="{{ '/playground/light-switch-atlas/' | relative_url }}">💡 The Light Switch Atlas</a></h2>
+      <p>
+        24 light switches, modelled in 3D: a brass rotary switch on a wooden block, a pull cord, a
+        knife switch, a stairwell timer, a hotel key card slot and a clap switch. Stand in the dark,
+        work each one, and watch its lamp come on the way that kind of lamp really does.
+      </p>
+      <p class="playground-links">
+        <a href="{{ '/playground/light-switch-atlas/' | relative_url }}">Try it →</a>
+      </p>
+    </li>
   </ul>
 </div>
 

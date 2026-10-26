@@ -1,0 +1,1448 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Light Switch Atlas | Eddie's Blog</title>
+<meta name="description" content="24 light switches, modelled in 3D. Flick, rock, press, turn, pull, touch or clap in the dark, then watch each kind of lamp come up the way it really does.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="The Light Switch Atlas">
+<meta property="og:description" content="24 light switches, modelled in 3D. Flick, rock, press, turn, pull, touch or clap in the dark, then watch each kind of lamp come up the way it really does.">
+<meta property="og:url" content="https://eddbr.github.io/playground/light-switch-atlas/">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23059669'/%3E%3Crect x='5' y='2.5' width='6' height='11' rx='1' fill='none' stroke='%23fff' stroke-width='1.3'/%3E%3Cpath d='M8 8 V4.6' stroke='%23fff' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+/* Layout: an electrician's catalogue of switch tiles; choosing one puts you at the wall, in the dark, full screen, in 3D, with a hand for a pointer */
+:root{
+  /* matches eddbr.github.io and its playground pages: light only, emerald accent, system font, white cards */
+  --bg:#fdfdfd; --panel:#ffffff; --ink:#111111; --muted:#6b7280; --line:#e5e7eb;
+  --accent:#059669; --on-accent:#ffffff;
+  --hud:rgba(255,255,255,.94); --hud-line:#e5e7eb;
+  --f-display:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji";
+  --f-body:var(--f-display);
+  --f-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+
+*{box-sizing:border-box}
+html{color-scheme:light}
+body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 56px}
+.wrap{max-width:1280px;margin:0 auto}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* header */
+.top{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px 40px;align-items:end;padding-bottom:22px;border-bottom:1px solid var(--ink);margin-bottom:24px;position:relative}
+.eyebrow{font-family:var(--f-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+h1{font-family:var(--f-display);font-weight:800;font-size:clamp(3rem,8.4vw,6.6rem);line-height:.9;letter-spacing:-.02em;margin:0;text-wrap:balance}
+h1 em{font-style:italic;font-weight:900;color:var(--accent)}
+.lede{max-width:62ch;margin:14px 0 0;color:var(--muted);font-size:17px}
+.stats{display:grid;gap:10px;min-width:250px}
+.row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.row b{font-family:var(--f-display);font-size:32px;font-weight:800;color:var(--ink);letter-spacing:0;font-variant-numeric:tabular-nums;text-transform:none}
+.meter{height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.meter i{display:block;height:100%;width:0;background:var(--accent);transition:width .5s}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.btn{appearance:none;border:1.5px solid var(--ink);background:transparent;border-radius:999px;padding:7px 15px;cursor:pointer;font-family:var(--f-mono);font-size:12px;letter-spacing:.02em;white-space:nowrap}
+.btn:hover{background:var(--ink);color:var(--bg)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn.primary:hover{filter:brightness(1.08);background:var(--accent);color:var(--on-accent)}
+.btn[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+
+/* filters */
+.filters{display:grid;gap:10px;margin-bottom:18px}
+.search input{width:100%;max-width:520px;font:inherit;font-size:15px;padding:9px 16px;border-radius:999px;border:1.5px solid var(--line);background:var(--panel);color:var(--ink)}
+.search input:focus{border-color:var(--accent);outline:none}
+.chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.chips .lbl{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);width:84px;flex:none}
+.chip{appearance:none;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:4px 11px;font-size:13px;cursor:pointer;white-space:nowrap}
+.chip small{font-family:var(--f-mono);color:var(--muted);margin-left:5px;font-size:10px}
+.chip:hover{border-color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.chip[aria-pressed="true"] small{color:inherit;opacity:.7}
+.count{font-family:var(--f-mono);font-size:11px;color:var(--muted);margin:0 0 10px}
+
+/* grid */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(176px,1fr));gap:18px 16px}
+.card{appearance:none;text-align:left;border:0;padding:0;background:none;cursor:pointer;display:grid;gap:8px;align-content:start}
+.thumb{position:relative;aspect-ratio:1;border-radius:4px;overflow:hidden;display:grid;place-items:center;box-shadow:inset 0 0 0 1px rgba(0,0,0,.14);transition:transform .2s}
+.thumb::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 50% 45%,transparent 50%,rgba(0,0,0,.22));pointer-events:none}
+.thumb svg{position:relative;z-index:1;width:82%;height:82%;overflow:hidden}
+.card:hover .thumb{transform:translateY(-3px)}
+.stamp{position:absolute;z-index:2;left:6px;top:6px;font-family:var(--f-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:rgba(20,60,110,.86);padding:2px 6px;border-radius:2px}
+.cap{display:grid;gap:1px;padding:0 2px}
+.cap .nm{font-weight:600;font-size:15px;line-height:1.25}
+.cap .mt{font-family:var(--f-mono);font-size:10.5px;color:var(--muted)}
+.empty{padding:40px 20px;text-align:center;border:1.5px dashed var(--line);border-radius:8px;color:var(--muted)}
+
+/* thumbnail walls */
+.scene{background:var(--wl)}
+.w-paint{--wl:radial-gradient(circle at 30% 25%,#f1ebdf,#ddd4c4)}
+.w-magnolia{--wl:radial-gradient(circle at 30% 25%,#f6eedb,#e6d9bd)}
+.w-damask{--wl:radial-gradient(ellipse 9px 13px at 50% 50%,#56755c 60%,transparent 64%) 0 0/28px 34px,radial-gradient(ellipse 4px 6px at 50% 50%,#56755c 60%,transparent 64%) 14px 17px/28px 34px,#2f4a3a}
+.w-panel{--wl:repeating-linear-gradient(90deg,#5c3a20 0 2px,#7a5030 2px 30px,#6b4527 30px 34px)}
+.w-plaster{--wl:linear-gradient(#5c3d22 0 6%,#e7dcc4 6% 100%)}
+.w-bath{--wl:repeating-linear-gradient(0deg,#c5cec9 0 1.5px,transparent 1.5px 26px),repeating-linear-gradient(90deg,#c5cec9 0 1.5px,transparent 1.5px 26px),#f1f4f2}
+.w-block{--wl:repeating-linear-gradient(0deg,#7d7c76 0 2px,transparent 2px 24px),repeating-linear-gradient(90deg,#7d7c76 0 2px,transparent 2px 48px),#a3a29c}
+.w-living{--wl:radial-gradient(circle at 30% 25%,#b7c6ae,#9aab91)}
+.w-kitchen{--wl:repeating-linear-gradient(0deg,#cfd2cc 0 1.5px,transparent 1.5px 14px),repeating-linear-gradient(90deg,#cfd2cc 0 1.5px,transparent 1.5px 30px),#f4f3ee}
+.w-washi{--wl:linear-gradient(90deg,#8a6a44 0 9%,#e3d6bb 9% 91%,#8a6a44 91%)}
+.w-india{--wl:radial-gradient(circle at 30% 25%,#cbe8e1,#a9d2c8)}
+.w-stair{--wl:linear-gradient(#e6dcc8 0 62%,#8a5a3a 62% 64%,#cdbf9f 64%)}
+.w-hotel{--wl:repeating-linear-gradient(90deg,#cdbfa8 0 16px,#bfae94 16px 32px)}
+.w-office{--wl:linear-gradient(#e6e9e9,#d3d7d7)}
+.w-lab{--wl:repeating-linear-gradient(0deg,#cbbfae 0 2px,transparent 2px 13px),repeating-linear-gradient(90deg,#cbbfae 0 2px,transparent 2px 30px),#8a3f2c}
+.w-factory{--wl:linear-gradient(#c9d3c3 0 70%,#4f6b55 70%)}
+.w-dusk{--wl:linear-gradient(#26345a,#b97d62)}
+.w-modern{--wl:radial-gradient(circle at 30% 25%,#4a4f55,#2e3236)}
+.w-victor{--wl:radial-gradient(ellipse 9px 13px at 50% 50%,#7a3036 60%,transparent 64%) 0 0/28px 34px,radial-gradient(ellipse 4px 6px at 50% 50%,#7a3036 60%,transparent 64%) 14px 17px/28px 34px,#5a1f24}
+
+/* ---------- immersive wall ---------- */
+.imm{position:fixed;inset:0;z-index:50;background:#0e1012;overflow:hidden}
+.room{position:absolute;inset:0;cursor:none;user-select:none;-webkit-user-select:none;touch-action:none}
+.room *{cursor:none}
+#gl{position:absolute;inset:0;width:100%;height:100%;display:block}
+.glfail{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);max-width:420px;padding:20px;border-radius:10px;background:var(--hud);color:var(--ink);text-align:center}
+.hand{position:absolute;left:0;top:0;width:64px;height:64px;pointer-events:none;z-index:40;opacity:0;transition:opacity .15s}
+.hand.show{opacity:1}
+.hand svg{display:block;width:100%;height:100%;transition:transform .12s;filter:drop-shadow(0 3px 3px rgba(0,0,0,.4))}
+.hand.press svg{transform:scale(.86)}
+
+.hud-top{position:absolute;left:0;right:0;top:0;z-index:30;display:flex;align-items:center;gap:10px;
+  padding:calc(12px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 12px max(16px,env(safe-area-inset-left,0px));pointer-events:none}
+.hud-top > *{pointer-events:auto}
+.pill{background:var(--hud);color:var(--ink);border:1px solid var(--hud-line);border-radius:999px;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.back{appearance:none;cursor:pointer;padding:8px 14px;font-family:var(--f-mono);font-size:12px;display:flex;gap:6px;align-items:center}
+.titlebox{padding:5px 18px 6px;min-width:0;display:grid}
+.titlebox b{font-family:var(--f-display);font-weight:800;font-size:22px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.titlebox span{font-family:var(--f-mono);font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hud-top .sp{flex:1}
+.icons{display:flex;gap:4px;padding:4px}
+.iconbtn{appearance:none;border:0;background:transparent;border-radius:999px;width:36px;height:36px;display:grid;place-items:center;cursor:pointer;color:var(--ink)}
+.iconbtn:hover{background:var(--hud-line)}
+.iconbtn svg{width:18px;height:18px}
+
+.hud-bot{position:absolute;left:0;right:0;bottom:0;z-index:30;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 20px;align-items:center;
+  padding:14px max(16px,env(safe-area-inset-right,0px)) calc(14px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));
+  background:var(--hud);color:var(--ink);border-top:1px solid var(--hud-line);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.hint{margin:0;font-size:17px;line-height:1.3;font-weight:600;min-height:1.3em}
+.feel{margin:2px 0 0;font-size:13.5px;color:var(--muted);font-family:var(--f-mono);min-height:1.2em}
+.gauges{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px 22px;margin:0;font-family:var(--f-mono);font-size:12px;font-variant-numeric:tabular-nums}
+.gauges div{display:flex;gap:8px;align-items:center;white-space:nowrap}
+.gauges dt{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.gauges dd{margin:0}
+.tbar{width:90px;height:6px;border-radius:3px;background:linear-gradient(90deg,#ff7a1a,#ffc77a 28%,#fff3e0 52%,#e6eeff 72%,#b9cfff);box-shadow:inset 0 0 0 1px rgba(0,0,0,.1);position:relative;display:inline-block}
+.tbar i{position:absolute;top:-4px;width:3px;height:14px;border-radius:2px;background:var(--ink);left:0;transform:translateX(-50%)}
+.acts{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+
+.about{position:absolute;z-index:35;right:max(12px,env(safe-area-inset-right,0px));top:calc(70px + env(safe-area-inset-top,0px));bottom:150px;width:min(380px,calc(100% - 24px));
+  overflow:auto;padding:18px 20px;border-radius:10px;background:var(--hud);color:var(--ink);border:1px solid var(--hud-line);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);touch-action:pan-y;display:grid;gap:10px;align-content:start}
+.about h2{font-family:var(--f-display);font-weight:800;font-size:30px;line-height:1;margin:0;text-wrap:balance}
+.local{font-family:var(--f-mono);font-size:12px;color:var(--accent)}
+.where{font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+.note{margin:0;font-size:15.5px;line-height:1.55}
+dl.specs{margin:4px 0 0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 14px;border-top:1px solid var(--hud-line);padding-top:10px;font-size:14px}
+dl.specs dt{font-family:var(--f-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding-top:3px}
+dl.specs dd{margin:0}
+
+[hidden]{display:none!important}
+@media (max-width:760px){
+  .top{grid-template-columns:minmax(0,1fr)}
+  .hud-bot{grid-template-columns:minmax(0,1fr)}
+  .acts{justify-content:flex-start}
+  .hint{font-size:15px}
+  .gauges{gap:4px 14px}
+  .titlebox b{font-size:18px}
+  .back span{display:none}
+  .about{bottom:210px}
+  .icons .opt{display:none}
+}
+@media (max-width:480px){
+  .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 10px}
+  .chips .lbl{width:100%}
+}
+@media (prefers-reduced-motion:reduce){.thumb,.meter i{transition-duration:.01s!important}}
+
+/* ---------- site theme (minima header, emerald accent, white cards) ---------- */
+body{padding:0;-webkit-font-smoothing:antialiased}
+.site-header{border-top:5px solid #424242;border-bottom:1px solid #e8e8e8;min-height:56px;background:#fff}
+.site-header .wrapper{max-width:800px;margin:0 auto;padding:0 30px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap}
+.site-title{font-size:26px;font-weight:300;line-height:54px;letter-spacing:-1px;color:#424242;text-decoration:none}
+.site-nav a{color:#111;margin-left:20px;text-decoration:none}
+.site-nav a:hover{text-decoration:underline}
+@media (max-width:600px){.site-header .wrapper{padding:0 15px}.site-nav a{margin-left:14px}}
+.wrap{max-width:1080px;padding-block:32px 56px;padding-left:max(24px,env(safe-area-inset-left,0px));padding-right:max(24px,env(safe-area-inset-right,0px))}
+@media (max-width:600px){.wrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}}
+.top{grid-template-columns:minmax(0,1fr);justify-items:center;text-align:center;border-bottom:1px solid var(--line);gap:16px;padding-bottom:28px;margin-bottom:24px}
+.eyebrow{font-family:var(--f-body);font-size:.8rem;letter-spacing:0;text-transform:none;margin:0 0 8px}
+h1{font-family:var(--f-body);font-size:2.2rem;font-weight:600;line-height:1.2;color:#374151;letter-spacing:0}
+@media (max-width:600px){h1{font-size:1.8rem}}
+h1 em{font-style:normal;font-weight:600;color:var(--accent)}
+.lede{margin:10px auto 0;font-size:1.1rem;max-width:62ch;color:var(--muted)}
+.stats{min-width:0;width:min(340px,100%)}
+.stats .btns{justify-content:center}
+.row{text-transform:none;letter-spacing:0;font-family:var(--f-body);font-size:.9rem}
+.row b{font-family:var(--f-body);font-size:1.3rem;font-weight:600;color:#374151}
+.meter{background:#f3f4f6}
+.btn{border-radius:6px;border:1px solid #d1d5db;background:#fff;color:#111;font-family:var(--f-body);font-size:.88rem;padding:.45rem .9rem;letter-spacing:0}
+.btn:hover{background:#f9fafb;color:#111}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:500}
+.btn.primary:hover{background:#047857;border-color:#047857;filter:none;color:#fff}
+.btn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.search input{border-radius:6px;border:1px solid #d1d5db;background:#fff;max-width:420px}
+.chips .lbl,.count{letter-spacing:0;text-transform:none;font-family:var(--f-body);font-size:.85rem}
+.chip{border-radius:6px;background:#fff;border-color:#e5e7eb;font-family:var(--f-body)}
+.chip small{font-family:var(--f-body)}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.card{background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:8px 8px 10px;transition:border-color .2s,box-shadow .2s}
+.card:hover{border-color:#bbf7d0;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.card:hover .thumb{transform:none}
+.cap .nm{font-size:.95rem;color:#374151}
+.cap .mt{font-family:var(--f-body);font-size:.8rem}
+.stamp{background:var(--accent);font-family:var(--f-body);letter-spacing:.04em}
+.titlebox b{font-family:var(--f-body);font-size:18px;font-weight:600;color:#374151}
+.titlebox span,.back{font-family:var(--f-body)}
+.hint{color:#374151}
+.feel,.gauges,dl.specs dt,.where{font-family:var(--f-body)}
+.gauges dt,dl.specs dt{letter-spacing:.04em}
+.about h2{font-family:var(--f-body);font-size:1.6rem;font-weight:600;color:#374151}
+.local{font-family:var(--f-body)}
+.foot{font-size:.85rem;color:var(--muted);text-align:center;margin:28px 0 0}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
+  <linearGradient id="plast" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".7" stop-color="#f1efe9"/><stop offset="1" stop-color="#d9d6cd"/></linearGradient>
+  <linearGradient id="plastX" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".55" stop-color="#eeece6"/><stop offset="1" stop-color="#cfccc2"/></linearGradient>
+  <radialGradient id="plastR" cx=".38" cy=".32" r=".8"><stop offset="0" stop-color="#ffffff"/><stop offset=".6" stop-color="#ebe8e0"/><stop offset="1" stop-color="#b9b5a9"/></radialGradient>
+  <linearGradient id="ivory" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f8f1de"/><stop offset=".7" stop-color="#e9dfc6"/><stop offset="1" stop-color="#cfc3a6"/></linearGradient>
+  <linearGradient id="ivoryX" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#cfc3a6"/><stop offset=".45" stop-color="#fbf5e6"/><stop offset="1" stop-color="#c7bb9c"/></linearGradient>
+  <radialGradient id="ivoryR" cx=".38" cy=".32" r=".8"><stop offset="0" stop-color="#fffaf0"/><stop offset="1" stop-color="#b8ab8b"/></radialGradient>
+  <linearGradient id="brass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbe5a2"/><stop offset=".5" stop-color="#c8963b"/><stop offset="1" stop-color="#7a5416"/></linearGradient>
+  <linearGradient id="brassX" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#86601e"/><stop offset=".4" stop-color="#f6dc95"/><stop offset="1" stop-color="#86601e"/></linearGradient>
+  <radialGradient id="brassR" cx=".38" cy=".32" r=".8"><stop offset="0" stop-color="#fff1c4"/><stop offset=".4" stop-color="#d6a547"/><stop offset="1" stop-color="#6b4a12"/></radialGradient>
+  <linearGradient id="chrome" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fdfefe"/><stop offset=".45" stop-color="#c4cbcf"/><stop offset="1" stop-color="#6f797f"/></linearGradient>
+  <radialGradient id="chromeR" cx=".38" cy=".32" r=".8"><stop offset="0" stop-color="#ffffff"/><stop offset=".45" stop-color="#bcc4c8"/><stop offset="1" stop-color="#5f686e"/></radialGradient>
+  <linearGradient id="bake" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7a4a2a"/><stop offset=".5" stop-color="#4a2a17"/><stop offset="1" stop-color="#2a170c"/></linearGradient>
+  <radialGradient id="bakeR" cx=".38" cy=".32" r=".8"><stop offset="0" stop-color="#9a6a46"/><stop offset=".5" stop-color="#4a2a17"/><stop offset="1" stop-color="#1e1008"/></radialGradient>
+  <radialGradient id="porcR" cx=".38" cy=".32" r=".8"><stop offset="0" stop-color="#ffffff"/><stop offset=".6" stop-color="#ece9e1"/><stop offset="1" stop-color="#aaa597"/></radialGradient>
+  <radialGradient id="woodR" cx=".38" cy=".32" r=".8"><stop offset="0" stop-color="#c08a52"/><stop offset=".6" stop-color="#8a5a30"/><stop offset="1" stop-color="#4a2c13"/></radialGradient>
+  <linearGradient id="wood" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b98450"/><stop offset="1" stop-color="#7a4c24"/></linearGradient>
+  <linearGradient id="slate" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4a5257"/><stop offset="1" stop-color="#22272a"/></linearGradient>
+  <linearGradient id="copper" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#7a3f1e"/><stop offset=".45" stop-color="#f0a77a"/><stop offset="1" stop-color="#7a3f1e"/></linearGradient>
+  <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="rgba(255,255,255,.85)"/><stop offset=".5" stop-color="rgba(220,228,232,.45)"/><stop offset="1" stop-color="rgba(160,170,176,.6)"/></linearGradient>
+  <linearGradient id="opal" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#dcdcd6"/></linearGradient>
+  <linearGradient id="blackG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3a3e44"/><stop offset=".4" stop-color="#121417"/><stop offset="1" stop-color="#050607"/></linearGradient>
+  <linearGradient id="grey" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b4babd"/><stop offset="1" stop-color="#7d8487"/></linearGradient>
+  <linearGradient id="red" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e8573f"/><stop offset="1" stop-color="#9f2216"/></linearGradient>
+  <linearGradient id="fabric" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#cdbf9f"/><stop offset=".45" stop-color="#f3ead6"/><stop offset="1" stop-color="#c2b392"/></linearGradient>
+  <filter id="sh" x="-25%" y="-25%" width="150%" height="160%"><feDropShadow dx="0" dy="3" stdDeviation="2.5" flood-color="#000" flood-opacity=".35"/></filter>
+  <filter id="glow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="2.4"/></filter>
+</defs></svg>
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav"><a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a></nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow" id="eyebrow">A working catalogue of light switches</p>
+      <h1>The Light Switch <em>Atlas</em></h1>
+      <p class="lede">Twenty-four ways to turn on a light, from a brass rotary switch screwed to a wooden block to an office sensor that turns the lights off if you sit still too long. Pick one and you are standing at the wall in the dark, in 3D, close enough to touch it. Your pointer becomes a hand: flick, rock, press, turn, pull, touch or clap. Then watch the lamp come on the way that kind of lamp really does: a filament glows up warm, a fluorescent tube stutters, a sodium lamp creeps from red to orange. Scroll to lean in or step back. Turn your sound on.</p>
+    </div>
+    <div class="stats">
+      <div class="row"><span>Switches tried</span><b id="triedN">0 / 0</b></div>
+      <div class="meter" aria-hidden="true"><i id="triedBar"></i></div>
+      <div class="row"><span>Energy used</span><b id="energy">0.0 Wh</b></div>
+      <div class="btns">
+        <button class="btn primary" id="surprise" type="button">Surprise me</button>
+        <button class="btn" id="reset" type="button" hidden>Reset</button>
+      </div>
+    </div>
+  </header>
+
+  <section aria-label="Catalogue">
+    <div class="filters">
+      <div class="search"><input id="q" type="search" placeholder="Search by name, lamp or material" aria-label="Search switches"></div>
+      <div class="chips" id="kindChips"><span class="lbl">Action</span></div>
+      <div class="chips" id="eraChips"><span class="lbl">Age</span></div>
+    </div>
+    <p class="count" id="count"></p>
+    <div class="grid" id="grid"></div>
+  </section>
+  <p class="foot">Lamp warm-up times are shortened. Wattages and colour temperatures are approximate. Sound works best with headphones.</p>
+</main>
+
+<div class="imm" id="imm" hidden role="dialog" aria-modal="true" aria-labelledby="immTitle">
+  <div class="room" id="room">
+    <canvas id="gl" aria-label="The switch, on the wall, seen up close"></canvas>
+    <div class="glfail" id="glfail" hidden>This view needs WebGL, which this browser has turned off. Try another browser, or go back to the catalogue.</div>
+    <div class="hand" id="hand" aria-hidden="true"></div>
+  </div>
+  <header class="hud-top">
+    <button class="pill back" id="back" type="button" aria-label="Back to the catalogue"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 5l-7 7 7 7"/></svg><span>Catalogue</span></button>
+    <div class="pill titlebox"><b id="immTitle"></b><span id="immSub"></span></div>
+    <span class="sp"></span>
+    <div class="pill icons">
+      <button class="iconbtn" id="prev" type="button" aria-label="Previous switch" title="Previous switch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <button class="iconbtn" id="next" type="button" aria-label="Next switch" title="Next switch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5l7 7-7 7"/></svg></button>
+      <button class="iconbtn opt" id="zin" type="button" aria-label="Lean in" title="Lean in (or scroll)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5M11 8v6M8 11h6"/></svg></button>
+      <button class="iconbtn opt" id="zout" type="button" aria-label="Step back" title="Step back (or scroll)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5M8 11h6"/></svg></button>
+      <button class="iconbtn" id="mute" type="button"></button>
+      <button class="iconbtn opt" id="fs" type="button" aria-label="Full screen" title="Full screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+      <button class="iconbtn" id="aboutBtn" type="button" aria-label="About this switch" title="About this switch" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg></button>
+    </div>
+  </header>
+  <aside class="about" id="about" hidden></aside>
+  <div class="hud-bot">
+    <div><p class="hint" id="hint" aria-live="polite"></p><p class="feel" id="feel"></p></div>
+    <div class="acts" id="acts"></div>
+    <dl class="gauges" id="gauges"></dl>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+<script>
+/* ---------- drawing helpers ---------- */
+const P=(w,h,r,f,x=100,y=100)=>`<rect x="${x-w/2}" y="${y-h/2}" width="${w}" height="${h}" rx="${r}" fill="${f}"/>`;
+const scr=(x,y,g='chromeR')=>`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.4" fill="url(#${g})" stroke="rgba(0,0,0,.25)" stroke-width=".6"/><path d="M${(x-2.4).toFixed(1)} ${(y+.6).toFixed(1)} l4.8 -1.2" stroke="rgba(0,0,0,.45)" stroke-width="1"/>`;
+const ceilBand=(c,h=26)=>`<rect x="-12" y="-12" width="224" height="${h}" fill="${c}"/><rect x="-12" y="${h-12}" width="224" height="3" fill="rgba(0,0,0,.14)"/>`;
+
+const KINDS={flick:'Flick',rock:'Rock',press:'Press',turn:'Turn',pull:'Pull',touch:'Touch',free:'Hands-free'};
+const ERAS={early:'Before 1920',mid:'1920 to 1970',modern:'Since 1970'};
+
+/* ---------- the catalogue ----------
+   parts: the things your hand works. kinds:
+   flip (drag a lever; up: dragging up turns it on; snap:0 for no over-centre spring) · rock (press the top or bottom half)
+   btn (momentary press; mode set|timer) · turn (drag sideways, a click per quarter turn; mode toggle|pos|cycle) · dial (turn to dim, press to switch)
+   pull (drag down and let go; mode toggle|cycle|set) · pad (tap, slide up and down, slide sideways) · card · touch (each touch steps a level)
+   cover (hold your hand over a sensor) · motion (any movement) · clap (two claps)
+   wire(S): how the parts drive the lamps, 0..1 each. Without it, every lamp follows S.on[0] */
+const ITEMS=[
+{id:'toggle',name:'Toggle switch',local:'light switch · up for on',kind:'flick',era:'early',eraText:'Patented 1917, still everywhere',material:'Ivory plastic plate, steel toggle',lamp:'Incandescent, 60 W',wall:'paint',
+ note:'The toggle light switch was patented in 1917 by William J. Newton and Morris Goldberg, and a century later it is still the standard switch in North American homes. Push the lever and it resists, then snaps: inside, a spring flips the contacts past centre so they can never rest half open and spark. In North America, up is on.',
+ specs:[['Up','On, in North America'],['Inside','An over-centre spring: snap action'],['Plate','Single gang, 70 × 114 mm']],
+ hint:'Grab the lever and push it up.',feel:'Resistance, then a crisp snap. The spring decides when, not you.',
+ parts:[{label:'Switch',kind:'flip',up:1,dist:.035}],
+ svg:()=>`<g filter="url(#sh)">${P(76,124,6,'url(#ivory)')}</g>${scr(100,50,'ivoryR')}${scr(100,150,'ivoryR')}
+ <rect x="92" y="83" width="16" height="34" rx="3" fill="#b9ad90"/><circle cx="100" cy="100" r="7" fill="#8b8068"/>
+ <g filter="url(#sh)"><path d="M95 100 L96.5 134 Q100 139 103.5 134 L105 100Z" fill="url(#ivoryX)"/></g>`},
+
+{id:'ukrocker',name:'Rocker switch',local:'light switch · down for on',kind:'rock',era:'modern',eraText:'1960s to today',material:'White plastic plate, 86 mm square',lamp:'LED, 806 lm, 2700 K',wall:'magnolia',
+ note:'Most British switches sit on a square plate 86 mm across, the size of the standard wall box behind it. In Britain, Ireland, Australia and India, down is on, the opposite of North America. Press the bottom of the rocker and it tips over with a soft clack.',
+ specs:[['Down','On, in Britain and Ireland'],['Box','86 mm square, a British standard'],['Screws','Either side of the rocker']],
+ hint:'Press the bottom half of the rocker to turn the light on.',feel:'A soft, hollow clack. Press the top to turn it off again.',
+ parts:[{label:'Rocker',kind:'rock',topOn:0}],
+ svg:()=>`<g filter="url(#sh)">${P(128,128,8,'url(#plast)')}</g><rect x="80" y="70" width="40" height="60" rx="3" fill="#cfccc2"/>
+ <g filter="url(#sh)"><rect x="82" y="72" width="36" height="56" rx="3" fill="url(#plastX)"/><rect x="82" y="72" width="36" height="28" rx="3" fill="rgba(0,0,0,.06)"/></g>${scr(52,100,'plastR')}${scr(148,100,'plastR')}`},
+
+{id:'victorian',name:'Brass rotary switch',local:'quick-break rotary switch',kind:'turn',era:'early',eraText:'1880s to 1920s',material:'Brass cover, porcelain base, wooden block',lamp:'Carbon filament, 16 candlepower',wall:'damask',
+ note:'The first house wiring had no wall boxes, so switches were screwed onto the surface, on a round wooden block called a pattress. Inside the brass cover, turning the knob winds a spring that snaps the contacts round: a quick break, so the current has no time to arc. Many turn only one way, clockwise, a quarter turn for on and the next quarter for off. The bulb is carbon filament, rated in candlepower, and glows a dim orange.',
+ specs:[['Turns','Clockwise only, a click every quarter'],['Mounting','On a wooden pattress'],['Bulb','About 16 candlepower']],
+ hint:'Grab the knob and drag right to turn it clockwise.',feel:'A wind-up, then a loud clack as the spring lets go. It will not turn back.',
+ parts:[{label:'Knob',kind:'turn',mode:'toggle',ratchet:1,dist:.05}],
+ svg:()=>`<g filter="url(#sh)"><circle cx="100" cy="100" r="74" fill="url(#woodR)"/><circle cx="100" cy="100" r="54" fill="url(#porcR)"/><circle cx="100" cy="100" r="40" fill="url(#brassR)"/></g>
+ <g filter="url(#sh)"><rect x="64" y="93" width="72" height="14" rx="7" fill="url(#brass)"/><circle cx="100" cy="100" r="11" fill="url(#brassR)"/></g>
+ ${[45,135,225,315].map(a=>scr(100+64*Math.cos(a*Math.PI/180),100+64*Math.sin(a*Math.PI/180),'brassR')).join('')}`},
+
+{id:'pushbutton',name:'Push-button switch',local:'push-button switch',kind:'press',era:'early',eraText:'1890s to 1940s',material:'Brass plate, mother-of-pearl button',lamp:'Tungsten filament, 40 W',wall:'panel',
+ note:'Before the toggle took over, many American homes had push-button switches: two buttons, one above the other. Press the top one and the light comes on and the bottom one pops out; press the bottom one and it goes off. The on button was often inlaid with mother-of-pearl, so you could find it by touch, or see it gleam in the dark.',
+ specs:[['Top','On, with a pearl inlay'],['Bottom','Off'],['Inside','A see-saw: one button in, the other out']],
+ hint:'Press the top button, the one with the pearl in it.',feel:'A deep, solid clunk, and the other button pushes back out.',
+ parts:[{label:'On button',kind:'btn',mode:'set',val:1,grp:0},{label:'Off button',kind:'btn',mode:'set',val:0,grp:0}],
+ svg:()=>`<g filter="url(#sh)">${P(80,130,6,'url(#brass)')}</g><rect x="65" y="40" width="70" height="120" rx="4" fill="none" stroke="rgba(90,60,10,.45)"/>
+ <circle cx="100" cy="82" r="15" fill="#5a4220"/><g filter="url(#sh)"><circle cx="100" cy="82" r="12" fill="url(#bakeR)"/><circle cx="100" cy="82" r="6" fill="url(#porcR)"/></g>
+ <circle cx="100" cy="118" r="15" fill="#5a4220"/><circle cx="100" cy="118" r="11" fill="url(#bakeR)"/>${scr(100,48,'brassR')}${scr(100,152,'brassR')}`},
+
+{id:'dolly',name:'Dolly switch',local:'tumbler switch',kind:'flick',era:'mid',eraText:'1900s to 1950s',material:'Brass dome on a round bakelite block',lamp:'Incandescent, 60 W',wall:'plaster',
+ note:'For the first half of the 20th century, a British light switch was a small brass or bakelite dome on a round block, with a stubby lever, the dolly, poking out of it. Flick it down for on. They were mounted on the surface, the wiring often ran across the plaster in metal conduit, and a picture rail ran round the room above them.',
+ specs:[['Down','On'],['Lever','The dolly'],['Mounting','On the surface, on a round block']],
+ hint:'Flick the little lever down.',feel:'A tiny throw and a big click. A thumb-sized lever on a heavy spring.',
+ parts:[{label:'Dolly',kind:'flip',up:0,dist:.022}],
+ svg:()=>`<g filter="url(#sh)"><circle cx="100" cy="100" r="72" fill="url(#bakeR)"/><circle cx="100" cy="100" r="44" fill="url(#brassR)"/></g>
+ <ellipse cx="100" cy="100" rx="9" ry="12" fill="#3a2a10"/><g filter="url(#sh)"><path d="M95 104 L96 70 Q100 64 104 70 L105 104Z" fill="url(#brassX)"/></g>`},
+
+{id:'dimmer',name:'Rotary dimmer',local:'rotary dimmer',kind:'turn',era:'mid',eraText:'Invented 1959',material:'Plastic knob and plate',lamp:'Incandescent, 60 W',wall:'living',
+ note:'Joel Spira invented a solid-state dimmer small enough to fit in a wall box in 1959, and founded Lutron to sell it. It chops away part of every mains cycle, so the bulb gets less power. Push the knob to switch on and off; turn it to dim. Watch the colour: a dimmed filament runs cooler and glows orange. At half brightness some bulbs faintly sing.',
+ specs:[['Push','On and off'],['Turn','Brighter or dimmer'],['How','Cuts away part of each mains cycle']],
+ hint:'Press the knob to switch on, then grab it and drag sideways to dim.',feel:'A soft push-click, then a smooth, damped turn with no clicks at all.',
+ parts:[{label:'Knob',kind:'dial'}],
+ wire:S=>[S.on[0]?Math.max(.05,S.lv[0]):0],
+ svg:()=>`<g filter="url(#sh)">${P(76,124,6,'url(#plast)')}</g>${scr(100,50,'plastR')}${scr(100,150,'plastR')}
+ <g filter="url(#sh)"><circle cx="100" cy="100" r="25" fill="url(#plastR)"/></g><circle cx="100" cy="100" r="19" fill="none" stroke="rgba(0,0,0,.08)" stroke-width="2"/>
+ <line x1="100" y1="100" x2="86" y2="86" stroke="#9a968c" stroke-width="3" stroke-linecap="round"/>`},
+
+{id:'decora',name:'Paddle rocker',local:'Decora switch',kind:'rock',era:'modern',eraText:'1970s on',material:'White plastic paddle',lamp:'LED, 9 W',wall:'kitchen',
+ note:'In the 1970s Leviton launched its Decora line, a broad flat paddle that fills most of the plate. You can hit it with an elbow when your hands are full of shopping. The rectangular opening became a standard of its own, shared by sockets, dimmers and timers. Top for on.',
+ specs:[['Top','On'],['Opening','Rectangular, shared with sockets and dimmers'],['Press','Anywhere on the half you want']],
+ hint:'Press the top half of the paddle.',feel:'A wide, quiet rock. Easy with an elbow.',
+ parts:[{label:'Paddle',kind:'rock',topOn:1}],
+ svg:()=>`<g filter="url(#sh)">${P(76,124,6,'url(#plast)')}</g><rect x="78" y="56" width="44" height="88" rx="3" fill="#d4d1c8"/>
+ <g filter="url(#sh)"><rect x="80" y="58" width="40" height="84" rx="3" fill="url(#plastX)"/></g><rect x="80" y="100" width="40" height="42" rx="3" fill="rgba(0,0,0,.05)"/>${scr(100,48,'plastR')}${scr(100,152,'plastR')}`},
+
+{id:'hotaru',name:'Glow-locator switch',local:'ほたるスイッチ · hotaru suitchi',kind:'rock',era:'modern',eraText:'Late 20th century on',material:'Wide white rocker, green locator lamp',lamp:'LED in a paper shade',wall:'paint',
+ note:'Japanese homes often have wide switches with a small green lamp in the rocker. It glows while the light is off, so you can find the switch in a dark room, and goes out once the light is on. Its nickname is hotaru, firefly. A cousin, the pilot switch, does the opposite and glows while something is running, for fans and outside lights you cannot see.',
+ specs:[['Locator lamp','Green, lit while the light is off'],['Nickname','Hotaru, firefly'],['Shade','Paper, on a wire frame']],
+ hint:'Find the green glow, then press the top of the rocker.',feel:'A broad, soft press. The firefly goes out as the light comes on.',
+ parts:[{label:'Rocker',kind:'rock',topOn:1}],
+ svg:()=>`<g filter="url(#sh)">${P(84,132,5,'url(#plast)')}</g><rect x="66" y="42" width="68" height="116" rx="3" fill="#d4d1c8"/>
+ <g filter="url(#sh)"><rect x="68" y="44" width="64" height="112" rx="3" fill="url(#plastX)"/></g>
+ <circle cx="100" cy="142" r="8" fill="#5cff8a" opacity=".75" filter="url(#glow)"/><rect x="95" y="139.5" width="10" height="5" rx="2.5" fill="#8dffb0"/>`},
+
+{id:'himo',name:'Ceiling light pull cord',local:'引きひも · hikihimo',kind:'pull',era:'mid',eraText:'1960s to today',material:'Acrylic shade, circular fluorescent tubes',lamp:'Two circular fluorescent tubes and a night light',wall:'washi',
+ note:'A round ceiling light in a Japanese room has a cord hanging from its middle, and each pull steps through a cycle: all on, dimmer with one tube, a small orange night light called the mamekyū, then off. Older ones have two circular fluorescent tubes that blink before they light. Many people tie a longer string to the cord so they can reach it from the futon.',
+ specs:[['Cycle','All on, one tube, night light, off'],['Tubes','Two circular fluorescents'],['Night light','The mamekyū, a small orange bulb']],
+ hint:'Pull the cord and let go. Pull again to step through the settings.',feel:'A light tug and a click from the lamp. Each pull is the next setting.',
+ parts:[{label:'Pull the cord',kind:'pull',mode:'cycle',n:4,len:.92,dist:.04}],
+ wire:S=>[[0,0,0],[1,1,0],[1,0,0],[0,0,1]][S.k[0]%4],
+ svg:()=>`${ceilBand('#b89a74',22)}<g filter="url(#sh)"><path d="M-6 10 H206 Q200 40 100 44 Q0 40 -6 10Z" fill="url(#opal)"/></g>
+ <line x1="100" y1="44" x2="100" y2="150" stroke="#e9e3d6" stroke-width="2.4"/><g filter="url(#sh)"><rect x="92" y="150" width="16" height="30" rx="7" fill="url(#plast)"/></g>`},
+
+{id:'switchboard',name:'Modular switchboard',local:'switch board',kind:'rock',era:'modern',eraText:'Late 20th century on',material:'White polycarbonate plate, piano switches',lamp:'Fluorescent tube light, 36 W, and a bulb',wall:'india',
+ note:'In Indian homes the switches for a room share one long board: a row of small rockers, one for the tube light, one for the bulb, one for the fan, one for the plug socket, often with a fan regulator and a small red neon to show the board is live. Down is on. The tube light sits high on the wall, and its choke and starter make it blink and ping before it lights.',
+ specs:[['Down','On'],['Socket','5 A, with its own switch'],['Neon','Shows the board is live']],
+ hint:'Press the switches down: tube light, bulb, then the socket for the charger.',feel:'Short, firm clicks. The tube light takes its time.',
+ parts:[{label:'Tube light',kind:'rock',topOn:0},{label:'Bulb',kind:'rock',topOn:0},{label:'Socket',kind:'rock',topOn:0}],
+ wire:S=>[S.on[0]?1:0,S.on[1]?1:0,S.on[2]?1:0],
+ svg:()=>`<g filter="url(#sh)">${P(196,92,8,'url(#plast)')}</g>
+ ${[30,56,82].map(x=>`<rect x="${x-9}" y="72" width="18" height="34" rx="2" fill="#d6d3cb"/><rect x="${x-8}" y="73" width="16" height="32" rx="2" fill="url(#plastX)"/><rect x="${x-8}" y="73" width="16" height="16" fill="rgba(0,0,0,.05)"/>`).join('')}
+ <circle cx="69" cy="118" r="3.4" fill="#ff5a3a" filter="url(#glow)"/><circle cx="69" cy="118" r="2.2" fill="#ff8a6a"/>
+ <circle cx="155" cy="100" r="28" fill="url(#plastR)"/><circle cx="155" cy="88" r="4.6" fill="#2a2a2a"/><circle cx="145" cy="106" r="3.6" fill="#2a2a2a"/><circle cx="165" cy="106" r="3.6" fill="#2a2a2a"/>${scr(10,100,'plastR')}${scr(190,100,'plastR')}`},
+
+{id:'pullcord',name:'Pull-cord switch',local:'ceiling pull switch',kind:'pull',era:'mid',eraText:'Mid-20th century to today',material:'Plastic ceiling switch, cord, wooden acorn',lamp:'LED bar, 3000 K',wall:'bath',
+ note:'British wiring rules keep ordinary switches away from baths and showers, where wet hands meet the mains. So the bathroom light runs from a switch on the ceiling, worked by a long insulating cord: pull, hear the click, let go, and each pull flips it. A wooden acorn on the end is traditional.',
+ specs:[['Why','Keeps live parts out of reach of wet hands'],['Each pull','Flips the light'],['Pull','A wooden acorn']],
+ hint:'Grab the acorn and pull it down. Then let go.',feel:'A pull, a hollow click from the ceiling, and the cord swings.',
+ parts:[{label:'Pull the cord',kind:'pull',mode:'toggle',len:1.1,dist:.05}],
+ svg:()=>`${ceilBand('#f6f7f5',30)}<g filter="url(#sh)"><rect x="74" y="12" width="52" height="22" rx="4" fill="url(#plast)"/></g>
+ <line x1="100" y1="34" x2="100" y2="148" stroke="#9a9890" stroke-width="3.6"/><line x1="100" y1="34" x2="100" y2="148" stroke="#fbfaf6" stroke-width="2"/>
+ <g filter="url(#sh)"><path d="M100 146 C112 150 113 170 100 182 C87 170 88 150 100 146Z" fill="url(#wood)"/><rect x="92" y="144" width="16" height="6" rx="2" fill="#6b4422"/></g>`},
+
+{id:'pullchain',name:'Pull-chain lampholder',local:'pull-chain socket',kind:'pull',era:'early',eraText:'Patented 1896',material:'Porcelain lampholder, brass ball chain',lamp:'Incandescent, 60 W, bare',wall:'block',
+ note:'Harvey Hubbell patented the pull-chain lamp socket in 1896, which put the switch on the bulb holder itself. Each tug turns a ratchet inside the socket one notch: on, off, on. It is still the cheapest way to light a basement, a garage or a cupboard: a porcelain holder, a bare bulb and a chain.',
+ specs:[['Inventor','Harvey Hubbell'],['Inside','A ratchet, one click per pull'],['Chain','Brass beads, with a pull on the end']],
+ hint:'Grab the end of the chain and tug it down.',feel:'A light tug and a click from inside the socket. The chain jingles as it swings.',
+ parts:[{label:'Pull the chain',kind:'pull',mode:'toggle',len:.62,dist:.035}],
+ svg:()=>`${ceilBand('#7a6247')}<g filter="url(#sh)"><rect x="70" y="14" width="60" height="12" rx="3" fill="url(#porcR)"/><path d="M80 26 H120 L114 50 H86Z" fill="url(#porcR)"/>
+ <path d="M100 50 C70 52 70 90 86 104 L88 116 H112 L114 104 C130 90 130 52 100 50Z" fill="url(#glass)" stroke="rgba(0,0,0,.2)"/></g>
+ <path d="M94 66 l3 12 l3 -12 l3 12 l3 -12" stroke="#7a6a50" fill="none" stroke-width="1"/>
+ ${Array.from({length:24},(_,i)=>`<circle cx="124" cy="${40+i*5.5}" r="1.9" fill="url(#brassR)"/>`).join('')}<g filter="url(#sh)"><rect x="118" y="172" width="12" height="16" rx="5" fill="url(#brass)"/></g>`},
+
+{id:'threeway',name:'Three-way lamp socket',local:'turn-knob socket',kind:'turn',era:'mid',eraText:'Mid-20th century on',material:'Brass socket shell, turn knob',lamp:'Three-way bulb, 50, 100 or 150 W',wall:'living',
+ note:'A three-way bulb has two filaments, often 50 W and 100 W, and a socket with an extra contact. Each turn of the knob clicks to the next setting: the small filament, the big one, both together, then off. When one filament burns out, two of the settings stop working.',
+ specs:[['Settings','50, 100, 150 W, off'],['Bulb','Two filaments'],['Knob','Turns one way, clicking']],
+ hint:'Grab the knob on the side of the socket and drag right. Again.',feel:'A small, stiff knob and a sharp click each time.',
+ parts:[{label:'Knob',kind:'turn',mode:'cycle',n:4,ratchet:1,dist:.03}],
+ wire:S=>[[0,{d:1,s:1/3},{d:1,s:2/3},{d:1,s:1}][S.k[0]%4]],
+ svg:()=>`<g filter="url(#sh)"><path d="M60 12 H140 L156 60 H44Z" fill="url(#fabric)"/></g>
+ <path d="M100 60 C80 62 78 92 90 104 L92 112 H108 L110 104 C122 92 120 62 100 60Z" fill="url(#glass)" stroke="rgba(0,0,0,.2)"/><path d="M93 80 q7 -10 14 0 M95 88 q5 -7 10 0" stroke="#8a7a5a" fill="none"/>
+ <g filter="url(#sh)"><rect x="86" y="112" width="28" height="44" rx="3" fill="url(#brassX)"/><rect x="114" y="126" width="14" height="6" fill="url(#brass)"/><path d="M128 118 h7 v22 h-7z" fill="url(#brassR)"/></g><rect x="94" y="156" width="12" height="40" fill="url(#brassX)"/>`},
+
+{id:'minuterie',name:'Timed stairwell button',local:'minuterie',kind:'press',era:'mid',eraText:'20th century to today',material:'Glowing push-button, stone stairwell',lamp:'Incandescent globe, 60 W',wall:'stair',
+ note:'In many French and Belgian apartment buildings the stairwell light runs on a minuterie, a timer. Press the glowing button and the lights stay on for a minute or two, then go out by themselves, quite often while you are between floors. Older timers were mechanical and ticked as they ran down. The button glows so you can find it again in the dark.',
+ specs:[['Timer','A minute or two; shortened here'],['Button','Lit, to find in the dark'],['Press again','Starts the timer over']],
+ hint:'Press the glowing button, then climb fast.',feel:'A soft press. Then a clockwork ticking somewhere behind the wall.',
+ parts:[{label:'Press',kind:'btn',mode:'timer',dur:24}],
+ svg:()=>`<g filter="url(#sh)"><circle cx="100" cy="104" r="40" fill="url(#brassR)"/></g><circle cx="100" cy="104" r="29" fill="#ffae42" opacity=".9" filter="url(#glow)"/>
+ <circle cx="100" cy="104" r="26" fill="url(#plastR)" stroke="#ffb54d" stroke-width="3"/><text x="100" y="52" font-size="11" font-weight="700" letter-spacing="2" text-anchor="middle" fill="#5a4a30">LUMIÈRE</text>`},
+
+{id:'keycard',name:'Hotel key card switch',local:'energy-saving card holder',kind:'press',era:'modern',eraText:'Late 20th century on',material:'Plastic holder by the door',lamp:'LED, 2700 K',wall:'hotel',
+ note:'Many hotels put a card holder just inside the door. Slot your key card in and the room powers up; take it out as you leave and, a few seconds later, the lights and air conditioning go off. Some holders read the card, but many only check that something card-shaped is there, which is why a loyalty card often works just as well.',
+ specs:[['Power on','While a card is in the slot'],['Power off','A few seconds after it comes out'],['Saves','Lights and air conditioning left on in empty rooms']],
+ hint:'Grab the key card and push it down into the slot.',feel:'A smooth slide, then a relay clicks behind the wall and the room wakes up.',
+ parts:[{label:'Card',kind:'card'}],
+ svg:()=>`<g filter="url(#sh)">${P(90,124,6,'url(#plast)')}</g><rect x="68" y="86" width="64" height="10" rx="3" fill="#2a2c2e"/>
+ <g filter="url(#sh)"><rect x="73" y="18" width="54" height="74" rx="5" fill="#1f5f8f"/><rect x="73" y="30" width="54" height="10" fill="#0e2e48"/><rect x="80" y="56" width="22" height="3" rx="1.5" fill="#cfe4f2"/></g>
+ <rect x="70" y="88" width="60" height="6" rx="2" fill="#2a2c2e"/><circle cx="100" cy="138" r="3" fill="#3a3"/>`},
+
+{id:'twoway',name:'Two-way switches',local:'stair switching · “three-way” in the US',kind:'flick',era:'mid',eraText:'Since the early 1900s',material:'Two toggles, three wires',lamp:'Incandescent, 60 W',wall:'paint',
+ note:'One light, two switches: one at the bottom of the stairs and one at the top, and either one changes the light. Each switch has three terminals, and two wires run between them, called travelers in North America and strappers in Britain. Americans call these three-way switches; put four-way switches in between and you can have as many as you like.',
+ specs:[['Between them','Two wires: travelers, or strappers'],['Rule','Either switch changes the light'],['US name','Three-way switch']],
+ hint:'Flip the switch at the bottom of the stairs. Then try the one at the top.',feel:'The same snap either way. Up no longer means on.',
+ parts:[{label:'Downstairs',kind:'flip',up:1,dist:.035},{label:'Upstairs',kind:'flip',up:1,dist:.035}],
+ wire:S=>[S.on[0]!==S.on[1]?1:0],
+ svg:()=>`<path d="M-12 200 L40 200 L40 182 L64 182 L64 164 L88 164 L88 146 L112 146 L112 128 L136 128 L136 110 L160 110 L160 92 L212 92 L212 212 L-12 212Z" fill="#8a6440"/>
+ <g filter="url(#sh)">${P(26,42,3,'url(#ivory)',30,120)}${P(26,42,3,'url(#ivory)',176,40)}</g>
+ <path d="M30 120 L30 133" stroke="#cfc3a6" stroke-width="5" stroke-linecap="round"/><path d="M176 40 L176 27" stroke="#cfc3a6" stroke-width="5" stroke-linecap="round"/>
+ <path d="M44 118 Q100 60 162 46" stroke="rgba(0,0,0,.25)" stroke-dasharray="4 4" fill="none"/>`},
+
+{id:'occupancy',name:'Motion sensor',local:'occupancy sensor',kind:'free',era:'modern',eraText:'Late 20th century on',material:'Plastic dome over a passive infrared sensor',lamp:'LED panel, 4000 K',wall:'office',
+ note:'A passive infrared sensor watches for warm bodies moving across its faceted lens. Walk in and the lights come on. Sit still at your desk long enough and it decides the room is empty and switches them off, which is why people in sensor-lit offices sometimes wave their arms in the air.',
+ specs:[['Sees','Changes in infrared, from warm moving bodies'],['Timeout','Often 10 to 30 minutes; shortened here'],['Lens','Faceted, to split the room into zones']],
+ hint:'Move your hand around the room. Then keep still and wait.',feel:'Nothing to touch. A red light blinks when it sees you.',
+ parts:[{label:'Wave',kind:'motion',hold:14}],
+ svg:()=>`<g filter="url(#sh)">${P(80,128,6,'url(#plast)')}</g><g filter="url(#sh)"><circle cx="100" cy="92" r="28" fill="url(#plastR)"/></g>
+ ${[8,16,24].map(r=>`<circle cx="100" cy="92" r="${r}" fill="none" stroke="rgba(0,0,0,.09)" stroke-width="1"/>`).join('')}
+ <path d="M72 92 H128 M100 64 V120 M80 72 L120 112 M120 72 L80 112" stroke="rgba(0,0,0,.06)"/><circle cx="100" cy="140" r="3.2" fill="#c33"/>`},
+
+{id:'touchlamp',name:'Touch lamp',local:'touch-sensitive lamp',kind:'touch',era:'modern',eraText:'Late 20th century on',material:'Brass base, fabric shade',lamp:'Incandescent, 60 W',wall:'magnolia',
+ note:'There is no switch. The metal base is one plate of a tiny capacitor; touch it and your body adds a little capacitance, which the circuit notices. Each touch steps through low, medium, high and off. Now and then one switches itself on in a thunderstorm, or when someone brushes past on a dry day.',
+ specs:[['Touch','Low, medium, high, off'],['Senses','Your body’s capacitance'],['Base','Any metal part works']],
+ hint:'Touch the brass base. Touch it again.',feel:'Nothing moves. A faint tick from inside, and a step brighter.',
+ parts:[{label:'Touch the base',kind:'touch',n:4}],
+ wire:S=>[[0,.45,.72,1][S.k[0]%4]],
+ svg:()=>`<g filter="url(#sh)"><path d="M58 20 H142 L162 82 H38Z" fill="url(#fabric)"/>
+ <path d="M90 82 H110 L108 96 Q140 110 136 140 Q132 168 112 176 H88 Q68 168 64 140 Q60 110 92 96Z" fill="url(#brassX)"/><ellipse cx="100" cy="182" rx="34" ry="7" fill="url(#brass)"/></g>`},
+
+{id:'clapper',name:'Clap switch',local:'sound-activated switch',kind:'free',era:'modern',eraText:'Sold from the mid-1980s',material:'Plastic box with a microphone',lamp:'Incandescent, 60 W',wall:'living',
+ note:'Plug the lamp into the box, the box into the wall, and clap twice. A microphone listens for two sharp sounds a moment apart and flips a relay. Sold on television from the mid-1980s with a catchy jingle, it works, mostly. A cough, a dog, a dropped book or the television can work it too.',
+ specs:[['Trigger','Two claps, close together'],['Inside','A microphone, a filter and a relay'],['Fooled by','Barking, coughing, applause on TV']],
+ hint:'Clap twice: click twice on the wall, quickly, or use the button.',feel:'Clap, clap. A relay clicks inside the box.',
+ parts:[{label:'Clap',kind:'clap'}],
+ svg:()=>`<g filter="url(#sh)"><rect x="52" y="30" width="96" height="140" rx="14" fill="#e9e1cf"/></g>
+ ${Array.from({length:20},(_,i)=>`<circle cx="${80+(i%5)*10}" cy="${48+Math.floor(i/5)*8}" r="2.2" fill="#9b9384"/>`).join('')}
+ ${[104,142].map(y=>`<rect x="78" y="${y-14}" width="44" height="28" rx="12" fill="#f6f1e6" stroke="#cfc6b2"/><rect x="88" y="${y-8}" width="4" height="12" rx="1" fill="#3a3a3a"/><rect x="108" y="${y-8}" width="4" height="12" rx="1" fill="#3a3a3a"/>`).join('')}`},
+
+{id:'glass',name:'Glass touch panel',local:'smart dimmer',kind:'touch',era:'modern',eraText:'2010s on',material:'Black glass over a capacitive sensor',lamp:'Tunable white LED, 2200 to 6500 K',wall:'modern',
+ note:'A sheet of black glass with a sensor behind it. Tap to switch, slide up and down to dim, and slide sideways to change the colour of the light, from candle-warm to cold daylight. Tunable lamps do it by mixing warm and cool white LEDs. Nothing moves, so the panel plays a little tick to tell you it heard.',
+ specs:[['Tap','On and off'],['Up and down','Brightness'],['Sideways','Colour, 2200 to 6500 K']],
+ hint:'Tap the glass to switch on, then drag up, down and sideways on it.',feel:'Flat, cool glass. Nothing moves; only the light changes.',
+ parts:[{label:'Panel',kind:'pad'}],
+ wire:S=>[{d:S.on[0]?Math.max(.04,S.lv[0]):0,K:lerp(2200,6500,S.lv[1])}],
+ svg:()=>`<g filter="url(#sh)"><rect x="40" y="40" width="120" height="120" rx="12" fill="url(#blackG)"/></g><path d="M44 44 L120 44 L44 120Z" fill="rgba(255,255,255,.06)"/>
+ ${Array.from({length:7},(_,i)=>`<rect x="97" y="${60+i*12}" width="6" height="7" rx="2" fill="${i>3?'#f6d9a8':'#3a3a3a'}" opacity="${i>3?.95:.6}"/>`).join('')}<rect x="66" y="146" width="68" height="3" rx="1.5" fill="#d9c9a8"/>`},
+
+{id:'knife',name:'Knife switch',local:'knife switch',kind:'flick',era:'early',eraText:'1880s to 1930s',material:'Copper blade on a slate panel',lamp:'Tungsten lamp in a wire cage, 100 W',wall:'lab',
+ note:'Early power stations, laboratories and switchrooms used open knife switches: a copper blade on a hinge, pushed home between springy copper jaws. They were mounted on slate or marble, which neither burns nor conducts. Every live part is bare. Pull one open while current flows and a blue arc follows the blade for a moment.',
+ specs:[['Blade','Copper, on a hinge'],['Panel','Slate'],['Live parts','All of them exposed']],
+ hint:'Grab the black handle and swing the blade up into the jaws.',feel:'Stiff, then the blade bites into the jaws. Hesitate near them and it sparks.',
+ parts:[{label:'Handle',kind:'flip',up:1,dist:.16,snap:0}],
+ svg:()=>`<g filter="url(#sh)"><rect x="40" y="10" width="120" height="180" rx="4" fill="url(#slate)"/></g>
+ <g filter="url(#sh)"><rect x="84" y="36" width="10" height="26" fill="url(#copper)"/><rect x="106" y="36" width="10" height="26" fill="url(#copper)"/>
+ <rect x="84" y="150" width="32" height="14" fill="url(#copper)"/><circle cx="100" cy="157" r="5" fill="url(#brassR)"/>
+ <path d="M96 156 L80 92 L88 90 L104 154Z" fill="url(#copper)"/><rect x="66" y="70" width="22" height="30" rx="6" fill="#151515" transform="rotate(-14 77 85)"/></g>
+ ${[[52,22],[148,22],[52,178],[148,178]].map(([x,y])=>scr(x,y)).join('')}`},
+
+{id:'gas',name:'Gas lamp chains',local:'by-pass gas bracket',kind:'pull',era:'early',eraText:'1890s to 1930s',material:'Brass bracket, glass globe, gas mantle',lamp:'Incandescent gas mantle',wall:'victor',
+ note:'Gas lights had switches too. A by-pass valve kept a tiny pilot flame burning all the time; pull one chain and gas flows to the mantle, which lights from the pilot with a soft whump; pull the other to shut it off. The mantle, a fabric sock soaked in metal salts, was Carl Auer von Welsbach’s idea, and glows a greenish white. It also gives off a lot of heat.',
+ specs:[['Left chain','Opens the gas; the pilot lights the mantle'],['Right chain','Closes it; the pilot stays lit'],['Mantle','Welsbach, around 1890']],
+ hint:'Pull the left chain to light it. The right chain puts it out.',feel:'A gentle pull, a hiss, then a soft whump of flame.',
+ parts:[{label:'On chain',kind:'pull',mode:'set',val:1,grp:0,len:.26,dist:.03},{label:'Off chain',kind:'pull',mode:'set',val:0,grp:0,len:.32,dist:.03}],
+ svg:()=>`<g filter="url(#sh)"><rect x="-12" y="70" width="18" height="40" rx="3" fill="url(#brass)"/><path d="M6 86 H90 Q108 86 108 70 V64" stroke="url(#brassX)" stroke-width="8" fill="none"/>
+ <rect x="80" y="82" width="20" height="16" rx="4" fill="url(#brassR)"/><path d="M96 64 H120 L126 54 Q150 50 150 24 Q150 2 108 2 Q66 2 66 24 Q66 50 90 54Z" fill="url(#glass)" stroke="rgba(0,0,0,.15)"/></g>
+ <path d="M100 30 Q108 20 116 30 V48 H100Z" fill="#e8e4d4"/>
+ <line x1="84" y1="98" x2="84" y2="150" stroke="#b08a3a" stroke-width="2" stroke-dasharray="3 1.5"/><line x1="96" y1="98" x2="96" y2="164" stroke="#b08a3a" stroke-width="2" stroke-dasharray="3 1.5"/>
+ <circle cx="84" cy="156" r="6" fill="none" stroke="url(#brassX)" stroke-width="2.6"/><circle cx="96" cy="170" r="6" fill="none" stroke="url(#brassX)" stroke-width="2.6"/>`},
+
+{id:'isolator',name:'Rotary isolator',local:'isolator switch',kind:'turn',era:'modern',eraText:'Late 20th century on',material:'Red handle on a yellow plate',lamp:'Metal halide high-bay, 400 W',wall:'factory',
+ note:'Factories and warehouses switch big lighting circuits with a rotary isolator: a red handle on a yellow plate, a quarter turn from O to I. The high-bay lamps overhead are metal halide. They strike with a dim blue glow and take several minutes to reach full brightness, and if you switch one off while it is hot, it will not restart until it has cooled.',
+ specs:[['O to I','A quarter turn clockwise'],['Warm-up','Several minutes; shortened here'],['Hot restrike','Waits until the lamp cools']],
+ hint:'Grab the red handle and drag right to turn it from O to I.',feel:'Heavy and stiff, then a loud chunk as the contacts close.',
+ parts:[{label:'Handle',kind:'turn',mode:'pos',kmin:0,kmax:1,dist:.06}],
+ wire:S=>[S.k[0]===1?1:0],
+ svg:()=>`<g filter="url(#sh)"><rect x="48" y="26" width="104" height="148" rx="8" fill="url(#grey)"/></g><rect x="60" y="60" width="80" height="80" rx="4" fill="#f2c21c"/>
+ <text x="70" y="104" font-size="13" font-weight="800" fill="#222" text-anchor="middle">O</text><text x="100" y="74" font-size="13" font-weight="800" fill="#222" text-anchor="middle">I</text>
+ <g filter="url(#sh)"><circle cx="100" cy="100" r="16" fill="url(#red)"/><rect x="78" y="93" width="48" height="14" rx="7" fill="url(#red)"/></g>`},
+
+{id:'photocell',name:'Dusk sensor',local:'photocell · dusk-to-dawn switch',kind:'free',era:'mid',eraText:'20th century to today',material:'Photocell in a weatherproof housing',lamp:'Low-pressure sodium, 55 W',wall:'dusk',
+ note:'Street lights and outdoor lights switch themselves with a photocell that measures daylight. Cover it and it decides night has fallen, but it waits a few seconds first, so a passing car’s headlights cannot fool it. Low-pressure sodium lamps start with a dim red-pink glow from neon gas, then turn deep orange as the sodium warms up over several minutes.',
+ specs:[['Switches at','Dusk, after a short delay'],['Lamp','Low-pressure sodium: one orange colour'],['Warm-up','Red, then orange; shortened here']],
+ hint:'Hold your hand over the photocell, the little window on the wall, and wait.',feel:'Nothing to press. Just make it dark.',
+ parts:[{label:'Cover the sensor',kind:'cover'}],
+ svg:()=>`<g filter="url(#sh)"><rect x="112" y="10" width="64" height="12" rx="3" fill="#24302a"/><path d="M116 22 H172 L166 92 H122Z" fill="#3b4a40"/><path d="M122 28 H166 L161 84 H127Z" fill="#c9b9a0"/><rect x="118" y="92" width="52" height="10" rx="3" fill="#24302a"/>
+ <rect x="138" y="102" width="12" height="90" fill="#24302a"/></g><g filter="url(#sh)"><rect x="30" y="120" width="40" height="52" rx="6" fill="url(#grey)"/></g><circle cx="50" cy="140" r="10" fill="#cfe6ff" opacity=".8"/><circle cx="50" cy="140" r="6" fill="#d8b04a" opacity=".7"/>`}
+];
+
+/* ---------- sound ---------- */
+const A={ctx:null,out:null,on:true};
+function ac(){
+  if(!A.on)return null;
+  try{
+    if(!A.ctx){
+      const c=A.ctx=new (window.AudioContext||window.webkitAudioContext)();A.out=c.createGain();A.out.gain.value=.8;A.out.connect(c.destination);
+      A.nb=c.createBuffer(1,c.sampleRate*2,c.sampleRate);const d=A.nb.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+      const tone=(type,f,ft,ff,q)=>{const o=c.createOscillator();o.type=type;o.frequency.value=f;const fl=c.createBiquadFilter();fl.type=ft;fl.frequency.value=ff;fl.Q.value=q;const g=c.createGain();g.gain.value=0;o.connect(fl).connect(g).connect(A.out);o.start();return{o,f:fl,g}};
+      const hiss=(ft,f,q)=>{const s=c.createBufferSource();s.buffer=A.nb;s.loop=true;const fl=c.createBiquadFilter();fl.type=ft;fl.frequency.value=f;fl.Q.value=q;const g=c.createGain();g.gain.value=0;s.connect(fl).connect(g).connect(A.out);s.start();return{f:fl,g}};
+      /* steady sounds: a fluorescent choke's hum, a metal halide ballast, gas, and a dimmed filament singing */
+      A.hum=tone('sawtooth',100,'bandpass',240,.8);A.ball=tone('sawtooth',100,'lowpass',170,1);A.sing=tone('sine',3400,'bandpass',3400,4);A.gas=hiss('bandpass',1900,.7);
+    }
+    if(A.ctx.state==='suspended')A.ctx.resume();
+    return A.ctx;
+  }catch(e){return null}
+}
+function env(g,t,a,peak,d){g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(Math.max(.0002,peak),t+a);g.gain.exponentialRampToValueAtTime(.0001,t+a+d)}
+function osc(c,type,f,t,dur,peak,f2){const o=c.createOscillator(),g=c.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+dur);env(g,t,.003,peak,dur);o.connect(g).connect(A.out);o.start(t);o.stop(t+dur+.05)}
+function burst(c,t,dur,peak,ft,freq,q=1){const s=c.createBufferSource();s.buffer=A.nb;const f=c.createBiquadFilter();f.type=ft;f.frequency.value=freq;f.Q.value=q;const g=c.createGain();env(g,t,.002,peak,dur);s.connect(f).connect(g).connect(A.out);s.start(t,Math.random());s.stop(t+dur+.05);return f}
+function metal(c,t,f,dur,peak){[1,2.76,5.4].forEach((m,i)=>osc(c,'sine',f*m,t,dur*(1-i*.2),peak/(i+1.5)))}
+const SND={
+  snap(c,t){burst(c,t,.02,.55,'highpass',3200);osc(c,'square',2400,t,.01,.06);burst(c,t+.004,.04,.22,'bandpass',1300,2)},
+  clack(c,t){burst(c,t,.045,.45,'bandpass',1500,1.6);osc(c,'sine',440,t,.05,.2,210)},
+  soft(c,t){burst(c,t,.03,.16,'bandpass',1100,1.4)},
+  thock(c,t){burst(c,t,.07,.55,'bandpass',900,1.4);osc(c,'sine',190,t,.09,.35,90);metal(c,t,1900,.07,.06)},
+  clunk(c,t){osc(c,'sine',140,t,.1,.5,80);burst(c,t,.06,.35,'lowpass',1300)},
+  ratchet(c,t){burst(c,t,.02,.35,'highpass',2200);burst(c,t+.035,.025,.28,'bandpass',1600,2)},
+  chain(c,t){for(let i=0;i<5;i++)osc(c,'sine',3800+Math.random()*2600,t+i*.035+Math.random()*.02,.05,.035)},
+  tick(c,t){burst(c,t,.014,.14,'bandpass',3600,3)},
+  tock(c,t){burst(c,t,.016,.12,'bandpass',2100,3)},
+  tink(c,t){osc(c,'sine',2700,t,.04,.07,2500);burst(c,t,.012,.1,'highpass',5000)},
+  relay(c,t){burst(c,t,.018,.26,'bandpass',2600,2);osc(c,'square',900,t,.008,.05);burst(c,t+.012,.012,.12,'bandpass',3400,2)},
+  blip(c,t){osc(c,'sine',1900,t,.045,.07)},
+  clap(c,t){burst(c,t,.075,.85,'bandpass',1300,.7);burst(c,t,.03,.45,'highpass',2600)},
+  whump(c,t){const f=burst(c,t,.4,.6,'lowpass',260);f.frequency.linearRampToValueAtTime(700,t+.08);f.frequency.linearRampToValueAtTime(200,t+.4);osc(c,'sine',75,t,.3,.35,40)},
+  spark(c,t){for(let i=0;i<7;i++)burst(c,t+Math.random()*.22,.012+Math.random()*.02,.18+Math.random()*.3,'highpass',2500+Math.random()*3000)},
+  chunk(c,t){osc(c,'sine',95,t,.16,.6,50);burst(c,t,.08,.5,'bandpass',700,1.3);metal(c,t,620,.18,.1)},
+  knob(c,t){burst(c,t,.012,.25,'highpass',3800);osc(c,'square',2000,t,.006,.04)}
+};
+function play(n,...a){const c=ac();if(!c)return;SND[n](c,c.currentTime+.01,...a)}
+document.addEventListener('visibilitychange',()=>{if(!A.ctx)return;document.hidden?A.ctx.suspend():A.on&&A.ctx.resume()});
+
+/* ---------- state and catalogue ---------- */
+const $=s=>document.querySelector(s);
+const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
+const lerp=(a,b,t)=>a+(b-a)*t;
+const rnd=a=>(Math.random()-.5)*2*a;
+const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const tried=new Set(store.get('la-tried',[]));let wh=store.get('la-wh',0);
+A.on=store.get('la-sound',true);
+const F={kind:'all',era:'all',q:''};
+
+function list(){const q=F.q.trim().toLowerCase();return ITEMS.filter(it=>(F.kind==='all'||it.kind===F.kind)&&(F.era==='all'||it.era===F.era)&&(!q||[it.name,it.local,it.material,it.lamp,KINDS[it.kind],it.eraText].join(' ').toLowerCase().includes(q)))}
+function renderChips(){
+  const mk=(el,map,key)=>{const counts={};ITEMS.forEach(it=>counts[it[key]]=(counts[it[key]]||0)+1);
+    el.querySelectorAll('.chip').forEach(n=>n.remove());
+    [['all','All',ITEMS.length],...Object.entries(map).filter(([k])=>counts[k]).map(([k,v])=>[k,v,counts[k]])].forEach(([k,v,n])=>{
+      const b=document.createElement('button');b.type='button';b.className='chip';b.setAttribute('aria-pressed',F[key]===k);b.innerHTML=`${v}<small>${n}</small>`;
+      b.onclick=()=>{F[key]=k;renderChips();renderGrid()};el.appendChild(b)})};
+  mk($('#kindChips'),KINDS,'kind');mk($('#eraChips'),ERAS,'era');
+}
+const thumbCache={};
+function renderGrid(){
+  const L=list(),g=$('#grid');
+  $('#count').textContent=`${L.length} of ${ITEMS.length} switches`;
+  if(!L.length){g.innerHTML='<div class="empty">No switches match. Clear a filter or try another search.</div>';return}
+  g.innerHTML=L.map(it=>{thumbCache[it.id]=thumbCache[it.id]||it.svg();
+    return `<button class="card" type="button" data-id="${it.id}" aria-label="${it.name}"><div class="thumb scene w-${it.wall}">${tried.has(it.id)?'<span class="stamp">tried</span>':''}<svg viewBox="-12 -12 224 224" aria-hidden="true">${thumbCache[it.id]}</svg></div><div class="cap"><span class="nm">${it.name}</span><span class="mt">${it.eraText} · ${KINDS[it.kind]}</span></div></button>`}).join('');
+}
+const whText=v=>v<10?v.toFixed(2)+' Wh':v<1000?v.toFixed(1)+' Wh':(v/1000).toFixed(2)+' kWh';
+function renderStats(){$('#triedN').textContent=`${tried.size} / ${ITEMS.length}`;$('#triedBar').style.width=(tried.size/ITEMS.length*100)+'%';$('#reset').hidden=!tried.size&&wh<.005;$('#energy').textContent=whText(wh)}
+function markTried(){if(!tried.has(cur.id)){tried.add(cur.id);store.set('la-tried',[...tried]);renderStats();renderGrid()}}
+
+/* ================= 3D: standing at the wall, in the dark ================= */
+const imm=$('#imm'),room=$('#room'),handEl=$('#hand'),cv=$('#gl');
+let R=null,scene=null,camera,ray,envTex;
+let cur=null,X=null,S=null,W3={},raf=0,lastT=0,timers=[],lastFocus=null,pose='',hudT=0;
+const later=(fn,ms)=>timers.push(setTimeout(fn,ms));
+const V3=(x=0,y=0,z=0)=>new THREE.Vector3(x,y,z);
+function say(t){$('#hint').textContent=t}
+function feel(t){$('#feel').textContent=t}
+
+function initGL(){
+  if(R)return true;
+  if(!window.THREE)return false;
+  try{R=new THREE.WebGLRenderer({canvas:cv,antialias:true})}catch(e){R=null;return false}
+  R.setPixelRatio(Math.min(2,window.devicePixelRatio||1));R.outputEncoding=THREE.sRGBEncoding;R.toneMapping=THREE.ACESFilmicToneMapping;R.toneMappingExposure=1;
+  R.shadowMap.enabled=true;R.shadowMap.type=THREE.PCFSoftShadowMap;
+  camera=new THREE.PerspectiveCamera(50,1,.01,60);ray=new THREE.Raycaster();
+  /* a soft studio for brass, chrome and glass to reflect; its strength follows how lit the room is */
+  const pm=new THREE.PMREMGenerator(R),es=new THREE.Scene();
+  es.add(new THREE.Mesh(new THREE.BoxGeometry(10,6,10),new THREE.MeshBasicMaterial({color:0x5a5e60,side:THREE.BackSide})));
+  const lp=(w,h,x,y,z,rx,ry,c)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({color:new THREE.Color(c,c*.97,c*.92),side:THREE.DoubleSide}));m.position.set(x,y,z);m.rotation.set(rx,ry,0);es.add(m)};
+  lp(5,1.4,0,2.9,0,Math.PI/2,0,3.5);lp(2.5,3,-4.9,1,1.5,0,Math.PI/2,2.2);lp(2,2,3.5,1.4,4.9,0,Math.PI,1.6);lp(1.2,3,4.9,1.5,-1,0,-Math.PI/2,1.8);
+  envTex=pm.fromScene(es,.03).texture;
+  return true;
+}
+function resize(){if(!R)return;const w=cv.clientWidth,h=cv.clientHeight;if(!w||!h)return;R.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}
+window.addEventListener('resize',resize);
+
+/* ---------- materials ---------- */
+const MAT={plast:[0xf3f1ea,0,.3],ivory:[0xe9dfc4,0,.28],brass:[0xd8ab52,1,.24],oldbrass:[0xb58a3e,1,.4],chrome:[0xf4f6f7,1,.08],brushed:[0xcfd4d6,1,.35],
+  porc:[0xf4f1ea,0,.1],bake:[0x4a2a17,0,.22],black:[0x141414,.1,.3],wood:[0xa8763f,0,.6],woodD:[0x5a3519,0,.7],slate:[0x2f3437,0,.65],copper:[0xd08452,1,.3],
+  iron:[0x2c2c2a,.6,.55],steel:[0xb9bfc2,.9,.4],yellow:[0xf2c21c,0,.45],red:[0xc8322a,.1,.35],grey:[0x8d9295,.3,.5],glassK:[0x0b0c0e,.2,.04],fabric:[0xe9dfc8,0,.95],
+  white:[0xf2f2ee,0,.4],green:[0x3b5a40,.2,.5],cream:[0xe9e1cf,0,.4],dark:[0x0a0a0a,0,.9],paper:[0xf3efe4,0,.9]};
+function M(k,o){const [c,m,r]=MAT[k];const mt=new THREE.MeshStandardMaterial(Object.assign({color:c,metalness:m,roughness:r},o||{}));mt.userData.env=m>.5?1.2:r>.5?.4:.75;W3.mats&&W3.mats.push(mt);return mt}
+function canvasTex(w,h,draw,repeat){
+  const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);
+  const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;t.anisotropy=Math.min(8,R.capabilities.getMaxAnisotropy());
+  if(repeat){t.wrapS=t.wrapT=THREE.RepeatWrapping}return t;
+}
+function speckle(x,w,h,n,a,col='0,0,0'){for(let i=0;i<n;i++){x.fillStyle=`rgba(${col},${Math.random()*a})`;x.fillRect(Math.random()*w,Math.random()*h,1+Math.random()*2.5,1+Math.random()*2.5)}}
+function blotch(x,w,h,n,a){for(let i=0;i<n;i++){x.fillStyle=`rgba(${Math.random()<.5?'0,0,0':'255,255,255'},${Math.random()*a})`;x.beginPath();x.arc(Math.random()*w,Math.random()*h,20+Math.random()*80,0,7);x.fill()}}
+function texLabel(text,fg,bg,font,w=512,h=128){return canvasTex(w,h,(x,cw,ch)=>{if(bg){x.fillStyle=bg;x.fillRect(0,0,cw,ch)}x.fillStyle=fg;x.font=font||`700 ${ch*.6}px -apple-system,"Segoe UI",Roboto,Arial,sans-serif`;x.textAlign='center';x.textBaseline='middle';x.fillText(text,cw/2,ch/2+2)})}
+function labelMat(text,fg,bg,font,w,h){return new THREE.MeshStandardMaterial({map:texLabel(text,fg,bg,font,w,h),transparent:!bg,roughness:.4})}
+let _glow=null;
+function GLOW(){if(!_glow)_glow=canvasTex(128,128,(x,w,h)=>{const g=x.createRadialGradient(w/2,h/2,0,w/2,h/2,w/2);g.addColorStop(0,'rgba(255,255,255,1)');g.addColorStop(.18,'rgba(255,255,255,.55)');g.addColorStop(.5,'rgba(255,255,255,.12)');g.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=g;x.fillRect(0,0,w,h)});return _glow}
+
+/* wall, floor and ceiling surfaces: each texture covers 1.2 m square */
+function surface(kind,a,b){return canvasTex(512,512,(x,w,h)=>{
+  x.fillStyle=a;x.fillRect(0,0,w,h);
+  const grout=(cols,rows,bond,lw=3)=>{x.fillStyle=b;for(let r=0;r<=rows;r++)x.fillRect(0,r*h/rows-lw/2,w,lw);
+    for(let r=0;r<rows;r++)for(let c=0;c<=cols;c++){const off=bond&&r%2?w/cols/2:0;x.fillRect(c*w/cols+off-lw/2,r*h/rows,lw,h/rows)}};
+  if(kind==='plain'){blotch(x,w,h,30,.012);speckle(x,w,h,5000,.035)}
+  if(kind==='render'){blotch(x,w,h,60,.06);speckle(x,w,h,14000,.14);speckle(x,w,h,4000,.1,'255,255,255')}
+  if(kind==='concrete'){blotch(x,w,h,70,.07);speckle(x,w,h,9000,.12)}
+  if(kind==='damask'){speckle(x,w,h,3000,.04);x.fillStyle=b;
+    for(let r=0;r<4;r++)for(let c=0;c<4;c++){const cx=(c+(r%2?.5:0))*w/3,cy=r*h/3;x.save();x.translate(cx,cy);
+      for(let k=0;k<4;k++){x.rotate(Math.PI/2);x.beginPath();x.ellipse(0,-30,12,30,0,0,7);x.fill()}
+      x.beginPath();x.ellipse(0,0,10,10,0,0,7);x.fill();x.globalAlpha=.6;for(let k=0;k<4;k++){x.rotate(Math.PI/2);x.beginPath();x.ellipse(52,0,16,5,0,0,7);x.fill()}x.globalAlpha=1;x.restore()}}
+  if(kind==='panel'){const n=12;for(let c=0;c<n;c++){x.fillStyle=`rgba(${Math.random()<.5?'255,255,255':'0,0,0'},${Math.random()*.1})`;x.fillRect(c*w/n,0,w/n,h);
+      for(let i=0;i<8;i++){x.strokeStyle=`rgba(0,0,0,${Math.random()*.12})`;x.beginPath();const X=c*w/n+Math.random()*w/n;x.moveTo(X,0);x.bezierCurveTo(X+rnd(5),h*.3,X+rnd(5),h*.7,X+rnd(4),h);x.stroke()}
+      x.fillStyle=b;x.fillRect(c*w/n,0,3,h)}}
+  if(kind==='square'){for(let r=0;r<8;r++)for(let c=0;c<8;c++){x.fillStyle=`rgba(${Math.random()<.5?'255,255,255':'0,0,0'},${Math.random()*.05})`;x.fillRect(c*w/8,r*h/8,w/8,h/8)}grout(8,8,0,3)}
+  if(kind==='subway'){for(let r=0;r<16;r++)for(let c=0;c<5;c++){x.fillStyle=`rgba(255,255,255,${Math.random()*.12})`;x.fillRect(c*w/4+(r%2?w/8:0),r*h/16,w/4,h/16)}grout(4,16,1,3)}
+  if(kind==='block'){for(let r=0;r<6;r++)for(let c=0;c<4;c++){x.fillStyle=`rgba(${Math.random()<.5?'255,255,255':'0,0,0'},${Math.random()*.07})`;x.fillRect(c*w/3+(r%2?w/6:0),r*h/6,w/3,h/6)}speckle(x,w,h,12000,.13);grout(3,6,1,6)}
+  if(kind==='brick'){const bh=h/18,bw=w/5.3;x.fillStyle=b;x.fillRect(0,0,w,h);for(let r=0;r<18;r++)for(let c=-1;c<7;c++){const off=r%2?bw/2:0;x.fillStyle=a;x.globalAlpha=.75+Math.random()*.25;x.fillRect(c*bw+off+3,r*bh+3,bw-6,bh-6)}x.globalAlpha=1;speckle(x,w,h,6000,.12)}
+  if(kind==='stripes'){for(let c=0;c<16;c+=2){x.fillStyle=b;x.fillRect(c*w/16,0,w/16,h)}x.fillStyle='rgba(255,255,255,.08)';for(let c=0;c<16;c++)x.fillRect(c*w/16+w/32-1,0,2,h);speckle(x,w,h,2000,.04)}
+  if(kind==='washi'){blotch(x,w,h,30,.04);x.strokeStyle='rgba(120,90,50,.12)';for(let i=0;i<500;i++){x.lineWidth=.5+Math.random();x.beginPath();const px=Math.random()*w,py=Math.random()*h;x.moveTo(px,py);x.lineTo(px+rnd(12),py+rnd(12));x.stroke()}speckle(x,w,h,6000,.06)}
+  if(kind==='courses'){speckle(x,w,h,5000,.06);blotch(x,w,h,30,.03);x.fillStyle=b;[0,1,2].forEach(r=>{x.fillRect(0,r*h/3,w,4);for(let c=0;c<3;c++)x.fillRect(c*w/2.5+(r%2?w/5:0),r*h/3,4,h/3)})}
+  if(kind==='boards'){for(let r=0;r<8;r++){x.fillStyle=`rgba(${Math.random()<.5?'255,255,255':'0,0,0'},${Math.random()*.09})`;x.fillRect(0,r*h/8,w,h/8);for(let i=0;i<14;i++){x.strokeStyle=`rgba(0,0,0,${Math.random()*.1})`;x.beginPath();const y=r*h/8+Math.random()*h/8;x.moveTo(0,y);x.bezierCurveTo(w*.3,y+rnd(4),w*.6,y+rnd(4),w,y+rnd(3));x.stroke()}x.fillStyle='rgba(0,0,0,.45)';x.fillRect(0,r*h/8,w,3);x.fillRect(((r*197)%5)*w/5,r*h/8,3,h/8)}}
+  if(kind==='carpet'){speckle(x,w,h,30000,.18);speckle(x,w,h,9000,.1,'255,255,255')}
+  if(kind==='terrazzo'){for(let i=0;i<2500;i++){x.fillStyle=['#7d776e','#d8d1c4','#99695a','#55524d'][i%4];x.globalAlpha=.6;x.beginPath();x.arc(Math.random()*w,Math.random()*h,1+Math.random()*3.5,0,7);x.fill()}x.globalAlpha=1}
+  if(kind==='tatami'){for(let r=0;r<2;r++){for(let i=0;i<120;i++){x.fillStyle=`rgba(${Math.random()<.5?'90,90,30':'230,230,170'},${Math.random()*.25})`;x.fillRect(0,r*h/2+i*h/240,w,1.2)}x.fillStyle=b;x.fillRect(0,r*h/2,w,14)}}
+  if(kind==='paving'){blotch(x,w,h,40,.06);speckle(x,w,h,8000,.12);grout(2,2,1,6)}
+},1)}
+/* scenes: wall, floor, ceiling (colour, height), extras */
+const SCENES={
+  paint:{wall:['plain','#e6dfd2'],floor:['boards','#7a5a3a'],ceil:['#efebe3',2.5],skirt:'#f3efe6'},
+  magnolia:{wall:['plain','#efe4cc'],floor:['carpet','#8a7a6a'],ceil:['#f4f0e6',2.45],skirt:'#f6f2e8'},
+  damask:{wall:['damask','#2f4a3a','#4e6b52'],floor:['boards','#5a3a22'],ceil:['#e9e1cc',3.1],rail:[.95,'#4a2f1c'],skirt:'#3a2414'},
+  panel:{wall:['panel','#6b4527','#3a2414'],floor:['boards','#4f3320'],ceil:['#e8e0cc',2.8],skirt:'#3a2414'},
+  plaster:{wall:['plain','#e7dcc4'],floor:['boards','#6a4a30'],ceil:['#efe9dc',2.8],rail:[2.1,'#5c3d22'],skirt:'#5c3d22'},
+  bath:{wall:['square','#f1f4f2','#c5cec9'],floor:['square','#9aa5a1','#6f7a76'],ceil:['#f6f7f5',2.4]},
+  block:{wall:['block','#a3a29c','#7d7c76'],floor:['concrete','#7f7d77'],ceil:['#7a6247',2.25],joists:1},
+  living:{wall:['plain','#a9b8a0'],floor:['boards','#8a6440'],ceil:['#f2efe8',2.5],skirt:'#f2efe8'},
+  kitchen:{wall:['subway','#f4f3ee','#cfd2cc'],floor:['square','#c9c3b5','#a39c8c'],ceil:['#f6f5f1',2.5]},
+  washi:{wall:['washi','#e3d6bb'],floor:['tatami','#c6c18a','#2e3a24'],ceil:['#b89a74',2.4],posts:'#8a6a44'},
+  india:{wall:['plain','#bfe0d8'],floor:['terrazzo','#cfc6b3'],ceil:['#f1f1ec',2.9]},
+  stair:{wall:['courses','#e6dcc8','#cdbf9f'],floor:['terrazzo','#b9b0a0'],ceil:['#efe9dc',2.9],dado:[1.0,'#8a5a3a']},
+  stairs:{wall:['plain','#e9e2d3'],floor:['boards','#7a5a3a'],ceil:['#efebe3',3.8],skirt:'#f3efe6'},
+  hotel:{wall:['stripes','#cdbfa8','#bfae94'],floor:['carpet','#5a3a3a'],ceil:['#f3efe8',2.5],skirt:'#efe9dc'},
+  office:{wall:['plain','#dfe2e2'],floor:['carpet','#5f666b'],ceil:['#eef0f0',2.7]},
+  lab:{wall:['brick','#8a3f2c','#cbbfae'],floor:['concrete','#6f6c66'],ceil:['#4a3d32',3.4]},
+  factory:{wall:['block','#c9d3c3','#9aa596'],floor:['concrete','#8a8780'],ceil:['#3a3f42',5],dado:[1.2,'#4f6b55']},
+  dusk:{wall:['render','#b9a78e'],floor:['paving','#5f5a54','#3f3b37'],out:1,sky:['#1c2647','#3c4a78','#c98a6a']},
+  modern:{wall:['plain','#3b3f44'],floor:['boards','#6b5a48'],ceil:['#f0f0ee',2.6]},
+  victor:{wall:['damask','#5a1f24','#7a3036'],floor:['boards','#4a2f1c'],ceil:['#e6dcc4',3.1],rail:[.95,'#3a2414'],skirt:'#3a2414'}
+};
+
+/* ---------- geometry helpers (metres; the wall is z=0, the viewer is +z) ---------- */
+function mesh(geo,mat,x=0,y=0,z=0){const m=new THREE.Mesh(geo,mat);m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;return m}
+const grp=(x=0,y=0,z=0)=>{const g=new THREE.Group();g.position.set(x,y,z);return g};
+const cylY=(r,h,mat,x=0,y=0,z=0,seg=40)=>mesh(new THREE.CylinderGeometry(r,r,h,seg),mat,x,y,z);
+const coneY=(r1,r2,h,mat,x=0,y=0,z=0,seg=40,open=false)=>mesh(new THREE.CylinderGeometry(r1,r2,h,seg,1,open),mat,x,y,z);
+const cylZ=(r,len,mat,x=0,y=0,z=0,seg=40)=>{const g=new THREE.CylinderGeometry(r,r,len,seg);g.rotateX(Math.PI/2);g.translate(0,0,len/2);return mesh(g,mat,x,y,z)};
+const cylX=(r,len,mat,x=0,y=0,z=0)=>{const g=new THREE.CylinderGeometry(r,r,len,32);g.rotateZ(Math.PI/2);return mesh(g,mat,x,y,z)};
+const capX=(r,len,mat,x=0,y=0,z=0)=>{const g=new THREE.CapsuleGeometry(r,len,8,24);g.rotateZ(Math.PI/2);return mesh(g,mat,x,y,z)};
+const capY=(r,len,mat,x=0,y=0,z=0)=>mesh(new THREE.CapsuleGeometry(r,len,8,24),mat,x,y,z);
+const capZ=(r,len,mat,x=0,y=0,z=0)=>{const g=new THREE.CapsuleGeometry(r,len,8,24);g.rotateX(Math.PI/2);return mesh(g,mat,x,y,z)};
+const sph=(r,mat,x=0,y=0,z=0,sx=1,sy=1,sz=1)=>{const m=mesh(new THREE.SphereGeometry(r,32,20),mat,x,y,z);m.scale.set(sx,sy,sz);return m};
+const tor=(R_,r,mat,x=0,y=0,z=0,seg=64)=>mesh(new THREE.TorusGeometry(R_,r,12,seg),mat,x,y,z);
+const torY=(R_,r,mat,x=0,y=0,z=0)=>{const g=new THREE.TorusGeometry(R_,r,12,64);g.rotateX(Math.PI/2);return mesh(g,mat,x,y,z)};
+const bx=(w,h,d,mat,x=0,y=0,z=0)=>mesh(new THREE.BoxGeometry(w,h,d),mat,x,y,z);
+const ext=(shape,depth,mat,bev=.002)=>mesh(new THREE.ExtrudeGeometry(shape,{depth,bevelEnabled:bev>0,bevelThickness:bev,bevelSize:bev,bevelSegments:3,curveSegments:24}),mat);
+const tube=(pts,r,mat,seg=64)=>mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p=>V3(...p))),seg,r,12,false),mat);
+const latheY=(pts,mat,x=0,y=0,z=0,seg=56)=>{const m=mesh(new THREE.LatheGeometry(pts.map(p=>new THREE.Vector2(p[0],p[1])),seg),mat,x,y,z);m.material.side=THREE.DoubleSide;return m};
+const latheZ=(pts,mat,x=0,y=0,z=0,seg=56)=>{const g=new THREE.LatheGeometry(pts.map(p=>new THREE.Vector2(p[0],p[1])),seg);g.rotateX(Math.PI/2);const m=mesh(g,mat,x,y,z);m.material.side=THREE.DoubleSide;return m};
+function rrect(w,h,r){const s=new THREE.Shape(),x=-w/2,y=-h/2;s.moveTo(x+r,y);s.lineTo(x+w-r,y);s.quadraticCurveTo(x+w,y,x+w,y+r);s.lineTo(x+w,y+h-r);s.quadraticCurveTo(x+w,y+h,x+w-r,y+h);s.lineTo(x+r,y+h);s.quadraticCurveTo(x,y+h,x,y+h-r);s.lineTo(x,y+r);s.quadraticCurveTo(x,y,x+r,y);return s}
+const at=(o,x,y,z)=>{o.position.set(x,y,z);return o};
+const rot=(o,x,y,z)=>{o.rotation.set(x,y,z);return o};
+/* a flat plate on the wall, its face at z=t */
+function plate(w,h,t,mat,x=0,y=0,r=.004){const m=ext(rrect(w-.003,h-.003,r),t-.0015,mat,.0015);m.position.set(x,y,0);return m}
+function screw(mat,x,y,z,a=.5){const g=grp(x,y,z);g.add(cylZ(.0032,.0012,mat));g.add(at(rot(bx(.0045,.0007,.0006,M('dark')),0,0,a),0,0,.0013));return g}
+/* an invisible box that is easy to grab */
+const hitBox=(w,h,d,x=0,y=0,z=0)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshBasicMaterial({visible:false}));m.position.set(x,y,z);return m};
+
+/* ---------- lamps ----------
+   a lamp is a light source with its own physics: d is the drive the switch gives it (0..1), lvl the light it actually makes */
+function kRGB(K,out){const t=K/100;let r,g,b;
+  if(t<=66){r=255;g=99.4708025861*Math.log(t)-161.1195681661;b=t<=19?0:138.5177312231*Math.log(t-10)-305.0447927307}
+  else{r=329.698727446*Math.pow(t-60,-.1332047592);g=288.1221695283*Math.pow(t-60,-.0755148492);b=255}
+  return out.setRGB(lerp(clamp(r/255),1,.18),lerp(clamp(g/255),1,.18),lerp(clamp(b/255),1,.18)).convertSRGBToLinear()}
+const PINK=new THREE.Color(0xff3a5c).convertSRGBToLinear(),SODIUM=new THREE.Color(0xff8a10).convertSRGBToLinear(),HIDBLUE=new THREE.Color(0x8fc4ff).convertSRGBToLinear(),GASTINT=new THREE.Color(.9,1,.78);
+function lamp(B,type,o){
+  const K=o.K||2700,r={type,lm:o.lm||800,W:o.W||60,K,mats:[],fil:[],lvl:0,T:0,d:0,ph:'off',warm:0,cool:0,na:0,scale:1,col:new THREE.Color(),Kcur:K,Wnow:0,flash:0};
+  r.I=o.I??1.4*Math.pow(r.lm/800,.4);
+  if(!o.nolight){const L=new THREE.PointLight(0xffffff,0,o.range||7,2);L.position.set(...o.at);
+    if(o.shadow!==false&&!B.lamps.length){L.castShadow=true;L.shadow.mapSize.set(1024,1024);L.shadow.bias=-.0015;L.shadow.radius=4;L.shadow.camera.near=.02}
+    B.g.add(L);r.light=L}
+  if(o.glow){const s=new THREE.Sprite(new THREE.SpriteMaterial({map:GLOW(),color:0xffffff,transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending}));s.position.set(...(o.glowAt||o.at));s.renderOrder=5;r.gs=o.glow;s.scale.set(o.glow,o.glow,1);B.g.add(s);r.spr=s}
+  B.lamps.push(r);return r;
+}
+/* surfaces that glow with the lamp: clear glass, opal glass or a shade, and a filament */
+function emGlass(r,k=.35){const m=new THREE.MeshStandardMaterial({color:0xf4f4f0,roughness:.06,metalness:0,transparent:true,opacity:.3,depthWrite:false});m.userData.env=1.6;W3.mats.push(m);r.mats.push({m,k});return m}
+function emOpal(r,k=1.1,col=0xf0eee8,o){const m=new THREE.MeshStandardMaterial(Object.assign({color:col,roughness:.45,metalness:0},o||{}));m.userData.env=.5;W3.mats.push(m);r.mats.push({m,k});return m}
+function emFil(r,k=3,off=0x3a3632){const m=new THREE.MeshBasicMaterial({color:off});r.fil.push({m,k,off});return m}
+/* a pear-shaped bulb, base up, hanging from (x,y,z) */
+function bulbA(r,g,x,y,z,s=1,o={}){
+  const pts=[[.0135,0],[.0135,-.004],[.016,-.012],[.024,-.03],[.031,-.052],[.032,-.07],[.028,-.088],[.018,-.1],[0,-.104]].map(([a,b])=>[a*s,b*s]);
+  g.add(latheY([[.0135*s,.025*s],[.0135*s,0]],M('brushed'),x,y,z,24));
+  const env=latheY(pts,o.frost?emOpal(r,o.k||1.2,0xf2f0ea,{transparent:true,opacity:.92}):emGlass(r),x,y,z,40);env.castShadow=false;g.add(env);
+  if(!o.frost){const fm=emFil(r,o.fk||3.2);const fy=y-.068*s;
+    if(o.carbon){g.add(tube([[x-.009*s,y-.02*s,z],[x-.012*s,fy,z],[x,fy-.012*s,z],[x+.012*s,fy,z],[x+.009*s,y-.02*s,z]],.0007,fm,40))}
+    else{g.add(at(rot(tor(.008*s,.0006,fm,0,0,0,24),Math.PI/2,0,0),x,fy,z));g.add(tube([[x-.004*s,y-.012*s,z],[x-.007*s,fy,z]],.0005,M('steel'),8));g.add(tube([[x+.004*s,y-.012*s,z],[x+.007*s,fy,z]],.0005,M('steel'),8))}}
+  return V3(x,y-.065*s,z);
+}
+/* a small lamp that only shows: a locator, a neon, an LED */
+function indicator(B,hex,fn,size=0){
+  const c=new THREE.Color(hex).convertSRGBToLinear(),m=new THREE.MeshStandardMaterial({color:new THREE.Color(hex).multiplyScalar(.35),emissive:0,roughness:.3});
+  const it={m,c,fn,v:0};
+  if(size){const s=new THREE.Sprite(new THREE.SpriteMaterial({map:GLOW(),color:c,transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending}));s.scale.set(size,size,1);s.renderOrder=5;it.spr=s;it.size=size}
+  B.ind.push(it);return it;
+}
+function lampCol(r,out){
+  if(r.type==='sodium')return out.copy(PINK).lerp(SODIUM,r.na);
+  if(r.type==='hid')return out.copy(HIDBLUE).lerp(kRGB(4200,_kc),clamp(r.warm*1.3));
+  if(r.type==='gas')return kRGB(2600,out).multiply(GASTINT);
+  return kRGB(r.Kcur,out);
+}
+const _kc=new THREE.Color();
+function stepLamp(r,dt,now){
+  const d=r.d;
+  switch(r.type){
+    case 'inc':case 'carbon':{const up=r.type==='carbon'?.11:.07,dn=r.type==='carbon'?.2:.13;r.T+=(d-r.T)*(1-Math.exp(-dt/(d>r.T?up:dn)));
+      r.lvl=Math.pow(r.T,2.1);r.Kcur=1750+(r.K-1750)*Math.pow(r.T,.55);r.Wnow=r.W*Math.pow(d,1.55);break}
+    case 'led':r.lvl+=(d-r.lvl)*(1-Math.exp(-dt/.025));r.Kcur=r.K;r.Wnow=r.W*d;break;
+    case 'tube':{
+      if(d>0){
+        if(r.ph==='off'){r.ph='strike';r.t=0;r.flashes=1+Math.floor(Math.random()*3);r.nf=.25+Math.random()*.25;r.flash=0}
+        if(r.ph==='strike'){r.t+=dt;r.flash=Math.max(0,r.flash-dt);
+          if(r.t>=r.nf){if(r.flashes>0){r.flashes--;r.flash=.07+Math.random()*.05;r.nf=r.t+.28+Math.random()*.35;play('tink')}else{r.ph='on';play('tink')}}
+          r.lvl=r.flash>0?.5+Math.random()*.2:.015}
+        else r.lvl+=(d-r.lvl)*(1-Math.exp(-dt/.05));
+      }else{r.ph='off';r.lvl=Math.max(0,r.lvl-dt*14)}
+      r.Kcur=r.K;r.Wnow=r.ph==='off'?0:r.W;break}
+    case 'hid':{
+      if(d>0&&r.cool<=0){if(r.ph==='off'){r.ph='warm';play('relay')}r.warm=Math.min(1,r.warm+dt/16);r.lvl=.035+.965*r.warm*r.warm}
+      else if(d<=0){if(r.ph!=='off'){r.ph='off';r.cool=r.warm>.25?9:0}r.warm=Math.max(0,r.warm-dt/20);r.lvl=Math.max(0,r.lvl-dt*3)}
+      r.cool=Math.max(0,r.cool-dt);r.Wnow=d>0&&r.ph!=='off'?r.W*(.55+.45*r.warm):0;break}
+    case 'sodium':{
+      if(d>0){r.ph='warm';r.warm=Math.min(1,r.warm+dt/16);r.na=clamp((r.warm-.18)/.82);r.lvl=.07+.93*Math.pow(r.na,1.4)}
+      else{r.ph='off';r.warm=Math.max(0,r.warm-dt/12);r.lvl=Math.max(0,r.lvl-dt*4)}
+      r.Wnow=d>0?r.W:0;break}
+    case 'gas':{
+      if(d>0){if(r.ph==='off'){r.ph='on';play('whump')}r.T=Math.min(1,r.T+dt/.35);r.lvl=r.T*(.94+.06*Math.sin(now*.013)*Math.sin(now*.0071))}
+      else{r.ph='off';r.T=Math.max(0,r.T-dt/.25);r.lvl=r.T*.9}
+      r.Wnow=d>0?r.W:0;break}
+  }
+  /* how it looks */
+  const c=lampCol(r,r.col),v=r.lvl*r.scale;
+  r.mats.forEach(o=>o.m.emissive.copy(c).multiplyScalar(v*o.k));
+  r.fil.forEach(o=>{if(v>.002)o.m.color.copy(c).multiplyScalar(.12+v*o.k);else o.m.color.setHex(o.off)});
+  if(r.light){r.light.color.copy(c);r.light.intensity=v*r.I}
+  if(r.spr){r.spr.material.opacity=Math.min(1,v*1.15)*.85;r.spr.material.color.copy(c);const s=r.gs*(.55+.45*Math.min(1,v));r.spr.scale.set(s,s,1)}
+}
+
+/* ---------- the switches, modelled ----------
+   build() returns { g, parts:[{obj, apply(i), pivot?}], lamps, ind (locator lamps), mix (surfaces lit by several lamps), tick? }
+   the switch sits on the wall about 1.2 m up; the lamp it works is in view above or beside it */
+function ctx(){return{g:grp(),parts:[],lamps:[],ind:[],mix:[]}}
+const flipAng=i=>cur.parts[i].up?lerp(.42,-.42,S.p[i]):lerp(-.42,.42,S.p[i]);
+function usToggle(B,i,x,y,hs=1){const g=B.g,iv=M('ivory');
+  g.add(plate(.07,.114,.006,iv,x,y,.003));g.add(screw(M('ivory'),x,y+.0415,.006));g.add(screw(M('ivory'),x,y-.0415,.006,.9));
+  g.add(bx(.011,.024,.002,M('dark'),x,y,.0055));g.add(cylZ(.0055,.003,M('steel'),x,y,.0055));
+  const lv=grp(x,y,.0075);lv.add(capZ(.0033,.017,iv,0,0,.011));lv.add(hitBox(.026*hs,.034*hs,.03,0,0,.012));g.add(lv);
+  B.parts[i]={obj:lv,apply:k=>{lv.rotation.x=flipAng(k)}};
+}
+function rocker(B,i,x,y,w,h,mat,tilt=.1){const rk=grp(x,y,.0075);rk.add(bx(w,h,.006,mat,0,0,.003));rk.add(hitBox(w*1.3,h*1.2,.02,0,0,.006));B.g.add(rk);
+  B.parts[i]={obj:rk,pivot:rk,apply:k=>{const v=lerp(-tilt,tilt,S.p[k]);rk.rotation.x=cur.parts[k].topOn?-v:v}};return rk}
+function cordDrop(g,x,z,ceil,y,col=0xf2efe8){g.add(cylY(.035,.022,M('white',{color:col}),x,ceil-.011,z));g.add(cylY(.0025,ceil-y,M('black'),x,(ceil+y)/2,z))}
+/* a cord or chain hanging from a pivot; pulling stretches it, and it swings when let go */
+function pullCord(B,i,x,y,z,len,end,o={}){
+  const pv=grp(x,y,z);let cord=null,beads=null;
+  if(o.beads){beads=[];const n=Math.round(len/.0045),bm=M('brass'),bg=new THREE.SphereGeometry(.0019,8,6);for(let k=0;k<n;k++){const b=mesh(bg,bm);b.castShadow=false;pv.add(b);beads.push(b)}}
+  else{cord=cylY(o.r||.0015,1,M('white',{color:o.col||0xf4f1ea,roughness:.8}));pv.add(cord)}
+  const e=grp(0,-len,0);e.add(end);e.add(hitBox(.035,.06,.035,0,-.02,0));pv.add(e);B.g.add(pv);
+  const lay=s=>{const L=len+s;if(cord){cord.scale.y=L;cord.position.y=-L/2}else beads.forEach((b,k)=>b.position.y=-(k+.5)/beads.length*L);e.position.y=-L};lay(0);
+  B.parts[i]={obj:e,pivot:pv,len,apply:k=>{lay(S.p[k]*.04);pv.rotation.z=S.sw[k]}};
+}
+const acorn=()=>{const g=grp();g.add(latheY([[0,0],[.006,-.002],[.011,-.012],[.012,-.024],[.009,-.036],[0,-.044]],M('wood'),0,0,0,24));g.add(cylY(.007,.006,M('woodD'),0,-.002,0,20));return g};
+function table(g,x,z,w=.7,d=.45,h=.74){const t=M('woodD');g.add(bx(w,.035,d,t,x,h-.0175,z));[[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([a,b])=>g.add(bx(.035,h-.035,.035,t,x+a*(w/2-.03),(h-.035)/2,z+b*(d/2-.03))))}
+function drum(L,g,x,y,z,rb,rt,h,col=0xe9dfc8,k=.32){const m=mesh(new THREE.CylinderGeometry(rt,rb,h,48,1,true),emOpal(L,k,col,{side:THREE.DoubleSide}),x,y,z);m.receiveShadow=false;g.add(m);
+  const w=M('brushed');g.add(torY(rt,.0018,w,x,y+h/2,z));g.add(torY(rb,.0018,w,x,y-h/2,z));return m}
+function upBulb(L,g,x,y,z,s=1,o){const b=grp(x,y,z);b.rotation.x=Math.PI;bulbA(L,b,0,0,0,s,o);g.add(b)}
+
+const D3={
+toggle:{cam:{t:[.2,1.58,.1],d:1.4},build(){
+  const B=ctx(),g=B.g;usToggle(B,0,0,1.2);
+  cordDrop(g,.42,.55,2.5,2.1);g.add(cylY(.032,.05,M('brushed'),.42,2.09,.55));
+  const L=lamp(B,'inc',{lm:800,W:60,K:2700,at:[.42,1.93,.55],glow:.55});
+  const gl=latheY([[.034,0],[.06,-.02],[.095,-.08],[.108,-.15],[.098,-.21],[.07,-.25],[.04,-.265],[0,-.27]],emOpal(L,1.15,0xf4f2ea),.42,2.07,.55);gl.castShadow=false;g.add(gl);
+  return B}},
+ukrocker:{cam:{t:[.2,1.55,.1],d:1.35},build(){
+  const B=ctx(),g=B.g,w=M('plast');g.add(plate(.086,.086,.008,w,0,1.25,.004));g.add(bx(.028,.044,.002,M('grey',{color:0xc9c6bd}),0,1.25,.007));
+  [-.0302,.0302].forEach(x=>g.add(screw(M('plast'),x,1.25,.008,.4)));rocker(B,0,0,1.25,.024,.04,M('plast'),.11);
+  cordDrop(g,.42,.6,2.45,1.9);g.add(cylY(.016,.04,M('white'),.42,1.89,.6));
+  const L=lamp(B,'led',{lm:806,W:8.5,K:2700,at:[.42,1.82,.6],glow:.4});bulbA(L,g,.42,1.87,.6,1,{frost:1});
+  drum(L,g,.42,1.84,.6,.2,.2,.22,0xe6d9bd);
+  return B}},
+victorian:{cam:{t:[.18,1.6,.1],d:1.4},build(){
+  const B=ctx(),g=B.g,y=1.25,br=M('brass');
+  g.add(latheZ([[0,0],[.047,0],[.048,.004],[.045,.02],[0,.02]],M('wood'),0,y,0));g.add(cylZ(.035,.008,M('porc'),0,y,.02));
+  [0,2.1,4.2].forEach(a=>g.add(screw(M('brass'),Math.cos(a)*.04,y+Math.sin(a)*.04,.013,a)));
+  g.add(sph(.031,br,0,y,.028,1,1,.5));g.add(tor(.031,.002,br,0,y,.028));
+  const kn=grp(0,y,.043);kn.add(cylZ(.004,.006,br));kn.add(cylZ(.0085,.008,M('bake'),0,0,.004));kn.add(capX(.0045,.032,M('bake'),0,0,.009));kn.add(hitBox(.05,.03,.03,0,0,.01));g.add(kn);
+  B.parts[0]={obj:kn,apply:k=>{kn.rotation.z=-S.ang[k]}};
+  g.add(cylY(.012,.02,M('wood'),.36,3.09,.42));g.add(tube([[.36,3.09,.42],[.362,2.6,.42],[.358,2.2,.42],[.36,1.99,.42]],.0028,M('bake'),40));
+  g.add(latheY([[0,0],[.013,0],[.016,-.01],[.016,-.035],[.0135,-.04]],M('brass'),.36,2,.42,24));
+  const L=lamp(B,'carbon',{lm:200,W:55,K:2100,at:[.36,1.88,.42],glow:.42,I:1.15});bulbA(L,g,.36,1.96,.42,1.15,{carbon:1,fk:4});
+  return B}},
+pushbutton:{cam:{t:[.18,1.45,.05],d:1.15},build(){
+  const B=ctx(),g=B.g,y=1.2,br=M('brass');g.add(plate(.07,.116,.004,br,0,y,.004));g.add(plate(.058,.1,.0055,M('brass'),0,y,.003));
+  g.add(screw(M('brass'),0,y+.044,.0055));g.add(screw(M('brass'),0,y-.044,.0055,1));
+  const pearl=new THREE.MeshPhysicalMaterial({color:0xf6f2ea,roughness:.18,iridescence:1,iridescenceIOR:1.7,iridescenceThicknessRange:[250,650]});W3.mats.push(pearl);
+  [[.016,1],[-.016,0]].forEach(([dy,top],i)=>{g.add(cylZ(.0095,.002,M('dark'),0,y+dy,.0045));
+    const b=grp(0,y+dy,.004);b.add(cylZ(.0074,.012,M('bake')));b.add(sph(.0074,M('bake'),0,0,.012,1,1,.25));if(top)b.add(cylZ(.0042,.0012,pearl,0,0,.0128));b.add(hitBox(.024,.024,.03,0,0,.01));g.add(b);
+    B.parts[i]={obj:b,apply:k=>{b.position.z=.004-.0075*S.p[k]}}});
+  const bp=grp(.36,1.58,0);bp.add(latheZ([[0,0],[.04,0],[.042,.008],[.02,.016],[0,.016]],M('oldbrass')));bp.add(tube([[0,0,.016],[0,.02,.07],[0,.05,.12],[0,.04,.15]],.0055,M('oldbrass')));g.add(bp);
+  const L=lamp(B,'inc',{lm:420,W:40,K:2650,at:[.36,1.67,.15],glow:.35});
+  upBulb(L,g,.36,1.625,.15,.85);g.add(latheY([[.012,0],[.02,.004],[.025,.016]],M('oldbrass'),.36,1.6,.15,24));
+  const tl=latheY([[.022,0],[.04,.02],[.066,.07],[.076,.11],[.08,.125]],emOpal(L,.9,0xf6ecdc,{transparent:true,opacity:.93,side:THREE.DoubleSide}),.36,1.62,.15);tl.castShadow=false;g.add(tl);
+  return B}},
+dolly:{cam:{t:[.2,1.6,.1],d:1.4},build(){
+  const B=ctx(),g=B.g,y=1.25,br=M('brass');
+  g.add(latheZ([[0,0],[.042,0],[.044,.006],[.04,.016],[0,.016]],M('bake'),0,y,0));g.add(sph(.025,br,0,y,.015,1,1,.55));
+  g.add(cylY(.009,1.5,M('steel'),0,y+.78,.01));g.add(cylY(.012,.03,M('steel'),0,y+.045,.01));
+  g.add(bx(.006,.013,.004,M('dark'),0,y,.0275));
+  const lv=grp(0,y,.027);lv.add(capZ(.0028,.008,br,0,0,.007));lv.add(hitBox(.024,.03,.03,0,0,.01));g.add(lv);
+  B.parts[0]={obj:lv,apply:k=>{lv.rotation.x=flipAng(k)}};
+  cordDrop(g,.42,.55,2.8,2.2,0xefe9dc);[0,2.1,4.2].forEach(a=>g.add(cylY(.0012,.32,M('brass'),.42+Math.cos(a)*.1,2.06,.55+Math.sin(a)*.1)));
+  const L=lamp(B,'inc',{lm:800,W:60,K:2700,at:[.42,1.92,.55],glow:.4});bulbA(L,g,.42,1.99,.55,1);
+  const bowl=latheY([[0,-.05],[.06,-.045],[.11,-.025],[.14,0],[.145,.006]],emOpal(L,1,0xf2ece0,{transparent:true,opacity:.95,side:THREE.DoubleSide}),.42,1.9,.55);bowl.castShadow=false;g.add(bowl);
+  return B}},
+dimmer:{cam:{t:[.2,1.55,.1],d:1.35},build(){
+  const B=ctx(),g=B.g,w=M('plast');g.add(plate(.07,.114,.006,w,0,1.2,.003));g.add(screw(M('plast'),0,1.2415,.006));g.add(screw(M('plast'),0,1.1585,.006,1));
+  const kn=grp(0,1.2,.006);kn.add(latheZ([[0,0],[.017,0],[.0175,.012],[.015,.016],[0,.0165]],M('plast')));kn.add(bx(.0022,.011,.001,M('grey'),0,.007,.0166));kn.add(hitBox(.045,.045,.03,0,0,.01));g.add(kn);
+  B.parts[0]={obj:kn,apply:k=>{kn.rotation.z=2.3-4.6*S.lv[k];kn.position.z=.006-.003*S.p[k]}};
+  cordDrop(g,.42,.55,2.5,2.02);g.add(latheY([[0,.06],[.05,.06],[.06,.03],[.03,0]],M('oldbrass'),.42,1.97,.55));
+  const L=lamp(B,'inc',{lm:800,W:60,K:2700,at:[.42,1.86,.55],glow:.5});bulbA(L,g,.42,1.975,.55,1.45,{fk:3.6});
+  return B}},
+decora:{cam:{t:[.2,1.58,.1],d:1.4},build(){
+  const B=ctx(),g=B.g,w=M('plast');g.add(plate(.07,.114,.006,w,0,1.2,.003));g.add(screw(M('plast'),0,1.2485,.006));g.add(screw(M('plast'),0,1.1515,.006,1));
+  g.add(bx(.035,.068,.002,M('grey',{color:0xcfccc4}),0,1.2,.0055));rocker(B,0,0,1.2,.033,.066,M('plast'),.05);
+  cordDrop(g,.42,.55,2.5,2.06,0xf6f5f1);
+  const L=lamp(B,'led',{lm:800,W:9,K:3000,at:[.42,1.9,.55],glow:.35});bulbA(L,g,.42,1.97,.55,1,{frost:1});
+  const sh=latheY([[.02,.1],[.03,.09],[.06,.04],[.15,-.03],[.155,-.035]],M('green',{side:THREE.DoubleSide}),.42,1.95,.55);g.add(sh);
+  return B}},
+hotaru:{cam:{t:[.22,1.55,.1],d:1.4},build(){
+  const B=ctx(),g=B.g,w=M('plast');g.add(plate(.072,.12,.007,w,0,1.2,.003));g.add(bx(.062,.104,.002,M('grey',{color:0xd2cfc6}),0,1.2,.0065));
+  const rk=rocker(B,0,0,1.2,.06,.1,M('plast'),.045);
+  const I=indicator(B,0x4dff7a,()=>S.on[0]?0:1,.03);const led=bx(.009,.0032,.001,I.m,0,-.038,.0062);rk.add(led);I.spr.position.set(0,-.038,.009);rk.add(I.spr);
+  cordDrop(g,.45,.55,2.5,2.06);
+  const L=lamp(B,'led',{lm:800,W:8,K:2700,at:[.45,1.86,.55],glow:.3});
+  const pl=sph(.19,emOpal(L,1.05,0xf6f1e4,{transparent:true,opacity:.96,side:THREE.DoubleSide}),.45,1.86,.55,1,.92,1);pl.castShadow=false;g.add(pl);
+  for(let k=-3;k<=3;k++){const yy=k*.05,r=Math.sqrt(Math.max(0,.0361-(yy/.92)**2));if(r>.02)g.add(torY(r+.001,.0009,M('grey'),.45,1.86+yy,.55))}
+  return B}},
+himo:{cam:{t:[0,2.0,.7],d:1.45,up:-.5},build(){
+  const B=ctx(),g=B.g,c=2.4,Z=.75;
+  g.add(cylY(.3,.03,M('white'),0,c-.015,Z));
+  const t1=lamp(B,'tube',{lm:2000,W:32,K:5000,at:[0,c-.12,Z],I:1.5}),t2=lamp(B,'tube',{lm:1700,W:30,K:5000,at:[0,c-.12,Z],I:1.4}),nl=lamp(B,'inc',{lm:25,W:5,K:2000,at:[0,c-.1,Z]});
+  g.add(at(rot(tor(.17,.0125,emOpal(t1,2,0xf6f8f8)),Math.PI/2,0,0),0,c-.05,Z));g.add(at(rot(tor(.105,.0125,emOpal(t2,2,0xf6f8f8)),Math.PI/2,0,0),0,c-.05,Z));
+  const nb=sph(.011,emOpal(nl,3,0xffe2b0),0,c-.06,Z);nb.castShadow=false;g.add(nb);
+  const dm=new THREE.MeshStandardMaterial({color:0xf2f0ea,roughness:.4,transparent:true,opacity:.62,side:THREE.DoubleSide,depthWrite:false});W3.mats.push(dm);
+  const d=latheY([[.3,0],[.295,-.035],[.26,-.07],[.15,-.088],[0,-.094]],dm,0,c-.03,Z);d.castShadow=false;g.add(d);B.mix.push({m:dm,k:.55,lamps:[t1,t2,nl]});
+  pullCord(B,0,0,c-.12,Z,.9,(()=>{const e=grp();e.add(capY(.007,.018,M('plast',{color:0xe8e2d0}),0,-.016,0));e.add(sph(.0075,M('red',{color:0x9a2a2a}),0,-.04,0));return e})());
+  return B}},
+switchboard:{cam:{t:[.1,1.6,.05],d:1.35},build(){
+  const B=ctx(),g=B.g,y=1.25,w=M('plast');g.add(plate(.3,.11,.01,w,0,y,.006));[-.14,.14].forEach(x=>g.add(screw(M('plast'),x,y,.01,.3)));
+  [-.11,-.08,-.05].forEach((x,i)=>{g.add(bx(.018,.03,.002,M('grey',{color:0xc9c6bd}),x,y,.0095));const rk=grp(x,y,.0095);rk.add(bx(.016,.028,.006,M('plast'),0,0,.003));rk.add(hitBox(.024,.034,.02,0,0,.006));g.add(rk);
+    B.parts[i]={obj:rk,apply:k=>{rk.rotation.x=lerp(-.14,.14,S.p[k])}}});
+  const ne=indicator(B,0xff4a2a,()=>1,.03);g.add(sph(.003,ne.m,-.02,y+.025,.0105));ne.spr.position.set(-.02,y+.025,.013);g.add(ne.spr);
+  g.add(cylZ(.026,.002,M('plast',{color:0xe9e6dd}),.08,y,.0095));[[0,.011],[-.009,-.006],[.009,-.006]].forEach(([dx,dy])=>g.add(cylZ(dx?.0024:.003,.001,M('dark'),.08+dx,y+dy,.0113)));
+  g.add(bx(.032,.042,.026,M('white'),.08,y-.006,.024));const ch=indicator(B,0x4aa8ff,()=>S.on[2]?1:0,.02);g.add(sph(.0016,ch.m,.08,y+.006,.0372));ch.spr.position.set(.08,y+.006,.039);g.add(ch.spr);
+  g.add(tube([[.08,y-.027,.024],[.085,y-.15,.04],[.06,y-.4,.03],[.1,y-.62,.03]],.0018,M('white')));
+  g.add(bx(1.22,.04,.05,M('white'),.3,2.06,.025));[-.29,.89].forEach(x=>g.add(bx(.03,.035,.02,M('grey'),x,2.03,.06)));
+  const T=lamp(B,'tube',{lm:2600,W:36,K:6500,at:[.3,2.0,.14],I:1.7});const tm=cylX(.013,1.17,emOpal(T,2.2,0xf4f6f8),.3,2.03,.065);tm.castShadow=false;g.add(tm);
+  g.add(cylZ(.03,.03,M('bake'),-.5,1.98,0));g.add(cylY(.014,.03,M('bake'),-.5,1.965,.03));
+  const Bu=lamp(B,'inc',{lm:800,W:60,K:2700,at:[-.5,1.88,.03],glow:.4});bulbA(Bu,g,-.5,1.95,.03,1);
+  return B}},
+pullcord:{cam:{t:[.2,1.7,.2],d:1.35,up:-.08},build(){
+  const B=ctx(),g=B.g,c=2.4;g.add(bx(.06,.036,.06,M('plast'),0,c-.018,.15));
+  pullCord(B,0,0,c-.036,.15,1.1,acorn());
+  const mi=new THREE.MeshStandardMaterial({color:0xd6dde0,metalness:1,roughness:.03});mi.userData.env=1.5;W3.mats.push(mi);g.add(bx(.5,.6,.006,mi,.45,1.45,.004));
+  g.add(bx(.46,.05,.06,M('chrome'),.45,1.83,.03));
+  const L=lamp(B,'led',{lm:900,W:10,K:3000,at:[.45,1.76,.12],I:1.4});const df=bx(.43,.01,.05,emOpal(L,1.8,0xf4f4f2),.45,1.802,.035);df.castShadow=false;g.add(df);
+  g.add(bx(.5,.03,.12,M('porc'),.45,1.1,.06));
+  return B}},
+pullchain:{cam:{t:[.08,1.85,.42],d:1.3,up:-.3},build(){
+  const B=ctx(),g=B.g,c=2.25,Z=.42;
+  g.add(latheY([[0,0],[.055,0],[.055,-.012],[.034,-.02],[.026,-.05],[.022,-.062],[0,-.062]],M('porc'),0,c,Z,40));
+  const L=lamp(B,'inc',{lm:800,W:60,K:2700,at:[0,c-.13,Z],glow:.5});bulbA(L,g,0,c-.062,Z,1);
+  pullCord(B,0,.03,c-.035,Z,.62,(()=>{const e=grp();e.add(capY(.0042,.012,M('brass'),0,-.01,0));return e})(),{beads:1});
+  return B}},
+threeway:{cam:{t:[.02,1.08,.3],d:.95,up:.12},build(){
+  const B=ctx(),g=B.g,Z=.3;table(g,0,Z);
+  g.add(latheY([[0,0],[.09,0],[.09,.012],[.06,.02],[.075,.08],[.08,.16],[.05,.26],[.02,.3],[.016,.36],[0,.36]],M('cream',{color:0x2f5a6a,roughness:.25}),0,.74,Z));
+  g.add(cylY(.018,.06,M('brass'),0,1.13,Z));g.add(cylY(.02,.008,M('brass'),0,1.164,Z));
+  const kn=grp(.019,1.135,Z);kn.add(cylX(.0035,.01,M('brass'),.005,0,0));kn.add(bx(.004,.016,.006,M('brass'),.012,0,0));kn.add(hitBox(.03,.04,.04,.01,0,0));g.add(kn);
+  B.parts[0]={obj:kn,apply:k=>{kn.rotation.x=-S.ang[k]}};
+  const L=lamp(B,'inc',{lm:2100,W:150,K:2800,at:[0,1.25,Z],glow:.4});upBulb(L,g,0,1.17,Z,1.15);
+  [-1,1].forEach(s=>g.add(tube([[s*.01,1.15,Z],[s*.09,1.25,Z],[s*.02,1.38,Z],[0,1.4,Z]],.0018,M('brass'),24)));
+  drum(L,g,0,1.3,Z,.2,.14,.24,0xeee3c8);
+  return B}},
+minuterie:{cam:{t:[.3,1.55,.1],d:1.45},build(){
+  const B=ctx(),g=B.g,y=1.25;g.add(cylZ(.03,.006,M('brass'),0,y,0));
+  const ri=indicator(B,0xffa53a,()=>S.on[0]?.45:1,.09);g.add(at(tor(.0205,.0026,ri.m),0,y,.0068));ri.spr.position.set(0,y,.012);g.add(ri.spr);
+  const b=grp(0,y,.006);b.add(cylZ(.0165,.007,M('plast',{color:0xf2ead8})));b.add(sph(.0165,M('plast',{color:0xf2ead8}),0,0,.007,1,1,.18));b.add(hitBox(.05,.05,.03,0,0,.01));g.add(b);
+  B.parts[0]={obj:b,apply:k=>{b.position.z=.006-.004*S.p[k]}};
+  const pl=new THREE.Mesh(new THREE.PlaneGeometry(.1,.022),labelMat('LUMIÈRE','#5a4a30',null,'700 70px Georgia,serif',512,112));pl.position.set(0,y+.05,.002);g.add(pl);
+  const st=M('cream',{color:0xbdb3a2,roughness:.8});
+  for(let k=0;k<7;k++){const h=(k+1)*.17;g.add(bx(.29,h,1.1,st,.42+k*.29,h/2,.55))}
+  const ir=M('iron');g.add(tube([[-1.2,.95,.07],[.28,.95,.07],[1.9,1.95,.07]],.012,M('wood'),48));[[-.8,.95],[0,.95],[.9,1.33],[1.6,1.76]].forEach(([x,yy])=>g.add(cylZ(.005,.07,ir,x,yy,0)));
+  g.add(latheZ([[0,0],[.04,0],[.03,.01],[0,.01]],M('brass'),.55,1.95,0));g.add(cylZ(.008,.12,M('brass'),.55,1.95,.01));
+  const L=lamp(B,'inc',{lm:800,W:60,K:2700,at:[.55,1.95,.2],glow:.45});const gb=sph(.1,emOpal(L,1.25,0xf4f0e6),.55,1.95,.2);gb.castShadow=false;g.add(gb);
+  return B}},
+keycard:{cam:{t:[.2,1.48,.08],d:1.2},build(){
+  const B=ctx(),g=B.g,y=1.25,w=M('plast');g.add(plate(.086,.1,.012,w,0,y,.005));
+  g.add(bx(.064,.008,.003,M('dark'),0,y+.03,.0115));
+  const cm=new THREE.MeshStandardMaterial({roughness:.35,map:canvasTex(256,400,(x,cw,ch)=>{const gr=x.createLinearGradient(0,0,cw,ch);gr.addColorStop(0,'#2a6fa5');gr.addColorStop(1,'#123a5c');x.fillStyle=gr;x.fillRect(0,0,cw,ch);x.fillStyle='rgba(255,255,255,.9)';x.font='700 34px -apple-system,Arial,sans-serif';x.textAlign='center';x.fillText('ROOM 214',cw/2,90);x.fillStyle='rgba(255,255,255,.4)';x.fillRect(30,300,cw-60,6);x.fillRect(30,320,cw-120,6)})});
+  const card=grp(0,y+.03,.0095);const cd=bx(.054,.0856,.0008,cm,0,.0428,0);card.add(cd);card.add(hitBox(.06,.09,.02,0,.045,.005));g.add(card);
+  B.parts[0]={obj:card,apply:k=>{card.position.y=y+.03+.012*(1-S.p[k])-.058*S.p[k]}};
+  const led=indicator(B,0x3ad15a,()=>S.pwr?1:0,.02);g.add(sph(.0022,led.m,0,y-.035,.0115));led.spr.position.set(0,y-.035,.014);g.add(led.spr);
+  g.add(latheZ([[0,0],[.035,0],[.03,.01],[0,.012]],M('brass'),.42,1.55,0));g.add(cylZ(.006,.14,M('brass'),.42,1.55,.01));g.add(cylY(.006,.06,M('brass'),.42,1.58,.15));
+  const L=lamp(B,'led',{lm:806,W:8,K:2700,at:[.42,1.66,.15],glow:.35});upBulb(L,g,.42,1.6,.15,.9,{frost:1});
+  drum(L,g,.42,1.7,.15,.14,.12,.18,0xf0e6d2,.36);
+  return B}},
+twoway:{scene:'stairs',cam:{t:[.95,1.8,.45],d:2.3,up:.06},build(){
+  const B=ctx(),g=B.g,st=M('wood',{color:0x7a5a3a});
+  for(let k=0;k<6;k++){const s=bx(.27,(k+1)*.18,1,st,.4+k*.27,(k+1)*.09,.5);g.add(s);g.add(bx(.29,.02,1.02,M('woodD'),.4+k*.27,(k+1)*.18,.5))}
+  g.add(bx(1.4,1.08,1,st,2.6,.54,.5));
+  usToggle(B,0,-.25,1.2,1.8);usToggle(B,1,2.15,2.28,1.8);
+  cordDrop(g,.95,.6,3.8,2.75);
+  const L=lamp(B,'inc',{lm:800,W:60,K:2700,at:[.95,2.6,.6],glow:.6,range:9,I:1.8});const gl=sph(.12,emOpal(L,1.2,0xf4f2ea),.95,2.62,.6);gl.castShadow=false;g.add(gl);
+  return B}},
+occupancy:{cam:{t:[.2,1.55,.3],d:1.25},build(){
+  const B=ctx(),g=B.g,w=M('plast');g.add(plate(.07,.114,.007,w,0,1.25,.003));
+  const fr=mesh(new THREE.SphereGeometry(.022,14,7),M('plast',{flatShading:true,color:0xf7f5ef}),0,1.26,.007);fr.scale.set(1,1,.75);g.add(fr);
+  const led=indicator(B,0xff2a2a,()=>S.blink>0?1:0,.02);g.add(sph(.0018,led.m,0,1.225,.0075));led.spr.position.set(0,1.225,.01);g.add(led.spr);
+  [-.15,.85].forEach(x=>g.add(cylY(.0012,.55,M('steel'),.35+x*.5,2.42,.5)));
+  g.add(bx(1.0,.03,.12,M('brushed'),.35,2.13,.5));
+  const L=lamp(B,'led',{lm:3600,W:30,K:4000,at:[.35,2.06,.5],I:2,range:9});const df=bx(.97,.006,.1,emOpal(L,1.6,0xf6f7f7),.35,2.113,.5);df.castShadow=false;g.add(df);
+  g.add(bx(1.3,.03,.65,M('white',{color:0xd9d4c8}),.15,.74,.55));g.add(bx(.03,.72,.6,M('grey'),-.47,.36,.55));g.add(bx(.03,.72,.6,M('grey'),.77,.36,.55));
+  g.add(bx(.5,.3,.02,M('black'),.2,1.02,.35));g.add(bx(.04,.12,.04,M('black'),.2,.81,.37));
+  return B}},
+touchlamp:{cam:{t:[.02,1.0,.3],d:.95,up:.15},build(){
+  const B=ctx(),g=B.g,Z=.3;table(g,0,Z);
+  const base=grp(0,.74,Z);base.add(latheY([[0,0],[.08,0],[.082,.01],[.07,.02],[.05,.04],[.085,.1],[.09,.16],[.065,.22],[.025,.25],[.012,.26],[0,.26]],M('brass')));base.add(hitBox(.2,.27,.2,0,.13,0));g.add(base);
+  B.parts[0]={obj:base,apply:()=>{}};
+  g.add(cylY(.008,.1,M('brass'),0,1.05,Z));g.add(cylY(.016,.05,M('bake'),0,1.12,Z));
+  const L=lamp(B,'inc',{lm:800,W:60,K:2700,at:[0,1.21,Z],glow:.35});upBulb(L,g,0,1.145,Z,1);
+  drum(L,g,0,1.24,Z,.18,.1,.2,0xf2e7cf);
+  return B}},
+clapper:{cam:{t:[.05,1.02,.25],d:1.05,up:.15},build(){
+  const B=ctx(),g=B.g,Z=.3;table(g,.1,Z,.8);
+  g.add(plate(.07,.114,.006,M('ivory'),-.22,.95,.003));
+  g.add(bx(.075,.115,.032,M('cream'),-.22,.95,.022));
+  for(let k=0;k<12;k++)g.add(cylZ(.0016,.001,M('dark'),-.234+(k%4)*.009,.985+Math.floor(k/4)*.009-.009,.038));
+  [.94,.905].forEach(yy=>{g.add(bx(.038,.026,.001,M('white'),-.22,yy,.0385));[-.006,.006].forEach(dx=>g.add(bx(.0018,.007,.001,M('dark'),-.22+dx,yy,.039)))});
+  g.add(bx(.03,.02,.02,M('black'),-.22,.94,.048));g.add(tube([[-.22,.94,.058],[-.2,.85,.1],[-.05,.76,.18],[.1,.745,.25],[.18,.745,.3]],.002,M('black')));
+  g.add(latheY([[0,0],[.08,0],[.085,.02],[.06,.06],[.07,.18],[.04,.28],[.015,.3],[0,.3]],M('cream',{color:0xb3532f,roughness:.3}),.22,.74,Z));
+  g.add(cylY(.016,.04,M('bake'),.22,1.06,Z));
+  const L=lamp(B,'inc',{lm:800,W:60,K:2700,at:[.22,1.16,Z],glow:.35});upBulb(L,g,.22,1.085,Z,1);
+  drum(L,g,.22,1.18,Z,.19,.13,.22,0xefe4cc);
+  B.parts[0]={obj:null,apply:()=>{}};
+  return B}},
+glass:{cam:{t:[.2,1.55,.1],d:1.35},build(){
+  const B=ctx(),g=B.g,y=1.25;
+  const gm=new THREE.MeshPhysicalMaterial({color:0x08090b,roughness:.06,metalness:.1,clearcoat:1,clearcoatRoughness:.03});W3.mats.push(gm);gm.userData.env=1.4;
+  const pnl=plate(.086,.086,.009,gm,0,y,.006);g.add(pnl);
+  for(let k=0;k<8;k++){const it=indicator(B,0xffe2b0,()=>S.on[0]&&S.lv[0]>=k/8-.01?1:.06);g.add(bx(.003,.0045,.0004,it.m,.032,y-.028+k*.008,.0092))}
+  const wb=indicator(B,0xffffff,()=>S.on[0]?.8:.05);g.add(bx(.04,.0015,.0004,wb.m,0,y-.036,.0092));
+  const pg=grp();pg.add(hitBox(.09,.09,.02,0,y,.01));g.add(pg);B.parts[0]={obj:pg,apply:()=>{}};
+  cordDrop(g,.42,.55,2.6,2.0,0xf0f0ee);
+  const L=lamp(B,'led',{lm:1100,W:12,K:2700,at:[.42,1.88,.55],glow:.35});const gl=sph(.12,emOpal(L,1.1,0xf6f6f2),.42,1.88,.55);gl.castShadow=false;g.add(gl);
+  return B}},
+knife:{cam:{t:[.2,1.5,.1],d:1.25},build(){
+  const B=ctx(),g=B.g,y=1.35,cu=M('copper');g.add(bx(.26,.36,.02,M('slate'),0,y,.01));
+  [[-.11,y+.16],[.11,y+.16],[-.11,y-.16],[.11,y-.16]].forEach(([x,yy])=>g.add(screw(M('chrome'),x,yy,.02)));
+  g.add(bx(.04,.03,.018,cu,0,y-.13,.029));[-.0045,.0045].forEach(dx=>g.add(bx(.003,.03,.04,cu,dx,y+.11,.04)));g.add(bx(.03,.02,.012,cu,0,y+.13,.026));
+  g.add(tube([[0,y+.14,.03],[0,y+.24,.04],[.05,y+.4,.04],[.1,y+.7,.04]],.005,M('woodD')));g.add(tube([[0,y-.14,.03],[-.03,y-.3,.04],[-.1,y-.6,.04]],.005,M('woodD')));
+  const bl=grp(0,y-.13,.04);bl.add(bx(.003,.25,.022,cu,0,.125,0));bl.add(cylZ(.0075,.07,M('black'),0,.235,.005));bl.add(sph(.0075,M('black'),0,.235,.075));bl.add(cylX(.004,.012,M('brass')));
+  bl.add(hitBox(.05,.06,.12,0,.235,.04));g.add(bl);
+  B.parts[0]={obj:bl,apply:k=>{bl.rotation.x=1.35*(1-S.p[k])}};
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:GLOW(),color:new THREE.Color(0x9fc8ff),transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending}));sp.position.set(0,y+.11,.06);sp.scale.set(.09,.09,1);g.add(sp);
+  const arcL=new THREE.PointLight(0x9fc8ff,0,1.5,2);arcL.position.set(0,y+.11,.08);g.add(arcL);
+  B.tick=dt=>{const a=S.arc>0;sp.material.opacity=a?.5+Math.random()*.5:0;const s=.05+Math.random()*.08;sp.scale.set(s,s,1);arcL.intensity=a?.8+Math.random()*1.4:0};
+  g.add(latheZ([[0,0],[.03,0],[.02,.02],[0,.02]],M('iron'),.45,1.72,0));g.add(cylZ(.01,.1,M('iron'),.45,1.72,.02));
+  const L=lamp(B,'inc',{lm:1400,W:100,K:2750,at:[.45,1.66,.14],glow:.45});bulbA(L,g,.45,1.725,.14,1.1);
+  const wr=M('iron');[0,1,2,3,4,5].forEach(k=>{const a=k*Math.PI/3;g.add(tube([[.45,1.725,.14],[.45+Math.cos(a)*.045,1.67,.14+Math.sin(a)*.045],[.45,1.6,.14]],.0012,wr,16))});g.add(torY(.045,.0016,wr,.45,1.67,.14));
+  return B}},
+gas:{cam:{t:[.04,1.6,.15],d:.95},build(){
+  const B=ctx(),g=B.g,br=M('brass');
+  g.add(latheZ([[0,0],[.045,0],[.045,.006],[.02,.02],[0,.02]],br,0,1.6,0));g.add(tube([[0,1.6,.02],[0,1.6,.14],[0,1.61,.2],[0,1.66,.25],[0,1.68,.25]],.007,br));
+  g.add(sph(.014,br,0,1.6,.17));
+  const lv=grp(0,1.585,.17);lv.add(capX(.0035,.05,br));g.add(lv);
+  const L=lamp(B,'gas',{lm:650,W:600,K:2600,at:[0,1.76,.25],glow:.4,I:1.3});
+  g.add(latheY([[0,0],[.024,0],[.026,.008],[.03,.014]],br,0,1.68,.25,24));
+  const mt=latheY([[.009,0],[.011,.02],[.012,.05],[.01,.065],[.004,.075],[0,.076]],emOpal(L,2.4,0xe8e2d2),0,1.695,.25,24);mt.castShadow=false;g.add(mt);
+  const gl=latheY([[.034,0],[.06,.03],[.08,.08],[.078,.13],[.06,.17],[.05,.18]],emOpal(L,.5,0xf2f0ea,{transparent:true,opacity:.5,side:THREE.DoubleSide,depthWrite:false}),0,1.69,.25);gl.castShadow=false;g.add(gl);
+  const pf=new THREE.Sprite(new THREE.SpriteMaterial({map:GLOW(),color:new THREE.Color(0x4a7aff),transparent:true,opacity:.7,depthWrite:false,blending:THREE.AdditiveBlending}));pf.position.set(.006,1.7,.25);pf.scale.set(.018,.024,1);g.add(pf);
+  const ch=()=>{const e=grp();e.add(tor(.011,.0022,M('brass'),0,-.012,0));return e};
+  pullCord(B,0,-.022,1.585,.17,.26,ch(),{beads:1});pullCord(B,1,.022,1.585,.17,.32,ch(),{beads:1});
+  const p0=B.parts[0].apply,p1=B.parts[1].apply;B.parts[0].apply=k=>{p0(k);lv.rotation.z=.25*(S.p[0]-S.p[1])};B.parts[1].apply=k=>{p1(k);lv.rotation.z=.25*(S.p[0]-S.p[1])};
+  return B}},
+isolator:{cam:{t:[.3,1.95,.45],d:1.75,up:-.08},build(){
+  const B=ctx(),g=B.g,y=1.45;g.add(bx(.12,.16,.09,M('grey'),0,y,.045));g.add(bx(.09,.09,.003,M('yellow'),0,y,.0915));
+  const lo=new THREE.Mesh(new THREE.PlaneGeometry(.018,.018),labelMat('O','#111',null,'800 100px Arial,sans-serif',128,128));lo.position.set(-.034,y+.012,.0935);g.add(lo);
+  const li=new THREE.Mesh(new THREE.PlaneGeometry(.018,.018),labelMat('I','#111',null,'800 100px Arial,sans-serif',128,128));li.position.set(0,y+.036,.0935);g.add(li);
+  g.add(cylY(.012,3.5,M('steel'),0,y+1.83,.03));
+  const h=grp(0,y,.093);h.add(cylZ(.017,.014,M('red')));h.add(bx(.052,.017,.016,M('red'),-.022,0,.014));h.add(hitBox(.08,.06,.05,-.01,0,.02));g.add(h);
+  B.parts[0]={obj:h,apply:k=>{h.rotation.z=-S.ang[k]}};
+  g.add(cylY(.004,2.0,M('iron'),.55,4.0,1.0));
+  g.add(latheY([[.05,.12],[.06,.08],[.16,-.02],[.24,-.12],[.25,-.13]],M('brushed',{side:THREE.DoubleSide,roughness:.25}),.55,2.86,1.0));g.add(cylY(.07,.14,M('grey'),.55,3.02,1.0));
+  const L=lamp(B,'hid',{lm:32000,W:400,K:4200,at:[.55,2.76,1.0],I:3.2,range:14,glow:.7});const bb=sph(.04,emOpal(L,2,0xf2f2ee),.55,2.8,1.0,1,1.6,1);bb.castShadow=false;g.add(bb);
+  [[-.75,.45,.9],[-1.4,.4,.8],[-1.05,1.1,.5]].forEach(([x,yy,s])=>g.add(bx(s,s*.8,s*.7,M('wood',{color:0x8a6a44}),x,yy,.45)));
+  return B}},
+photocell:{cam:{t:[.04,1.8,.25],d:1.5},build(){
+  const B=ctx(),g=B.g;g.add(bx(.05,.07,.04,M('grey'),-.3,1.55,.02));g.add(cylZ(.013,.003,M('dark'),-.3,1.56,.04));
+  const win=cylZ(.011,.002,new THREE.MeshStandardMaterial({color:0xbfdcff,roughness:.1,emissive:0x203040}),-.3,1.56,.042);g.add(win);
+  const sw=grp();sw.add(hitBox(.08,.09,.06,-.3,1.56,.05));g.add(sw);B.parts[0]={obj:sw,apply:()=>{}};B.sensor=V3(-.3,1.56,.06);
+  g.add(tube([[-.3,1.52,.02],[-.3,1.4,.02],[0,1.4,.02],[.32,1.4,.02],[.32,1.9,.02]],.004,M('dark')));
+  const gr=M('green',{color:0x26332b});g.add(bx(.05,.05,.02,gr,.32,1.92,.01));g.add(tube([[.32,1.92,.02],[.32,1.94,.15],[.32,2.12,.25]],.008,gr));
+  g.add(bx(.2,.025,.2,gr,.32,2.13,.25));g.add(coneY(.06,.1,.05,gr,.32,2.16,.25,4));
+  const L=lamp(B,'sodium',{lm:8000,W:55,at:[.32,2.0,.25],I:2.4,range:9,glow:.7});
+  const pane=emOpal(L,.6,0xd9cfba,{transparent:true,opacity:.55,side:THREE.DoubleSide,depthWrite:false});const pb=mesh(new THREE.CylinderGeometry(.09,.07,.2,4,1,true),pane,.32,2.015,.25);pb.rotation.y=Math.PI/4;pb.castShadow=false;g.add(pb);
+  [-.012,.012].forEach(dx=>{const t=cylY(.008,.14,emOpal(L,2.2,0xd8c7a8),.32+dx,2.02,.25);t.castShadow=false;g.add(t)});
+  g.add(bx(.18,.02,.18,gr,.32,1.905,.25));
+  return B}}
+};
+
+/* the sound each switch makes when it changes over */
+const CLICK={toggle:'snap',ukrocker:'clack',victorian:'thock',pushbutton:'clunk',dolly:'thock',dimmer:'knob',decora:'soft',hotaru:'soft',himo:'ratchet',switchboard:'clack',
+  pullcord:'ratchet',pullchain:'ratchet',threeway:'knob',minuterie:'soft',keycard:'relay',twoway:'snap',occupancy:'relay',touchlamp:'tick',clapper:'relay',glass:'blip',knife:'thock',gas:'chain',isolator:'chunk',photocell:'relay'};
+
+/* ---------- scene ---------- */
+function dispose(){if(scene)scene.traverse(o=>{o.geometry&&o.geometry.dispose();if(o.material)[].concat(o.material).forEach(m=>{m.map&&m.map!==_glow&&m.map.dispose();m.dispose()})})}
+function buildScene(){
+  dispose();W3.mats=[];
+  scene=new THREE.Scene();scene.environment=envTex;
+  const SC=SCENES[X.scene||cur.wall];W3.SC=SC;
+  if(SC.out)scene.background=canvasTex(16,256,(x,w,h)=>{const g=x.createLinearGradient(0,0,0,h);g.addColorStop(0,SC.sky[0]);g.addColorStop(.55,SC.sky[1]);g.addColorStop(1,SC.sky[2]);x.fillStyle=g;x.fillRect(0,0,w,h)});
+  else scene.background=new THREE.Color(0x060708);
+  const surf=(spec,rx,ry,rough=.85)=>{const t=surface(spec[0],spec[1],spec[2]||'#000');t.repeat.set(rx/1.2,ry/1.2);const m=new THREE.MeshStandardMaterial({map:t,roughness:rough});m.userData.env=.35;W3.mats.push(m);return m};
+  /* floor */
+  const fl=mesh(new THREE.PlaneGeometry(12,10),surf(SC.floor,12,10),0,0,2);fl.rotation.x=-Math.PI/2;fl.castShadow=false;scene.add(fl);
+  /* walls and ceiling */
+  const H=SC.ceil?SC.ceil[1]:5,wk=SC.wall[0],gloss=wk==='subway'||wk==='square'?.3:.92;
+  const wl=mesh(new THREE.PlaneGeometry(8,H),surf(SC.wall,8,H,gloss),0,H/2,0);wl.castShadow=false;scene.add(wl);
+  if(!SC.out){const sm=surf(SC.wall,6,H,gloss);[-2.6,2.6].forEach(x=>{const s=mesh(new THREE.PlaneGeometry(6,H),sm,x,H/2,3);s.rotation.y=x<0?Math.PI/2:-Math.PI/2;s.castShadow=false;scene.add(s)})}
+  if(SC.ceil){const cm=M('white',{color:new THREE.Color(SC.ceil[0]),roughness:.9});const c=mesh(new THREE.PlaneGeometry(8,6),cm,0,H,3);c.rotation.x=Math.PI/2;c.castShadow=false;scene.add(c)}
+  if(SC.joists)for(let k=-6;k<=6;k++)scene.add(bx(.045,.19,6,M('wood',{color:0x8a6a4a}),k*.4+.2,H-.095,3));
+  if(SC.posts){const pm=M('wood',{color:new THREE.Color(SC.posts)});[-.95,.95].forEach(x=>scene.add(bx(.1,H,.1,pm,x,H/2,.02)));scene.add(bx(8,.08,.05,pm,0,1.85,.02))}
+  if(SC.dado){const d=bx(8,SC.dado[0],.004,M('white',{color:new THREE.Color(SC.dado[1]),roughness:.5}),0,SC.dado[0]/2,.002);d.castShadow=false;scene.add(d)}
+  if(SC.rail)scene.add(bx(8,.035,.02,M('wood',{color:new THREE.Color(SC.rail[1])}),0,SC.rail[0],.01));
+  if(SC.skirt)scene.add(bx(8,.12,.015,M('white',{color:new THREE.Color(SC.skirt)}),0,.06,.0075));
+  /* night: a little light from the hall or the sky, so you can just make out the switch */
+  W3.hemiBase=SC.out?.5:.08;W3.hemi=new THREE.HemisphereLight(SC.out?0x6b7fb8:0x8090b8,SC.out?0x3a2a22:0x221d18,W3.hemiBase);scene.add(W3.hemi);
+  const mo=new THREE.DirectionalLight(SC.out?0xff9f78:0x9fb4e8,SC.out?.45:.2);mo.position.set(SC.out?3:-2.5,SC.out?1.4:2.2,3);mo.target.position.set(0,1.2,0);scene.add(mo,mo.target);
+  /* the fixture */
+  const B=X.build();W3.B=B;scene.add(B.g);W3.pick=[];
+  B.ind.forEach(it=>it.m.userData.noHot=1);
+  B.parts.forEach((p,i)=>{if(!p||!p.obj)return;p.obj.traverse(m=>{if(m.isMesh){m.userData.ci=i;W3.pick.push(m)}});
+    p.mats=[];p.obj.traverse(m=>{if(m.isMesh&&m.material&&m.material.emissive&&!m.material.userData.noHot&&!p.mats.includes(m.material))p.mats.push(m.material)})});
+  scene.updateMatrixWorld(true);
+  W3.target=V3(...X.cam.t);W3.handZ=B.sensor?B.sensor.z:.06;
+  const fo=B.parts[0]&&B.parts[0].obj;W3.focus=B.sensor?B.sensor.clone():fo?new THREE.Box3().setFromObject(fo).getCenter(V3()):W3.target.clone();W3.camT=W3.target.clone();
+}
+
+/* ---------- the session at one switch ---------- */
+function newState(){return{p:[],pt:[],on:[],k:[],ang:[],lv:[],sw:[],om:[],pr:[],arm:[],t0:[],
+  grip:null,hx:-100,hy:-100,hin:false,lx:0,ly:0,clx:0,cly:0,zoom:1,hot:-1,
+  pwr:false,inT:0,outT:0,lastMove:-1e9,motion:0,blink:0,claps:[],cover:0,uncover:0,forced:false,arc:0,lastSpark:0,lit:0,felt:false,lastTick:0,tk:0,said:{},flowW:0,lm:0}}
+function openImm(id,fromCard){
+  const it=ITEMS.find(x=>x.id===id);if(!it)return;
+  lastFocus=fromCard||lastFocus;
+  if(imm.hidden){imm.hidden=false;document.documentElement.style.overflow='hidden';try{history.pushState({sw:1},'')}catch(e){}}
+  if(!initGL()){$('#glfail').hidden=false;cur=it;$('#immTitle').textContent=it.name;return}
+  resize();ac();load(it);
+  cancelAnimationFrame(raf);lastT=performance.now();raf=requestAnimationFrame(loop);
+  $('#back').focus({preventScroll:true});store.set('la-last',id);
+}
+function closeImm(fromPop){
+  if(imm.hidden)return;
+  if(fromPop!==true){try{if(history.state&&history.state.sw){history.back();return}}catch(e){}}
+  imm.hidden=true;document.documentElement.style.overflow='';cancelAnimationFrame(raf);timers.forEach(clearTimeout);timers=[];quiet();
+  if(document.fullscreenElement)document.exitFullscreen?.().catch(()=>{});
+  const c=lastFocus&&document.body.contains(lastFocus)?lastFocus:cur&&document.querySelector(`.card[data-id="${cur.id}"]`);c&&c.focus({preventScroll:true});
+}
+function load(it){
+  timers.forEach(clearTimeout);timers=[];quiet();
+  cur=it;X=D3[it.id];const z=S?S.zoom:1;S=newState();S.zoom=z;
+  const n=it.parts.length;['p','pt','k','ang','sw','om','pr','t0'].forEach(k=>S[k]=Array(n).fill(0));['on','arm'].forEach(k=>S[k]=Array(n).fill(false));S.lv=Array(Math.max(2,n)).fill(.7);
+  if(it.id==='glass')S.lv=[.7,.25];
+  buildScene();
+  $('#immTitle').textContent=it.name;$('#immSub').textContent=it.local;
+  $('#about').innerHTML=`<div><h2>${it.name}</h2><div class="local">${it.local}</div></div>
+    <div class="where">${it.eraText}</div><p class="note">${it.note}</p>
+    <dl class="specs"><dt>Material</dt><dd>${it.material}</dd><dt>Action</dt><dd>${KINDS[it.kind]}</dd><dt>Lamp</dt><dd>${it.lamp}</dd>${it.specs.map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`;
+  say(it.hint);feel('');
+  it.parts.forEach((_,i)=>applyPart(i));renderActs();placeCamera(0);hud(true);
+}
+function step(d){const L=list().length?list():ITEMS;const ix=L.findIndex(x=>x.id===cur.id);load(L[(ix+d+L.length)%L.length]);store.set('la-last',cur.id)}
+function applyPart(i){const p=W3.B.parts[i];p&&p.apply&&p.apply(i)}
+
+/* ---------- what each control does ---------- */
+function felt(){if(!S.felt){S.felt=true;feel(cur.feel)}}
+function setOn(i,v,snd){if(S.on[i]===v)return false;S.on[i]=v;if(snd)play(snd);felt();renderActs();return true}
+function flipTo(i,v){const c=cur.parts[i];setOn(i,v,CLICK[cur.id]);if(c.snap===0)tween('p'+i,S.p[i],v?1:0,700,x=>{S.p[i]=S.pt[i]=x;applyPart(i)});else S.pt[i]=v?1:0}
+function press(i){const c=cur.parts[i],now=performance.now();
+  if(c.mode==='set'){const v=!!c.val;if(!setOn(c.grp,v,'clunk'))play('soft');if(v===false&&cur.id==='pushbutton')say('Off. The top button pops back out, pearl showing.')}
+  else if(c.mode==='timer'){S.t0[i]=now;play('soft');felt();if(!S.on[0]){S.on[0]=true;say('Lights on. The clock is running: up you go.')}else say('Timer started again.')}
+}
+function turnEvent(i){const c=cur.parts[i];play(CLICK[cur.id]);felt();
+  if(c.mode==='toggle')S.on[i]=!S.on[i];
+  else if(c.mode==='pos'){S.on[i]=S.k[i]===1;if(S.on[i])say('I. The high-bay strikes with a dim blue glow and starts to warm up.');else say('O. The lamp goes out at once, but stays hot for a while.')}
+  else if(c.mode==='cycle'&&cur.id==='threeway')say(['Off.','50 W: the small filament.','100 W: the big filament.','150 W: both filaments at once.'][S.k[i]%4]);
+  renderActs()}
+function clickTurn(i){const c=cur.parts[i],step_=Math.PI/2;
+  if(c.mode==='pos'&&S.k[i]>=c.kmax)S.k[i]--;else S.k[i]++;turnEvent(i);tween('a'+i,S.ang[i],S.k[i]*step_,260,v=>{S.ang[i]=v;applyPart(i)})}
+function pullEvent(i){const c=cur.parts[i];play(CLICK[cur.id]);if(cur.id!=='gas')later(()=>play('chain'),40);felt();
+  if(c.mode==='toggle')S.on[i]=!S.on[i];
+  else if(c.mode==='cycle'){S.k[i]=(S.k[i]+1)%c.n;say(['Off.','All on: both tubes.','One tube: dimmer.','Night light: the little orange mamekyū.'][S.k[i]])}
+  else if(c.mode==='set'){const v=!!c.val;if(S.on[c.grp]===v)say(v?'Already lit. The valve is open.':'Already out. Only the pilot flame burns.');else{S.on[c.grp]=v;if(!v)say('Out. The mantle fades; the little blue pilot flame stays.')}}
+  renderActs()}
+function tug(i){S.arm[i]=false;tween('p'+i,0,1,160,v=>{S.p[i]=S.pt[i]=v;applyPart(i)},()=>{pullEvent(i);tween('p'+i,1,0,300,v=>{S.p[i]=S.pt[i]=v;applyPart(i)})});S.om[i]+=1.2*(Math.random()<.5?-1:1)}
+function touch(i){const c=cur.parts[i];S.k[i]=(S.k[i]+1)%c.n;play('tick');felt();say(['Off.','Low.','Medium.','High.'][S.k[i]]);renderActs()}
+function clap(){play('clap');const now=performance.now();S.claps=S.claps.filter(t=>now-t<1200);S.claps.push(now);
+  if(S.claps.length>=2){const gap=now-S.claps[S.claps.length-2];if(gap>110&&gap<900){S.claps=[];later(()=>{S.on[0]=!S.on[0];play('relay');felt();renderActs()},160);return}}
+  say('Clap… and again, quickly.')}
+function tween(key,from,to,ms,fn,done){S.tw=S.tw||{};S.tw[key]={from,to,t0:performance.now(),ms,fn,done}}
+function runTweens(now){if(!S.tw)return;for(const k in S.tw){const t=S.tw[k],e=clamp((now-t.t0)/t.ms),v=t.from+(t.to-t.from)*(1-Math.pow(1-e,3));t.fn(v);if(e>=1){delete S.tw[k];t.done&&t.done()}}}
+
+/* ---------- camera: close to the switch, drifting with the pointer like a turning head ---------- */
+function placeCamera(dt){
+  const look=S.grip?.25:1,f=Math.min(1,dt*4||1);S.clx+=(S.lx*look-S.clx)*f;S.cly+=(S.ly*look-S.cly)*f;
+  if(!S.grip){const want=(S.tot||0)>.15?1:0;S.view=(S.view??0)+(want-(S.view??0))*Math.min(1,(dt||1)*1.4)}
+  const v=S.view||0,cam=X.cam,e=v*v*(3-2*v),tg=W3.camT.copy(W3.focus).lerp(W3.target,e),asp=camera.aspect;
+  const d=lerp(CLOSE[cur.id]||.5,cam.d,e)*S.zoom*(asp<1?Math.pow(1/Math.max(.45,asp),.8):1),up=lerp(.03,cam.up??.04,e);
+  /* up close the head barely turns, and the view drops a little so the switch sits mid-screen above the bottom bar */
+  const hd=lerp(.2,1,e),lift=(1-e)*.06*d;
+  camera.position.set(tg.x+d*.12*e+S.clx*.12*d*hd,tg.y+up*d-lift,tg.z+d);
+  camera.lookAt(tg.x+S.clx*.22*d*hd,tg.y-S.cly*.14*d*hd-lift,tg.z);
+}
+const CLOSE={knife:.8,isolator:.65,touchlamp:.85,threeway:.6,clapper:1.05,gas:.75,twoway:.6,switchboard:.6,photocell:.6,himo:.55,pullchain:.55,pullcord:.5};
+function ppm(){return cv.clientHeight/(2*camera.position.distanceTo(W3.camT)*Math.tan(camera.fov*Math.PI/360))}
+
+/* ---------- simulation ---------- */
+const _c=new THREE.Color();
+function handWorld(){
+  if(!S.hin)return null;const r=cv.getBoundingClientRect(),h=HANDS[pose||'open'],sz=handEl.offsetWidth||64;
+  const px=S.hx+(h.px-h.hx)*sz,py=S.hy+(h.py-h.hy)*sz;
+  ray.setFromCamera(new THREE.Vector2(px/r.width*2-1,-(py/r.height)*2+1),camera);
+  const pl=new THREE.Plane(V3(0,0,1),-W3.handZ),o=V3();return ray.ray.intersectPlane(pl,o)?o:null;
+}
+function sim(dt,now){
+  runTweens(now);const B=W3.B;
+  /* controls ease towards where they should be */
+  cur.parts.forEach((c,i)=>{
+    if(c.kind==='btn')S.pt[i]=c.mode==='set'?((S.on[c.grp]===!!c.val)||S.pr[i]?1:0):S.pr[i];
+    if(c.kind==='rock')S.pt[i]=S.on[i]?1:0;
+    const direct=S.grip&&S.grip.i===i&&S.grip.direct;
+    if(!direct&&!(S.tw&&S.tw['p'+i]))S.p[i]+=(S.pt[i]-S.p[i])*Math.min(1,dt*30);
+    if(c.kind==='pull'){const g=S.grip&&S.grip.i===i;if(!g){const L=B.parts[i].len||.5;S.om[i]+=(-9.81/L*Math.sin(S.sw[i])-1.2*S.om[i])*dt;S.sw[i]+=S.om[i]*dt}}
+    applyPart(i)});
+  /* switches that work by themselves */
+  const P0=cur.parts[0];
+  if(P0.kind==='btn'&&P0.mode==='timer'&&S.on[0]){const rem=P0.dur-(now-S.t0[0])/1000;S.rem=rem;
+    if(now-S.lastTick>480){S.lastTick=now;play(S.tk++%2?'tock':'tick')}
+    if(rem<=0){S.on[0]=false;play('tock');say('Darkness, halfway up. Feel for the next glowing button.')}}
+  if(P0.kind==='card'){const inn=S.p[0]>.9;
+    if(inn){S.outT=0;if(!S.pwr){S.inT+=dt;if(S.inT>.4){S.pwr=true;play('relay');felt();say('Power on. The room wakes up.');renderActs()}}}
+    else{S.inT=0;if(S.pwr){S.outT+=dt;if(S.outT>5){S.pwr=false;play('relay');say('Power off. Somewhere the air conditioning winds down.');renderActs()}}}
+    S.on[0]=S.pwr}
+  if(P0.kind==='motion'){S.motion*=Math.exp(-dt*6);S.blink=Math.max(0,S.blink-dt);
+    if(S.motion>30){S.motion=0;S.lastMove=now;S.blink=.18;if(!S.on[0]){S.on[0]=true;play('relay');felt();say('It sees you. Now keep still…');renderActs()}}
+    if(S.on[0]&&now-S.lastMove>P0.hold*1000){S.on[0]=false;play('relay');say('Still for too long. As far as the sensor knows, the room is empty. Wave.');renderActs()}}
+  if(P0.kind==='cover'){const hw=handWorld(),sp=B.sensor;const cov=S.forced||(hw&&Math.hypot(hw.x-sp.x,hw.y-sp.y)<.065);S.covered=cov;
+    if(cov){S.uncover=0;S.cover+=dt;if(!S.on[0]&&S.cover>1.6){S.on[0]=true;play('relay');felt();say('Dark enough: it decides night has fallen. Watch the colour.');renderActs()}else if(!S.on[0]&&S.cover>.2&&!S.said.wait){S.said.wait=1;say('Covered. It waits a moment, in case you are just a passing car.')}}
+    else{S.cover=0;if(S.on[0]){S.uncover+=dt;if(S.uncover>3){S.on[0]=false;play('relay');say('Daylight again, as far as it can tell. Off.');renderActs()}}}}
+  if(cur.id==='knife'){const p=S.p[0];S.arc=p>.84&&p<.955?1:0;const on=p>.955;
+    if(on&&!S.on[0]){S.on[0]=true;play('thock');felt()}else if(!on&&S.on[0]){S.on[0]=false;play('spark');say('An arc follows the blade out. That is why they were mounted on slate.')}
+    if(S.arc&&now-S.lastSpark>230){S.lastSpark=now;play('spark')}}
+  /* the circuit drives the lamps */
+  const drv=cur.wire?cur.wire(S):B.lamps.map(()=>S.on[0]?1:0);let lm=0,W=0,tot=0,Ksum=0,Kw=0,hum=0,ball=0,gas=0,sod=0;
+  B.lamps.forEach((r,j)=>{let v=drv[j]??0;if(typeof v==='object'){if(v.s!=null)r.scale=v.s;if(v.K)r.K=v.K;v=v.d}
+    if(cur.id==='knife'&&S.arc)v=Math.random()<.5?.2+Math.random()*.7:0;
+    r.d=v;stepLamp(r,dt,now);
+    const out=r.lvl*r.scale;lm+=out*r.lm;W+=r.Wnow*r.scale;tot+=out*Math.min(2,r.lm/900);
+    if(out>.01){const w=out*r.lm;Kw+=w;Ksum+=w*(r.type==='sodium'?-1e6:r.type==='hid'?lerp(9000,4200,clamp(r.warm*1.3)):r.Kcur);if(r.type==='sodium')sod+=w}
+    if(r.type==='tube'&&r.ph!=='off')hum+=r.lvl*.03+(r.ph==='strike'?.02:0);if(r.type==='hid')ball+=r.ph==='off'?0:.05;if(r.type==='gas')gas+=r.lvl*.035});
+  S.lm=lm;S.W=W;S.tot=tot;S.K=Kw>0&&sod<Kw*.5?Ksum/Kw:null;S.sodium=sod>0&&sod>=Kw*.5;
+  wh+=W*dt/3600;
+  B.mix.forEach(o=>{o.m.emissive.setRGB(0,0,0);o.lamps.forEach(r=>{_c.copy(r.col).multiplyScalar(r.lvl*r.scale*o.k);o.m.emissive.add(_c)})});
+  B.ind.forEach(it=>{const v=it.fn();it.v+=(v-it.v)*Math.min(1,dt*18);it.m.emissive.copy(it.c).multiplyScalar(it.v*2.2);if(it.spr)it.spr.material.opacity=it.v*.75*(1-Math.min(.7,tot*.5))});
+  if(B.tick)B.tick(dt);
+  /* the room fills with light */
+  W3.hemi.intensity=W3.hemiBase+.22*Math.min(1.6,tot);
+  const ef=clamp((W3.SC.out?.5:.07)+.5*tot,0,1.3);W3.mats.forEach(m=>{m.envMapIntensity=(m.userData.env??.6)*ef});
+  if(tot>.2){S.lit+=dt;if(S.lit>.4)markTried()}
+  /* steady sounds */
+  if(A.ctx&&A.on&&A.hum){const t=A.ctx.currentTime;
+    A.hum.g.gain.setTargetAtTime(Math.min(.06,hum),t,.05);A.ball.g.gain.setTargetAtTime(ball,t,.2);A.gas.g.gain.setTargetAtTime(gas,t,.1);
+    const sg=cur.id==='dimmer'&&S.on[0]&&S.lv[0]>.12&&S.lv[0]<.85?.012*(1-Math.abs(S.lv[0]-.45)*2.2):0;A.sing.g.gain.setTargetAtTime(Math.max(0,sg),t,.08)}
+  if((S.fr=(S.fr||0)+1)%30===0){$('#energy').textContent=whText(wh);store.set('la-wh',wh)}
+}
+
+/* ---------- HUD ---------- */
+function status(){
+  const P0=cur.parts[0],r0=W3.B.lamps[0];
+  if(P0.mode==='timer')return S.on[0]?['Timer',`Off in ${Math.max(0,Math.ceil(S.rem||0))} s`]:['Timer','Waiting'];
+  if(P0.kind==='card')return['Card',S.pwr?(S.p[0]>.9?'In, power on':`Out, power off in ${Math.max(0,Math.ceil(5-S.outT))} s`):(S.p[0]>.9?'In':'Out')];
+  if(P0.kind==='motion')return['Sensor',S.on[0]?`Off in ${Math.max(0,Math.ceil(P0.hold-(performance.now()-S.lastMove)/1000))} s`:'Sees nobody'];
+  if(P0.kind==='cover')return['Sensor',S.covered?'Covered: 0 lux':'Dusk: about 20 lux'];
+  if(cur.id==='dimmer')return['Dimmer',S.on[0]?`${Math.round(S.lv[0]*100)}%`:`Off (set at ${Math.round(S.lv[0]*100)}%)`];
+  if(cur.id==='threeway')return['Setting',['Off','50 W','100 W','150 W'][S.k[0]%4]];
+  if(cur.id==='himo')return['Setting',['Off','All on','One tube','Night light'][S.k[0]%4]];
+  if(cur.id==='touchlamp')return['Setting',['Off','Low','Medium','High'][S.k[0]%4]];
+  if(cur.id==='glass')return['Panel',S.on[0]?`${Math.round(S.lv[0]*100)}%, ${Math.round(lerp(2200,6500,S.lv[1])/100)*100} K`:'Off'];
+  if(r0&&r0.type==='hid'){if(r0.cool>0&&S.on[0])return['Lamp',`Too hot to restrike: ${Math.ceil(r0.cool)} s`];if(r0.cool>0)return['Lamp',`Cooling: ${Math.ceil(r0.cool)} s`];if(r0.ph==='warm')return['Lamp',r0.warm<1?`Warming up, ${Math.round(r0.warm*100)}%`:'Full brightness']}
+  if(r0&&r0.type==='sodium'&&r0.ph==='warm')return['Lamp',r0.na<.05?'Neon glow':r0.na<1?`Sodium warming, ${Math.round(r0.na*100)}%`:'Full brightness'];
+  if(cur.id==='twoway')return['Switches',`${S.on[0]?'Up':'Down'} · ${S.on[1]?'Up':'Down'}`];
+  if(cur.id==='gas')return['Valve',S.on[0]?'Open':'Closed, pilot lit'];
+  return['Circuit',(cur.wire?cur.wire(S):[S.on[0]]).some(v=>v&&(v.d??v))?'Closed':'Open'];
+}
+function hud(force){
+  const n=performance.now();if(!force&&n-hudT<120)return;hudT=n;
+  const K=S.K,pos=K==null?0:clamp((K-1800)/(6500-1800))*100,[sl,sv]=status();
+  const col=S.sodium?'<dd>589 nm, a single orange</dd>':`<dd><span class="tbar"><i style="left:${pos}%;opacity:${K==null?0:1}"></i></span> ${K==null?'–':(Math.round(K/50)*50)+' K'}</dd>`;
+  const isGas=cur.id==='gas';
+  $('#gauges').innerHTML=`<div><dt>Light</dt><dd>${Math.round(S.lm||0)} lm</dd></div><div><dt>Colour</dt>${col}</div>
+    <div><dt>Power</dt><dd>${Math.round(S.W||0)} W${isGas&&S.W>1?' of gas':''}</dd></div><div><dt>${sl}</dt><dd>${sv}</dd></div><div><dt>Energy used</dt><dd>${whText(wh)}</dd></div>`;
+}
+function renderActs(){
+  const host=$('#acts');if(!host||!cur)return;host.innerHTML='';
+  const mk=(t,fn,pressed)=>{const b=document.createElement('button');b.className='btn';b.type='button';b.textContent=t;if(pressed!=null)b.setAttribute('aria-pressed',pressed);b.onclick=()=>{ac();fn()};host.appendChild(b);return b};
+  cur.parts.forEach((c,i)=>{
+    switch(c.kind){
+      case 'flip':if(cur.id==='twoway')mk(`Flip the ${c.label.toLowerCase()} switch`,()=>flipTo(i,!S.on[i]));else if(c.snap===0)mk(S.on[i]?'Open the switch':'Close the switch',()=>flipTo(i,!S.on[i]));else mk(S.on[i]?'Turn off':'Turn on',()=>flipTo(i,!S.on[i]));break;
+      case 'rock':mk(cur.parts.length>1?`${c.label}: ${S.on[i]?'off':'on'}`:(S.on[i]?'Turn off':'Turn on'),()=>{setOn(i,!S.on[i],CLICK[cur.id])});break;
+      case 'btn':mk(c.mode==='timer'?'Press the button':c.label,()=>{S.pr[i]=1;press(i);later(()=>{S.pr[i]=0},180)});break;
+      case 'turn':mk(c.mode==='pos'?(S.k[i]?'Turn to O':'Turn to I'):'Turn one click',()=>clickTurn(i));break;
+      case 'dial':mk(S.on[i]?'Press: off':'Press: on',()=>{S.pr[i]=1;setOn(i,!S.on[i],'knob');later(()=>{S.pr[i]=0},150)});
+        mk('Dimmer',()=>{S.lv[i]=clamp(S.lv[i]-.15,.05,1);applyPart(i)});mk('Brighter',()=>{S.lv[i]=clamp(S.lv[i]+.15,.05,1);applyPart(i)});break;
+      case 'pull':mk(c.label,()=>tug(i));break;
+      case 'pad':mk(S.on[0]?'Tap: off':'Tap: on',()=>setOn(0,!S.on[0],'blip'));mk('Warmer',()=>{S.lv[1]=clamp(S.lv[1]-.2);play('blip')});mk('Cooler',()=>{S.lv[1]=clamp(S.lv[1]+.2);play('blip')});break;
+      case 'card':mk(S.p[i]>.6?'Take the card out':'Put the card in',()=>{const to=S.p[i]>.6?0:1;S.pt[i]=to;tween('p'+i,S.p[i],to,500,v=>{S.p[i]=v;applyPart(i)})});break;
+      case 'touch':mk(c.label,()=>touch(i));break;
+      case 'motion':mk('Wave',()=>{S.motion=100});break;
+      case 'clap':mk('Clap',()=>clap());break;
+      case 'cover':{const b=mk(c.label+' (hold)',()=>{});const on=e=>{e.preventDefault();ac();S.forced=true;b.setAttribute('aria-pressed','true')},off=()=>{S.forced=false;b.setAttribute('aria-pressed','false')};
+        b.addEventListener('pointerdown',on);b.addEventListener('pointerup',off);b.addEventListener('pointerleave',off);
+        b.addEventListener('keydown',e=>{if((e.key===' '||e.key==='Enter')&&!e.repeat)on(e)});b.addEventListener('keyup',e=>{if(e.key===' '||e.key==='Enter')off()});break}
+    }
+  });
+}
+
+/* ---------- pointer: the hand ---------- */
+const glove=sh=>`<svg viewBox="0 0 52 52"><g fill="#1d2320" stroke="#1d2320" stroke-width="4.5" stroke-linejoin="round">${sh}</g><g fill="#fbfaf5">${sh}</g><path d="M17 43 h20" stroke="#c9c6bb" stroke-width="1.2"/></svg>`;
+const HANDS={
+  open:{hx:.5,hy:.58,px:.5,py:.58,svg:glove('<rect x="14" y="7" width="6.4" height="24" rx="3.2"/><rect x="20.6" y="3" width="6.4" height="27" rx="3.2"/><rect x="27.2" y="4" width="6.4" height="26" rx="3.2"/><rect x="33.6" y="9" width="6" height="21" rx="3"/><rect x="3" y="24" width="17" height="7" rx="3.5" transform="rotate(-40 11.5 27.5)"/><rect x="14" y="18" width="25.6" height="24" rx="9"/><rect x="15.5" y="40" width="22.5" height="10" rx="2.5"/>')},
+  point:{hx:.43,hy:.04,px:.43,py:.04,svg:glove('<rect x="19" y="1" width="7" height="30" rx="3.5"/><rect x="25.6" y="17" width="6.6" height="13" rx="3.3"/><rect x="31.6" y="19" width="6.2" height="12" rx="3.1"/><rect x="3" y="24" width="17" height="7" rx="3.5" transform="rotate(-40 11.5 27.5)"/><rect x="14" y="18" width="25.6" height="24" rx="9"/><rect x="15.5" y="40" width="22.5" height="10" rx="2.5"/>')},
+  fist:{hx:.48,hy:.45,px:.48,py:.45,svg:glove('<circle cx="17" cy="19" r="5"/><circle cx="23.5" cy="17.5" r="5"/><circle cx="30" cy="18" r="5"/><circle cx="36" cy="20" r="4.5"/><rect x="12" y="18" width="29" height="24" rx="10"/><rect x="9" y="27" width="18" height="7" rx="3.5"/><rect x="15.5" y="40" width="22.5" height="10" rx="2.5"/>')}
+};
+function setPose(p,press){if(p!==pose){pose=p;handEl.innerHTML=HANDS[p].svg}handEl.classList.toggle('press',!!press)}
+function drawHand(){if(!pose)setPose('open');const h=HANDS[pose],sz=handEl.offsetWidth||64;handEl.style.transform=`translate(${S.hx-h.hx*sz}px,${S.hy-h.hy*sz}px)`}
+function pick(cx,cy){
+  const r=cv.getBoundingClientRect();const nd=new THREE.Vector2((cx-r.left)/r.width*2-1,-(cy-r.top)/r.height*2+1);ray.setFromCamera(nd,camera);
+  const hits=ray.intersectObjects(W3.pick,false);return hits.length?hits[0].object.userData.ci:null;
+}
+const grabbable=c=>c&&!['motion','clap'].includes(c.kind);
+function setHot(i){if(S.hot===i)return;const prev=W3.B.parts[S.hot];if(prev&&prev.mats)prev.mats.forEach(m=>m.emissive.setHex(0));S.hot=i;const p=W3.B.parts[i];if(p&&p.mats)p.mats.forEach(m=>m.emissive.setHex(0x16242e))}
+function screenOf(obj){const v=V3();obj.getWorldPosition(v);v.project(camera);const r=cv.getBoundingClientRect();return{x:r.left+(v.x+1)/2*r.width,y:r.top+(1-v.y)/2*r.height}}
+room.addEventListener('pointerdown',e=>{
+  if(!R||!S)return;ac();const r=room.getBoundingClientRect();S.hx=e.clientX-r.left;S.hy=e.clientY-r.top;S.hin=true;handEl.classList.add('show');
+  const i=pick(e.clientX,e.clientY),c=i!=null&&cur.parts[i];
+  if(!grabbable(c)){if(cur.parts.some(p=>p.kind==='clap')){clap();setPose('open',true);later(()=>setPose('open'),120)}return}
+  e.preventDefault();try{room.setPointerCapture(e.pointerId)}catch(_){}
+  setHot(-1);const pointy=['btn','rock','touch','pad','cover'].includes(c.kind);setPose(pointy?'point':'fist',true);
+  const g=S.grip={i,x0:e.clientX,y0:e.clientY,p0:S.p[i],a0:S.ang[i],lv0:S.lv[0],w0:S.lv[1],P:ppm(),moved:0};
+  switch(c.kind){
+    case 'flip':g.direct=c.snap===0;break;
+    case 'rock':{const pv=screenOf(W3.B.parts[i].obj),top=e.clientY<pv.y,v=c.topOn?top:!top;if(!setOn(i,v,CLICK[cur.id]))play('soft');break}
+    case 'btn':S.pr[i]=1;press(i);break;
+    case 'dial':g.lv0=S.lv[i];S.pt[i]=1;break;
+    case 'pull':g.direct=true;g.p0=0;break;
+    case 'card':g.direct=true;break;
+    case 'touch':touch(i);break;
+    case 'cover':S.forced=true;break;
+  }
+});
+room.addEventListener('pointermove',e=>{
+  if(!R||!S)return;const r=room.getBoundingClientRect(),nx=e.clientX-r.left,ny=e.clientY-r.top;
+  if(S.hin)S.motion+=Math.hypot(nx-S.hx,ny-S.hy);S.hx=nx;S.hy=ny;S.hin=true;handEl.classList.add('show');
+  S.lx=clamp(nx/r.width*2-1,-1,1);S.ly=clamp(ny/r.height*2-1,-1,1);
+  const g=S.grip;
+  if(!g){const i=pick(e.clientX,e.clientY),c=i!=null&&cur.parts[i];const ok=grabbable(c);setHot(ok?i:-1);setPose(ok?'point':'open');return}
+  const c=cur.parts[g.i],i=g.i,dx=e.clientX-g.x0,dy=e.clientY-g.y0;if(Math.abs(dx)+Math.abs(dy)>5)g.moved=1;
+  switch(c.kind){
+    case 'flip':{const raw=clamp(g.p0+(c.up?-dy:dy)/(g.P*c.dist));
+      if(c.snap===0){S.p[i]=S.pt[i]=raw}
+      else{if(!S.on[i]&&raw>.6)setOn(i,true,CLICK[cur.id]);else if(S.on[i]&&raw<.4)setOn(i,false,CLICK[cur.id]);
+        S.pt[i]=S.on[i]?lerp(.8,1,clamp((raw-.4)/.6)):lerp(0,.2,clamp(raw/.6))}break}
+    case 'turn':{const st=Math.PI/2,raw=g.a0+dx/(g.P*c.dist)*st;
+      if(raw-S.k[i]*st>st*.55&&(c.kmax==null||S.k[i]<c.kmax)){S.k[i]++;turnEvent(i)}
+      else if(raw-S.k[i]*st<-st*.55&&!c.ratchet&&(c.kmin==null||S.k[i]>c.kmin)){S.k[i]--;turnEvent(i)}
+      let off=raw-S.k[i]*st;off=c.ratchet?clamp(off,0,st*.45):clamp(off,-st*.45,st*.45);if(c.kmax!=null&&S.k[i]>=c.kmax)off=Math.min(off,0);if(c.kmin!=null&&S.k[i]<=c.kmin)off=Math.max(off,0);
+      S.ang[i]=S.k[i]*st+off*.7;if(c.ratchet&&raw<g.a0-.2&&!S.said.ratchet){S.said.ratchet=1;say('It will not turn back. Keep going clockwise.')}break}
+    case 'dial':if(g.moved){S.pt[i]=0;S.lv[i]=clamp(g.lv0+dx/(g.P*.12),.05,1);if(!S.on[i]&&!S.said.dial){S.said.dial=1;say('Turning does nothing while it is off. Press the knob first.')}}break;
+    case 'pull':{const pd=clamp(dy/(g.P*c.dist));S.p[i]=S.pt[i]=pd;S.sw[i]=clamp(Math.atan2(dx/g.P,W3.B.parts[i].len),-.6,.6);S.om[i]=0;
+      if(pd>.7&&!S.arm[i]){S.arm[i]=true;pullEvent(i)}if(pd<.3)S.arm[i]=false;break}
+    case 'pad':{if(!g.moved)break;const b0=Math.floor(S.lv[0]*8);S.lv[0]=clamp(g.lv0-dy/(g.P*.08),.04,1);S.lv[1]=clamp(g.w0+dx/(g.P*.08));if(!S.on[0])setOn(0,true,'blip');if(Math.floor(S.lv[0]*8)!==b0)play('blip');break}
+    case 'card':S.p[i]=S.pt[i]=clamp(g.p0+dy/(g.P*.07));break;
+  }
+});
+function endGrip(){
+  const g=S&&S.grip;if(!g)return;S.grip=null;handEl.classList.remove('press');setPose('open');
+  const c=cur.parts[g.i],i=g.i;
+  switch(c.kind){
+    case 'flip':if(c.snap!==0)S.pt[i]=S.on[i]?1:0;break;
+    case 'turn':tween('a'+i,S.ang[i],S.k[i]*Math.PI/2,200,v=>{S.ang[i]=v});break;
+    case 'btn':S.pr[i]=0;break;
+    case 'dial':S.pt[i]=0;if(!g.moved)setOn(i,!S.on[i],'knob');break;
+    case 'pull':S.pt[i]=0;S.arm[i]=false;break;
+    case 'pad':if(!g.moved)setOn(0,!S.on[0],'blip');break;
+    case 'card':S.pt[i]=S.p[i]>.6?1:0;break;
+    case 'cover':S.forced=false;break;
+  }
+  renderActs();
+}
+room.addEventListener('pointerup',endGrip);room.addEventListener('pointercancel',endGrip);
+room.addEventListener('pointerleave',()=>{if(!S)return;if(!S.grip){S.hin=false;handEl.classList.remove('show')}S.lx=0;S.ly=0});
+room.addEventListener('wheel',e=>{if(!S)return;e.preventDefault();S.zoom=clamp(S.zoom*(1+e.deltaY*.0012),.35,2.4)},{passive:false});
+room.addEventListener('contextmenu',e=>e.preventDefault());
+
+/* ---------- loop ---------- */
+function quiet(){if(A.ctx&&A.hum){const t=A.ctx.currentTime;[A.hum,A.ball,A.sing,A.gas].forEach(n=>n.g.gain.setTargetAtTime(0,t,.05))}}
+function loop(n){
+  const dt=Math.min(.033,(n-lastT)/1000);lastT=n;
+  if(dt>0)sim(dt,n);placeCamera(dt);hud();drawHand();
+  R.render(scene,camera);
+  raf=requestAnimationFrame(loop);
+}
+function renderMute(){
+  const b=$('#mute');b.setAttribute('aria-pressed',String(!A.on));b.setAttribute('aria-label',A.on?'Mute sound':'Turn sound on');b.title=A.on?'Mute sound':'Turn sound on';
+  b.innerHTML=A.on?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>'
+                  :'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9l5 6M22 9l-5 6"/></svg>';
+}
+
+/* ---------- wire up ---------- */
+$('#grid').addEventListener('click',e=>{const c=e.target.closest('.card');if(c)openImm(c.dataset.id,c)});
+$('#q').addEventListener('input',e=>{F.q=e.target.value;renderGrid()});
+$('#back').onclick=()=>closeImm();
+window.addEventListener('popstate',()=>{if(!imm.hidden)closeImm(true)});
+$('#prev').onclick=()=>step(-1);$('#next').onclick=()=>step(1);
+$('#zin').onclick=()=>{S.zoom=clamp(S.zoom/1.25,.35,2.4)};$('#zout').onclick=()=>{S.zoom=clamp(S.zoom*1.25,.35,2.4)};
+$('#mute').onclick=()=>{A.on=!A.on;store.set('la-sound',A.on);if(A.ctx)A.on?A.ctx.resume():A.ctx.suspend();if(A.on)ac();renderMute()};
+$('#aboutBtn').onclick=()=>{const a=$('#about');a.hidden=!a.hidden;$('#aboutBtn').setAttribute('aria-expanded',String(!a.hidden))};
+const fsb=$('#fs');if(!document.fullscreenEnabled||!imm.requestFullscreen)fsb.hidden=true;
+fsb.onclick=()=>{try{(document.fullscreenElement?document.exitFullscreen():imm.requestFullscreen()).then(()=>setTimeout(resize,100)).catch(()=>{fsb.hidden=true})}catch(e){fsb.hidden=true}};
+document.addEventListener('fullscreenchange',()=>setTimeout(resize,60));
+$('#surprise').onclick=e=>{const pool=ITEMS.filter(x=>!tried.has(x.id));const L=pool.length?pool:ITEMS;openImm(L[Math.floor(Math.random()*L.length)].id,e.currentTarget)};
+$('#reset').onclick=()=>{tried.clear();wh=0;store.set('la-tried',[]);store.set('la-wh',0);renderStats();renderGrid()};
+document.addEventListener('keydown',e=>{
+  if(imm.hidden||e.target.matches('input'))return;
+  if(e.key==='Escape'){if(!$('#about').hidden){$('#about').hidden=true;$('#aboutBtn').setAttribute('aria-expanded','false')}else closeImm()}
+  else if(e.key==='ArrowRight')step(1);else if(e.key==='ArrowLeft')step(-1);
+  else if(e.key==='+'||e.key==='=')S.zoom=clamp(S.zoom/1.25,.35,2.4);else if(e.key==='-')S.zoom=clamp(S.zoom*1.25,.35,2.4);
+});
+$('#eyebrow').textContent=`A working catalogue · ${ITEMS.length} light switches`;
+renderChips();renderMute();renderStats();renderGrid();
+{const h=location.hash.slice(1);if(ITEMS.some(x=>x.id===h))openImm(h)}
+</script>
+
+</body>
+</html>
