@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Learning RL</title>
+<meta name="description" content="Reinforcement learning in 100 short interactive lessons, from bandits to RLHF. Every idea has something to play with and the maths behind it.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .hero { margin-bottom: 20px; }
+  .hero h1 { font-size: 2.4rem; }
+
+  /* Overall progress: a bar that fills light green. */
+  .overall { position: relative; height: 34px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); overflow: hidden; margin: 0 0 20px; }
+  .overall .fill { position: absolute; inset: 0 auto 0 0; background: var(--accent-soft); transition: width 0.4s ease; }
+  .overall .label { position: relative; height: 100%; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; font-size: 0.9rem; color: var(--heading); }
+  .overall .label b { color: #047857; }
+
+  .units { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+  /* Each unit card fills with light green from the bottom as its lessons are completed. */
+  .unit-card { position: relative; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; overflow: hidden; }
+  .unit-card { --p: 0%; background: linear-gradient(to top, #e7fbf2 var(--p), var(--card) var(--p)); }
+  .unit-card.finished { border-color: #6ee7b7; background: #dff8ec; }
+  .unit-card h2 { font-size: 0.95rem; margin: 0 0 6px; display: flex; align-items: baseline; gap: 8px; }
+  .unit-card h2 small { display: block; color: var(--accent); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  .unit-card h2 .tally { margin-left: auto; font-size: 0.75rem; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .unit-card.finished h2 .tally { color: #047857; }
+
+  .unit-card ol { margin: 0; padding: 0; list-style: none; }
+  .unit-card li { border-radius: 5px; margin: 1px -6px; }
+  .unit-card li a { display: flex; gap: 8px; padding: 3px 6px; font-size: 0.92rem; color: var(--heading); border-radius: 5px; }
+  .unit-card li a:hover { text-decoration: none; background: rgba(5, 150, 105, 0.08); }
+  .unit-card li .n { color: var(--muted); min-width: 1.8em; text-align: right; font-variant-numeric: tabular-nums; }
+  .unit-card li .t { flex: 1; }
+  .unit-card li.done a { background: var(--accent-soft); }
+  .unit-card li.done .mark::after { content: "✓"; color: #047857; font-weight: 700; }
+  .unit-card li.here a { box-shadow: inset 0 0 0 2px var(--accent); background: #fff; font-weight: 600; }
+  .unit-card li.here .mark::after { content: "you are here"; color: var(--accent); font-size: 0.75rem; font-weight: 600; white-space: nowrap; }
+  .unit-card li .row-in { display: flex; gap: 8px; padding: 3px 6px; font-size: 0.92rem; color: var(--muted); }
+  .unit-card li.soon .t { color: #9ca3af; }
+  .unit-card.current { box-shadow: 0 0 0 2px var(--accent-soft); }
+
+  @media (max-width: 640px) { .units { grid-template-columns: 1fr; } .hero h1 { font-size: 2rem; } }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="hero">
+    <h1>Learning RL</h1>
+    <p class="lede">Reinforcement learning in 100 short lessons, from slot machines to the methods used to train language models. Each lesson is one idea, one interactive and the maths behind it, with questions to check you've got it.</p>
+    <div class="row"><a id="go" href="/projects/learning-rl/1/"><button class="primary">Start with lesson 1</button></a></div>
+  </div>
+  <div class="overall"><div class="fill" id="overallFill"></div><div class="label"><span>Your progress</span><b id="overallText"></b></div></div>
+  <div class="units" id="units"></div>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+
+  // Redraw from saved progress. Runs on load, when returning to this page,
+  // and when a lesson is completed in another tab.
+  function render() {
+    const done = Course.loadDone();
+    const next = Course.lessons.find((l) => !done.has(l.n));
+    const count = Course.lessons.filter((l) => done.has(l.n)).length;
+
+    $('overallFill').style.width = `${count}%`;
+    $('overallText').textContent = `${count} / ${Course.lessons.length} lessons complete`;
+
+    $('units').innerHTML = Course.units.map((u) => {
+      const ls = Course.lessons.filter((l) => l.unit === u.n);
+      const k = ls.filter((l) => done.has(l.n)).length;
+      const items = ls.map((l) => {
+        if (l.n > Course.live) {
+          return `<li class="soon"><span class="row-in"><span class="n">${l.n}</span><span class="t">${l.title}</span><span class="mark"></span></span></li>`;
+        }
+        const cls = done.has(l.n) ? 'done' : next && l.n === next.n ? 'here' : '';
+        return `<li class="${cls}"><a href="${Course.root}${l.n}/"><span class="n">${l.n}</span><span class="t">${l.title}</span><span class="mark"></span></a></li>`;
+      }).join('');
+      const cls = ['unit-card', k === ls.length && 'finished', next && next.unit === u.n && 'current'].filter(Boolean).join(' ');
+      return `<section class="${cls}" style="--p:${(100 * k) / ls.length}%">
+        <h2><span><small>Unit ${u.n}</small>${u.title}</span><span class="tally">${k}/${ls.length}</span></h2><ol>${items}</ol></section>`;
+    }).join('');
+    Course.renderMath($('units'));
+
+    const go = document.querySelector('#go');
+    if (next && next.n > Course.live) {
+      go.removeAttribute('href');
+      go.querySelector('button').disabled = true;
+      go.querySelector('button').textContent = `Lesson ${next.n} is coming soon`;
+    } else if (count && next) {
+      go.href = `${Course.root}${next.n}/`;
+      go.querySelector('button').textContent = `Continue with lesson ${next.n}`;
+    } else if (!next) {
+      go.querySelector('button').textContent = 'Course complete ✓';
+    }
+  }
+
+  render();
+  addEventListener('pageshow', render);
+  addEventListener('storage', (e) => { if (e.key === 'learning-rl:done') render(); });
+</script>
+</body>
+</html>

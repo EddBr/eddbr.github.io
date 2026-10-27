@@ -29,6 +29,9 @@ collections:
 
 # Exclude from processing
 exclude:
+  - rl-100-days.md
+  - projects/learning-rl/STYLE.md
+  - projects/learning-rl/tools/
   - .sass-cache/
   - .jekyll-cache/
   - gemfiles/

@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>4. Discounting | Learning RL</title>
+<meta name="description" content="Why a reward later is worth less than a reward now. One slider: gamma.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+  .opt { border: 1px solid var(--border); border-radius: 6px; padding: 10px; text-align: center; }
+  .opt.best { border-color: var(--accent); background: var(--accent-soft); }
+  .opt .label { font-weight: 600; color: var(--heading); }
+  .opt .sum { margin-top: 4px; overflow-x: auto; }
+  .rec { display: flex; gap: 4px; flex-wrap: wrap; margin: 10px 0; }
+  .rec input { width: 3.2em; text-align: center; }
+  @media (max-width: 560px) { .split { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body data-lesson="4">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Discounting</h1>
+  <p class="lede">A reward now is usually worth more than the same reward later. RL agents multiply each future reward by $\gamma$ (gamma) for every step they have to wait.</p>
+
+  <section class="card">
+    <label class="slider"><span>Discount γ</span><input id="iGamma" type="range" min="0" max="1" step="0.01" value="0.9"><output></output></label>
+
+    <div class="bars" id="bars"></div>
+    <div class="axis" id="axis"></div>
+    <p class="note" style="text-align:center">Value of a reward of 1 that arrives $k$ steps from now: $\gamma^k$</p>
+
+    <div class="sub">
+      <h2>Coin now, or gem later?</h2>
+      <p class="note">Lesson 2's world, no step cost. 💰 = 1 arrives as $R_1$. 💎 = 5 arrives as $R_4$.</p>
+      <div class="split">
+        <div class="opt" id="optC"><div class="label">💰 Coin</div><div class="sum" id="sC"></div></div>
+        <div class="opt" id="optG"><div class="label">💎 Gem</div><div class="sum" id="sG"></div></div>
+      </div>
+    </div>
+
+    <div class="sub">
+      <h2>+1 every step, forever</h2>
+      <p class="note">Without discounting this return is infinite. With it:</p>
+      <div class="big" id="forever"></div>
+    </div>
+
+    <div class="sub">
+      <h2>Your own rewards</h2>
+      <p class="note">Type rewards $R_1, R_2, \dots$ and see the discounted return term by term.</p>
+      <div class="rec" id="rec"></div>
+      <div id="mine" style="overflow-x:auto"></div>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>The <b>discounted return</b> from time $t$:</p>
+    $$G_t = R_{t+1} + \gamma R_{t+2} + \gamma^2 R_{t+3} + \dots = \sum_{k=0}^{\infty} \gamma^k R_{t+k+1}$$
+    <p>with $0 \le \gamma \le 1$. Small $\gamma$ makes the agent short-sighted. $\gamma$ near 1 makes it far-sighted.</p>
+    <p>If every reward is 1 and $\gamma &lt; 1$, the return is a geometric series with a finite sum:</p>
+    $$1 + \gamma + \gamma^2 + \dots = \frac{1}{1-\gamma}$$
+    <p>The return also has a recursive form. Pull out the first reward and what remains is $\gamma$ times the next return:</p>
+    $$G_t = R_{t+1} + \gamma\, G_{t+1}$$
+    <p>This one line becomes the Bellman equation in Unit 6.</p>
+    <p>Why discount? The future is uncertain, the maths stays finite, and people and animals prefer rewards sooner. From an action's point of view, a reward $k$ steps later counts only $\gamma^k$ towards it.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const K = 11;
+  const gamma = Course.slider('#iGamma', (v) => v.toFixed(2), update);
+  const mine = [1, 0, 0, 5, 0, 2];
+
+  $('axis').innerHTML = Array.from({ length: K }, (_, k) => `<span>${k}</span>`).join('');
+  $('rec').innerHTML = mine.map((r, i) => `<input type="text" inputmode="decimal" value="${r}" aria-label="Reward ${i + 1}">`).join('');
+  $('rec').addEventListener('input', update);
+
+  function update() {
+    const g = gamma();
+    $('bars').innerHTML = Array.from({ length: K }, (_, k) =>
+      `<div class="bar" style="height:${(Math.pow(g, k) * 100).toFixed(1)}%" title="γ^${k} = ${Math.pow(g, k).toFixed(3)}"></div>`).join('');
+
+    // Coin arrives as R_1 (weight γ^0); gem arrives as R_4 (weight γ^3).
+    const coin = 1, gem = 5 * Math.pow(g, 3);
+    Course.tex($('sC'), `G = \\gamma^0 \\times 1 = ${coin.toFixed(2)}`);
+    Course.tex($('sG'), `G = \\gamma^3 \\times 5 = ${gem.toFixed(2)}`);
+    $('optC').classList.toggle('best', coin >= gem);
+    $('optG').classList.toggle('best', gem > coin);
+
+    Course.tex($('forever'), g < 1 ? `G = \\frac{1}{1-${g.toFixed(2)}} = ${(1 / (1 - g)).toFixed(1)}` : 'G = \\infty');
+
+    const rs = [...$('rec').querySelectorAll('input')].map((i) => parseFloat(i.value) || 0);
+    const terms = rs.map((r, k) => `${k ? `${g.toFixed(2)}^{${k}}` : ''}${k ? '\\cdot ' : ''}${r < 0 ? `(${r})` : r}`);
+    const G = rs.reduce((s, r, k) => s + Math.pow(g, k) * r, 0);
+    Course.tex($('mine'), `G_0 = ${terms.join(' + ')} = ${G.toFixed(3)}`, true);
+  }
+  update();
+
+  Course.quiz([
+    {
+      q: '$\\gamma = 0.5$ and the rewards are $1, 1, 1$, then nothing. What is $G_0$?',
+      answer: 1.75,
+      explain: '$1 + 0.5 + 0.25 = 1.75$. Type them into "Your own rewards" to check.',
+    },
+    {
+      q: 'At what $\\gamma$ are the coin and the gem worth the same?',
+      answer: Math.cbrt(0.2),
+      tol: 0.005,
+      hint: 'Solve $5\\gamma^3 = 1$.',
+      explain: '$\\gamma^3 = 0.2$, so $\\gamma = 0.2^{1/3} \\approx 0.585$.',
+    },
+    {
+      q: 'A reward of +1 arrives every step forever, with $\\gamma = 0.99$. What is the return?',
+      answer: 100,
+      explain: '$1/(1 - 0.99) = 100$.',
+    },
+    {
+      q: '$\\gamma = 0.9$, $R_1 = 2$ and $G_1 = 10$. What is $G_0$?',
+      answer: 11,
+      explain: '$G_0 = R_1 + \\gamma G_1 = 2 + 0.9 \\times 10 = 11$.',
+    },
+  ]);
+</script>
+</body>
+</html>

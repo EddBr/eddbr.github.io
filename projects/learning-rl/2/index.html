@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2. Rewards define the goal | Learning RL</title>
+<meta name="description" content="Same world, different rewards, different behaviour. Drag the sliders and watch the agent change its mind.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .options { display: grid; gap: 8px; margin-top: 14px; }
+  .opt { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; flex-wrap: wrap; }
+  .opt .name { font-weight: 600; color: var(--heading); min-width: 8.5em; }
+  .opt .sum { flex: 1; color: var(--body); overflow-x: auto; }
+  .opt.best { border-color: var(--accent); background: var(--accent-soft); }
+  .opt.best .name::after { content: " ← chosen"; color: var(--accent); font-weight: 500; font-size: 0.85rem; }
+  @media (max-width: 560px) { .opt { flex-direction: column; align-items: flex-start; gap: 4px; } }
+</style>
+</head>
+<body data-lesson="2">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Rewards define the goal</h1>
+  <p class="lede">The agent never learns what you <i>want</i>. It only sees the rewards. Change the rewards and the best behaviour changes with them.</p>
+
+  <section class="card">
+    <div class="world" id="world"></div>
+    <label class="slider"><span>💰 Coin</span><input id="iCoin" type="range" min="0" max="10" step="1" value="1"><output></output></label>
+    <label class="slider"><span>💎 Gem</span><input id="iGem" type="range" min="0" max="10" step="1" value="5"><output></output></label>
+    <label class="slider"><span>Each step</span><input id="iStep" type="range" min="-3" max="0" step="0.25" value="0"><output></output></label>
+
+    <div class="options">
+      <div class="opt" id="optL"><span class="name">← Coin (1 step)</span><span class="sum" id="sL"></span></div>
+      <div class="opt" id="optS"><span class="name">Stay put</span><span class="sum" id="sS"></span></div>
+      <div class="opt" id="optR"><span class="name">Gem → (4 steps)</span><span class="sum" id="sR"></span></div>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>Each option produces a sequence of rewards. The agent picks the one with the largest return $G = R_1 + \dots + R_T$. With a reward of $s$ per step, walking to the gem gives</p>
+    $$\begin{aligned} G_{\text{gem}} &= \underbrace{s + s + s}_{\text{walking}} + \underbrace{(s + \text{gem})}_{\text{arriving}} \\ &= 4s + \text{gem} \end{aligned}$$
+    <p>and the coin gives $G_{\text{coin}} = s + \text{coin}$. Set them equal to find where the choice flips.</p>
+    <p>This is the <b>reward hypothesis</b>: every goal can be described as maximising the expected return. The designer says <i>what</i> is good through the rewards, never <i>how</i> to achieve it.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const fmt = (x) => Course.fmt(x, 2);
+  const term = (x) => (x < 0 ? `(${fmt(x)})` : fmt(x));
+
+  const coin = Course.slider('#iCoin', String, update);
+  const gem = Course.slider('#iGem', String, update);
+  const step = Course.slider('#iStep', fmt, update);
+
+  function update() {
+    const c = coin(), g = gem(), s = step();
+    const G = { L: s + c, S: 0, R: 4 * s + g };
+    Course.tex($('sL'), `G = ${term(s)} + ${term(c)} = ${fmt(G.L)}`);
+    Course.tex($('sS'), 'G = 0');
+    Course.tex($('sR'), `G = ${term(s)} + ${term(s)} + ${term(s)} + ${term(s)} + ${term(g)} = ${fmt(G.R)}`);
+
+    // Ties go to staying put, then the coin: no reason to walk further for the same return.
+    const best = ['S', 'L', 'R'].reduce((a, b) => (G[b] > G[a] ? b : a));
+    for (const k of ['L', 'S', 'R']) $('opt' + k).classList.toggle('best', k === best);
+
+    const dir = { L: '←', S: '·', R: '→' }[best];
+    const cells = ['💰', `🤖<small>${dir}</small>`, '', '', '', '💎'];
+    $('world').innerHTML = cells.map((x, i) => `<div class="cell${i === 1 ? ' here' : ''}">${x}</div>`).join('');
+  }
+  update();
+
+  Course.quiz([
+    {
+      q: 'Coin = 1, gem = 5, each step = −1. What is $G_{\\text{gem}}$?',
+      answer: 1,
+      explain: '$4 \\times (-1) + 5 = 1$.',
+    },
+    {
+      q: 'Coin = 1 and gem = 5. At what step reward $s$ are the coin and the gem worth the same?',
+      answer: -4 / 3,
+      tol: 0.02,
+      hint: 'Solve $s + 1 = 4s + 5$.',
+      explain: '$s + 1 = 4s + 5 \\Rightarrow -3s = 4 \\Rightarrow s = -4/3 \\approx -1.33$.',
+    },
+    {
+      q: 'A cleaning robot gets +1 for each piece of dirt it picks up. What might it learn?',
+      choices: ['To clean the room as fast as possible', 'To drop dirt and pick it up again, forever', 'Nothing, because the reward is too small'],
+      answer: 1,
+      explain: 'It maximises the reward, not your intention. This is called reward hacking (Lesson 90).',
+    },
+  ]);
+</script>
+</body>
+</html>
