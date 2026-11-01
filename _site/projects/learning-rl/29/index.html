@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>29. The Bellman optimality equation | Learning RL</title>
+<meta name="description" content="Replace the policy's average over actions with a max and you get the equation the optimal values satisfy. Compare the two backups cell by cell.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .layout { display: grid; grid-template-columns: 300px 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 640px) { .layout { grid-template-columns: 1fr; } }
+  #grid { max-width: 300px !important; margin: 4px auto; }
+  .gcell { font-size: 0.78rem !important; font-weight: 600; }
+  .gcell.goal { background: var(--accent-soft); }
+  .gcell.pit { background: var(--red-soft); }
+  .gcell.sel { box-shadow: inset 0 0 0 3px var(--heading); }
+  .gcell .arr { position: absolute; top: 1px; left: 0; right: 0; text-align: center; font-size: 1.2em; color: var(--heading); }
+  .gcell .num { margin-top: 1.1em; }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }
+  .seg button { border: 0; border-radius: 0; color: var(--muted); }
+  .seg button.on { color: #fff; }
+  .tree { font-variant-numeric: tabular-nums; font-size: 0.92rem; }
+  .node { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .dot { width: 14px; height: 14px; border-radius: 50%; flex: none; border: 2px solid var(--heading); background: #fff; }
+  .sdot { width: 10px; height: 10px; border-radius: 50%; background: var(--heading); margin: 0 2px; flex: none; }
+  .root { padding: 8px 10px; background: var(--soft); border: 1px solid var(--border); border-radius: 6px; }
+  .act { margin: 6px 0 0 14px; padding: 2px 0 2px 12px; border-left: 2px solid var(--border); }
+  .act.win { border-left-color: var(--accent); background: linear-gradient(90deg, var(--accent-soft), transparent 70%); }
+  .leaf { margin-left: 14px; padding-left: 10px; border-left: 1px dashed #cbd5e1; color: var(--body); font-size: 0.84rem; }
+  .qv { font-weight: 700; color: var(--blue); }
+  .muted2 { color: var(--muted); font-size: 0.85em; }
+  .arc { font-size: 0.8rem; color: var(--accent); font-weight: 600; }
+  .cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0; }
+  .cmp > div { border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; }
+  .cmp > div.on { border-color: var(--accent); background: var(--accent-soft); }
+  .cmp .k { font-size: 0.8rem; color: var(--muted); display: block; }
+  .cmp .v { font-size: 1.3rem; font-weight: 600; color: var(--heading); font-variant-numeric: tabular-nums; }
+  canvas.chart { height: 280px; }
+</style>
+</head>
+<body data-lesson="29">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>The Bellman optimality equation</h1>
+  <p class="lede">The Bellman expectation equation averages over the actions a policy might take. The optimal values satisfy the same equation with that average replaced by a max: from every state, take the best action, then keep behaving optimally. That single change makes the equation non-linear.</p>
+
+  <section class="card">
+    <div class="row">
+      <span class="muted">Backup:</span>
+      <span class="seg"><button id="mAvg">Average (random π)</button><button id="mMax" class="on">Max (optimal)</button></span>
+    </div>
+    <div class="layout">
+      <div>
+        <p class="note" id="gridNote"></p>
+        <div id="grid"></div>
+      </div>
+      <div>
+        <div class="cmp">
+          <div id="cAvg"><span class="k">average of the $q$s</span><span class="v" id="vAvg"></span></div>
+          <div id="cMax"><span class="k">max of the $q$s</span><span class="v" id="vMax"></span></div>
+        </div>
+        <div class="tree" id="tree"></div>
+      </div>
+    </div>
+    <p class="status" id="status"></p>
+
+    <div class="sub">
+      <h2>Why max breaks the matrix trick</h2>
+      <p class="note">One state, two actions. "Stay" pays 1 and comes back to the same state. "Leave" pays $L$ and ends the episode. The optimal value solves $v = \max(1 + \gamma v,\; L)$. Plot both sides: the solution is where the kinked green line meets the grey diagonal (amber line).</p>
+      <label class="slider"><span>Leave reward $L$</span><input id="iL" type="range" min="0" max="20" step="0.5" value="5"><output></output></label>
+      <label class="slider"><span>Discount $\gamma$</span><input id="iG" type="range" min="0" max="0.95" step="0.05" value="0.9"><output></output></label>
+      <canvas class="chart" id="chart"></canvas>
+      <p class="status" id="fixNote"></p>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>From Lesson 24, an optimal agent takes the best action, so $v_*(s) = \max_a q_*(s, a)$. After that first action it behaves optimally, so the action value is one step of reward plus the optimal value of wherever it lands:</p>
+    $$q_*(s, a) = \sum_{s', r} p(s', r \mid s, a)\,\big[r + \gamma\, v_*(s')\big]$$
+    <p>Put the two together to get the <b>Bellman optimality equation</b> for $v_*$:</p>
+    $$v_*(s) = \max_a \sum_{s', r} p(s', r \mid s, a)\,\big[r + \gamma\, v_*(s')\big]$$
+    <p>Compare Lesson 26: the only change is $\sum_a \pi(a \mid s)$ becoming $\max_a$. In the backup diagram the average over action branches becomes an arc that picks the best branch. The same substitution gives the version for action values:</p>
+    $$q_*(s, a) = \sum_{s', r} p(s', r \mid s, a)\Big[r + \gamma \max_{a'} q_*(s', a')\Big]$$
+    <p>The optimality equation makes no mention of any policy. For a finite MDP with $\gamma &lt; 1$ it has exactly one solution, $v_*$. Once $v_*$ is known, any policy that is greedy with respect to its one-step lookahead is optimal. The small arrows on the grid are that policy.</p>
+    <p>The catch: $\max$ is not linear, so there is no $(I - \gamma P)^{-1}$ to compute. In the plot, the right-hand side has a kink, and which piece you are on depends on the answer. With $\gamma = 0.9$ and $L = 5$, staying forever is worth $1/(1 - 0.9) = 10 &gt; 5$, so $v_* = 10$. Large MDPs are solved by iteration instead: value iteration (Lesson 33) applies the max backup again and again.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  // ---- The icy gridworld (Lessons 18–19's layout, used in Lessons 20–29) ---
+  // 4×5 grid. G = goal (+10, ends), P = pit (−10, ends), # = wall. Every other move pays `step`.
+  // An action goes where you meant with probability 1 − slip, and slips to each side with slip/2.
+  // Moving into the wall or the edge leaves you where you are.
+  const MAP = ['....G', '.#..P', '...#.', '.....'];
+  const ROWS = 4, COLS = 5, NS = ROWS * COLS;
+  const ARROW = ['↑', '→', '↓', '←'], ANAME = ['up', 'right', 'down', 'left'];
+  const DR = [-1, 0, 1, 0], DC = [0, 1, 0, -1];
+  const kind = (s) => MAP[Math.floor(s / COLS)][s % COLS];
+  const isWall = (s) => kind(s) === '#';
+  const isTerm = (s) => kind(s) === 'G' || kind(s) === 'P';
+  const STATES = [...Array(NS).keys()].filter((s) => !isWall(s) && !isTerm(s));
+  const START = 15;
+  const rc = (s) => [Math.floor(s / COLS), s % COLS];
+  const cellName = (s) => `(${rc(s)[0]},${rc(s)[1]})`;
+
+  function move(s, d) {
+    const [r, c] = rc(s), nr = r + DR[d], nc = c + DC[d];
+    if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) return s;
+    const s2 = nr * COLS + nc;
+    return isWall(s2) ? s : s2;
+  }
+  const reward = (W, s2) => (kind(s2) === 'G' ? W.goal : kind(s2) === 'P' ? W.pit : W.step);
+  // The three possible results of action a in state s: meant, slip clockwise, slip anticlockwise.
+  function outcomes(W, s, a) {
+    return [[a, 1 - W.slip], [(a + 1) % 4, W.slip / 2], [(a + 3) % 4, W.slip / 2]]
+      .filter(([, p]) => p > 0)
+      .map(([d, p]) => { const s2 = move(s, d); return { d, p, s2, r: reward(W, s2) }; });
+  }
+  const uniform = () => { const pi = []; STATES.forEach((s) => (pi[s] = [0.25, 0.25, 0.25, 0.25])); return pi; };
+  const deterministic = (arrows) => { const pi = []; STATES.forEach((s) => { pi[s] = [0, 0, 0, 0]; pi[s][arrows[s]] = 1; }); return pi; };
+
+  // Exact v_π: solve (I − γ P_π) v = r_π over the non-terminal states by Gaussian elimination.
+  function evaluate(W, pi) {
+    const n = STATES.length, idx = new Map(STATES.map((s, i) => [s, i]));
+    const A = STATES.map(() => new Array(n + 1).fill(0));
+    STATES.forEach((s, i) => {
+      A[i][i] += 1;
+      for (let a = 0; a < 4; a++) {
+        if (!pi[s][a]) continue;
+        for (const o of outcomes(W, s, a)) {
+          const w = pi[s][a] * o.p;
+          A[i][n] += w * o.r;
+          if (!isTerm(o.s2)) A[i][idx.get(o.s2)] -= W.gamma * w;
+        }
+      }
+    });
+    for (let c = 0; c < n; c++) {
+      let piv = c;
+      for (let r = c + 1; r < n; r++) if (Math.abs(A[r][c]) > Math.abs(A[piv][c])) piv = r;
+      [A[c], A[piv]] = [A[piv], A[c]];
+      for (let r = 0; r < n; r++) {
+        if (r === c || !A[r][c]) continue;
+        const f = A[r][c] / A[c][c];
+        for (let k = c; k <= n; k++) A[r][k] -= f * A[c][k];
+      }
+    }
+    const v = new Array(NS).fill(0);
+    STATES.forEach((s, i) => (v[s] = A[i][n] / A[i][i]));
+    return v;
+  }
+  // q(s, a) = Σ p(s', r | s, a) [r + γ v(s')]
+  const qOf = (W, v, s, a) => outcomes(W, s, a).reduce((t, o) => t + o.p * (o.r + W.gamma * v[o.s2]), 0);
+  const qAll = (W, v) => { const q = []; STATES.forEach((s) => (q[s] = [0, 1, 2, 3].map((a) => qOf(W, v, s, a)))); return q; };
+  // v_* by value iteration (Lesson 33), run to convergence.
+  function optimal(W) {
+    let v = new Array(NS).fill(0);
+    for (let k = 0; k < 5000; k++) {
+      let delta = 0;
+      const nv = v.slice();
+      STATES.forEach((s) => { nv[s] = Math.max(...[0, 1, 2, 3].map((a) => qOf(W, v, s, a))); delta = Math.max(delta, Math.abs(nv[s] - v[s])); });
+      v = nv;
+      if (delta < 1e-12) break;
+    }
+    return v;
+  }
+  function stepEnv(W, s, a) {
+    const os = outcomes(W, s, a), o = os[Course.sample(os.map((x) => x.p))];
+    return o;
+  }
+  // One episode under π from s0 (and optional forced first action a0). Returns the steps.
+  function episode(W, pi, s0, a0 = null, maxT = 1000) {
+    const steps = [];
+    let s = s0;
+    for (let t = 0; t < maxT && !isTerm(s); t++) {
+      const a = t === 0 && a0 !== null ? a0 : Course.sample(pi[s]);
+      const o = stepEnv(W, s, a);
+      steps.push({ s, a, d: o.d, r: o.r, s2: o.s2 });
+      s = o.s2;
+    }
+    return steps;
+  }
+  // Two decimals without a minus sign on zero.
+  const f2 = (x) => (Math.abs(x) < 0.005 ? 0 : x).toFixed(2);
+  const discounted = (W, steps) => steps.reduceRight((g, x) => x.r + W.gamma * g, 0);
+  // ---- end of the icy gridworld ---------------------------------------------
+
+  const W = { slip: 0.2, step: 0, goal: 10, pit: -10, gamma: 0.9 };
+  const vRand = evaluate(W, uniform()), vStar = optimal(W);
+  let mode = 'max', sel = 8;
+  const par = (x) => (x < -0.004 ? `(${f2(x)})` : f2(x));
+  const where = (s2) => (kind(s2) === 'G' ? '🏁' : kind(s2) === 'P' ? '🕳️' : cellName(s2));
+  const vals = () => (mode === 'max' ? vStar : vRand);
+
+  const grid = Course.grid($('grid'), ROWS, COLS, (r, c, el) => {
+    const s = r * COLS + c, k = kind(s);
+    if (k === '#') { el.classList.add('wall'); return; }
+    if (k === 'G') { el.classList.add('goal'); el.textContent = '🏁'; return; }
+    if (k === 'P') { el.classList.add('pit'); el.textContent = '🕳️'; return; }
+    const v = vals();
+    el.style.background = Course.heat(v[s], 10);
+    let arrows = '';
+    if (mode === 'max') {
+      const q = [0, 1, 2, 3].map((a) => qOf(W, v, s, a)), top = Math.max(...q);
+      arrows = `<span class="arr">${[0, 1, 2, 3].filter((a) => q[a] > top - 1e-9).map((a) => ARROW[a]).join('')}</span>`;
+    }
+    el.innerHTML = `${arrows}<span class="num">${f2(v[s])}</span>`;
+    if (s === sel) el.classList.add('sel');
+  });
+  grid.onClick((r, c) => {
+    const s = r * COLS + c;
+    if (!STATES.includes(s)) return;
+    sel = s; draw();
+  });
+
+  function draw() {
+    grid.update();
+    $('gridNote').innerHTML = mode === 'max'
+      ? 'Cells show $v_*$ and the greedy action(s). Click a cell.'
+      : 'Cells show $v_\\pi$ for the random policy. Click a cell.';
+    Course.renderMath($('gridNote'));
+    const v = vals();
+    const q = [0, 1, 2, 3].map((a) => qOf(W, v, sel, a));
+    const avg = q.reduce((t, x) => t + x / 4, 0), mx = Math.max(...q), best = q.indexOf(mx);
+    $('vAvg').textContent = f2(avg); $('vMax').textContent = f2(mx);
+    $('cAvg').classList.toggle('on', mode === 'avg'); $('cMax').classList.toggle('on', mode === 'max');
+    let html = `<div class="node root"><span class="dot"></span><b>$s = ${cellName(sel)}$</b>
+      <span>${mode === 'max' ? '$v_*(s) = \\max_a q_*(s, a) =$' : '$v_\\pi(s) = \\sum_a \\tfrac14 q_\\pi(s, a) =$'} <b class="qv" style="color:var(--accent)">${f2(mode === 'max' ? mx : avg)}</b></span>
+      ${mode === 'max' ? '<span class="arc">⌒ max</span>' : ''}</div>`;
+    for (let a = 0; a < 4; a++) {
+      html += `<div class="act${mode === 'max' && a === best ? ' win' : ''}"><div class="node"><span class="sdot"></span><b>${ARROW[a]}</b>
+        ${mode === 'avg' ? '<span class="muted2">$\\pi = 0.25$</span>' : ''}
+        <span>$q =$ <span class="qv">${f2(q[a])}</span></span></div>`;
+      for (const o of outcomes(W, sel, a)) {
+        html += `<div class="leaf">${o.p.toFixed(1)} → ${where(o.s2)}: $${o.r} + 0.9 \\times ${par(v[o.s2])}$</div>`;
+      }
+      html += '</div>';
+    }
+    $('tree').innerHTML = html;
+    Course.renderMath($('tree'));
+    $('status').textContent = mode === 'max'
+      ? `With optimal values, the best action here is ${ARROW[best]}. The max (${f2(mx)}) equals the cell's own value, so v* satisfies the optimality equation.`
+      : `With the random policy's values, the average (${f2(avg)}) equals the cell's own value: the expectation equation holds. The max would be ${f2(mx)}, so these values fail the optimality equation.`;
+  }
+
+  for (const [id, m] of [['mAvg', 'avg'], ['mMax', 'max']]) {
+    $(id).addEventListener('click', () => {
+      mode = m;
+      $('mAvg').classList.toggle('on', m === 'avg'); $('mMax').classList.toggle('on', m === 'max');
+      draw();
+    });
+  }
+
+  // ------------------------------------------------ one-state fixed point
+  const L = Course.slider('#iL', (x) => x.toFixed(1), plot);
+  const gam = Course.slider('#iG', (x) => x.toFixed(2), plot);
+  const chart = Course.lineChart($('chart'), { xLabel: 'v', yLabel: 'right-hand side', xMin: 0, xMax: 25, yMin: 0, yMax: 25 });
+  function plot() {
+    const g = gam(), l = L();
+    const xs = Array.from({ length: 101 }, (_, i) => i * 0.25);
+    const stay = 1 / (1 - g), vstar = Math.max(stay, l);
+    chart.draw([
+      { data: xs.map((x) => [x, x]), color: Course.colors.grey, label: 'v', dashed: true, width: 1.5 },
+      { data: xs.map((x) => [x, Math.max(1 + g * x, l)]), color: Course.colors.green, label: 'max(1 + γv, L)', width: 2.5 },
+    ], { vlines: [{ x: vstar, color: Course.colors.amber }] });
+    $('fixNote').textContent = stay >= l
+      ? `Staying forever is worth 1/(1 − γ) = ${f2(stay)} ≥ L, so the optimal action is stay and v* = ${f2(stay)}.`
+      : `Leaving pays ${f2(l)}, more than staying forever (${f2(stay)}), so the optimal action is leave and v* = ${f2(l)}.`;
+  }
+
+  draw();
+  plot();
+
+  Course.quiz([
+    {
+      q: 'A state has two actions, $\\gamma = 0.9$. Action 1 pays 1 and ends the episode. Action 2 pays 0 and moves to a state with $v_* = 5$. What is $v_*(s)$?',
+      answer: Math.max(1, 0.9 * 5),
+      tol: 0.001,
+      explain: '$q_*(s, 1) = 1$, $q_*(s, 2) = 0 + 0.9 \\times 5 = 4.5$. The max is $4.5$.',
+    },
+    {
+      q: 'In the one-state problem, $L = 5$ and $\\gamma = 0.9$. What is $v_*$?',
+      answer: Math.max(1 / (1 - 0.9), 5),
+      tol: 0.01,
+      hint: 'Try $v = 10$ in $\\max(1 + 0.9v, 5)$.',
+      explain: 'Staying gives $v = 1 + 0.9v$, so $v = 10$. Then $\\max(1 + 9, 5) = 10$ checks out.',
+    },
+    {
+      q: 'Same problem with $L = 12$. What is $v_*$?',
+      answer: 12,
+      tol: 0.01,
+      explain: 'Try $v = 12$: $\\max(1 + 0.9 \\times 12, 12) = \\max(11.8, 12) = 12$. Leaving is optimal.',
+    },
+    {
+      q: 'Why can the Bellman optimality equation not be solved with one matrix inverse like Lesson 28?',
+      choices: [
+        'Because $v_*$ is not unique',
+        'Because the transition matrix is not square',
+        'Because the max makes it non-linear: which action is best depends on the values you are solving for',
+      ],
+      answer: 2,
+      explain: 'For a fixed policy the equation is linear. The max chooses the policy inside the equation, so it is piecewise linear with kinks, not one linear system.',
+    },
+  ]);
+</script>
+</body>
+</html>

@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>56. n-step returns | Learning RL</title>
+<meta name="description" content="Look n rewards ahead before bootstrapping. A slider from TD(0) at n = 1 to Monte Carlo at n = ∞, on the 19-state random walk.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  #walk { width: 100%; height: 190px; display: block; margin: 8px 0 0; }
+  #eq { overflow-x: auto; overflow-y: hidden; min-height: 2.8em; }
+  .key { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.85rem; color: var(--muted); justify-content: center; }
+  .key b { display: inline-block; width: 14px; height: 10px; vertical-align: middle; margin-right: 4px; border-radius: 2px; }
+  #fig { height: 260px; }
+  @media (max-width: 560px) { #eq .katex-display { font-size: 0.85em; } }
+</style>
+</head>
+<body data-lesson="56">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>n-step returns</h1>
+  <p class="lede">TD(0) looks one reward ahead and then trusts its estimate. Monte Carlo looks all the way to the end. In between, an $n$-step method uses $n$ real rewards and then the estimate. A single knob, $n$, slides from one to the other, and the best setting is usually in the middle.</p>
+
+  <section class="card">
+    <label class="slider"><span>Steps $n$</span><input id="iN" type="range" min="0" max="9" step="1" value="3"><output></output></label>
+    <label class="slider"><span>Step size $\alpha$</span><input id="iA" type="range" min="0.05" max="1" step="0.05" value="0.4"><output></output></label>
+    <canvas id="walk" aria-label="19-state random walk values"></canvas>
+    <div class="key">
+      <span><b style="background:var(--accent)"></b>$V(s)$</span>
+      <span><b style="border-top:2px dashed var(--amber);height:0"></b>true $v_\pi(s)$</span>
+      <span><b style="background:rgba(42,122,226,.35)"></b>changed this episode</span>
+    </div>
+    <div id="eq"></div>
+    <p class="status" id="status"></p>
+    <div class="row">
+      <button id="bEp" class="primary">Run episode</button>
+      <button id="b10">+10 episodes</button>
+      <span class="spacer"></span>
+      <button id="bReset" class="quiet">Reset</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="k">Episodes</span><span class="v" id="sEp">0</span></div>
+      <div class="stat"><span class="k">States changed last episode</span><span class="v" id="sCh">–</span></div>
+      <div class="stat"><span class="k">RMS error</span><span class="v" id="sErr">–</span></div>
+    </div>
+    <p class="note">S&amp;B Example 7.1: 19 states in a row, start in the middle, step left or right with probability ½. Leaving on the left pays $-1$, on the right $+1$, everything else $0$, $\gamma = 1$. True values run from $-0.9$ to $0.9$. Start from $V = 0$ and run one episode with $n = 1$, then with $n = 8$: the final reward reaches the last $n$ steps of the trail, not just the last one.</p>
+
+    <div class="sub">
+      <h2>Which n is best?</h2>
+      <p class="note">RMS error over the 19 states, averaged over the first 10 episodes and 30 runs, for each $n$ and $\alpha$. S&amp;B Figure 7.2 runs the same experiment with $n$ up to 512.</p>
+      <div class="row"><button id="bFig">Run comparison</button></div>
+      <canvas class="chart" id="fig" hidden></canvas>
+      <div class="key" id="figKey" hidden></div>
+      <p class="note" id="figNote" hidden>Neither extreme wins. $n = 1$ (TD(0)) learns slowly from one-step targets, very large $n$ is Monte Carlo with its noisy returns. Intermediate $n$ (around 4 to 8) gives the lowest error, at a moderate $\alpha$.</p>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>The <b>$n$-step return</b> adds $n$ discounted rewards and then the current estimate of where the agent ends up:</p>
+    $$G_{t:t+n} = R_{t+1} + \gamma R_{t+2} + \dots + \gamma^{n-1} R_{t+n} + \gamma^{n}\, V(S_{t+n})$$
+    <p>If the episode ends before $t + n$, the sum stops at $R_T$ and there is no $V$ term: $G_{t:t+n} = G_t$. So $n = 1$ gives the TD(0) target $R_{t+1} + \gamma V(S_{t+1})$, and $n \ge T - t$ gives the Monte Carlo return $G_t$.</p>
+    <p>The <b>$n$-step TD</b> update is the usual one with this target:</p>
+    $$V(S_t) \leftarrow V(S_t) + \alpha\big[G_{t:t+n} - V(S_t)\big]$$
+    <p>The target needs rewards up to $R_{t+n}$, so the update for $S_t$ happens $n$ steps late, at time $t + n$. At the end of the episode the remaining states are updated with shorter sums.</p>
+    <p>Why it works: write the true value the same way, $v_\pi(s) = \mathbb{E}_\pi[R_{t+1} + \dots + \gamma^{n-1} R_{t+n} + \gamma^n v_\pi(S_{t+n}) \mid S_t = s]$. Subtracting, the rewards cancel:</p>
+    $$\mathbb{E}_\pi\big[G_{t:t+n} \mid S_t = s\big] - v_\pi(s) = \gamma^n\, \mathbb{E}_\pi\big[V(S_{t+n}) - v_\pi(S_{t+n}) \mid S_t = s\big]$$
+    <p>So the worst error of the expected target is at most $\gamma^n$ times the worst error in $V$ (the <b>error reduction property</b>):</p>
+    $$\max_s \Big|\mathbb{E}_\pi[G_{t:t+n} \mid S_t = s] - v_\pi(s)\Big| \le \gamma^n \max_s \big|V(s) - v_\pi(s)\big|$$
+    <p>Larger $n$ shrinks the bias from bootstrapping, but adds more random rewards to each target, which adds variance. With $\gamma = 1$ the bound is not a contraction, yet episodes ending still pull the targets towards the truth.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const NS = 19, START = 10;                 // states 1..19; 0 and 20 are terminal
+  const TRUE = Array.from({ length: NS + 2 }, (_, i) => (i === 0 || i === NS + 1 ? 0 : (i - 10) / 10));
+  const NVALS = [1, 2, 3, 4, 6, 8, 12, 16, 32, Infinity];
+  const nOf = Course.slider('#iN', (v) => (NVALS[v] === Infinity ? '∞' : NVALS[v]), () => {});
+  const alpha = Course.slider('#iA', (v) => v.toFixed(2), () => {});
+  const n = () => NVALS[nOf()];
+
+  let V, episodes, changed, cur = null, timer = null, lastUpd = null;
+
+  // One episode as an incremental generator of n-step TD updates (S&B §7.1, γ = 1).
+  function* episodeGen(N, a) {
+    const S = [START], Rw = [0];
+    let T = Infinity;
+    for (let t = 0; ; t++) {
+      if (t < T) {
+        const s2 = S[t] + (Math.random() < 0.5 ? -1 : 1);
+        S.push(s2); Rw.push(s2 === 0 ? -1 : s2 === NS + 1 ? 1 : 0);
+        if (s2 === 0 || s2 === NS + 1) T = t + 1;
+      }
+      // Once T is known, any n >= T gives the same updates as n = T (no bootstrapping), so cap it.
+      const Ne = Math.min(N, T), tau = t - Ne + 1;
+      if (tau >= 0) {
+        let G = 0;
+        const end = Math.min(tau + Ne, T);
+        for (let i = tau + 1; i <= end; i++) G += Rw[i];
+        const boot = tau + Ne < T;
+        if (boot) G += V[S[tau + Ne]];
+        const s = S[tau], old = V[s];
+        V[s] = old + a * (G - old);
+        if (V[s] !== old) changed.add(s);
+        yield { t, tau, s, old, G, now: V[s], rewards: Rw.slice(tau + 1, end + 1), boot: boot ? { s: S[tau + Ne], v: V[S[tau + Ne]] } : null, here: S[Math.min(t + 1, S.length - 1)] };
+      } else {
+        yield { t, here: S[t + 1] };
+      }
+      if (tau === T - 1) return;
+    }
+  }
+
+  const ctx = $('walk').getContext('2d');
+  function drawWalk(here) {
+    const c = $('walk'), dpr = window.devicePixelRatio || 1, W = c.clientWidth, H = c.clientHeight;
+    if (!W) return;
+    c.width = W * dpr; c.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+    const left = 26, cw = (W - left) / (NS + 2), mid = 8 + (H - 40) / 2, sc = (H - 40) / 2;
+    const Y = (v) => mid - v * sc;
+    ctx.font = '11px -apple-system, sans-serif'; ctx.fillStyle = '#6b7280'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    for (const v of [-1, 0, 1]) {
+      ctx.strokeStyle = v ? '#eef0f3' : '#9ca3af'; ctx.beginPath(); ctx.moveTo(left, Y(v)); ctx.lineTo(W, Y(v)); ctx.stroke();
+      ctx.fillText(v, left - 5, Y(v));
+    }
+    for (let i = 0; i <= NS + 1; i++) {
+      const x = left + i * cw;
+      if (i === 0 || i === NS + 1) {
+        ctx.fillStyle = '#d1d5db'; ctx.fillRect(x + 1, Y(1), cw - 2, 2 * sc);
+        ctx.fillStyle = '#374151'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+        ctx.fillText(i ? '+1' : '−1', x + cw / 2, H - 28);
+        ctx.textBaseline = 'middle';
+        continue;
+      }
+      if (changed.has(i)) { ctx.fillStyle = 'rgba(42,122,226,0.15)'; ctx.fillRect(x, Y(1), cw, 2 * sc); }
+      if (lastUpd && lastUpd.s === i) { ctx.fillStyle = 'rgba(42,122,226,0.35)'; ctx.fillRect(x, Y(1), cw, 2 * sc); }
+      ctx.fillStyle = Course.colors.green;
+      const v = V[i];
+      ctx.fillRect(x + cw * 0.15, Math.min(Y(v), mid), cw * 0.7, Math.abs(Y(v) - mid));
+      ctx.strokeStyle = Course.colors.amber; ctx.setLineDash([3, 2]); ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(x + 1, Y(TRUE[i])); ctx.lineTo(x + cw - 1, Y(TRUE[i])); ctx.stroke();
+      ctx.setLineDash([]); ctx.lineWidth = 1;
+      ctx.fillStyle = i === START ? '#374151' : '#9ca3af'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      if (i % 3 === 1 || i === START) ctx.fillText(i, x + cw / 2, H - 28);
+      ctx.textBaseline = 'middle';
+    }
+    if (here !== null && here !== undefined) {
+      ctx.fillStyle = Course.colors.green; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(left + here * cw + cw / 2, H - 9, Math.min(7, cw * 0.4), 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+      ctx.lineWidth = 1;
+    }
+  }
+
+  function showUpdate(u) {
+    if (!u || u.tau === undefined) return;
+    const nn = u.rewards.length, sum = u.rewards.reduce((a, b) => a + b, 0);
+    const f = (x) => Course.fmt(Math.round(x * 1000) / 1000, 3);
+    const rew = nn === 1 ? `R_{${u.tau + 1}}` : `R_{${u.tau + 1}} + \\dots + R_{${u.tau + nn}}`;
+    const rhs = u.boot ? `${rew} + V(${u.boot.s}) = ${sum} + ${f(u.boot.v)}` : `${rew} = ${sum}`;
+    Course.tex($('eq'), `\\begin{aligned} G_{${u.tau}:${u.tau + nn}} &= ${rhs} = ${f(u.G)} \\\\ ` +
+      `V(${u.s}) &\\leftarrow ${f(u.old)} + ${alpha()}\\,(${f(u.G)} - ${f(u.old)}) = ${f(u.now)} \\end{aligned}`, true);
+  }
+
+  function stats() {
+    $('sEp').textContent = episodes;
+    $('sCh').textContent = episodes ? changed.size : '–';
+    const rms = Math.sqrt(V.slice(1, NS + 1).reduce((a, v, i) => a + (v - TRUE[i + 1]) ** 2, 0) / NS);
+    $('sErr').textContent = rms.toFixed(3);
+  }
+
+  function reset() {
+    stop();
+    V = new Array(NS + 2).fill(0); episodes = 0; changed = new Set(); lastUpd = null;
+    Course.tex($('eq'), 'G_{t:t+n} = R_{t+1} + \\dots + R_{t+n} + V(S_{t+n})', true);
+    $('status').textContent = 'Press Run episode. The agent walks; each state is updated n steps after it was visited.';
+    drawWalk(START); stats();
+  }
+  function stop() { clearInterval(timer); timer = null; cur = null; $('bEp').textContent = 'Run episode'; }
+
+  $('bEp').addEventListener('click', () => {
+    if (timer) { stop(); return; }
+    changed = new Set();
+    cur = episodeGen(n(), alpha());
+    $('bEp').textContent = 'Stop';
+    timer = setInterval(() => {
+      const { value, done } = cur.next();
+      if (done) {
+        episodes++; stop(); lastUpd = null; drawWalk(null); stats();
+        $('status').textContent = `Episode over. ${changed.size} state${changed.size === 1 ? '' : 's'} changed.`;
+        return;
+      }
+      if (value.tau !== undefined) { lastUpd = value; showUpdate(value); }
+      $('status').textContent = value.tau !== undefined ? `t = ${value.t}: updating the state visited at τ = ${value.tau}.` : `t = ${value.t}: waiting for ${n() === Infinity ? 'the end of the episode' : `${n()} rewards`} before the first update.`;
+      drawWalk(value.here); stats();
+    }, 30);
+  });
+  $('b10').addEventListener('click', () => {
+    stop();
+    for (let k = 0; k < 10; k++) {
+      changed = new Set();
+      const g = episodeGen(n(), alpha());
+      let u, last = null;
+      while (!(u = g.next()).done) if (u.value.tau !== undefined) last = u.value;
+      episodes++;
+      if (k === 9) { lastUpd = null; showUpdate(last); }
+    }
+    $('status').textContent = '10 more episodes.';
+    drawWalk(null); stats();
+  });
+  $('bReset').addEventListener('click', reset);
+  new ResizeObserver(() => V && drawWalk(null)).observe($('walk'));
+  reset();
+
+  // ------------------------------------------------------------ S&B Figure 7.2
+  // Plain loops (no generator) for speed. Error is measured after each episode.
+  function rmsCurve(N, a, runs = 30, E = 10) {
+    let total = 0;
+    const S = new Int32Array(4000), Rw = new Int8Array(4000);
+    for (let k = 0; k < runs; k++) {
+      const Vv = new Float64Array(NS + 2);
+      for (let e = 0; e < E; e++) {
+        S[0] = START; let T = Infinity;
+        for (let t = 0; ; t++) {
+          if (t < T) {
+            const s2 = S[t] + (Math.random() < 0.5 ? -1 : 1);
+            S[t + 1] = s2; Rw[t + 1] = s2 === 0 ? -1 : s2 === NS + 1 ? 1 : 0;
+            if (s2 === 0 || s2 === NS + 1) T = t + 1;
+          }
+          const Ne = Math.min(N, T), tau = t - Ne + 1;
+          if (tau >= 0) {
+            let G = 0;
+            const end = Math.min(tau + Ne, T);
+            for (let i = tau + 1; i <= end; i++) G += Rw[i];
+            if (tau + Ne < T) G += Vv[S[tau + Ne]];
+            Vv[S[tau]] += a * (G - Vv[S[tau]]);
+          }
+          if (tau === T - 1) break;
+        }
+        let se = 0;
+        for (let i = 1; i <= NS; i++) se += (Vv[i] - TRUE[i]) ** 2;
+        total += Math.sqrt(se / NS);
+      }
+    }
+    return total / (runs * E);
+  }
+  const NS_FIG = [1, 2, 4, 8, 16, 64, 512];
+  const COLS = ['#dc2626', '#d97706', '#059669', '#2a7ae2', '#7c3aed', '#db2777', '#374151'];
+  $('figKey').innerHTML = NS_FIG.map((N, j) => `<span><b style="background:${COLS[j]}"></b>n = ${N}</span>`).join('');
+  const fig = Course.lineChart($('fig'), { xLabel: 'α', yLabel: 'average RMS error', yMin: 0.25, yMax: 0.55, xMin: 0, xMax: 1 });
+  $('bFig').addEventListener('click', () => {
+    $('bFig').disabled = true; $('bFig').textContent = 'Running…';
+    setTimeout(() => {
+      const AL = Array.from({ length: 11 }, (_, i) => i / 10);
+      const lines = NS_FIG.map((N, j) => ({
+        data: AL.map((a) => [a, rmsCurve(N, a)]),
+        color: COLS[j], width: 1.5,
+      }));
+      $('fig').hidden = false; $('figNote').hidden = false; $('figKey').hidden = false;
+      fig.draw(lines);
+      $('bFig').disabled = false; $('bFig').textContent = 'Run again';
+    }, 30);
+  });
+
+  Course.quiz([
+    {
+      q: '$\\gamma = 0.9$, $R_{t+1} = 1$, $R_{t+2} = 0$, $V(S_{t+2}) = 5$. What is $G_{t:t+2}$?',
+      answer: 1 + 0.9 * 0 + 0.81 * 5,
+      explain: '$1 + 0.9 \\times 0 + 0.9^2 \\times 5 = 1 + 4.05 = 5.05$.',
+    },
+    {
+      q: 'Same, plus $R_{t+3} = 2$ and $V(S_{t+3}) = 4$. What is $G_{t:t+3}$?',
+      answer: 1 + 0 + 0.81 * 2 + 0.729 * 4,
+      explain: '$1 + 0 + 0.81 \\times 2 + 0.729 \\times 4 = 1 + 1.62 + 2.916 = 5.536$.',
+    },
+    {
+      q: 'On the 19-state walk with $V = 0$ everywhere, one episode of 4-step TD runs. At most how many states can change?',
+      answer: 4,
+      tol: 0,
+      hint: 'Only targets that include the final reward are nonzero.',
+      explain: 'Every reward is 0 except the last, $R_T$. Only the updates for $\\tau = T-4, \\dots, T-1$ include it: 4 updates, so at most 4 states.',
+    },
+    {
+      q: 'With $\\gamma = 0.9$ and $n = 3$, $V$ is never off by more than $0.5$. What bound does the error reduction property give on the error of the expected 3-step return?',
+      answer: Math.pow(0.9, 3) * 0.5,
+      explain: '$\\gamma^n \\times 0.5 = 0.729 \\times 0.5 = 0.3645$.',
+    },
+  ]);
+</script>
+</body>
+</html>

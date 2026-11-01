@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>30. Policy evaluation | Learning RL</title>
+<meta name="description" content="Turn the Bellman equation into an update rule and sweep it over a gridworld until the values stop changing.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  #world { max-width: 320px; }
+  .gcell .v { font-weight: 600; color: var(--heading); }
+  .gcell.term { background: #e5e7eb; color: var(--muted); font-size: 0.8em; }
+  .gcell.sel { box-shadow: inset 0 0 0 3px var(--blue); }
+  .gcell.nb { box-shadow: inset 0 0 0 2px rgba(42,122,226,0.45); }
+  #eq { overflow-x: auto; min-height: 3.4em; }
+  @media (max-width: 560px) { #eq { font-size: 0.78em; } }
+</style>
+</head>
+<body data-lesson="30">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Policy evaluation</h1>
+  <p class="lede">The Bellman equation says what $v_\pi$ must satisfy. Policy evaluation turns it into an update: start from any guess, apply the equation to every state, and repeat. Each sweep pushes information one more step out from the terminal states.</p>
+
+  <section class="card">
+    <p class="note">S&amp;B Example 4.1. Grey corners end the episode. Every move costs $-1$, moves off the edge leave you in place, and the policy picks each of the four directions with probability $\tfrac14$. Undiscounted ($\gamma = 1$). Click a cell to see its update.</p>
+    <div id="world"></div>
+    <div class="row center">
+      <button id="bSweep" class="primary">Sweep</button>
+      <button id="bRun">Run</button>
+      <button id="bReset" class="quiet">Reset</button>
+    </div>
+    <div class="row center"><label class="muted"><input type="checkbox" id="cIn"> update in place (one array)</label></div>
+    <div class="stats">
+      <div class="stat"><span class="k">Sweeps $k$</span><span class="v" id="sK">0</span></div>
+      <div class="stat"><span class="k">Largest change $\Delta$</span><span class="v" id="sD">–</span></div>
+    </div>
+    <div id="eq"></div>
+    <p class="status" id="status"></p>
+
+    <div class="sub">
+      <h2>Two arrays or one?</h2>
+      <p class="note">Error $\max_s |v_k(s) - v_\pi(s)|$ after each sweep, on a log scale. The two-array version uses only old values. The in-place version uses new values as soon as they exist.</p>
+      <div class="row"><button id="bCompare">Run comparison</button></div>
+      <canvas class="chart" id="chart" hidden></canvas>
+      <p class="status" id="cmp"></p>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>From Lesson 26, $v_\pi$ satisfies the Bellman expectation equation for every state $s$:</p>
+    $$v_\pi(s) = \sum_a \pi(a \mid s) \sum_{s', r} p(s', r \mid s, a)\,\big[r + \gamma\, v_\pi(s')\big]$$
+    <p>That is one equation per state. Lesson 28 solved them with a matrix inverse, which costs about $|\mathcal{S}|^3$ operations. Iterative policy evaluation uses the right-hand side as an update instead:</p>
+    $$v_{k+1}(s) = \sum_a \pi(a \mid s) \sum_{s', r} p(s', r \mid s, a)\,\big[r + \gamma\, v_k(s')\big]$$
+    <p>The new value of $s$ is the expected one-step reward plus the discounted old value of wherever you land. Terminal states stay at $0$. This kind of update is called an <b>expected update</b>: it averages over every possible next state using the model $p$, rather than a sample.</p>
+    <p>Why it converges, for $\gamma &lt; 1$. Subtract the Bellman equation from the update. The rewards cancel:</p>
+    $$\begin{aligned}
+      |v_{k+1}(s) - v_\pi(s)| &= \Big|\gamma \sum_a \pi(a \mid s) \sum_{s', r} p(s', r \mid s, a)\,\big[v_k(s') - v_\pi(s')\big]\Big| \\
+      &\le \gamma \max_{s'} |v_k(s') - v_\pi(s')|
+    \end{aligned}$$
+    <p>A weighted average can't exceed its largest term. So each sweep shrinks the worst error by at least a factor $\gamma$, and $\max_s |v_k(s) - v_\pi(s)| \le \gamma^k \max_s |v_0(s) - v_\pi(s)|$.</p>
+    <p>In the gridworld $\gamma = 1$, and the argument above gives nothing. It still converges because the random policy reaches a corner with probability 1 from every cell (S&amp;B §4.1 states the condition). The chart shows the error falling at a steady rate on the log scale: geometric convergence.</p>
+    <p>In practice the loop stops when the largest change in a sweep, $\Delta = \max_s |v_{k+1}(s) - v_k(s)|$, falls below a small threshold $\theta$.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  // S&B Example 4.1: 4x4 grid, states 0..15 row by row, corners 0 and 15 terminal.
+  const TERM = (s) => s === 0 || s === 15;
+  const MOVES = [[-1, 0], [0, 1], [1, 0], [0, -1]];
+  const NAMES = ['up', 'right', 'down', 'left'];
+  const next = (s, a) => {
+    const r = Math.floor(s / 4) + MOVES[a][0], c = (s % 4) + MOVES[a][1];
+    return r < 0 || r > 3 || c < 0 || c > 3 ? s : r * 4 + c;
+  };
+  // One sweep of iterative policy evaluation for the equiprobable random policy.
+  // `used[s]` records the four neighbour values each update actually read.
+  function sweep(v, inPlace) {
+    const src = v.slice(), out = inPlace ? v : v.slice(), used = [];
+    let delta = 0;
+    for (let s = 0; s < 16; s++) {
+      if (TERM(s)) continue;
+      used[s] = [0, 1, 2, 3].map((a) => (inPlace ? out : src)[next(s, a)]);
+      const x = used[s].reduce((t, y) => t + 0.25 * (-1 + y), 0);
+      delta = Math.max(delta, Math.abs(x - src[s]));
+      out[s] = x;
+    }
+    return { v: out, delta, used };
+  }
+
+  let v = new Array(16).fill(0), k = 0, sel = 1, used = null, timer = null;
+  const g = Course.grid($('world'), 4, 4, (r, c, cell) => {
+    const s = r * 4 + c;
+    if (TERM(s)) { cell.classList.add('term'); cell.textContent = 'end'; return; }
+    cell.innerHTML = `<span class="v">${fmt1(v[s])}</span>`;
+    cell.style.background = Course.heat(v[s], 24);
+    if (Math.abs(v[s]) > 12) cell.querySelector('.v').style.color = '#fff';
+    if (s === sel) cell.classList.add('sel');
+    else if ([0, 1, 2, 3].some((a) => next(sel, a) === s)) cell.classList.add('nb');
+  });
+  function fmt1(x) { return Math.abs(x) < 0.05 ? '0' : x.toFixed(1); }
+
+  function showEq() {
+    const vals = used ? used[sel] : [0, 1, 2, 3].map((a) => v[next(sel, a)]);
+    const terms = vals.map((y) => `(-1 ${y < 0 ? '-' : '+'} ${Course.fmt(Math.abs(y), 2)})`);
+    const total = vals.reduce((t, y) => t + 0.25 * (-1 + y), 0);
+    Course.tex($('eq'), `v_{${used ? k : k + 1}}(s) = \\tfrac14\\big[${terms.join(' + ')}\\big] = ${Course.fmt(total, 3)}`, true);
+    $('status').textContent = used
+      ? `Sweep ${k} wrote this into the blue cell, using the values of the four light-blue cells it can land on (up, right, down, left).`
+      : 'Blue: the selected cell. Light blue: where its four moves land. The next sweep will write this value.';
+  }
+
+  function reset() {
+    stop();
+    v = new Array(16).fill(0); k = 0; used = null;
+    $('sK').textContent = '0'; $('sD').textContent = '–';
+    g.update(); showEq();
+  }
+  function step() {
+    const res = sweep(v, $('cIn').checked);
+    v = res.v; used = res.used; k++;
+    $('sK').textContent = k;
+    $('sD').textContent = res.delta < 0.001 ? res.delta.toExponential(1) : res.delta.toFixed(3);
+    g.update(); showEq();
+    if (res.delta < 1e-4) {
+      stop();
+      $('status').textContent = `Converged after ${k} sweeps (Δ < 0.0001). These are the values in S&B Figure 4.1, k = ∞.`;
+    }
+  }
+  function stop() { clearInterval(timer); timer = null; $('bRun').textContent = 'Run'; }
+
+  g.onClick((r, c) => { if (!TERM(r * 4 + c)) { sel = r * 4 + c; g.update(); showEq(); } });
+  $('bSweep').addEventListener('click', step);
+  $('bRun').addEventListener('click', () => {
+    if (timer) return stop();
+    $('bRun').textContent = 'Pause';
+    timer = setInterval(step, 120);
+  });
+  $('bReset').addEventListener('click', reset);
+  $('cIn').addEventListener('change', reset);
+  reset();
+
+  // Comparison: error to the exact v_pi, two arrays vs in place.
+  const chart = Course.lineChart($('chart'), { xLabel: 'sweep k', yLabel: 'log₁₀ error' });
+  $('bCompare').addEventListener('click', () => {
+    let exact = new Array(16).fill(0);
+    for (let i = 0; i < 3000; i++) exact = sweep(exact, true).v;
+    const run = (inPlace) => {
+      let x = new Array(16).fill(0); const err = []; let stopAt = null;
+      for (let i = 1; i <= 160; i++) {
+        const res = sweep(x, inPlace); x = res.v;
+        err.push([i, Math.log10(Math.max(1e-12, Math.max(...x.map((y, s) => Math.abs(y - exact[s])))))]);
+        if (stopAt === null && res.delta < 1e-3) stopAt = i;
+      }
+      return { err, stopAt };
+    };
+    const two = run(false), one = run(true);
+    $('chart').hidden = false;
+    chart.draw([
+      { data: two.err, color: Course.colors.grey, label: 'two arrays' },
+      { data: one.err, color: Course.colors.green, label: 'in place' },
+    ]);
+    $('cmp').textContent = `Sweeps until Δ < 0.001: two arrays ${two.stopAt}, in place ${one.stopAt}.`;
+  });
+
+  // Quiz answers from the same code.
+  let v2 = new Array(16).fill(0);
+  v2 = sweep(sweep(v2, false).v, false).v;
+  const v3 = sweep(v2, false).v;
+
+  Course.quiz([
+    {
+      q: 'Start from $v_0 = 0$. After one sweep every non-terminal cell is $-1$. What is $v_2$ for the cell just right of the top-left corner?',
+      answer: v2[1],
+      hint: 'One move lands in the corner (value 0). The other three land on cells worth $-1$ (moving up leaves you in place).',
+      explain: '$\\tfrac14[(-1+0) + 3(-1-1)] = \\tfrac14(-7) = -1.75$.',
+    },
+    {
+      q: 'Same cell, one sweep later. Its neighbours after sweep 2 are: the corner $0$, itself $-1.75$, right $-2$, below $-2$. What is $v_3$?',
+      answer: v3[1],
+      tol: 0.001,
+      explain: '$\\tfrac14[(-1+0) + (-1-1.75) + (-1-2) + (-1-2)] = \\tfrac14(-9.75) = -2.4375$, the $-2.4$ in S&amp;B Figure 4.1.',
+    },
+    {
+      q: 'With $\\gamma = 0.9$, the worst error starts at $10$. After 20 sweeps, at most how big can it be?',
+      answer: 10 * Math.pow(0.9, 20),
+      tol: 0.005,
+      explain: '$10 \\times 0.9^{20} \\approx 1.216$. Each sweep multiplies the bound by $\\gamma$.',
+    },
+    {
+      q: 'Why does the in-place version usually need fewer sweeps?',
+      choices: [
+        'It uses a smaller step size',
+        'Within a sweep, later states already see the new values of earlier states, so information travels further per sweep',
+        'It skips states whose values have converged',
+      ],
+      answer: 1,
+      explain: 'A cell updated after its neighbour uses that neighbour’s fresh value. Information can cross several cells in one sweep.',
+    },
+  ]);
+</script>
+</body>
+</html>

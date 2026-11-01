@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Most X Sound | Eddie's Blog</title>
+<meta name="description" content="Gradient ascent on a sound until an audio classifier is as sure as it can be. YAMNet's 521 AudioSet classes, running live in your browser.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="The Most X Sound">
+<meta property="og:description" content="Pick one of 521 sounds and your browser reshapes static until Google's YAMNet is sure it's hearing it. Live, on your GPU.">
+<meta property="og:url" content="https://eddbr.github.io/playground/most-x-sound/">
+<meta property="og:image" content="https://eddbr.github.io/playground/most-x-sound/gallery/siren-s1.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23059669'/%3E%3Cpath d='M3 8h1.5M5.5 5v6M8 3v10M10.5 5.5v5M13 7v2' stroke='%23fff' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+/* Matches eddbr.github.io and its sibling playground/most-x: light only,
+   emerald accent, system font, white cards on an off-white page. */
+:root {
+  --bg: #fdfdfd;
+  --card: #ffffff;
+  --ink: #111111;
+  --heading: #374151;
+  --body: #4b5563;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --rule: #e8e8e8;
+  --track: #f3f4f6;
+  --accent: #059669;
+  --accent-dark: #047857;
+  --accent-soft: #f0fdf4;
+  --signal: #d97706;
+  --plate-bg: #000004;
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  font: 400 16px/1.5 var(--font); color: var(--ink); background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+a { color: #2a7ae2; text-decoration: none; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Site header (matches eddbr.github.io) */
+.site-header { border-top: 5px solid #424242; border-bottom: 1px solid var(--rule); min-height: 56px; }
+.site-header .wrapper { max-width: 800px; margin: 0 auto; padding: 0 30px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+.site-title { font-size: 26px; font-weight: 300; line-height: 54px; letter-spacing: -1px; color: #424242; }
+.site-nav a { color: var(--ink); margin-left: 20px; }
+.site-nav a:hover { text-decoration: underline; }
+@media (max-width: 600px) {
+  .site-header .wrapper { padding: 0 15px; }
+  .site-nav a { margin-left: 14px; }
+}
+
+.wrap {
+  max-width: 1180px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 32px;
+  padding-block: 32px 48px;
+  padding-left: max(24px, env(safe-area-inset-left, 0px));
+  padding-right: max(24px, env(safe-area-inset-right, 0px));
+}
+@media (max-width: 600px) { .wrap { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); } }
+.wrap > * { min-width: 0; }
+
+/* ---------------- intro */
+header.intro { display: grid; gap: 6px; text-align: center; justify-items: center; }
+.eyebrow { font-size: 0.8rem; color: var(--muted); }
+h1 { font-size: 2.2rem; font-weight: 600; line-height: 1.2; color: var(--heading); margin: 0; text-wrap: balance; overflow-wrap: anywhere; }
+@media (max-width: 600px) { h1 { font-size: 1.8rem; } }
+h1 .x { color: var(--accent); }
+.lede { max-width: 62ch; color: var(--muted); margin: 0; font-size: 1.1rem; }
+.lede a { color: var(--accent); }
+
+/* ---------------- bench */
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); }
+.bench { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 0; align-items: start; overflow: hidden; }
+.bench > * { padding: 24px; }
+.bench > .panel { border-left: 1px solid var(--border); }
+@media (max-width: 900px) {
+  .bench { grid-template-columns: minmax(0, 1fr); }
+  .bench > .panel { border-left: 0; border-top: 1px solid var(--border); }
+  .bench > * { padding: 16px; }
+}
+
+.plate { display: grid; gap: 10px; }
+.plate-frame { position: relative; aspect-ratio: 5 / 2; max-width: 100%; background: var(--plate-bg); border-radius: 6px; overflow: hidden; }
+.plate canvas#plate { width: 100%; height: 100%; display: block; }
+.playhead { position: absolute; top: 0; bottom: 0; left: 0; width: 2px; background: rgba(255,255,255,.85); box-shadow: 0 0 6px rgba(255,255,255,.6); pointer-events: none; display: none; }
+.plate-status {
+  position: absolute; inset: auto 0 0 0; padding: 10px 12px;
+  font-size: 0.8rem; font-weight: 500; color: #fff; font-variant-numeric: tabular-nums;
+  background: linear-gradient(transparent, rgba(0,0,0,.55));
+  display: flex; justify-content: space-between; gap: 12px; pointer-events: none;
+}
+.axis { position: absolute; top: 8px; left: 10px; font-size: 0.7rem; color: rgba(255,255,255,.7); pointer-events: none; line-height: 1.2; }
+.plate-caption { font-size: 0.8rem; color: var(--muted); display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-variant-numeric: tabular-nums; }
+
+.transport { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+button.play {
+  display: inline-flex; align-items: center; gap: 8px; font: inherit; font-weight: 600; font-size: 0.95rem;
+  padding: 0.45rem 1rem 0.45rem 0.8rem; border-radius: 99px; cursor: pointer;
+  border: 1px solid var(--signal); background: var(--signal); color: #fff;
+}
+button.play:hover { background: #b45309; border-color: #b45309; }
+button.play svg { width: 16px; height: 16px; fill: currentColor; }
+.vol { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--muted); flex: 1; min-width: 160px; max-width: 260px; }
+.hint { font-size: 0.8rem; color: var(--muted); }
+.share { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 0.85rem; color: var(--muted); }
+.share .chip { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; }
+.share .chip svg { width: 14px; height: 14px; fill: currentColor; }
+.share .done { color: var(--accent); font-weight: 500; }
+
+.panel { display: grid; gap: 22px; min-width: 0; }
+.field { display: grid; gap: 8px; min-width: 0; }
+.label { font-size: 0.8rem; font-weight: 600; color: var(--heading); }
+
+.picker { position: relative; }
+input[type="text"] {
+  width: 100%; font: 500 1.1rem/1.2 var(--font); color: var(--ink);
+  padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--card);
+}
+input[type="text"]:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+.suggest {
+  position: absolute; z-index: 5; left: 0; right: 0; top: calc(100% + 4px); max-height: 260px; overflow: auto;
+  background: var(--card); border: 1px solid var(--border); border-radius: 6px; margin: 0; padding: 4px; list-style: none;
+  box-shadow: 0 8px 24px rgba(0,0,0,.1);
+}
+.suggest li { padding: 6px 8px; border-radius: 4px; cursor: pointer; }
+.suggest li[aria-selected="true"], .suggest li:hover { background: var(--accent); color: #fff; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  font: inherit; font-size: 0.85rem; padding: 0.3rem 0.7rem; border-radius: 99px; cursor: pointer;
+  border: 1px solid var(--border); background: #f9fafb; color: var(--heading);
+}
+.chip:hover { background: var(--track); border-color: var(--accent); }
+
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+button.primary, button.secondary {
+  font: inherit; font-weight: 500; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--accent); transition: background .15s, color .15s;
+}
+button.primary { background: var(--accent); color: #fff; }
+button.primary:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
+button.secondary { background: transparent; color: var(--accent); }
+button.secondary:hover { background: var(--accent); color: #fff; }
+button:disabled { opacity: .5; cursor: progress; }
+
+.knobs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; }
+@media (max-width: 420px) { .knobs { grid-template-columns: minmax(0, 1fr); } }
+.knob { display: grid; gap: 6px; font-size: 0.85rem; color: var(--body); }
+.knob .row { display: flex; justify-content: space-between; gap: 8px; }
+.knob output { font-variant-numeric: tabular-nums; color: var(--heading); font-weight: 500; }
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+.toggle { display: flex; gap: 10px; align-items: flex-start; font-size: 0.85rem; color: var(--muted); grid-column: 1 / -1; }
+.toggle b { color: var(--heading); font-weight: 600; }
+.toggle input { accent-color: var(--accent); margin-top: 3px; }
+
+/* ---------------- readout */
+.readout { display: grid; gap: 10px; padding-top: 14px; }
+.readout h2 { margin: 0; font-size: 0.8rem; font-weight: 600; color: var(--heading); }
+.readout h2 small { font-weight: 400; color: var(--muted); }
+.bars { display: grid; gap: 6px; font-variant-numeric: tabular-nums; }
+.bar { display: grid; grid-template-columns: minmax(0, 12rem) minmax(0, 1fr) 3.4rem; gap: 10px; align-items: center; font-size: 0.85rem; color: var(--body); }
+@media (max-width: 520px) { .bar { grid-template-columns: minmax(0, 8.5rem) minmax(0, 1fr) 3.2rem; } }
+.bar .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar .track { height: 8px; background: var(--track); border-radius: 4px; overflow: hidden; }
+.bar .fill { display: block; height: 100%; background: #9ca3af; width: 0; transition: width .25s; border-radius: 4px; }
+.bar.target .fill { background: var(--signal); }
+.bar.target .name { color: var(--signal); font-weight: 600; }
+.bar .val { text-align: right; }
+#curve { width: 100%; height: 64px; display: block; }
+
+/* ---------------- sections */
+section h2 { font-size: 1.4rem; font-weight: 600; color: var(--heading); margin: 0 0 6px; }
+section > p { margin: 0 0 18px; max-width: 65ch; color: var(--muted); }
+.gallery { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px 14px; }
+@media (max-width: 860px) { .gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .gallery { grid-template-columns: minmax(0, 1fr); } }
+.specimen { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; padding: 0; border: 0; background: none; color: var(--ink); text-align: left; cursor: pointer; font: inherit; }
+.specimen .thumb { grid-column: 1 / -1; position: relative; }
+.specimen img { width: 100%; aspect-ratio: 5 / 2; object-fit: cover; border-radius: 6px; background: var(--plate-bg); display: block; border: 1px solid var(--border); transition: border-color .15s, box-shadow .15s; }
+.specimen:hover img { border-color: var(--accent); box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+.specimen .badge {
+  position: absolute; right: 8px; bottom: 8px; width: 30px; height: 30px; border-radius: 50%;
+  background: rgba(255,255,255,.92); display: grid; place-items: center; box-shadow: 0 1px 4px rgba(0,0,0,.3);
+}
+.specimen .badge svg { width: 12px; height: 12px; fill: var(--signal); margin-left: 2px; }
+.specimen.playing .badge svg { margin-left: 0; }
+.specimen.playing img { border-color: var(--signal); }
+.specimen span { font-size: 0.9rem; color: var(--heading); font-weight: 500; line-height: 1.3; }
+.specimen small { font-size: 0.75rem; color: var(--muted); font-variant-numeric: tabular-nums; align-self: center; }
+.specimen small.how { grid-column: 1 / -1; }
+
+.notes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; }
+@media (max-width: 860px) { .notes { grid-template-columns: minmax(0, 1fr); } }
+.notes h3 { font-size: 1rem; font-weight: 600; color: var(--heading); margin: 0 0 6px; }
+.notes p { margin: 0; color: var(--body); font-size: 0.95rem; }
+table { border-collapse: collapse; width: 100%; font-size: 0.85rem; color: var(--body); }
+.table-wrap { overflow-x: auto; }
+th, td { text-align: left; padding: 8px 12px 8px 0; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { font-size: 0.75rem; font-weight: 600; color: var(--muted); }
+td:first-child { color: var(--heading); font-weight: 500; white-space: nowrap; }
+
+.err { color: #dc2626; font-size: 0.85rem; }
+.err:empty { display: none; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <header class="intro">
+    <div class="eyebrow">Activation maximization for audio · runs on your GPU</div>
+    <h1>The most <span class="x" id="headline-x">baby crying</span> sound</h1>
+    <p class="lede">Pick one of the 521 sounds an audio classifier knows. Starting from white noise, your browser reshapes a 4-second loop hundreds of times, each step in whatever direction makes the network more certain. What comes out is the sound it finds most convincing. Sibling of <a href="../most-x/">the most X image</a>.</p>
+  </header>
+
+  <div class="bench card">
+    <div class="plate">
+      <div class="plate-frame">
+        <canvas id="plate" width="800" height="320" aria-label="Spectrogram of the sound being generated"></canvas>
+        <div class="axis">8 kHz</div>
+        <div class="playhead" id="playhead"></div>
+        <div class="plate-status"><span id="status">Loading…</span><span id="stepcount"></span></div>
+      </div>
+      <div class="plate-caption"><span id="caption">Gallery example shown until you press Generate.</span><span id="speed"></span></div>
+      <div class="transport">
+        <button class="play" id="play" type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><path id="play-icon" d="M4 2.5v11l9.5-5.5z"/></svg><span id="play-label">Play</span></button>
+        <label class="vol"><span>Volume</span><input type="range" id="volume" min="0" max="1" step="0.01" value="0.5"></label>
+        <span class="hint">Loops seamlessly. Keep it low at first: it starts as static.</span>
+      </div>
+      <div class="share" id="share">
+        <span>Share this sound:</span>
+        <button class="chip" type="button" id="share-native" hidden>Share…</button>
+        <button class="chip" type="button" id="share-copy">Copy link</button>
+        <a class="chip" id="share-linkedin" target="_blank" rel="noopener"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.6 5.6H1.2V15h2.4zM2.4 1A1.4 1.4 0 1 0 2.4 3.8 1.4 1.4 0 0 0 2.4 1zM15 9.6c0-2.5-.5-4.2-3.3-4.2-1.3 0-2.2.7-2.6 1.4V5.6H6.8V15h2.4v-4.6c0-1.2.2-2.4 1.8-2.4 1.5 0 1.5 1.4 1.5 2.5V15H15z"/></svg>LinkedIn</a>
+        <a class="chip" id="share-x" target="_blank" rel="noopener"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M12.2 1h2.3L9.5 6.8 15.4 15h-4.6L7.2 10.2 3 15H.7l5.4-6.2L.4 1h4.7l3.3 4.4zm-.8 12.6h1.3L4.6 2.3H3.2z"/></svg>X</a>
+        <span class="done" id="share-done" aria-live="polite"></span>
+      </div>
+      <div class="readout">
+        <h2 id="readout-title">What YAMNet hears <small>(each sound scored on its own, so they needn't add to 100%)</small></h2>
+        <div class="bars" id="bars"></div>
+        <canvas id="curve" width="600" height="64" aria-label="Confidence over steps"></canvas>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="field">
+        <label class="label" for="target">Most what?</label>
+        <div class="picker">
+          <input type="text" id="target" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="suggest">
+          <ul class="suggest" id="suggest" role="listbox" hidden></ul>
+        </div>
+        <div class="chips" id="chips"></div>
+      </div>
+
+      <div class="actions">
+        <button class="primary" id="go">Generate</button>
+        <button class="secondary" id="reseed" title="Same target, new starting noise">New seed</button>
+        <button class="secondary" id="save">Save WAV</button>
+      </div>
+
+      <div class="knobs">
+        <div class="knob">
+          <div class="row"><label for="steps">Steps</label><output id="steps-out"></output></div>
+          <input type="range" id="steps" min="64" max="1024" step="32" value="384">
+        </div>
+        <div class="knob">
+          <div class="row"><label for="lr">Step size</label><output id="lr-out"></output></div>
+          <input type="range" id="lr" min="0.01" max="0.2" step="0.01" value="0.05">
+        </div>
+        <div class="knob" style="grid-column: 1 / -1">
+          <div class="row"><label for="decay">Smoothness (spectrum of the spectrogram falls as 1/f<sup>a</sup>)</label><output id="decay-out"></output></div>
+          <input type="range" id="decay" min="0" max="2" step="0.25" value="1.5">
+        </div>
+        <label class="toggle"><input type="checkbox" id="robust" checked> <span><b>Shift, level and noise every step.</b> Each step the network hears the loop from a random point, at a random volume, with a little hiss. Turn this off and it only has to work at one alignment.</span></label>
+        <label class="toggle"><input type="checkbox" id="phase" checked> <span><b>Learn the phase too.</b> Off, only the loudness of each frequency is shaped and the phase stays random, so the result can only ever be coloured noise.</span></label>
+      </div>
+
+      <div class="err" id="err" role="alert"></div>
+    </div>
+  </div>
+
+  <section>
+    <h2>Specimens</h2>
+    <p>Rendered ahead of time with the same code, 384 steps each, and checked against Google's own copy of the network after MP3 encoding. Click one to hear it and load its settings, then press Generate to grow it yourself.</p>
+    <div class="gallery" id="gallery"></div>
+  </section>
+
+  <section>
+    <h2>The classifier</h2>
+    <p>YAMNet is Google's general-purpose sound tagger. It hears audio as a picture: a log-mel spectrogram, 0.96 seconds wide and 64 frequency bands tall, fed to the same MobileNet used for photos.</p>
+    <div class="table-wrap">
+      <table>
+        <tbody>
+          <tr><td>Network</td><td>YAMNet: MobileNet v1 on 96 × 64 log-mel patches, 3.7M parameters (Google, TF Models)</td></tr>
+          <tr><td>Trained on</td><td>AudioSet: about 2 million 10-second YouTube clips, labelled by people</td></tr>
+          <tr><td>Outputs</td><td id="n-classes">521 sound classes, each an independent yes/no (sigmoid)</td></tr>
+          <tr><td>Front end</td><td>25 ms Hann STFT every 10 ms → 64 mel bands, 125 Hz–7.5 kHz → log. Rebuilt here from matmuls so it can be differentiated.</td></tr>
+          <tr><td>Download</td><td>7.5 MB (fp16)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="notes">
+    <div>
+      <h3>The 1/f trick, on a spectrogram</h3>
+      <p>Change raw audio samples and the fastest way up is high-frequency fizz that only the network cares about. So the sound is stored as a spectrogram, and the spectrogram is stored the way the image version stores pixels: as 2-D Fourier coefficients scaled by 1/f<sup>a</sup>. Broad shapes in time and pitch are cheap, and per-cell speckle is expensive. Slide Smoothness to 0 to switch that off.</p>
+    </div>
+    <div>
+      <h3>Why it still sounds like static</h3>
+      <p>YAMNet only sees 64 blurry bands, about 10 ms apart. Anything finer is invisible to it, so the optimiser never has a reason to make clean pitches or sharp onsets. It just paints energy wherever the bands need it, and the result is buzzing, rustling texture with the right outline. The siren's V-shaped sweeps and the heartbeat's thumps are the outline showing through.</p>
+    </div>
+    <div>
+      <h3>A loop, heard from anywhere</h3>
+      <p>The spectrogram's Fourier coefficients wrap around in time, so the 4-second clip loops with no seam. Each step the network hears four overlapping 0.96 s windows starting from a random point in the loop, which is the audio version of jittering an image. The score shown is the average over every window once round the loop, with no jitter.</p>
+    </div>
+  </section>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+<script type="module" src="app.js"></script>
+</body>
+</html>

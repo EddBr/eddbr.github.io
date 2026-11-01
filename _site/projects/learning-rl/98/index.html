@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>98. Offline RL | Learning RL</title>
+<meta name="description" content="Learn a policy from a fixed log of someone else's cliff walks. Naive Q-learning trusts actions it has never seen and walks off the edge. Staying inside the data fixes it.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  #grid { width: 100%; display: block; margin: 8px 0 0; }
+  .key { display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.8rem; color: var(--muted); justify-content: center; }
+  .key b { display: inline-block; width: 12px; height: 10px; vertical-align: middle; margin-right: 3px; border-radius: 2px; }
+  .tabs button { padding: 0.35rem 0.8rem; }
+</style>
+</head>
+<body data-lesson="98">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Offline RL</h1>
+  <p class="lede">Offline RL learns from a fixed log of experience, collected earlier by some other policy, with no chance to try anything new. It matters wherever exploring is costly or dangerous: medicine, driving, robots. The trap is that Q-learning's max happily picks actions that never appear in the log, whose values were never corrected.</p>
+
+  <section class="card">
+    <p class="note">The log: a careful driver crossed Lesson 53's cliff by the second row, taking a random action with probability $\varepsilon$. You choose how much data there is and how random it was. Then two learners train on the same log, offline.</p>
+    <label class="slider"><span>Episodes in the log</span><input id="iN" type="range" min="1" max="200" step="1" value="30"><output></output></label>
+    <label class="slider"><span>Behaviour $\varepsilon$</span><input id="iE" type="range" min="0" max="0.5" step="0.05" value="0.1"><output></output></label>
+    <div class="row tabs" id="tabs">
+      <button data-m="naive">Naive Q-learning</button>
+      <button data-m="bc">Stay in the data</button>
+    </div>
+    <canvas id="grid" aria-label="Cliff world with the log's coverage and the learned policy"></canvas>
+    <div class="key">
+      <span><b style="background:rgba(42,122,226,0.5)"></b>visits in the log</span>
+      <span><b style="background:#fecaca"></b>cliff</span>
+      <span>arrow: greedy action</span>
+      <span style="color:#dc2626">red arrow: action never in the log</span>
+    </div>
+    <p class="status" id="status"></p>
+    <div class="row">
+      <button id="bRoll" class="primary">Run the policy for real</button>
+      <button id="bLog">New log</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="k">Log size (transitions)</span><span class="v" id="sT">0</span></div>
+      <div class="stat"><span class="k">$(s, a)$ pairs covered</span><span class="v" id="sC">0</span></div>
+      <div class="stat"><span class="k">Behaviour's average return</span><span class="v" id="sB">0</span></div>
+      <div class="stat"><span class="k">This policy's return</span><span class="v" id="sR">–</span></div>
+    </div>
+    <p class="note">S&amp;B Example 6.6: reward $-1$ per step, $-100$ and back to S for stepping into the cliff. Both learners iterate the Q-learning backup over the whole log until it stops changing ($\gamma = 0.95$, values start at 0). The real run lasts at most 50 steps and its return is undiscounted. Try $\varepsilon = 0$ first.</p>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>The log is a fixed dataset $\mathcal D$ of transitions $(s, a, r, s')$ from a behaviour policy $\beta$. Offline Q-learning repeatedly applies, averaging over the logged transitions from $(s, a)$:</p>
+    $$Q(s, a) \leftarrow \operatorname*{mean}_{\mathcal D} \Big[ r + \gamma \max_{a'} Q(s', a') \Big]$$
+    <p>Only pairs that appear in $\mathcal D$ are ever updated. Every other $Q(s', a')$ keeps its initial value, here 0. The rewards are all negative, so every action the log has tried looks worse than every action it has not. The max picks the unknown, and the greedy policy walks into territory, or a cliff, that no data describes.</p>
+    <p>This is <b>distribution shift</b>. The values are accurate only where the data distribution $d^\beta(s, a)$ has mass. The learned policy $\pi$ visits different states and actions, $d^\pi \ne d^\beta$, exactly where the values are fiction. Online, the agent would try those actions, be disappointed and correct them (Lesson 8). Offline it never can.</p>
+    <p>The fix is to stay where the data is. Batch-constrained Q-learning (Fujimoto et al., 2019) restricts the max and the policy to actions seen in the log:</p>
+    $$Q(s, a) \leftarrow \operatorname*{mean}_{\mathcal D} \Big[ r + \gamma \max_{a' : (s', a') \in \mathcal D} Q(s', a') \Big]$$
+    <p>It can still beat the behaviour policy, by stitching together the best pieces of different logged episodes. Conservative Q-learning (Kumar et al., 2020) does the same job with function approximation: it adds a penalty that pushes down the values of all actions and pushes up those in the data,</p>
+    $$\alpha\, \mathbb{E}_{s \sim \mathcal D}\Big[ \log \sum_a e^{Q(s, a)} - \mathbb{E}_{a \sim \beta(\cdot \mid s)} Q(s, a) \Big]$$
+    <p>so actions the data never tried end up looking worse, not better.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const DIRS = [[-1, 0], [0, 1], [1, 0], [0, -1]], ARROW = ['↑', '→', '↓', '←'];
+  const R = 4, C = 12, START = 3 * C, GOAL = 3 * C + 11, GAMMA = 0.95;
+  const isCliff = (s) => Math.floor(s / C) === 3 && s % C >= 1 && s % C <= 10;
+  function envStep(s, a) {
+    const r = Math.floor(s / C) + DIRS[a][0], c = (s % C) + DIRS[a][1];
+    if (r < 0 || r >= R || c < 0 || c >= C) return { s2: s, r: -1, fell: false };
+    const s2 = r * C + c;
+    if (isCliff(s2)) return { s2: START, r: -100, fell: true };
+    return { s2, r: -1, fell: false };
+  }
+  // The careful driver: up to row 1, right along it, down to G.
+  function behaviourAction(s) {
+    const r = Math.floor(s / C), c = s % C;
+    if (c === 11) return 2;
+    if (r > 1) return 0;
+    if (r < 1) return 2;
+    return 1;
+  }
+
+  const nEp = Course.slider('#iN', String, newLog);
+  const eps = Course.slider('#iE', (v) => v.toFixed(2), newLog);
+  let data, N, Qn, Qb, mode = 'naive', behRet, roll = null, timer = null;
+
+  function newLog() {
+    stop();
+    data = []; N = Array.from({ length: R * C }, () => [0, 0, 0, 0]);
+    let tot = 0;
+    for (let e = 0; e < nEp(); e++) {
+      let s = START, G = 0;
+      for (let t = 0; t < 100; t++) {
+        const a = Math.random() < eps() ? Course.randInt(4) : behaviourAction(s);
+        const o = envStep(s, a);
+        const done = o.s2 === GOAL;
+        data.push([s, a, o.r, o.s2, done]); N[s][a]++;
+        G += o.r; s = o.s2;
+        if (done) break;
+      }
+      tot += G;
+    }
+    behRet = tot / nEp();
+    Qn = learn(false); Qb = learn(true);
+    roll = null;
+    draw();
+  }
+
+  // Iterate the (batch) Q-learning backup over the whole log until it converges.
+  function learn(constrained) {
+    const Q = Array.from({ length: R * C }, () => [0, 0, 0, 0]);
+    const vmax = (s) => {
+      let m = -Infinity;
+      for (let a = 0; a < 4; a++) if (!constrained || N[s][a]) m = Math.max(m, Q[s][a]);
+      return m === -Infinity ? 0 : m;
+    };
+    for (let it = 0; it < 400; it++) {
+      const sum = Array.from({ length: R * C }, () => [0, 0, 0, 0]);
+      for (const [s, a, r, s2, done] of data) sum[s][a] += r + (done ? 0 : GAMMA * vmax(s2));
+      let delta = 0;
+      for (let s = 0; s < R * C; s++) for (let a = 0; a < 4; a++) {
+        if (!N[s][a]) continue;
+        const v = sum[s][a] / N[s][a];
+        delta = Math.max(delta, Math.abs(v - Q[s][a]));
+        Q[s][a] = v;
+      }
+      if (delta < 1e-6) break;
+    }
+    return Q;
+  }
+  function greedy(s) {
+    const Q = mode === 'naive' ? Qn : Qb;
+    const allowed = [0, 1, 2, 3].filter((a) => mode === 'naive' || N[s][a]);
+    if (!allowed.length) return Course.randInt(4);
+    const vals = allowed.map((a) => Q[s][a]);
+    return allowed[Course.argmax(vals)];
+  }
+  // Deterministic arrows for display: lowest index among ties.
+  function shownAction(s) {
+    const Q = mode === 'naive' ? Qn : Qb;
+    let best = null;
+    for (let a = 0; a < 4; a++) if ((mode === 'naive' || N[s][a]) && (best === null || Q[s][a] > Q[s][best] + 1e-9)) best = a;
+    return best;
+  }
+
+  // ------------------------------------------------------------ drawing
+  const canvas = $('grid'), ctx = canvas.getContext('2d');
+  function draw() {
+    [...$('tabs').children].forEach((b) => b.classList.toggle('on', b.dataset.m === mode));
+    const dpr = window.devicePixelRatio || 1, W = canvas.clientWidth;
+    if (!W) return;
+    const cs = Math.min(W / C, 52), x0 = (W - cs * C) / 2, H = cs * R + 2;
+    canvas.style.height = `${H}px`; canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+    const visits = new Array(R * C).fill(0);
+    for (const [s] of data) visits[s]++;
+    const vm = Math.max(1, ...visits);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (let s = 0; s < R * C; s++) {
+      const X = x0 + (s % C) * cs, Y = 1 + Math.floor(s / C) * cs;
+      ctx.fillStyle = isCliff(s) ? '#fecaca' : s === GOAL ? '#fef3c7' : visits[s] ? `rgba(42,122,226,${(0.08 + 0.45 * Math.log(1 + visits[s]) / Math.log(1 + vm)).toFixed(3)})` : '#f9fafb';
+      ctx.fillRect(X + 1, Y + 1, cs - 2, cs - 2);
+      ctx.font = `600 ${Math.round(cs * 0.42)}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+      if (s === GOAL) { ctx.fillStyle = '#b45309'; ctx.fillText('G', X + cs / 2, Y + cs / 2); continue; }
+      if (isCliff(s)) continue;
+      const a = shownAction(s);
+      if (a === null) continue;
+      ctx.fillStyle = N[s][a] ? '#111827' : '#dc2626';
+      ctx.fillText(ARROW[a], X + cs / 2, Y + cs / 2 + 1);
+      if (s === START) { ctx.font = `600 ${Math.round(cs * 0.24)}px sans-serif`; ctx.fillStyle = '#374151'; ctx.fillText('S', X + cs * 0.2, Y + cs * 0.22); }
+    }
+    if (roll && roll.path.length > 1) {
+      ctx.strokeStyle = '#059669'; ctx.lineWidth = Math.max(2, cs / 9); ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.globalAlpha = 0.7;
+      ctx.beginPath();
+      roll.path.forEach((s, i) => {
+        const x = x0 + (s % C) * cs + cs / 2, y = 1 + Math.floor(s / C) * cs + cs / 2;
+        i && !roll.jumps.has(i) ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+      });
+      ctx.stroke(); ctx.globalAlpha = 1;
+      const s = roll.path[roll.path.length - 1];
+      ctx.fillStyle = '#059669'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(x0 + (s % C) * cs + cs / 2, 1 + Math.floor(s / C) * cs + cs / 2, cs * 0.25, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+    }
+    const pairs = N.reduce((t, row, s) => t + (isCliff(s) || s === GOAL ? 0 : row.filter((k) => k > 0).length), 0);
+    $('sT').textContent = data.length;
+    $('sC').textContent = `${pairs} / 148`;
+    $('sB').textContent = behRet.toFixed(1);
+    $('sR').textContent = roll ? roll.G : '–';
+    if (!roll) {
+      let unseen = 0;
+      for (let s = 0; s < R * C; s++) { if (isCliff(s) || s === GOAL) continue; const a = shownAction(s); if (a !== null && !N[s][a]) unseen++; }
+      $('status').textContent = mode === 'naive'
+        ? `In ${unseen} of 37 cells the greedy action is one the log never tried. Its value is still the initial 0, which beats every tried action.`
+        : 'Every arrow is an action the log contains, so every value behind it was learned from data.';
+    }
+  }
+
+  function stop() { clearInterval(timer); timer = null; $('bRoll').textContent = 'Run the policy for real'; }
+  $('bRoll').addEventListener('click', () => {
+    if (timer) return stop();
+    let s = START, t = 0;
+    roll = { path: [s], jumps: new Set(), G: 0, falls: 0 };
+    $('bRoll').textContent = 'Stop';
+    timer = setInterval(() => {
+      const o = envStep(s, greedy(s));
+      roll.G += o.r; t++;
+      if (o.fell) { roll.falls++; roll.jumps.add(roll.path.length); }
+      s = o.s2; roll.path.push(s);
+      if (s === GOAL || t >= 50) {
+        stop();
+        $('status').textContent = s === GOAL
+          ? `Reached G in ${t} steps, return ${roll.G}${roll.falls ? ` after ${roll.falls} fall${roll.falls > 1 ? 's' : ''}` : ''}. The behaviour policy averaged ${behRet.toFixed(1)}.`
+          : `Never reached G in 50 steps. Return ${roll.G}, with ${roll.falls} fall${roll.falls === 1 ? '' : 's'} into the cliff.`;
+      }
+      draw();
+    }, 70);
+  });
+  $('bLog').addEventListener('click', newLog);
+  $('tabs').addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    stop(); mode = b.dataset.m; roll = null; draw();
+  });
+  new ResizeObserver(draw).observe(canvas);
+  newLog();
+
+  const cql = Math.log(Math.exp(-5) + 3) + 5;
+  Course.quiz([
+    {
+      q: 'The cliff world has 37 non-terminal cells (48, minus 10 cliff cells and G) and 4 actions. With $\\varepsilon = 0$ every logged episode follows the same 15-step route. How many $(s, a)$ pairs does the log never contain?',
+      answer: 148 - 15,
+      tol: 0,
+      explain: '$37 \\times 4 = 148$ pairs, of which the route covers 15. So 133 have values never touched by data.',
+    },
+    {
+      q: 'With $\\varepsilon = 0$ data, the constrained learner can only follow the logged route. What is its undiscounted return?',
+      answer: -15,
+      tol: 0,
+      explain: '15 steps at $-1$ each: $-15$. With no variety in the data there is nothing to stitch together into a better route.',
+    },
+    {
+      q: 'In one state, $Q = (-5, 0, 0, 0)$, and the log only contains the first action. What is the CQL penalty term $\\log \\sum_a e^{Q(s,a)} - Q(s, a_{\\text{data}})$?',
+      answer: cql,
+      tol: 0.01,
+      hint: '$\\log(e^{-5} + 3) - (-5)$.',
+      explain: '$\\log(0.0067 + 3) + 5 \\approx 1.101 + 5 = 6.10$. Minimising it pulls the three unseen values down and the seen one up.',
+    },
+    {
+      q: 'Why does naive offline Q-learning prefer actions that are not in the log?',
+      choices: [
+        'Because unseen actions really are better in the cliff world',
+        'Their values were never updated, so they keep the initial 0, which beats the negative values of every tried action',
+        'Because the behaviour policy was random',
+      ],
+      answer: 1,
+      explain: 'Nothing ever corrected them. Online, trying them would. Offline, the max exploits the error.',
+    },
+  ]);
+</script>
+</body>
+</html>

@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>70. Learning the policy directly | Learning RL</title>
+<meta name="description" content="Skip the value table: give the policy its own parameters and climb the return. A corridor where the best policy is a coin flip shows why.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .cell.sw { background: #fef3c7; border-color: #fcd34d; }
+  .cell .tag { position: absolute; top: 1px; font-size: 10px; color: var(--muted); }
+  .pmeter { display: flex; height: 26px; border-radius: 5px; overflow: hidden; margin: 10px 0 2px; font-size: 0.8rem; font-weight: 600; color: #fff; }
+  .pmeter div { display: flex; align-items: center; justify-content: center; transition: width 0.15s ease; white-space: nowrap; overflow: hidden; }
+  .pmeter .r { background: var(--accent); }
+  .pmeter .l { background: var(--blue); }
+  #eq { min-height: 2.6em; text-align: center; margin: 8px 0; line-height: 2; }
+</style>
+</head>
+<body data-lesson="70">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Learning the policy directly</h1>
+  <p class="lede">Most methods so far learned values and acted greedily (or ε-greedily) on them. Policy-gradient methods skip that step. The policy gets its own parameters $\boldsymbol\theta$, and learning means nudging $\boldsymbol\theta$ uphill on the return. In some problems the best policy is a weighted coin flip, which no greedy rule can express.</p>
+
+  <section class="card">
+    <h2>The short corridor with switched actions</h2>
+    <p class="note">S&amp;B Example 13.1. Reward $-1$ per step until the flag. In the yellow state, the actions are swapped: right moves left and left moves right. The agent cannot tell the three states apart, so it must use the same action probabilities everywhere.</p>
+    <div class="world" id="world"></div>
+    <label class="slider"><span>$\theta_1$ (right)</span><input id="t1" type="range" min="-4" max="4" step="any" value="-1.5"><output></output></label>
+    <label class="slider"><span>$\theta_2$ (left)</span><input id="t2" type="range" min="-4" max="4" step="any" value="1.5"><output></output></label>
+    <div class="pmeter"><div class="r" id="mR"></div><div class="l" id="mL"></div></div>
+    <div id="eq"></div>
+    <div class="row">
+      <button id="bEp" class="primary">Run episode</button>
+      <button id="bMany">Run 1000 episodes</button>
+      <button id="bClimb">Climb</button>
+      <span class="spacer"></span>
+      <button id="bReset" class="quiet">Reset</button>
+    </div>
+    <p class="status" id="status">Drag the sliders, then run an episode.</p>
+    <canvas class="chart" id="chart"></canvas>
+    <p class="note">Green curve: the exact value of the start state, $J$, for every probability of right $p$. Green dot: your policy. Grey dots: the two ε-greedy policies ($\varepsilon = 0.1$). Blue dot: the average return of your last 1000 episodes. "Climb" follows the slope of $J$ uphill by changing $\boldsymbol\theta$.</p>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>A <b>parameterised policy</b> gives the probability of each action from a parameter vector $\boldsymbol\theta \in \mathbb{R}^{d'}$:</p>
+    $$\pi(a \mid s, \boldsymbol\theta) = \Pr\{A_t = a \mid S_t = s, \boldsymbol\theta_t = \boldsymbol\theta\}$$
+    <p>No value function is needed to pick actions. The usual choice for discrete actions is a softmax over <b>action preferences</b> $h(s, a, \boldsymbol\theta)$, as in Lesson 13:</p>
+    $$\pi(a \mid s, \boldsymbol\theta) = \frac{e^{h(s,a,\boldsymbol\theta)}}{\sum_b e^{h(s,b,\boldsymbol\theta)}}, \qquad h(s,a,\boldsymbol\theta) = \boldsymbol\theta^\top \mathbf{x}(s,a)$$
+    <p>The preference is linear in a feature vector $\mathbf{x}(s,a)$. In the corridor, $\mathbf{x}(s,\text{right}) = (1,0)^\top$ and $\mathbf{x}(s,\text{left}) = (0,1)^\top$ in every state, so</p>
+    $$p = \pi(\text{right}) = \frac{e^{\theta_1}}{e^{\theta_1} + e^{\theta_2}} = \frac{1}{1 + e^{-(\theta_1 - \theta_2)}}$$
+    <p>Only the difference $\theta_1 - \theta_2$ matters.</p>
+    <p>The <b>performance measure</b> for an episodic task is the value of the start state, and learning is gradient ascent on it:</p>
+    $$J(\boldsymbol\theta) = v_{\pi_{\boldsymbol\theta}}(s_0), \qquad \boldsymbol\theta_{t+1} = \boldsymbol\theta_t + \alpha\, \widehat{\nabla J(\boldsymbol\theta_t)}$$
+    <p>$\widehat{\nabla J}$ is an estimate of the gradient. Lessons 71 to 73 show how to get one from experience alone.</p>
+    <p><b>The corridor's $J$ by hand.</b> Write $v_0, v_1, v_2$ for the three states, with state 1 switched and $v_{\text{flag}} = 0$. The Bellman equations (Lesson 26) are</p>
+    $$\begin{aligned}
+      v_0 &= -1 + p\,v_1 + (1-p)\,v_0 \\
+      v_1 &= -1 + p\,v_0 + (1-p)\,v_2 \\
+      v_2 &= -1 + p \cdot 0 + (1-p)\,v_1
+    \end{aligned}$$
+    <p>The first gives $v_0 = v_1 - 1/p$. Substituting both others into the second gives $v_1\,p(1-p) = -(3-p)$. So</p>
+    $$J(p) = v_0 = -\frac{2\,(2-p)}{p\,(1-p)}$$
+    <p>Setting $J'(p) = 0$ gives $p^2 - 4p + 2 = 0$, so the best policy picks right with $p = 2 - \sqrt2 \approx 0.59$ and earns $J \approx -11.66$. An ε-greedy agent with $\varepsilon = 0.1$ can only choose $p = 0.95$ or $p = 0.05$, worth $-44.2$ and $-82.1$.</p>
+    <p>Two reasons to learn the policy directly. The best policy may be stochastic, as here. And action probabilities change smoothly with $\boldsymbol\theta$, whereas an ε-greedy policy can flip completely when one estimate overtakes another.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const GOAL = 3, C = Course.colors;
+  const J = (p) => (-2 * (2 - p)) / (p * (1 - p));
+  const slope = (p) => (J(p + 1e-6) - J(p - 1e-6)) / 2e-6;
+  const P_OPT = 2 - Math.SQRT2;
+
+  const t1 = Course.slider('#t1', (v) => v.toFixed(2), draw);
+  const t2 = Course.slider('#t2', (v) => v.toFixed(2), draw);
+  const pRight = () => 1 / (1 + Math.exp(-(t1() - t2())));
+  let pos = 0, anim = null, climb = null, measured = null, measuredP = null;
+
+  function move(s, right) {
+    if (s === 1) right = !right;             // switched state
+    return right ? s + 1 : Math.max(0, s - 1);
+  }
+
+  function drawWorld() {
+    $('world').innerHTML = [0, 1, 2, 3].map((i) =>
+      `<div class="cell${i === 1 ? ' sw' : ''}${i === pos ? ' here' : ''}">${i === 1 ? '<span class="tag">⇄</span>' : ''}${i === pos ? '🤖' : i === GOAL ? '🏁' : ''}<small>${i === 0 ? 'S' : i === GOAL ? '' : i}</small></div>`).join('');
+  }
+
+  const chart = Course.lineChart($('chart'), { xLabel: 'p = π(right)', yLabel: 'J (value of S)', yMin: -100, yMax: 0, xMin: 0, xMax: 1 });
+  const curve = [];
+  for (let p = 0.01; p <= 0.99; p += 0.005) curve.push([p, J(p)]);
+
+  function draw() {
+    const p = pRight();
+    $('mR').style.width = `${100 * p}%`; $('mL').style.width = `${100 * (1 - p)}%`;
+    $('mR').textContent = p > 0.12 ? `right ${(100 * p).toFixed(0)}%` : '';
+    $('mL').textContent = p < 0.88 ? `left ${(100 * (1 - p)).toFixed(0)}%` : '';
+    Course.tex($('eq'), `p = \\frac{1}{1 + e^{-(${t1().toFixed(2)} - (${t2().toFixed(2)}))}} = ${p.toFixed(3)}, \\quad J(p) = ${J(p).toFixed(1)}`);
+    const lines = [
+      { data: curve, color: C.green, label: 'J(p)' },
+      { data: [[0.05, J(0.05)]], color: C.grey, dots: true },
+      { data: [[0.95, J(0.95)]], color: C.grey, dots: true },
+      { data: [[p, Math.max(-100, J(p))]], color: C.green, dots: true },
+    ];
+    if (measured !== null) lines.push({ data: [[measuredP, Math.max(-100, measured)]], color: C.blue, dots: true });
+    chart.draw(lines, { vlines: [{ x: P_OPT, label: 'best p ≈ 0.59', color: C.amber }] });
+    drawWorld();
+  }
+
+  // One episode under the current policy. Capped at 2000 steps in case p is extreme.
+  function episode() {
+    const p = pRight();
+    let s = 0, T = 0;
+    while (s !== GOAL && T < 2000) { s = move(s, Math.random() < p); T++; }
+    return T;
+  }
+
+  function stopAnim() { clearInterval(anim); anim = null; $('bEp').textContent = 'Run episode'; }
+  $('bEp').addEventListener('click', () => {
+    if (anim) return stopAnim();
+    stopClimb();
+    const p = pRight();
+    let T = 0; pos = 0; drawWorld();
+    $('bEp').textContent = 'Stop';
+    anim = setInterval(() => {
+      const right = Math.random() < p;
+      pos = move(pos, right); T++;
+      $('status').textContent = `Step ${T}: chose ${right ? 'right' : 'left'}. Return so far ${-T}.`;
+      drawWorld();
+      if (pos === GOAL || T >= 300) {
+        stopAnim();
+        $('status').textContent = pos === GOAL ? `Flag reached in ${T} steps. Return G = ${-T}. Expected return J = ${J(p).toFixed(1)}.` : `Gave up after 300 steps. This policy almost never escapes.`;
+        setTimeout(() => { pos = 0; drawWorld(); }, 900);
+      }
+    }, 90);
+  });
+
+  $('bMany').addEventListener('click', () => {
+    stopAnim();
+    let sum = 0;
+    for (let i = 0; i < 1000; i++) sum += episode();
+    measured = -sum / 1000; measuredP = pRight();
+    $('status').textContent = `Average return over 1000 episodes: ${measured.toFixed(1)}. Exact J = ${J(measuredP).toFixed(1)}.`;
+    draw();
+  });
+
+  // Gradient ascent with the exact gradient. dJ/dθ1 = J'(p) p(1-p), dJ/dθ2 = -J'(p) p(1-p).
+  function climbStep() {
+    const p = pRight(), g = slope(p) * p * (1 - p), a = 0.01;
+    const set = (id, v) => { $(id).value = Math.max(-4, Math.min(4, v)); $(id).dispatchEvent(new Event('input')); };
+    set('t1', t1() + a * g); set('t2', t2() - a * g);
+    $('status').textContent = `∂J/∂θ₁ = ${g.toFixed(2)}. Now p = ${pRight().toFixed(3)}, J = ${J(pRight()).toFixed(2)}.`;
+    if (Math.abs(g) < 0.02) stopClimb();
+  }
+  function stopClimb() { clearInterval(climb); climb = null; $('bClimb').textContent = 'Climb'; }
+  $('bClimb').addEventListener('click', () => {
+    if (climb) return stopClimb();
+    stopAnim();
+    $('bClimb').textContent = 'Pause';
+    climb = setInterval(climbStep, 60);
+  });
+
+  $('bReset').addEventListener('click', () => {
+    stopAnim(); stopClimb(); measured = null; pos = 0;
+    $('t1').value = -1.5; $('t2').value = 1.5;
+    $('t1').dispatchEvent(new Event('input'));
+    $('t2').dispatchEvent(new Event('input'));
+    $('status').textContent = 'Drag the sliders, then run an episode.';
+  });
+  draw();
+
+  Course.quiz([
+    {
+      q: 'The corridor policy has $\\theta_1 = 1$ (right) and $\\theta_2 = 0$ (left). What is $\\pi(\\text{right})$?',
+      answer: Math.E / (Math.E + 1),
+      tol: 0.002,
+      explain: '$e^1 / (e^1 + e^0) = 2.718 / 3.718 \\approx 0.731$.',
+    },
+    {
+      q: 'What is the value of the start state when the agent picks right with probability $p = 0.5$?',
+      answer: J(0.5),
+      tol: 0.01,
+      explain: '$J(0.5) = -2(1.5)/(0.5 \\times 0.5) = -3/0.25 = -12$.',
+    },
+    {
+      q: 'An ε-greedy agent with $\\varepsilon = 0.1$ whose greedy action is right picks right with probability $0.95$. What is $J$ for that policy? (One decimal place.)',
+      answer: J(0.95),
+      tol: 0.1,
+      hint: 'Use $J(p) = -2(2-p)/(p(1-p))$.',
+      explain: '$-2(1.05)/(0.95 \\times 0.05) = -2.1/0.0475 \\approx -44.2$.',
+    },
+    {
+      q: 'The policy always picks right ($p = 1$). What happens?',
+      choices: [
+        'It reaches the flag in 3 steps',
+        'It bounces between the first two states forever',
+        'It stays in the start state forever',
+      ],
+      answer: 1,
+      explain: 'Right takes it to the switched state, where right moves it back. Every deterministic policy fails here, which is why the best policy is stochastic.',
+    },
+  ]);
+</script>
+</body>
+</html>

@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>23. From action values to state values | Learning RL</title>
+<meta name="description" content="A state's value is the policy-weighted average of its action values. Drag the policy in one cell and watch the average move.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .layout { display: grid; grid-template-columns: 300px 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 640px) { .layout { grid-template-columns: 1fr; } }
+  #grid { max-width: 300px !important; margin: 4px auto; }
+  .gcell.goal { background: var(--accent-soft); }
+  .gcell.pit { background: var(--red-soft); }
+  .gcell.sel { box-shadow: inset 0 0 0 3px var(--blue); }
+  .gcell { font-size: 0.8rem !important; font-weight: 600; }
+  .term { display: flex; flex-direction: column; align-items: center; line-height: 1.1; font-size: 1.2em; }
+  .term small { font-size: 0.55em; color: var(--heading); }
+  .qplot { position: relative; height: 200px; display: flex; gap: 10px; padding-left: 30px; margin: 4px 0; }
+  .qcol { flex: 1; position: relative; }
+  .qcol .fill { position: absolute; left: 0; right: 0; border-radius: 3px; transition: all 0.2s ease; }
+  .vline { position: absolute; left: 30px; right: 0; border-top: 3px dashed var(--amber); transition: top 0.2s ease; z-index: 2; }
+  .vline span { position: absolute; right: 0; top: -1.4em; font-size: 0.75rem; font-weight: 600; color: var(--amber); background: rgba(255,255,255,0.8); padding: 0 3px; }
+  .zero { position: absolute; left: 30px; right: 0; border-top: 1px solid #9ca3af; }
+  .ylab { position: absolute; left: 0; width: 24px; text-align: right; font-size: 0.7rem; color: var(--muted); transform: translateY(-50%); }
+  .xl { display: flex; gap: 10px; padding-left: 30px; font-size: 0.8rem; text-align: center; font-variant-numeric: tabular-nums; }
+  .xl span { flex: 1; color: var(--heading); }
+  .xl b { display: block; color: var(--accent); font-size: 1.1rem; }
+  .pis { display: grid; grid-template-columns: 1.4em 1fr 3.2em; gap: 2px 8px; align-items: center; margin-top: 8px; }
+  .pis b { color: var(--accent); text-align: center; }
+  .pis input { accent-color: var(--accent); min-width: 0; }
+  .pis output { text-align: right; font-weight: 600; color: var(--heading); font-variant-numeric: tabular-nums; }
+  #eq { overflow-x: auto; overflow-y: hidden; min-height: 3em; }
+</style>
+</head>
+<body data-lesson="23">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>From action values to state values</h1>
+  <p class="lede">In a state, the policy picks an action at random, and each action has its own expected return. So the state's value is an average of the action values, weighted by how often the policy picks each one.</p>
+
+  <section class="card">
+    <p class="note">Icy gridworld, $\gamma = 0.9$. Every cell follows the random policy except the one you select (blue). Drag its four sliders to change $\pi(\cdot \mid s)$ there. Cells show $v_\pi$.</p>
+    <div class="layout">
+      <div>
+        <div id="grid"></div>
+        <div class="pis" id="pis"></div>
+        <div class="row center">
+          <button id="bUniform" class="quiet">Uniform</button>
+          <button id="bGreedy">All on the best</button>
+        </div>
+      </div>
+      <div>
+        <div class="qplot" id="qplot"></div>
+        <div class="xl" id="xl"></div>
+        <p class="note">Bars: $q_\pi(s, a)$ for the selected cell. Green number: $\pi(a \mid s)$. Amber dashes: $v_\pi(s)$.</p>
+      </div>
+    </div>
+    <div id="eq"></div>
+    <p class="status" id="status"></p>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>Split the return by the first action. By the law of total expectation,</p>
+    $$\begin{aligned}
+      v_\pi(s) &= \mathbb{E}_\pi[G_t \mid S_t = s] \\
+      &= \sum_a \Pr\{A_t = a \mid S_t = s\} \\
+      &\qquad\quad \times \mathbb{E}_\pi[G_t \mid S_t = s, A_t = a] \\
+      &= \sum_a \pi(a \mid s)\, q_\pi(s, a)
+    \end{aligned}$$
+    <p>The state value is the average of the action values, weighted by the policy. No model of the ice is needed for this direction.</p>
+    <p>Because the weights are non-negative and add to 1, the average lies between the smallest and the largest action value:</p>
+    $$\min_a q_\pi(s, a) \;\le\; v_\pi(s) \;\le\; \max_a q_\pi(s, a)$$
+    <p>It reaches the top only when all the weight sits on the best actions. "All on the best" does that. For ε-greedy (Lesson 3) with one best action $a^*$,</p>
+    $$v_\pi(s) = (1 - \varepsilon)\, q_\pi(s, a^*) + \frac{\varepsilon}{|\mathcal{A}|} \sum_a q_\pi(s, a)$$
+    <p>One subtlety you can see in the bars: when you change $\pi$ in a cell, its own $q$ values move a little too. The agent can come back to that cell later, and then it acts with the new policy. The identity holds for every policy, because both sides are computed for the same $\pi$.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  // ---- The icy gridworld (Lessons 18–19's layout, used in Lessons 20–29) ---
+  // 4×5 grid. G = goal (+10, ends), P = pit (−10, ends), # = wall. Every other move pays `step`.
+  // An action goes where you meant with probability 1 − slip, and slips to each side with slip/2.
+  // Moving into the wall or the edge leaves you where you are.
+  const MAP = ['....G', '.#..P', '...#.', '.....'];
+  const ROWS = 4, COLS = 5, NS = ROWS * COLS;
+  const ARROW = ['↑', '→', '↓', '←'], ANAME = ['up', 'right', 'down', 'left'];
+  const DR = [-1, 0, 1, 0], DC = [0, 1, 0, -1];
+  const kind = (s) => MAP[Math.floor(s / COLS)][s % COLS];
+  const isWall = (s) => kind(s) === '#';
+  const isTerm = (s) => kind(s) === 'G' || kind(s) === 'P';
+  const STATES = [...Array(NS).keys()].filter((s) => !isWall(s) && !isTerm(s));
+  const START = 15;
+  const rc = (s) => [Math.floor(s / COLS), s % COLS];
+  const cellName = (s) => `(${rc(s)[0]},${rc(s)[1]})`;
+
+  function move(s, d) {
+    const [r, c] = rc(s), nr = r + DR[d], nc = c + DC[d];
+    if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) return s;
+    const s2 = nr * COLS + nc;
+    return isWall(s2) ? s : s2;
+  }
+  const reward = (W, s2) => (kind(s2) === 'G' ? W.goal : kind(s2) === 'P' ? W.pit : W.step);
+  // The three possible results of action a in state s: meant, slip clockwise, slip anticlockwise.
+  function outcomes(W, s, a) {
+    return [[a, 1 - W.slip], [(a + 1) % 4, W.slip / 2], [(a + 3) % 4, W.slip / 2]]
+      .filter(([, p]) => p > 0)
+      .map(([d, p]) => { const s2 = move(s, d); return { d, p, s2, r: reward(W, s2) }; });
+  }
+  const uniform = () => { const pi = []; STATES.forEach((s) => (pi[s] = [0.25, 0.25, 0.25, 0.25])); return pi; };
+  const deterministic = (arrows) => { const pi = []; STATES.forEach((s) => { pi[s] = [0, 0, 0, 0]; pi[s][arrows[s]] = 1; }); return pi; };
+
+  // Exact v_π: solve (I − γ P_π) v = r_π over the non-terminal states by Gaussian elimination.
+  function evaluate(W, pi) {
+    const n = STATES.length, idx = new Map(STATES.map((s, i) => [s, i]));
+    const A = STATES.map(() => new Array(n + 1).fill(0));
+    STATES.forEach((s, i) => {
+      A[i][i] += 1;
+      for (let a = 0; a < 4; a++) {
+        if (!pi[s][a]) continue;
+        for (const o of outcomes(W, s, a)) {
+          const w = pi[s][a] * o.p;
+          A[i][n] += w * o.r;
+          if (!isTerm(o.s2)) A[i][idx.get(o.s2)] -= W.gamma * w;
+        }
+      }
+    });
+    for (let c = 0; c < n; c++) {
+      let piv = c;
+      for (let r = c + 1; r < n; r++) if (Math.abs(A[r][c]) > Math.abs(A[piv][c])) piv = r;
+      [A[c], A[piv]] = [A[piv], A[c]];
+      for (let r = 0; r < n; r++) {
+        if (r === c || !A[r][c]) continue;
+        const f = A[r][c] / A[c][c];
+        for (let k = c; k <= n; k++) A[r][k] -= f * A[c][k];
+      }
+    }
+    const v = new Array(NS).fill(0);
+    STATES.forEach((s, i) => (v[s] = A[i][n] / A[i][i]));
+    return v;
+  }
+  // q(s, a) = Σ p(s', r | s, a) [r + γ v(s')]
+  const qOf = (W, v, s, a) => outcomes(W, s, a).reduce((t, o) => t + o.p * (o.r + W.gamma * v[o.s2]), 0);
+  const qAll = (W, v) => { const q = []; STATES.forEach((s) => (q[s] = [0, 1, 2, 3].map((a) => qOf(W, v, s, a)))); return q; };
+  // v_* by value iteration (Lesson 33), run to convergence.
+  function optimal(W) {
+    let v = new Array(NS).fill(0);
+    for (let k = 0; k < 5000; k++) {
+      let delta = 0;
+      const nv = v.slice();
+      STATES.forEach((s) => { nv[s] = Math.max(...[0, 1, 2, 3].map((a) => qOf(W, v, s, a))); delta = Math.max(delta, Math.abs(nv[s] - v[s])); });
+      v = nv;
+      if (delta < 1e-12) break;
+    }
+    return v;
+  }
+  function stepEnv(W, s, a) {
+    const os = outcomes(W, s, a), o = os[Course.sample(os.map((x) => x.p))];
+    return o;
+  }
+  // One episode under π from s0 (and optional forced first action a0). Returns the steps.
+  function episode(W, pi, s0, a0 = null, maxT = 1000) {
+    const steps = [];
+    let s = s0;
+    for (let t = 0; t < maxT && !isTerm(s); t++) {
+      const a = t === 0 && a0 !== null ? a0 : Course.sample(pi[s]);
+      const o = stepEnv(W, s, a);
+      steps.push({ s, a, d: o.d, r: o.r, s2: o.s2 });
+      s = o.s2;
+    }
+    return steps;
+  }
+  // Two decimals without a minus sign on zero.
+  const f2 = (x) => (Math.abs(x) < 0.005 ? 0 : x).toFixed(2);
+  const discounted = (W, steps) => steps.reduceRight((g, x) => x.r + W.gamma * g, 0);
+  // ---- end of the icy gridworld ---------------------------------------------
+
+  const W = { slip: 0.2, step: 0, goal: 10, pit: -10, gamma: 0.9 };
+  const TA = ['\\uparrow', '\\rightarrow', '\\downarrow', '\\leftarrow'];
+  const YMIN = -10, YMAX = 10;
+  let sel = 8, w = [1, 1, 1, 1], pi, v, q;
+
+  $('pis').innerHTML = [0, 1, 2, 3].map((a) =>
+    `<b>${ARROW[a]}</b><input type="range" min="0" max="1" step="0.01" value="1" data-a="${a}" aria-label="weight on ${ANAME[a]}"><output></output>`).join('');
+  $('pis').querySelectorAll('input').forEach((el) => el.addEventListener('input', () => { w[+el.dataset.a] = +el.value; update(); }));
+
+  const piSel = () => { const t = w.reduce((x, y) => x + y, 0); return t ? w.map((x) => x / t) : [0.25, 0.25, 0.25, 0.25]; };
+
+  const G = Course.grid($('grid'), ROWS, COLS, (r, c, el) => {
+    const s = r * COLS + c, k = kind(s);
+    if (k === '#') { el.classList.add('wall'); return; }
+    if (k === 'G') { el.classList.add('goal'); el.innerHTML = '<span class="term">🏁<small>+10</small></span>'; return; }
+    if (k === 'P') { el.classList.add('pit'); el.innerHTML = '<span class="term">🕳️<small>−10</small></span>'; return; }
+    if (!v) return;
+    el.style.background = Course.heat(v[s], 10);
+    el.textContent = f2(v[s]);
+    if (s === sel) el.classList.add('sel');
+  });
+  G.onClick((r, c) => {
+    const s = r * COLS + c;
+    if (!STATES.includes(s)) return;
+    sel = s; setWeights([1, 1, 1, 1]);
+  });
+
+  function setWeights(ws) {
+    w = ws.slice();
+    $('pis').querySelectorAll('input').forEach((el, a) => (el.value = w[a]));
+    update();
+  }
+
+  const Y = (y) => `${(100 * (YMAX - Math.max(YMIN, Math.min(YMAX, y)))) / (YMAX - YMIN)}%`;
+
+  function update() {
+    pi = uniform(); pi[sel] = piSel();
+    v = evaluate(W, pi); q = qAll(W, v);
+    const p = pi[sel], qs = q[sel];
+    $('pis').querySelectorAll('output').forEach((o, a) => (o.textContent = p[a].toFixed(2)));
+    let html = '';
+    for (let y = YMIN; y <= YMAX; y += 5) html += `<span class="ylab" style="top:${Y(y)}">${y}</span>`;
+    html += `<div class="zero" style="top:${Y(0)}"></div>`;
+    html += qs.map((x, a) => `<div class="qcol"><div class="fill" style="top:${Y(Math.max(x, 0))};bottom:calc(100% - ${Y(Math.min(x, 0))});background:${x >= 0 ? Course.colors.green : Course.colors.red};opacity:${0.25 + 0.75 * p[a]}"></div></div>`).join('');
+    html += `<div class="vline" style="top:${Y(v[sel])}"><span>v = ${f2(v[sel])}</span></div>`;
+    $('qplot').innerHTML = html;
+    $('xl').innerHTML = qs.map((x, a) => `<span>${ARROW[a]} ${f2(x)}<b>${p[a].toFixed(2)}</b></span>`).join('');
+    const terms = [0, 1, 2, 3].filter((a) => p[a] > 0).map((a) => `${p[a].toFixed(2)}(${f2(qs[a])})`);
+    const sum = qs.reduce((t, x, a) => t + p[a] * x, 0);
+    Course.tex($('eq'), `\\begin{aligned} v_\\pi${cellName(sel)} &= \\textstyle\\sum_a \\pi(a \\mid s)\\, q_\\pi(s, a) \\\\ &= ${terms.slice(0, 2).join(' + ')}${terms.length > 2 ? ' \\\\ &\\quad + ' + terms.slice(2).join(' + ') : ''} \\\\ &= ${f2(sum)} \\end{aligned}`, true);
+    const lo = Math.min(...qs), hi = Math.max(...qs);
+    $('status').textContent = `Solved separately, v = ${f2(v[sel])}. It sits between the worst action (${f2(lo)}) and the best (${f2(hi)}).`;
+    G.update();
+  }
+
+  $('bUniform').addEventListener('click', () => setWeights([1, 1, 1, 1]));
+  $('bGreedy').addEventListener('click', () => {
+    // Put all weight on the best action, then re-check: q changes with π, so repeat until stable.
+    let a = 0;
+    for (let k = 0; k < 10; k++) {
+      a = q[sel].indexOf(Math.max(...q[sel]));
+      setWeights([0, 1, 2, 3].map((b) => (b === a ? 1 : 0)));
+      if (q[sel].indexOf(Math.max(...q[sel])) === a) break;
+    }
+  });
+  update();
+
+  Course.quiz([
+    {
+      q: 'In one state, $\\pi = (0.5, 0.25, 0.25, 0)$ over $(\\uparrow, \\rightarrow, \\downarrow, \\leftarrow)$ and $q_\\pi = (4, 8, -2, 1)$. What is $v_\\pi(s)$?',
+      answer: 0.5 * 4 + 0.25 * 8 + 0.25 * -2 + 0 * 1,
+      tol: 0.001,
+      explain: '$0.5 \\times 4 + 0.25 \\times 8 + 0.25 \\times (-2) + 0 \\times 1 = 2 + 2 - 0.5 = 3.5$.',
+    },
+    {
+      q: 'An ε-greedy policy with $\\varepsilon = 0.1$ and 4 actions faces $q_\\pi = (5, 3, 2, 0)$. What is $v_\\pi(s)$?',
+      answer: 0.9 * 5 + (0.1 / 4) * (5 + 3 + 2 + 0),
+      tol: 0.001,
+      hint: 'The best action gets $1 - \\varepsilon + \\varepsilon/4$, the others $\\varepsilon/4$.',
+      explain: '$(1 - 0.1) \\times 5 + \\tfrac{0.1}{4}(5 + 3 + 2 + 0) = 4.5 + 0.25 = 4.75$.',
+    },
+    {
+      q: 'A state has two actions with $q_\\pi = 8$ and $q_\\pi = 4$, and $v_\\pi(s) = 6.5$. What probability does $\\pi$ give the first action?',
+      answer: 0.625,
+      tol: 0.001,
+      hint: 'Solve $8p + 4(1 - p) = 6.5$.',
+      explain: '$4 + 4p = 6.5$, so $p = 2.5/4 = 0.625$.',
+    },
+    {
+      q: 'Can $v_\\pi(s)$ ever be larger than every $q_\\pi(s, a)$?',
+      choices: [
+        'No, a weighted average with non-negative weights summing to 1 cannot exceed its largest term',
+        'Yes, if the policy is stochastic',
+        'Yes, when $\\gamma$ is close to 1',
+      ],
+      answer: 0,
+      explain: '$\\sum_a \\pi(a \\mid s) q_\\pi(s, a) \\le \\sum_a \\pi(a \\mid s) \\max_b q_\\pi(s, b) = \\max_b q_\\pi(s, b)$.',
+    },
+  ]);
+</script>
+</body>
+</html>

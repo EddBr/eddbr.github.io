@@ -124,9 +124,9 @@ Which allows for when $T=\infty$ or $\gamma=1$ (but not both)</p>
 
 <p>Independent of its history</p>
 
-<p>$Pr(R_{t+1}=r,S_{t+1}=s’|S_0,A_0,R_1,…S_{t-1},A_{t-1},S_t,A_t)$
+<p>$Pr(R_{t+1}=r,S_{t+1}=s’\vert S_0,A_0,R_1,…S_{t-1},A_{t-1},S_t,A_t)$
 If the state signal has the Markov property, this can be written as:
-$p(s’,r|s,a)=Pr(R_{t+1}=r,S_{t+1}=s’|S_t,A_t)$ for all $r,s’,S_t,A_t$</p>
+$p(s’,r\vert s,a)=Pr(R_{t+1}=r,S_{t+1}=s’\vert S_t,A_t)$ for all $r,s’,S_t,A_t$</p>
 
 <p>Markov state provides equivalent predictions to full histories</p>
 <h1 id="markov-decisions-processes-mdp">Markov Decisions Processes (MDP)</h1>
@@ -134,11 +134,11 @@ $p(s’,r|s,a)=Pr(R_{t+1}=r,S_{t+1}=s’|S_t,A_t)$ for all $r,s’,S_t,A_t$</p>
 
 <p>MDP enables the computation of other environmental quantities:</p>
 <h2 id="expected-reward">Expected reward</h2>
-<p>$r(s,a)=\mathbb{E}[R_{t+1}|S_t=s,A_t=a]=\sum_{r\in \mathcal{R}}r\sum_{s’\in\mathcal{S}}p(s’,r|s,a)$</p>
+<p>$r(s,a)=\mathbb{E}[R_{t+1}\vert S_t=s,A_t=a]=\sum_{r\in \mathcal{R}}r\sum_{s’\in\mathcal{S}}p(s’,r\vert s,a)$</p>
 <h2 id="state-transition-probabilities">State Transition Probabilities</h2>
-<p>$p(s’|s,a)=Pr(S_{t+1}=s’|S_t=s,A_t=a)=\sum_{r\in\mathcal{R}}p(s’,r|s,a)$</p>
+<p>$p(s’\vert s,a)=Pr(S_{t+1}=s’\vert S_t=s,A_t=a)=\sum_{r\in\mathcal{R}}p(s’,r\vert s,a)$</p>
 <h3 id="expected-rewards-to-state-action-next-state-triples">Expected Rewards to state-action-next-state triples</h3>
-<p>$r(s,a,s’)=\mathbb{E}[R_{t+1}|S_t=s,A_t=a,S_{t+1}=s’]=\cfrac{\sum_{r\in \mathcal{R}}r\times p(s’,r|s,a)}{p(s’|s,a)}$
+<p>$r(s,a,s’)=\mathbb{E}[R_{t+1}\vert S_t=s,A_t=a,S_{t+1}=s’]=\cfrac{\sum_{r\in \mathcal{R}}r\times p(s’,r\vert s,a)}{p(s’\vert s,a)}$
 ![[Pasted image 20250930040238.png]]</p>
 
 <h2 id="policy-vs-value">Policy Vs Value</h2>
@@ -146,22 +146,22 @@ $p(s’,r|s,a)=Pr(R_{t+1}=r,S_{t+1}=s’|S_t,A_t)$ for all $r,s’,S_t,A_t$</p>
 Value: Expected return when following policy $\pi$ from state $S$</p>
 
 <h2 id="valueexpected-return">Value/Expected return</h2>
-<p>$v_\pi(s)=\mathbb{E}<em>\pi[G_t|S_t=s]=\mathbb{E}</em>\pi[\sum^\infty_{k=0}\gamma^kR_{t+k+1}|S_t=s]$
+<p>$v_\pi(s)=\mathbb{E}<em>\pi[G_t\vert S_t=s]=\mathbb{E}</em>\pi[\sum^\infty_{k=0}\gamma^kR_{t+k+1}\vert S_t=s]$
 where $\mathbb{E}_\pi$ denotes expected value of a random variable given that the agent follows policy $\pi$</p>
 <h2 id="important-note">Important Note</h2>
 <p>Value of terminal state, if any, is always 0</p>
 
 <h1 id="action-value-function-for-policy-pi">Action-Value Function for policy $\pi$</h1>
-<p>Value of taking an action $q_\pi(s,a)=\mathbb{E}<em>\pi[G_t|S_t=s,A_t=a]=\mathbb{E}</em>\pi[\sum^\infty_{k=0}\gamma^kR_{t+k+1}|S_t=s,A_t=a]$</p>
+<p>Value of taking an action $q_\pi(s,a)=\mathbb{E}<em>\pi[G_t\vert S_t=s,A_t=a]=\mathbb{E}</em>\pi[\sum^\infty_{k=0}\gamma^kR_{t+k+1}\vert S_t=s,A_t=a]$</p>
 
 <p>$v_\pi$ and $q_\pi$ can be estimated from experience</p>
 
 <h2 id="making-v_pi-recursive">Making $v_\pi$ Recursive</h2>
-<p>$v_\pi(s)=\mathbb{E}<em>\pi[G_t|S_t=s]$
-$=\mathbb{E}</em>\pi[\sum^\infty_{k=0}\gamma^kR_{t+k+1}|S_t=s]$
-$=\mathbb{E}<em>\pi[R</em>{t+1}+\sum^\infty_{k=0}\gamma^kR_{t+k+2}|S_t=s]$
-$=\underset{a}\sum\pi(a,s)\underset{s’}\sum\underset{r}\sum p(s’,r|s,a)[r+\gamma\mathbb{E}<em>\pi[\sum^\infty</em>{k=0}\gamma^kR_{t+k+2}|S_{t+1}=s’]]$ since $\mathbb{E}<em>\pi()=\sum\text{Value}\times p(\text{Value})$ for all actions, states and rewards
-$=\underset{a}\sum\pi(a|s)\underset{s’,r}p(s’,r|s,a)[r+\gamma v</em>\pi(s’)]$ - #vpibellmanequation Bellman equation for $v_\pi$</p>
+<p>$v_\pi(s)=\mathbb{E}<em>\pi[G_t\vert S_t=s]$
+$=\mathbb{E}</em>\pi[\sum^\infty_{k=0}\gamma^kR_{t+k+1}\vert S_t=s]$
+$=\mathbb{E}<em>\pi[R</em>{t+1}+\sum^\infty_{k=0}\gamma^kR_{t+k+2}\vert S_t=s]$
+$=\underset{a}\sum\pi(a,s)\underset{s’}\sum\underset{r}\sum p(s’,r\vert s,a)[r+\gamma\mathbb{E}<em>\pi[\sum^\infty</em>{k=0}\gamma^kR_{t+k+2}\vert S_{t+1}=s’]]$ since $\mathbb{E}<em>\pi()=\sum\text{Value}\times p(\text{Value})$ for all actions, states and rewards
+$=\underset{a}\sum\pi(a\vert s)\underset{s’,r}p(s’,r\vert s,a)[r+\gamma v</em>\pi(s’)]$ - #vpibellmanequation Bellman equation for $v_\pi$</p>
 <h1 id="optimal-value-functions">Optimal Value Functions</h1>
 <h2 id="better-policies">Better Policies</h2>
 <p>A policy $\pi$ is better than or equal to another policy if its expected return $\ge$ $\pi’$ s expected return for all states $s$
@@ -178,18 +178,18 @@ $v_</em>(s)=\underset{\pi}\max v_\pi(s)$ for all $s\in \mathcal{S}$</p>
 <p><strong>Bellman optimality equation</strong></p>
 
 <p>$v_<em>(s)=\underset{a\in\mathcal{A}(s)}\max q_\pi(s,a)$
-$=\underset{a}\max\mathbb{E}_{\pi</em>}[G_t|S_t=s,A_t=a]$
-$=\underset{a}\max\mathbb{E}<em>{\pi*}[\sum^\infty</em>{k=0} \gamma^kR_{t+k+1}|S_t=s,A_t=a]$
-$=\underset{a}\max\mathbb{E}<em>{\pi*}[R</em>{t+1}+\gamma\sum^\infty_{k=0} \gamma^kR_{t+k+2}|S_t=s,A_t=a]$
-$=\underset{a}\max\mathbb{E}[R_{t+1}+\gamma v_<em>(S_{t+1}|S_t=s,A_t=a)]$ #vstarbellmanequation
-$=\underset{a\in\mathcal{A(s)}}\max{\underset{s’,r}\sum} p(s’,r|s,a)[r+\gamma v_</em>(s’)]$ #vstarbellmanequation</p>
+$=\underset{a}\max\mathbb{E}_{\pi</em>}[G_t\vert S_t=s,A_t=a]$
+$=\underset{a}\max\mathbb{E}<em>{\pi*}[\sum^\infty</em>{k=0} \gamma^kR_{t+k+1}\vert S_t=s,A_t=a]$
+$=\underset{a}\max\mathbb{E}<em>{\pi*}[R</em>{t+1}+\gamma\sum^\infty_{k=0} \gamma^kR_{t+k+2}\vert S_t=s,A_t=a]$
+$=\underset{a}\max\mathbb{E}[R_{t+1}+\gamma v_<em>(S_{t+1}\vert S_t=s,A_t=a)]$ #vstarbellmanequation
+$=\underset{a\in\mathcal{A(s)}}\max{\underset{s’,r}\sum} p(s’,r\vert s,a)[r+\gamma v_</em>(s’)]$ #vstarbellmanequation</p>
 <h3 id="optimal-action-value-function-q_">Optimal Action-Value Function $q_*$</h3>
 <p>$q_<em>(s,a)=\underset{\pi}\max q_\pi(s,a)$ for all $s\in\mathcal{S}$ and $a\in\mathcal{A}(s)$
-$q_</em>(s,a)=\mathbb{E}[R_{t+1}+\gamma v_*(S_{t+1})|S_t=s, A_t=a]$</p>
+$q_</em>(s,a)=\mathbb{E}[R_{t+1}+\gamma v_*(S_{t+1})\vert S_t=s, A_t=a]$</p>
 
 <p><strong>Bellman optimality equation</strong>
-$q_<em>(s,a)=\mathbb{E}[R_{t+1}+\gamma\underset{a’}\max q_</em>(S_{t+1},a’)|S_t=s,A_t=a]$
-$=\underset{s’,r}\sum p(s’,r|s,a)[r+\gamma \underset{a’}\max q_*(s’,a’)]$ #qstarbellmanequation</p>
+$q_<em>(s,a)=\mathbb{E}[R_{t+1}+\gamma\underset{a’}\max q_</em>(S_{t+1},a’)\vert S_t=s,A_t=a]$
+$=\underset{s’,r}\sum p(s’,r\vert s,a)[r+\gamma \underset{a’}\max q_*(s’,a’)]$ #qstarbellmanequation</p>
 
 <h2 id="bellman-optimality-equations">Bellman Optimality equations</h2>
 <p>$N$ Bellman equations for $N$ states</p>
@@ -266,30 +266,22 @@ Makrov state is when a given state can accurately predict all future states and 
 <strong>Exercise 3.7</strong></p>
 
 <p><strong>Exercise 3.8</strong>
-$\underset{s’,r}\sum p(s’,r|s,a)[r+\underset{a’}\sum \pi(a’|s’)\gamma q_\pi(s’,a’)]$
+$\underset{s’,r}\sum p(s’,r\vert s,a)[r+\underset{a’}\sum \pi(a’\vert s’)\gamma q_\pi(s’,a’)]$
 <strong>Exercise 3.9</strong>
-$v_\pi(s)=\underset{a}\sum\pi(a|s)\underset{s’,r}p(s’,r|s,a)[r+\gamma v_\pi(s’)]$
+$v_\pi(s)=\underset{a}\sum\pi(a\vert s)\underset{s’,r}p(s’,r\vert s,a)[r+\gamma v_\pi(s’)]$
 Assuming each state has probability 1/4 and using $\gamma=0.9$:
 $\frac 1 4 (0.9\times2.3+0.9\times-0.4+0.9\times0.4+0.9\times0.7)$
 $=0.675\approx 0.7 \square$ 
 <strong>Exercise 3.10</strong>
 The signs are important. If all rewards were positive, it is possible that a strong enough positive association could be built with the wrong outcome if enforced over time.</p>
 
-<table>
-  <tbody>
-    <tr>
-      <td>$v_\pi(s)=\underset{a}\sum\pi(a</td>
-      <td>s)\underset{s’,r}p(s’,r</td>
-      <td>s,a)[r+\gamma v_\pi(s’)]$ - Bellman Equation</td>
-    </tr>
-  </tbody>
-</table>
+<p>$v_\pi(s)=\underset{a}\sum\pi(a\vert s)\underset{s’,r}p(s’,r\vert s,a)[r+\gamma v_\pi(s’)]$ - Bellman Equation</p>
 
-<p>$v’<em>\pi(s)=\underset{a}\sum\pi(a|s)\underset{s’,r}p(s’,r|s,a)[r+c+\gamma v’</em>\pi(s’)]$
-$v’<em>\pi(s)=\underset{a}\sum\pi(a|s)\underset{s’,r}p(s’,r|s,a)[r+c+\gamma [v</em>\pi(s’)+v_c]]$
-$=[\underset{a}\sum\pi(a|s)\underset{s’,r}p(s’,r|s,a)][r+c+\gamma [v_\pi(s’)+v_c]]$
-$=[c+\gamma v_c]+\underset{a}\sum\pi(a|s)\underset{s’,r}p(s’,r|s,a)[r+\gamma v_\pi(s’)]$
-$=v_\pi(s)+\underset{a}\sum\pi(a|s)\underset{s’,r}p(s’,r|s,a)[c+\gamma v_c]$
+<p>$v’<em>\pi(s)=\underset{a}\sum\pi(a\vert s)\underset{s’,r}p(s’,r\vert s,a)[r+c+\gamma v’</em>\pi(s’)]$
+$v’<em>\pi(s)=\underset{a}\sum\pi(a\vert s)\underset{s’,r}p(s’,r\vert s,a)[r+c+\gamma [v</em>\pi(s’)+v_c]]$
+$=[\underset{a}\sum\pi(a\vert s)\underset{s’,r}p(s’,r\vert s,a)][r+c+\gamma [v_\pi(s’)+v_c]]$
+$=[c+\gamma v_c]+\underset{a}\sum\pi(a\vert s)\underset{s’,r}p(s’,r\vert s,a)[r+\gamma v_\pi(s’)]$
+$=v_\pi(s)+\underset{a}\sum\pi(a\vert s)\underset{s’,r}p(s’,r\vert s,a)[c+\gamma v_c]$
 $=v_\pi(s)+c+\gamma v_c$ since $c$ and $\gamma v_c$ are constants that do not change over $a,s’,r$
 And we know $v’<em>\pi(s)=v</em>\pi(s)+v_c$ 
 $\therefore v_\pi(s)+c+\gamma v_c=v_\pi(s)+v_c$
@@ -301,9 +293,9 @@ $\to v_c=\frac c {(1-\gamma)}$</p>
 Longer routes are now more incentivised. If $c$ is large enough, there is a greater incentive to do the longest route possible if $c$ is greater than rewards pre-existing</p>
 
 <p><strong>Exercise 3.12</strong>
-$v_\pi(s)=\pi(a|S_t=s)$
-$\mathbb{E}<em>\pi(q</em>\pi(s,a|S_t=s,a=a_3)$
-$\pi(a|s)q_\pi(s,a)$
+$v_\pi(s)=\pi(a\vert S_t=s)$
+$\mathbb{E}<em>\pi(q</em>\pi(s,a\vert S_t=s,a=a_3)$
+$\pi(a\vert s)q_\pi(s,a)$
 <strong>Exercise 3.13</strong>
 I’m sorry, I have so many other assignments to do. Think these are quite self explanatory (I was too lazy)
 <strong>Exercise 3.14</strong>

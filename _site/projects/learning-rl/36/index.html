@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>36. First-visit and every-visit | Learning RL</title>
+<meta name="description" content="When an episode passes through a state twice, which returns count? Build looping episodes and see first-visit and every-visit Monte Carlo disagree.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .path { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; min-height: 2em; margin: 6px 0; }
+  .path span { font-size: 0.8rem; padding: 2px 6px; border-radius: 4px; background: var(--soft); border: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+  .path span.first { background: var(--accent-soft); border-color: var(--accent); }
+  .path span.again { background: #dbeafe; border-color: var(--blue); }
+  .loop { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 10px 0; }
+  .node { width: 54px; height: 54px; border-radius: 50%; border: 2px solid var(--accent); display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--heading); background: var(--accent-soft); }
+  .node.end { border-radius: 6px; border-color: #9ca3af; background: #e5e7eb; color: var(--muted); font-weight: 500; font-size: 0.85rem; }
+  .arrowtxt { font-size: 0.8rem; color: var(--muted); text-align: center; }
+  td.fv { color: #047857; font-weight: 600; }
+  td.ev { color: var(--blue); font-weight: 600; }
+</style>
+</head>
+<body data-lesson="36">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>First-visit and every-visit</h1>
+  <p class="lede">An episode can pass through the same state more than once. First-visit Monte Carlo averages only the return after the first visit in each episode. Every-visit Monte Carlo averages the returns after all of them. Both converge to $v_\pi$, but they are not the same estimator.</p>
+
+  <section class="card">
+    <p class="note">Lesson 1's corridor. The flag pays $+10$ and ends the episode, every other step pays $0$, and $\gamma = 0.9$. Walk with the arrows and double back to visit cells twice. Green: first visits. Blue: repeat visits.</p>
+    <div class="world" id="world"></div>
+    <div class="row center">
+      <button id="bL">←</button>
+      <button id="bR">→</button>
+      <button id="bRand" class="quiet">Random episode</button>
+      <button id="bReset" class="quiet">Reset</button>
+    </div>
+    <div class="path" id="path"></div>
+    <p class="status" id="status"></p>
+    <table class="data" id="tab"></table>
+    <p class="note">Each return from time $t$ is $G_t = 10\,\gamma^{T-t-1}$, where $T$ is the step that reaches the flag. A repeat visit is closer to the end, so its return is larger.</p>
+
+    <div class="sub">
+      <h2>One state, many loops (S&amp;B Exercise 5.5)</h2>
+      <div class="loop">
+        <div class="arrowtxt">⟲ stay<br>prob $p$, $+1$</div>
+        <div class="node">s</div>
+        <div class="arrowtxt">→<br>prob $1 - p$, $+1$</div>
+        <div class="node end">end</div>
+      </div>
+      <p class="note">One state, one action, $\gamma = 1$. An episode of length $T$ visits $s$ at $t = 0, 1, \dots, T-1$ with returns $T, T-1, \dots, 1$. The true value is $v(s) = 1/(1-p)$.</p>
+      <label class="slider"><span>loop prob $p$</span><input id="iP" type="range" min="0.5" max="0.95" step="0.05" value="0.9"><output></output></label>
+      <div class="row">
+        <button id="bEp">Play episode</button>
+        <button id="bExp" class="primary">Run experiment</button>
+      </div>
+      <p class="status" id="epOut"></p>
+      <p class="note">The experiment repeats 3000 times: play $n$ episodes, form both estimates. The lines are the average estimate for each $n$. An unbiased estimator sits on the true value for every $n$.</p>
+      <canvas class="chart" id="chart" hidden></canvas>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>Suppose state $s$ is visited at times $t_1 &lt; t_2 &lt; \dots$ in an episode. The two methods differ only in which returns they record:</p>
+    $$\text{first-visit: } G_{t_1} \qquad\qquad \text{every-visit: } G_{t_1}, G_{t_2}, \dots$$
+    <p>Each method averages its recorded returns over all episodes.</p>
+    <p><b>First-visit is unbiased.</b> Each episode adds at most one return per state. By the Markov property, what happens after the first visit doesn't depend on how you got there, so each recorded return has mean exactly $v_\pi(s)$, and different episodes are independent. The average of $n$ of them has mean $v_\pi(s)$ for every $n$ and standard error $\sigma/\sqrt{n}$.</p>
+    <p><b>Every-visit is biased but consistent.</b> Returns from the same episode overlap (here $G_{t_2}$ is a piece of $G_{t_1}$), and long episodes contribute more of them. In the loop machine, one episode of length $T$ gives</p>
+    $$\hat v_{\text{first}} = T, \qquad \hat v_{\text{every}} = \frac{T + (T-1) + \cdots + 1}{T} = \frac{T+1}{2}$$
+    <p>Since $\mathbb{E}[T] = 1/(1-p)$, the first-visit estimate has the right mean, while the every-visit estimate from one episode has mean $\tfrac12\big(\tfrac{1}{1-p} + 1\big)$. With $p = 0.9$: $10$ versus $5.5$. Pooled over many episodes, the every-visit average tends to $\mathbb{E}[T(T+1)/2] / \mathbb{E}[T] = 1/(1-p)$, so the bias shrinks to zero (S&amp;B §5.1 notes both methods converge).</p>
+    <p>Every-visit is natural with function approximation and eligibility traces (Lessons 57–58). For now, first-visit is the default.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const L = 6, GOAL = L - 1, GAMMA = 0.9;
+  let pos, states, done, fv, ev;   // fv[s] = [sum, count], ev likewise
+
+  function draw() {
+    $('world').innerHTML = Array.from({ length: L }, (_, i) =>
+      `<div class="cell${i === pos ? ' here' : ''}">${i === pos ? '🤖' : i === GOAL ? '🏁' : ''}<small>${i}</small></div>`).join('');
+    const seen = new Set();
+    $('path').innerHTML = states.map((s, t) => {
+      const cls = s === GOAL ? '' : seen.has(s) ? 'again' : 'first';
+      seen.add(s);
+      return `<span class="${cls}">t=${t}: ${s === GOAL ? '🏁' : s}</span>`;
+    }).join('');
+    $('bL').disabled = $('bR').disabled = done;
+    table();
+  }
+  function table() {
+    const T = states.length - 1;
+    const rows = [];
+    for (let s = 0; s < GOAL; s++) {
+      const visits = done ? states.slice(0, T).map((x, t) => (x === s ? t : -1)).filter((t) => t >= 0) : [];
+      const rets = visits.map((t) => 10 * Math.pow(GAMMA, T - t - 1));
+      const avg = (p) => (p[1] ? (p[0] / p[1]).toFixed(2) : '–');
+      rows.push(`<tr><td>${s}</td><td>${rets.length ? rets.map((g) => g.toFixed(2)).join(', ') : '–'}</td>` +
+        `<td class="fv">${avg(fv[s])} <small class="muted">(${fv[s][1]})</small></td><td class="ev">${avg(ev[s])} <small class="muted">(${ev[s][1]})</small></td></tr>`);
+    }
+    $('tab').innerHTML = '<tr><th>cell</th><th>returns this episode</th><th>first-visit $V$ (n)</th><th>every-visit $V$ (n)</th></tr>' + rows.join('');
+    Course.renderMath($('tab'));
+  }
+
+  function newEpisode() { pos = 0; states = [0]; done = false; }
+  function reset() {
+    fv = Array.from({ length: L }, () => [0, 0]); ev = Array.from({ length: L }, () => [0, 0]);
+    newEpisode();
+    $('status').textContent = 'Walk to the flag. Step left at least once to make a loop.';
+    draw();
+  }
+  function finish() {
+    done = true;
+    const T = states.length - 1, seen = new Set();
+    for (let t = 0; t < T; t++) {
+      const s = states[t], G = 10 * Math.pow(GAMMA, T - t - 1);
+      ev[s][0] += G; ev[s][1]++;
+      if (!seen.has(s)) { fv[s][0] += G; fv[s][1]++; seen.add(s); }
+    }
+    const repeats = T - new Set(states.slice(0, T)).size;
+    $('status').textContent = `Flag reached at T = ${T}. ${repeats ? `${repeats} repeat visit${repeats > 1 ? 's' : ''}: every-visit records ${repeats} more return${repeats > 1 ? 's' : ''} than first-visit.` : 'No repeats, so both methods record the same returns.'} Move again to start a new episode.`;
+  }
+  function move(d) {
+    if (done) newEpisode();
+    pos = Math.max(0, Math.min(GOAL, pos + d));
+    states.push(pos);
+    if (pos === GOAL) finish();
+    else $('status').textContent = `t = ${states.length - 1}. Keep going.`;
+    draw();
+  }
+  $('bL').addEventListener('click', () => move(-1));
+  $('bR').addEventListener('click', () => move(1));
+  $('bRand').addEventListener('click', () => {
+    newEpisode();
+    while (pos !== GOAL) { pos = Math.max(0, pos + (Math.random() < 0.5 ? -1 : 1)); states.push(pos); }
+    finish(); draw();
+  });
+  $('bReset').addEventListener('click', reset);
+  reset();
+
+  // ---- Exercise 5.5 loop machine
+  const pP = Course.slider('#iP', (x) => x.toFixed(2));
+  const length = (p) => { let T = 1; while (Math.random() < p) T++; return T; };
+  $('bEp').addEventListener('click', () => {
+    const T = length(pP());
+    $('epOut').innerHTML = `T = ${T}. Returns ${T > 6 ? `${T}, ${T - 1}, …, 1` : Array.from({ length: T }, (_, i) => T - i).join(', ')}. ` +
+      `First-visit: <b class="good">${T}</b>. Every-visit: <b style="color:var(--blue)">${((T + 1) / 2).toFixed(1)}</b>. True: ${(1 / (1 - pP())).toFixed(2)}.`;
+  });
+  const chart = Course.lineChart($('chart'), { xLabel: 'episodes n', yLabel: 'average estimate', xMin: 1, yMin: 0 });
+  $('bExp').addEventListener('click', () => {
+    const p = pP(), NMAX = 30, TRIALS = 3000;
+    const first = new Array(NMAX).fill(0), every = new Array(NMAX).fill(0);
+    for (let k = 0; k < TRIALS; k++) {
+      let sumT = 0, sumEvery = 0;
+      for (let n = 0; n < NMAX; n++) {
+        const T = length(p);
+        sumT += T; sumEvery += (T * (T + 1)) / 2;
+        first[n] += sumT / (n + 1);          // average of first-visit returns
+        every[n] += sumEvery / sumT;         // pooled average of every-visit returns
+      }
+    }
+    const v = 1 / (1 - p);
+    $('chart').hidden = false;
+    chart.draw([
+      { data: first.map((x, n) => [n + 1, x / TRIALS]), color: Course.colors.green, label: 'first-visit' },
+      { data: every.map((x, n) => [n + 1, x / TRIALS]), color: Course.colors.blue, label: 'every-visit' },
+    ], { hlines: [{ y: v, label: `true v = ${v.toFixed(2)}`, color: Course.colors.amber }, { y: v * 1.2, color: 'rgba(0,0,0,0)' }] });
+  });
+
+  // Quiz: the walk 0,1,2,1,2,3,4,5 visits cell 1 at t = 1 and t = 3 and ends at T = 7.
+  const g1 = 10 * Math.pow(0.9, 5), g3 = 10 * Math.pow(0.9, 3);
+
+  Course.quiz([
+    {
+      q: 'S&amp;B Exercise 5.5: the loop machine with $\\gamma = 1$ produces one episode of 10 steps (return 10). What is the first-visit estimate of $v(s)$?',
+      answer: 10,
+      tol: 0,
+      explain: 'Only the first visit counts, and its return is the whole episode: $10$.',
+    },
+    {
+      q: 'Same episode. What is the every-visit estimate?',
+      answer: (10 * 11) / 2 / 10,
+      tol: 0.001,
+      hint: 'The ten visits have returns $10, 9, \\dots, 1$.',
+      explain: '$(10 + 9 + \\cdots + 1)/10 = 55/10 = 5.5$.',
+    },
+    {
+      q: 'In the corridor ($\\gamma = 0.9$, $+10$ at the flag), the walk $0, 1, 2, 1, 2, 3, 4, 5$ reaches the flag at $T = 7$ and visits cell 1 at $t = 1$ and $t = 3$. What is the every-visit average of the two returns?',
+      answer: Math.round(((g1 + g3) / 2) * 1e6) / 1e6,
+      tol: 0.005,
+      hint: '$G_t = 10 \\times 0.9^{T - t - 1}$.',
+      explain: '$G_1 = 10 \\times 0.9^5 = 5.9049$ and $G_3 = 10 \\times 0.9^3 = 7.29$, average $6.59745$. First-visit would record only $5.9049$.',
+    },
+    {
+      q: 'Which statement is true?',
+      choices: [
+        'Every-visit is unbiased; first-visit is biased',
+        'First-visit is unbiased; every-visit is biased but still converges to $v_\\pi$',
+        'Both are biased and neither converges',
+      ],
+      answer: 1,
+      explain: 'First-visit averages independent samples with mean $v_\\pi(s)$. Every-visit uses overlapping returns, which biases small samples, but its pooled average still converges.',
+    },
+  ]);
+</script>
+</body>
+</html>

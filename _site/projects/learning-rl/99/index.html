@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>99. Multi-agent RL | Learning RL</title>
+<meta name="description" content="Rock-paper-scissors against a learning agent, then two learners against each other. Each one's environment is the other, so neither stands still. The Nash equilibrium is where no one can gain by changing.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .rps button { font-size: 1.5rem; padding: 0.3rem 0.9rem; }
+  .duel { display: flex; justify-content: center; gap: 24px; align-items: center; font-size: 2.6rem; min-height: 3.6rem; }
+  .duel small { display: block; font-size: 0.75rem; color: var(--muted); text-align: center; }
+  .freq { display: grid; grid-template-columns: 6.5em 1fr 3em; gap: 4px 8px; align-items: center; font-size: 0.85rem; color: var(--muted); max-width: 420px; margin: 8px auto; }
+  .freq .track { height: 10px; background: #f3f4f6; border-radius: 3px; position: relative; }
+  .freq .fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--blue); border-radius: 3px; }
+  #tri { width: 100%; max-width: 420px; height: 330px; display: block; margin: 8px auto 0; cursor: crosshair; }
+  .key { display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.8rem; color: var(--muted); justify-content: center; }
+  .key b { display: inline-block; width: 14px; height: 3px; vertical-align: middle; margin-right: 4px; }
+  .tabs button { padding: 0.35rem 0.8rem; }
+</style>
+</head>
+<body data-lesson="99">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Multi-agent RL</h1>
+  <p class="lede">With two learners, each one is part of the other's environment. As one adapts, the other's rewards change, so the world is no longer stationary and "the optimal policy" stops being a fixed target. The useful target becomes an equilibrium: a pair of policies where neither player gains by changing alone.</p>
+
+  <section class="card">
+    <h2>You against a learner</h2>
+    <p class="note">The agent keeps counts of your past moves and plays the best response to them (fictitious play). Try to beat it.</p>
+    <div class="row rps center" id="rps">
+      <button data-a="0" aria-label="Rock">✊</button>
+      <button data-a="1" aria-label="Paper">✋</button>
+      <button data-a="2" aria-label="Scissors">✌️</button>
+    </div>
+    <div class="duel"><div><span id="you">·</span><small>you</small></div><div><span id="them">·</span><small>agent</small></div></div>
+    <p class="status" id="status">Pick a move.</p>
+    <div class="freq" id="freq"></div>
+    <div class="stats">
+      <div class="stat"><span class="k">Rounds</span><span class="v" id="sRounds">0</span></div>
+      <div class="stat"><span class="k">You won</span><span class="v" id="sW">0</span></div>
+      <div class="stat"><span class="k">Agent won</span><span class="v" id="sL">0</span></div>
+      <div class="stat"><span class="k">Draws</span><span class="v" id="sD">0</span></div>
+    </div>
+    <div class="row">
+      <button id="bRand">Play 100 rounds at random</button>
+      <button id="bBias">Play 100 rounds, rock-heavy</button>
+      <span class="spacer"></span>
+      <button id="bResetH" class="quiet">Reset</button>
+    </div>
+
+    <div class="sub">
+      <h2>Two learners</h2>
+      <p class="note">Each point of the triangle is a mixed strategy for player 1: the closer to a corner, the more it plays that move. Click to choose where player 1 starts. Player 2 starts at $(0.2, 0.5, 0.3)$.</p>
+      <div class="row tabs" id="tabs">
+        <button data-m="pg">Policy gradient</button>
+        <button data-m="fp">Fictitious play</button>
+      </div>
+      <canvas id="tri" aria-label="Strategy triangle for player 1"></canvas>
+      <div class="key">
+        <span><b style="background:#059669"></b>player 1's current strategy</span>
+        <span><b style="background:#d97706"></b>its running average</span>
+        <span>● Nash equilibrium</span>
+      </div>
+      <div class="row">
+        <button id="bRun" class="primary">Run</button>
+        <span class="spacer"></span>
+        <button id="bResetT" class="quiet">Reset</button>
+      </div>
+      <div class="stats">
+        <div class="stat"><span class="k">Step</span><span class="v" id="sStep">0</span></div>
+        <div class="stat"><span class="k">Current strategy</span><span class="v" id="sCur">–</span></div>
+        <div class="stat"><span class="k">Exploitability of the average</span><span class="v" id="sExp">–</span></div>
+      </div>
+      <p class="note" id="mnote"></p>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>Rock-paper-scissors is a two-player zero-sum game. With actions ordered rock, paper, scissors, player 1's payoff matrix is</p>
+    $$A = \begin{pmatrix} 0 &amp; -1 &amp; 1 \\ 1 &amp; 0 &amp; -1 \\ -1 &amp; 1 &amp; 0 \end{pmatrix}$$
+    <p>Row $i$ is player 1's move, column $j$ player 2's, and player 2 gets $-A_{ij}$. With mixed strategies (probability vectors) $\mathbf x$ and $\mathbf y$, player 1's expected payoff is</p>
+    $$\mathbf x^\top A\, \mathbf y = \sum_{i,j} x_i A_{ij}\, y_j$$
+    <p>The vector $A\mathbf y$ holds the payoff of each pure move against $\mathbf y$. A best response plays the largest entry. That is all the agent in the first part does, with $\mathbf y$ estimated from your counts.</p>
+    <p>A pair $(\mathbf x^*, \mathbf y^*)$ is a <b>Nash equilibrium</b> if neither player can gain by deviating alone:</p>
+    $$\mathbf x^\top A\, \mathbf y^* \le \mathbf x^{*\top} A\, \mathbf y^* \le \mathbf x^{*\top} A\, \mathbf y \quad \text{for all } \mathbf x, \mathbf y$$
+    <p>For rock-paper-scissors it is $\mathbf x^* = \mathbf y^* = (\tfrac13, \tfrac13, \tfrac13)$, with value 0. Against the uniform mix every move earns exactly 0, so nothing can exploit it. How far a strategy is from equilibrium is measured by its exploitability, the most a best-responding opponent can win against it: $\max_j\, (-\mathbf x^\top A)_j$.</p>
+    <p>Policy gradient with a softmax policy $x_k \propto e^{\theta_k}$ (Lesson 70) moves each logit by</p>
+    $$\frac{\partial\, \mathbf x^\top A \mathbf y}{\partial \theta_k} = x_k \big( (A\mathbf y)_k - \mathbf x^\top A \mathbf y \big)$$
+    <p>Each player climbs its own gradient while the other moves. The pair circles the equilibrium instead of converging to it, and with finite steps the circles slowly widen. The running averages still approach $(\tfrac13, \tfrac13, \tfrac13)$, as the exploitability counter shows. This matches a general result: in two-player zero-sum games, if both players have vanishing average regret (multiplicative-weights learners do, for example), their average strategies converge to a Nash equilibrium. Fictitious play (each plays a best response to the other's average) also converges in average (Robinson, 1951). Self-play in AlphaZero (Lesson 96) relies on the same zero-sum structure.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const C = Course.colors;
+  const A = [[0, -1, 1], [1, 0, -1], [-1, 1, 0]];
+  const ICON = ['✊', '✋', '✌️'], NAME = ['rock', 'paper', 'scissors'];
+  const Ay = (y) => A.map((row) => row.reduce((s, a, j) => s + a * y[j], 0));
+  const xA = (x) => [0, 1, 2].map((j) => x.reduce((s, xi, i) => s + xi * A[i][j], 0));
+  const dot = (u, v) => u.reduce((s, a, i) => s + a * v[i], 0);
+  const exploit = (x) => Math.max(...xA(x).map((v) => -v));
+
+  // ------------------------------------------------------------ part 1: you vs fictitious play
+  let counts, W, L, D;
+  function resetH() {
+    counts = [1, 1, 1]; W = 0; L = 0; D = 0;   // one imaginary prior game of each
+    $('you').textContent = '·'; $('them').textContent = '·';
+    $('status').textContent = 'Pick a move.';
+    showH();
+  }
+  function play(a) {
+    const tot = counts.reduce((s, c) => s + c, 0), y = counts.map((c) => c / tot);
+    const b = Course.argmax(Ay(y));                   // agent's best response to your history
+    const r = A[a][b];
+    if (r > 0) W++; else if (r < 0) L++; else D++;
+    counts[a]++;
+    return { a, b, r, y };
+  }
+  function showRound({ a, b, r, y }) {
+    $('you').textContent = ICON[a]; $('them').textContent = ICON[b];
+    $('status').textContent = `You played ${NAME[a]}, it played ${NAME[b]}: ${r > 0 ? 'you win' : r < 0 ? 'it wins' : 'draw'}. ` +
+      `It expected you to play rock ${Math.round(100 * y[0])}%, paper ${Math.round(100 * y[1])}%, scissors ${Math.round(100 * y[2])}%, and answered with ${NAME[b]}.`;
+  }
+  function showH() {
+    const tot = counts.reduce((s, c) => s + c, 0);
+    $('freq').innerHTML = counts.map((c, i) => `<span>${ICON[i]} ${NAME[i]}</span><span class="track"><span class="fill" style="width:${(100 * c) / tot}%"></span></span><span>${Math.round((100 * c) / tot)}%</span>`).join('');
+    $('sRounds').textContent = W + L + D; $('sW').textContent = W; $('sL').textContent = L; $('sD').textContent = D;
+  }
+  $('rps').addEventListener('click', (e) => { const btn = e.target.closest('button'); if (!btn) return; showRound(play(+btn.dataset.a)); showH(); });
+  $('bRand').addEventListener('click', () => { let last; for (let i = 0; i < 100; i++) last = play(Course.randInt(3)); showRound(last); showH(); });
+  $('bBias').addEventListener('click', () => { let last; for (let i = 0; i < 100; i++) last = play(Course.sample([0.5, 0.25, 0.25])); showRound(last); showH(); });
+  $('bResetH').addEventListener('click', resetH);
+  resetH();
+
+  // ------------------------------------------------------------ part 2: two learners on the simplex
+  const canvas = $('tri'), ctx = canvas.getContext('2d');
+  let mode = 'pg', start1 = [0.6, 0.25, 0.15], th1, th2, x, y, avgX, sumX, sumY, cnt1, cnt2, t, path, apath, timer = null;
+  const softmax = (th) => { const m = Math.max(...th), e = th.map((v) => Math.exp(v - m)), s = e.reduce((a, b) => a + b, 0); return e.map((v) => v / s); };
+  const ETA = 0.1;
+
+  function resetT() {
+    stop();
+    th1 = start1.map(Math.log); th2 = [0.2, 0.5, 0.3].map(Math.log);
+    x = softmax(th1); y = softmax(th2);
+    cnt1 = x.map((v) => v * 3); cnt2 = y.map((v) => v * 3);  // fictitious play: initial beliefs
+    sumX = [0, 0, 0]; sumY = [0, 0, 0]; t = 0;
+    avgX = x.slice(); path = [x.slice()]; apath = [x.slice()];
+    $('mnote').textContent = mode === 'pg'
+      ? 'Both players follow the exact gradient of their own expected payoff, step size 0.1. Watch the green path circle the centre and drift outwards while the amber average heads in.'
+      : 'Each player plays a pure best response to the other\'s empirical move frequencies. Green is the frequency of player 1\'s moves so far; it zigzags towards the centre (Robinson, 1951).';
+    drawT();
+  }
+  function stepT() {
+    if (mode === 'pg') {
+      const u1 = Ay(y), u2 = xA(x).map((v) => -v), v1 = dot(x, u1), v2 = dot(y, u2);
+      th1 = th1.map((v, k) => v + ETA * x[k] * (u1[k] - v1));
+      th2 = th2.map((v, k) => v + ETA * y[k] * (u2[k] - v2));
+      x = softmax(th1); y = softmax(th2);
+      sumX = sumX.map((s, k) => s + x[k]); t++;
+      avgX = sumX.map((s) => s / t);
+    } else {
+      const b1 = Course.argmax(Ay(cnt2.map((c) => c / cnt2.reduce((a, b) => a + b, 0))));
+      const b2 = Course.argmax(xA(cnt1.map((c) => c / cnt1.reduce((a, b) => a + b, 0))).map((v) => -v));
+      cnt1[b1]++; cnt2[b2]++; t++;
+      const s1 = cnt1.reduce((a, b) => a + b, 0);
+      x = cnt1.map((c) => c / s1); avgX = x;
+    }
+    path.push(x.slice()); apath.push(avgX.slice());
+    if (path.length > 4000) { path.shift(); apath.shift(); }
+  }
+  // Barycentric: rock at the top, paper bottom left, scissors bottom right.
+  let geom;
+  function P(p) { const { cx, top, side } = geom, h = side * Math.sqrt(3) / 2; return [cx + (p[2] - p[1]) * side / 2, top + (1 - p[0]) * h]; }
+  function drawT() {
+    const dpr = window.devicePixelRatio || 1, W = canvas.clientWidth, H = canvas.clientHeight;
+    if (!W) return;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+    const side = Math.min(W - 40, (H - 50) * 2 / Math.sqrt(3));
+    geom = { cx: W / 2, top: 26, side };
+    const R0 = P([1, 0, 0]), P0 = P([0, 1, 0]), S0 = P([0, 0, 1]);
+    ctx.fillStyle = '#f9fafb'; ctx.strokeStyle = '#d1d5db'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(...R0); ctx.lineTo(...P0); ctx.lineTo(...S0); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.font = '13px -apple-system, sans-serif'; ctx.fillStyle = '#374151'; ctx.textAlign = 'center';
+    ctx.fillText('✊ rock', R0[0], R0[1] - 8);
+    ctx.textBaseline = 'top'; ctx.fillText('✋ paper', P0[0] + 10, P0[1] + 6); ctx.fillText('✌️ scissors', S0[0] - 14, S0[1] + 6);
+    ctx.textBaseline = 'alphabetic';
+    const line = (pts, col, w) => { ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath(); pts.forEach((p, i) => (i ? ctx.lineTo(...P(p)) : ctx.moveTo(...P(p)))); ctx.stroke(); };
+    line(path, 'rgba(5,150,105,0.7)', 1.5);
+    line(apath, C.amber, 2);
+    const dotAt = (p, col, r) => { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(...P(p), r, 0, 2 * Math.PI); ctx.fill(); };
+    dotAt([1 / 3, 1 / 3, 1 / 3], '#111827', 4);
+    dotAt(x, C.green, 5);
+    dotAt(avgX, C.amber, 4);
+    $('sStep').textContent = t;
+    $('sCur').textContent = x.map((v) => v.toFixed(2)).join(' / ');
+    $('sExp').textContent = exploit(avgX).toFixed(3);
+  }
+  canvas.addEventListener('click', (e) => {
+    const r = canvas.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top;
+    const { cx, top, side } = geom, h = side * Math.sqrt(3) / 2;
+    const rock = 1 - (py - top) / h, d = (px - cx) * 2 / side;   // d = scissors - paper
+    const sc = (1 - rock + d) / 2, pa = (1 - rock - d) / 2;
+    if (rock < 0.02 || sc < 0.02 || pa < 0.02) return;
+    start1 = [rock, pa, sc];
+    resetT();
+  });
+  function stop() { clearInterval(timer); timer = null; $('bRun').textContent = 'Run'; }
+  $('bRun').addEventListener('click', () => {
+    if (timer) return stop();
+    $('bRun').textContent = 'Pause';
+    timer = setInterval(() => { for (let i = 0; i < 8; i++) stepT(); drawT(); if (t >= 6000) stop(); }, 30);
+  });
+  $('bResetT').addEventListener('click', resetT);
+  $('tabs').addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    mode = b.dataset.m;
+    [...$('tabs').children].forEach((k) => k.classList.toggle('on', k.dataset.m === mode));
+    resetT();
+  });
+  [...$('tabs').children].forEach((k) => k.classList.toggle('on', k.dataset.m === mode));
+  new ResizeObserver(drawT).observe(canvas);
+  resetT();
+
+  const xq = [0.5, 0.3, 0.2], yq = [0.2, 0.3, 0.5];
+  const u = Ay(yq);
+  Course.quiz([
+    {
+      q: 'Your opponent plays rock 50%, paper 30%, scissors 20%. What is the expected payoff of your best response?',
+      answer: Math.max(...Ay(xq)),
+      hint: 'Compute $A\\mathbf y$: one number per move.',
+      explain: '$A\\mathbf y = (0 - 0.3 + 0.2,\\ 0.5 + 0 - 0.2,\\ -0.5 + 0.3 + 0) = (-0.1, 0.3, -0.2)$. Paper wins with $0.3$.',
+    },
+    {
+      q: '$\\mathbf x = (0.5, 0.3, 0.2)$ and $\\mathbf y = (0.2, 0.3, 0.5)$. What is player 1\'s expected payoff $\\mathbf x^\\top A \\mathbf y$?',
+      answer: dot(xq, u),
+      tol: 0.001,
+      explain: '$A\\mathbf y = (0.2, -0.3, 0.1)$, so $0.5 \\times 0.2 + 0.3 \\times (-0.3) + 0.2 \\times 0.1 = 0.03$.',
+    },
+    {
+      q: 'Same $\\mathbf x$ and $\\mathbf y$, softmax policy for player 1. What is $\\partial(\\mathbf x^\\top A \\mathbf y)/\\partial \\theta_{\\text{rock}}$?',
+      answer: xq[0] * (u[0] - dot(xq, u)),
+      tol: 0.001,
+      hint: '$x_k\\big((A\\mathbf y)_k - \\mathbf x^\\top A \\mathbf y\\big)$ with $k$ = rock.',
+      explain: '$0.5 \\times (0.2 - 0.03) = 0.085$. Rock beats the average move against this $\\mathbf y$, so its logit rises.',
+    },
+    {
+      q: 'Why don\'t two independent policy-gradient learners settle down in rock-paper-scissors?',
+      choices: [
+        'The step size is too small',
+        'Each one\'s best direction depends on the other, who is also moving: whatever one favours, the other learns to counter',
+        'Rock-paper-scissors has no Nash equilibrium',
+      ],
+      answer: 1,
+      explain: 'Each learner faces a non-stationary environment. The equilibrium exists, $(\\tfrac13, \\tfrac13, \\tfrac13)$, but the joint dynamics orbit it rather than converge.',
+    },
+  ]);
+</script>
+</body>
+</html>

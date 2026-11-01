@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>27. Solving a small MDP by hand | Learning RL</title>
+<meta name="description" content="Two states, two Bellman equations, two unknowns. Drag the rewards and probabilities and watch the two lines move and their crossing point give the values.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .chain { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 4px 0 12px; }
+  .st { width: 96px; padding: 8px 4px; text-align: center; border: 2px solid var(--border); border-radius: 50px; background: var(--soft); font-weight: 600; color: var(--heading); line-height: 1.25; }
+  .st small { display: block; font-weight: 500; color: var(--muted); font-size: 0.78rem; }
+  .st .vv { color: var(--accent); font-size: 1.05rem; }
+  .links { display: flex; flex-direction: column; gap: 6px; font-size: 0.82rem; color: var(--muted); text-align: center; min-width: 92px; }
+  .links span { white-space: nowrap; }
+  .sliders2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px; }
+  @media (max-width: 560px) { .sliders2 { grid-template-columns: 1fr; } }
+  #plane { width: 100%; max-width: 440px; aspect-ratio: 1; display: block; margin: 6px auto; cursor: crosshair; touch-action: manipulation; }
+  #eqs, #solve { overflow-x: auto; overflow-y: hidden; }
+  .key { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; font-size: 0.85rem; color: var(--muted); }
+  .key b { display: inline-block; width: 16px; vertical-align: middle; margin-right: 4px; border-top: 3px solid; }
+</style>
+</head>
+<body data-lesson="27">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Solving a small MDP by hand</h1>
+  <p class="lede">Once the policy is fixed, the Bellman equations are ordinary linear equations: one per state, with the values as unknowns. With two states that is two equations in two unknowns, which you can solve with school algebra, or see as two lines crossing.</p>
+
+  <section class="card">
+    <p class="note">Lesson 17's two-state weather ($p$ and $q$ are its $a$ and $b$), now with rewards: every sunny day pays $r_\text{S}$, every rainy day pays $r_\text{R}$. No actions to choose (the policy is fixed), so each state has one row of transition probabilities. The task never ends, and $\gamma &lt; 1$ keeps the return finite.</p>
+    <div class="chain">
+      <div class="st">☀️ Sunny<small>$r_\text{S}$ = <span id="lrS"></span></small><span class="vv" id="lvS"></span></div>
+      <div class="links"><span id="lp">→ rain</span><span id="lq">← sun</span></div>
+      <div class="st">🌧️ Rainy<small>$r_\text{R}$ = <span id="lrR"></span></small><span class="vv" id="lvR"></span></div>
+    </div>
+    <div class="sliders2">
+      <label class="slider"><span>$r_\text{S}$</span><input id="iRS" type="range" min="-3" max="3" step="0.5" value="2"><output></output></label>
+      <label class="slider"><span>$r_\text{R}$</span><input id="iRR" type="range" min="-3" max="3" step="0.5" value="-1"><output></output></label>
+      <label class="slider"><span>$p$ (sun → rain)</span><input id="iP" type="range" min="0" max="1" step="0.05" value="0.3"><output></output></label>
+      <label class="slider"><span>$q$ (rain → sun)</span><input id="iQ" type="range" min="0" max="1" step="0.05" value="0.6"><output></output></label>
+      <label class="slider"><span>Discount $\gamma$</span><input id="iG" type="range" min="0" max="0.95" step="0.05" value="0.9"><output></output></label>
+    </div>
+    <div id="eqs"></div>
+    <div id="solve"></div>
+
+    <div class="sub">
+      <h2>Two lines, one crossing</h2>
+      <p class="note">Each equation is a line in the plane of possible values $(v_\text{S}, v_\text{R})$. Only the crossing point satisfies both. Click anywhere to place a guess, then press "Back up" to replace the guess by the right-hand sides.</p>
+      <canvas id="plane" aria-label="The two Bellman equations as lines. Click to place a guess."></canvas>
+      <div class="key">
+        <span><b style="border-color:var(--amber)"></b>sunny equation</span>
+        <span><b style="border-color:var(--blue)"></b>rainy equation</span>
+        <span><b style="border-color:var(--purple)"></b>your guess</span>
+      </div>
+      <p class="status" id="guessNote">Click the plane to place a guess.</p>
+      <div class="row center">
+        <button id="bBack">Back up</button>
+        <button id="bSim" class="quiet">Check by simulation</button>
+      </div>
+      <p class="status" id="simNote"></p>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>With the policy fixed, Lesson 26's equation becomes $v(s) = r(s) + \gamma \sum_{s'} P_{ss'}\, v(s')$, where $r(s)$ is the expected reward from $s$ and $P_{ss'}$ is the probability of moving from $s$ to $s'$. For the two weather states:</p>
+    $$\begin{aligned}
+      v_\text{S} &= r_\text{S} + \gamma\big[(1 - p)\, v_\text{S} + p\, v_\text{R}\big] \\
+      v_\text{R} &= r_\text{R} + \gamma\big[q\, v_\text{S} + (1 - q)\, v_\text{R}\big]
+    \end{aligned}$$
+    <p>Move the unknowns to the left:</p>
+    $$\begin{aligned}
+      \big(1 - \gamma(1 - p)\big)\, v_\text{S} - \gamma p\, v_\text{R} &= r_\text{S} \\
+      -\gamma q\, v_\text{S} + \big(1 - \gamma(1 - q)\big)\, v_\text{R} &= r_\text{R}
+    \end{aligned}$$
+    <p>Two linear equations, so two straight lines. Solving them (Cramer's rule) gives</p>
+    $$\begin{aligned}
+      D &= \big(1 - \gamma(1-p)\big)\big(1 - \gamma(1-q)\big) - \gamma^2 p q \\
+      v_\text{S} &= \frac{\big(1 - \gamma(1-q)\big)\, r_\text{S} + \gamma p\, r_\text{R}}{D} \\
+      v_\text{R} &= \frac{\big(1 - \gamma(1-p)\big)\, r_\text{R} + \gamma q\, r_\text{S}}{D}
+    \end{aligned}$$
+    <p>Expanding $D$ gives $D = (1-\gamma)\big(1 - \gamma + \gamma(p + q)\big)$, which is positive whenever $\gamma &lt; 1$. So the lines always cross at exactly one point. At $\gamma = 1$ the return of a never-ending task can be infinite and $D = 0$.</p>
+    <p>"Back up" applies $v \leftarrow r + \gamma P v$ to your guess. The error after a press is $\gamma P$ times the error before. Each row of $P$ averages, so the larger of the two errors shrinks by at least a factor $\gamma$ per press, and the purple path closes in on the crossing. Lesson 30 turns that into an algorithm.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const f2 = (x) => (Math.abs(x) < 0.005 ? 0 : x).toFixed(2);
+  const par = (x) => (x < -0.004 ? `(${f2(x)})` : f2(x));
+  const rS = Course.slider('#iRS', (x) => x.toFixed(1), update);
+  const rR = Course.slider('#iRR', (x) => x.toFixed(1), update);
+  const pP = Course.slider('#iP', (x) => x.toFixed(2), update);
+  const pQ = Course.slider('#iQ', (x) => x.toFixed(2), update);
+  const gam = Course.slider('#iG', (x) => x.toFixed(2), update);
+  let sol, guess = null, path = [];
+
+  function solve() {
+    const g = gam(), p = pP(), q = pQ();
+    const a = 1 - g * (1 - p), b = -g * p, c = -g * q, d = 1 - g * (1 - q);
+    const D = a * d - b * c;
+    return { a, b, c, d, D, vS: (d * rS() - b * rR()) / D, vR: (a * rR() - c * rS()) / D };
+  }
+  // v ← r + γ P v
+  const backup = ([x, y]) => {
+    const g = gam(), p = pP(), q = pQ();
+    return [rS() + g * ((1 - p) * x + p * y), rR() + g * (q * x + (1 - q) * y)];
+  };
+
+  function update() {
+    sol = solve();
+    const g = gam(), p = pP(), q = pQ();
+    $('lrS').textContent = rS(); $('lrR').textContent = rR();
+    $('lvS').textContent = `v = ${f2(sol.vS)}`; $('lvR').textContent = `v = ${f2(sol.vR)}`;
+    $('lp').textContent = `${p.toFixed(2)} → rain`; $('lq').textContent = `sun ← ${q.toFixed(2)}`;
+    Course.tex($('eqs'), `\\begin{aligned}
+      v_\\text{S} &= ${rS()} + ${g}\\big[${(1 - p).toFixed(2)}\\, v_\\text{S} + ${p.toFixed(2)}\\, v_\\text{R}\\big] \\\\
+      v_\\text{R} &= ${rR()} + ${g}\\big[${q.toFixed(2)}\\, v_\\text{S} + ${(1 - q).toFixed(2)}\\, v_\\text{R}\\big]
+    \\end{aligned}`, true);
+    Course.tex($('solve'), `\\begin{aligned}
+      ${sol.a.toFixed(3)}\\, v_\\text{S} - ${(-sol.b).toFixed(3)}\\, v_\\text{R} &= ${rS()} \\\\
+      -${(-sol.c).toFixed(3)}\\, v_\\text{S} + ${sol.d.toFixed(3)}\\, v_\\text{R} &= ${rR()} \\\\
+      D = ${sol.a.toFixed(3)} \\times ${sol.d.toFixed(3)} - ${(sol.b * sol.c).toFixed(4)} &= ${sol.D.toFixed(4)} \\\\
+      v_\\text{S} = ${f2(sol.vS)}, \\quad v_\\text{R} &= ${f2(sol.vR)}
+    \\end{aligned}`, true);
+    path = guess ? [guess] : [];
+    $('simNote').textContent = '';
+    noteGuess();
+    draw();
+  }
+
+  // ------------------------------------------------ the plane
+  const canvas = $('plane'), ctx = canvas.getContext('2d');
+  let view;
+  function draw() {
+    const dpr = window.devicePixelRatio || 1, W = canvas.clientWidth, H = canvas.clientHeight;
+    if (!W) return;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    const span = Math.max(6, 1.6 * Math.abs(sol.vS - sol.vR), ...path.map(([x, y]) => 1.15 * Math.max(Math.abs(x - sol.vS), Math.abs(y - sol.vR))));
+    const cx = (sol.vS + sol.vR) / 2, x0 = cx - span, x1 = cx + span, y0 = cx - span, y1 = cx + span;
+    const m = { l: 40, r: 10, t: 10, b: 34 };
+    const X = (x) => m.l + ((x - x0) / (x1 - x0)) * (W - m.l - m.r);
+    const Y = (y) => H - m.b - ((y - y0) / (y1 - y0)) * (H - m.t - m.b);
+    view = { x0, x1, y0, y1, m, W, H };
+
+    ctx.font = '11px -apple-system, sans-serif';
+    const step = span > 30 ? 10 : span > 12 ? 5 : 2;
+    ctx.strokeStyle = '#eef0f3'; ctx.fillStyle = '#6b7280'; ctx.lineWidth = 1;
+    for (let t = Math.ceil(x0 / step) * step; t <= x1; t += step) {
+      ctx.beginPath(); ctx.moveTo(X(t), m.t); ctx.lineTo(X(t), H - m.b); ctx.stroke();
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillText(t, X(t), H - m.b + 4);
+    }
+    for (let t = Math.ceil(y0 / step) * step; t <= y1; t += step) {
+      ctx.beginPath(); ctx.moveTo(m.l, Y(t)); ctx.lineTo(W - m.r, Y(t)); ctx.stroke();
+      ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.fillText(t, m.l - 5, Y(t));
+    }
+    ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; ctx.fillText('v_S (sunny value)', (m.l + W - m.r) / 2, H - 2);
+    ctx.save(); ctx.translate(11, (m.t + H - m.b) / 2); ctx.rotate(-Math.PI / 2); ctx.textBaseline = 'middle'; ctx.fillText('v_R (rainy value)', 0, 0); ctx.restore();
+
+    ctx.save();
+    ctx.beginPath(); ctx.rect(m.l, m.t, W - m.l - m.r, H - m.t - m.b); ctx.clip();
+    // a·x + b·y = c, drawn across the box
+    const line = (a, b, c, color) => {
+      ctx.strokeStyle = color; ctx.lineWidth = 2.5; ctx.beginPath();
+      if (Math.abs(b) > Math.abs(a)) { ctx.moveTo(X(x0), Y((c - a * x0) / b)); ctx.lineTo(X(x1), Y((c - a * x1) / b)); }
+      else { ctx.moveTo(X((c - b * y0) / a), Y(y0)); ctx.lineTo(X((c - b * y1) / a), Y(y1)); }
+      ctx.stroke();
+    };
+    line(sol.a, sol.b, rS(), Course.colors.amber);
+    line(sol.c, sol.d, rR(), Course.colors.blue);
+    if (path.length) {
+      ctx.strokeStyle = Course.colors.purple; ctx.fillStyle = Course.colors.purple; ctx.lineWidth = 1.5;
+      ctx.beginPath(); path.forEach(([x, y], i) => (i ? ctx.lineTo(X(x), Y(y)) : ctx.moveTo(X(x), Y(y)))); ctx.stroke();
+      path.forEach(([x, y], i) => { ctx.beginPath(); ctx.arc(X(x), Y(y), i === path.length - 1 ? 5 : 3, 0, 2 * Math.PI); ctx.fill(); });
+    }
+    ctx.fillStyle = Course.colors.green; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(X(sol.vS), Y(sol.vR), 6, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+    ctx.restore();
+  }
+  new ResizeObserver(draw).observe(canvas);
+
+  function noteGuess() {
+    if (!guess) return;
+    const [x, y] = guess, [bx, by] = backup(guess);
+    $('guessNote').innerHTML = `Guess $(${f2(x)}, ${f2(y)})$. Gaps: sunny ${f2(bx - x)}, rainy ${f2(by - y)}. Largest error: ${f2(Math.max(Math.abs(x - sol.vS), Math.abs(y - sol.vR)))}.`;
+    Course.renderMath($('guessNote'));
+  }
+  canvas.addEventListener('click', (e) => {
+    const r = canvas.getBoundingClientRect(), { x0, x1, y0, y1, m, W, H } = view;
+    const x = x0 + ((e.clientX - r.left - m.l) / (W - m.l - m.r)) * (x1 - x0);
+    const y = y0 + ((H - m.b - (e.clientY - r.top)) / (H - m.t - m.b)) * (y1 - y0);
+    guess = [x, y]; path = [guess];
+    noteGuess(); draw();
+  });
+  $('bBack').addEventListener('click', () => {
+    if (!guess) { guess = [sol.vS - 5, sol.vR + 4]; path = [guess]; }
+    guess = backup(guess); path.push(guess);
+    noteGuess(); draw();
+  });
+
+  // Monte Carlo check: average discounted return from each state, cut off where γ^t < 0.001.
+  $('bSim').addEventListener('click', () => {
+    const g = gam(), p = pP(), q = pQ(), runs = 2000;
+    const H = g > 0 ? Math.ceil(Math.log(1e-3) / Math.log(g)) : 1;
+    const est = [0, 1].map((s0) => {
+      let tot = 0;
+      for (let k = 0; k < runs; k++) {
+        let s = s0, disc = 1, G = 0;
+        for (let t = 0; t < H; t++) {
+          G += disc * (s === 0 ? rS() : rR());
+          disc *= g;
+          s = s === 0 ? (Math.random() < p ? 1 : 0) : (Math.random() < q ? 0 : 1);
+        }
+        tot += G;
+      }
+      return tot / runs;
+    });
+    $('simNote').textContent = `${runs} simulated runs from each state: sunny ${f2(est[0])}, rainy ${f2(est[1])}. Algebra: ${f2(sol.vS)}, ${f2(sol.vR)}.`;
+  });
+
+  update();
+
+  Course.quiz([
+    {
+      q: 'A single state loops to itself forever and pays $r = 2$ each step. With $\\gamma = 0.9$, what is its value?',
+      answer: 2 / (1 - 0.9),
+      tol: 0.01,
+      hint: '$v = 2 + 0.9\\, v$.',
+      explain: '$v = 2 + 0.9 v \\Rightarrow 0.1 v = 2 \\Rightarrow v = 20$, which is also $2/(1 - \\gamma)$.',
+    },
+    {
+      q: 'Set $r_\\text{S} = 2$, $r_\\text{R} = 0$, $p = q = 0.5$ and $\\gamma = 0.9$. What is $v_\\text{S}$?',
+      answer: ((1 - 0.9 * 0.5) * 2 + 0.9 * 0.5 * 0) / ((1 - 0.45) * (1 - 0.45) - 0.81 * 0.25),
+      tol: 0.01,
+      hint: 'Both diagonal coefficients are $1 - 0.9 \\times 0.5 = 0.55$.',
+      explain: '$D = 0.55^2 - 0.45^2 = 0.1$, and $v_\\text{S} = 0.55 \\times 2 / 0.1 = 11$. (And $v_\\text{R} = 0.45 \\times 2/0.1 = 9$.)',
+    },
+    {
+      q: 'Two states alternate: A always goes to B and B always goes to A. A pays 1, B pays 0, $\\gamma = 0.5$. What is $v_\\text{A}$?',
+      answer: 4 / 3,
+      tol: 0.005,
+      hint: '$v_\\text{A} = 1 + 0.5\\, v_\\text{B}$ and $v_\\text{B} = 0 + 0.5\\, v_\\text{A}$.',
+      explain: 'Substitute: $v_\\text{A} = 1 + 0.25\\, v_\\text{A}$, so $v_\\text{A} = 1/0.75 = 4/3$.',
+    },
+    {
+      q: 'Why do the two lines always cross at exactly one point when $\\gamma < 1$?',
+      choices: [
+        'Because the rewards are bounded',
+        'Because $p + q = 1$',
+        'Because the determinant $D = (1-\\gamma)(1 - \\gamma + \\gamma(p+q))$ is positive, so the lines are never parallel',
+      ],
+      answer: 2,
+      explain: 'Parallel lines would need $D = 0$. With $\\gamma < 1$ both factors are positive.',
+    },
+  ]);
+</script>
+</body>
+</html>

@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>37. Blackjack | Learning RL</title>
+<meta name="description" content="Play blackjack, then let Monte Carlo play half a million hands and map the value of every state. S&amp;B Example 5.1, live.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .table { display: grid; gap: 10px; margin: 8px 0; }
+  .side { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .side .who { width: 4.5em; color: var(--muted); font-size: 0.9rem; }
+  .cards { display: flex; gap: 6px; flex-wrap: wrap; }
+  .pc { width: 40px; height: 56px; border: 1px solid #d1d5db; border-radius: 5px; background: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1rem; box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+  .pc.red { color: var(--red); }
+  .pc.back { background: repeating-linear-gradient(45deg, #059669, #059669 4px, #047857 4px, #047857 8px); }
+  .side .sum { font-variant-numeric: tabular-nums; color: var(--heading); font-weight: 600; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; background: var(--soft); border: 1px solid var(--border); font-size: 0.85rem; color: var(--heading); }
+  .maps { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .maps h3 { font-size: 0.9rem; color: var(--muted); font-weight: 500; text-align: center; margin: 0 0 4px; }
+  .hm { display: grid; grid-template-columns: 22px repeat(10, 1fr); gap: 1px; font-size: 0.7rem; font-variant-numeric: tabular-nums; }
+  .hm .h { color: var(--muted); text-align: center; align-self: center; }
+  .hm .c { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 2px; cursor: pointer; font-size: 0.62rem; color: var(--heading); background: var(--soft); }
+  .hm .c.sel { outline: 2px solid var(--blue); outline-offset: -2px; }
+  .hm .c.cur { outline: 2px solid var(--amber); outline-offset: -2px; }
+  .hm .xl { grid-column: 2 / -1; text-align: center; color: var(--muted); }
+  @media (max-width: 560px) { .maps { grid-template-columns: 1fr; } .hm .c { font-size: 0.6rem; } }
+</style>
+</head>
+<body data-lesson="37">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Blackjack</h1>
+  <p class="lede">Blackjack is easy to simulate and awkward to write a model for. That makes it the textbook case for Monte Carlo: play many hands, average the outcomes, and the value of every state appears without ever computing $p(s', r \mid s, a)$.</p>
+
+  <section class="card">
+    <h2>Play a hand</h2>
+    <p class="note">Get closer to 21 than the dealer without going over. Face cards are 10. An ace is 11 unless that would bust you, then 1. An ace counted as 11 is a <b>usable ace</b>. The dealer hits until 17 or more. Below 12 you can't bust, so you hit automatically.</p>
+    <div class="table">
+      <div class="side"><span class="who">Dealer</span><div class="cards" id="dCards"></div><span class="sum" id="dSum"></span></div>
+      <div class="side"><span class="who">You</span><div class="cards" id="pCards"></div><span class="sum" id="pSum"></span></div>
+    </div>
+    <p class="status" id="state"></p>
+    <div class="row center">
+      <button id="bHit" class="primary">Hit</button>
+      <button id="bStick" class="primary">Stick</button>
+      <button id="bDeal">Deal</button>
+    </div>
+    <p class="status" id="result"></p>
+    <div class="stats">
+      <div class="stat"><span class="k">Hands</span><span class="v" id="sH">0</span></div>
+      <div class="stat"><span class="k">Won / drawn / lost</span><span class="v" id="sW">0 / 0 / 0</span></div>
+      <div class="stat"><span class="k">Your average reward</span><span class="v" id="sAvg">–</span></div>
+    </div>
+
+    <div class="sub">
+      <h2>Monte Carlo: the value of "stick on 20 or 21"</h2>
+      <p class="note">The policy S&amp;B Example 5.1 evaluates: hit on everything below 20. Each cell is $V(s)$, the average reward of all hands that passed through that state. Green is good for you, red is bad. Click a cell. The amber outline is the state of the hand you are playing above.</p>
+      <div class="row">
+        <button id="b10k" class="primary">+10,000 hands</button>
+        <button id="b500k">Up to 500,000</button>
+        <button id="bReset" class="quiet">Reset</button>
+        <span class="spacer"></span>
+        <span class="muted" id="nHands">0 hands</span>
+      </div>
+      <div class="maps">
+        <div><h3>Usable ace</h3><div class="hm" id="hmU"></div></div>
+        <div><h3>No usable ace</h3><div class="hm" id="hmN"></div></div>
+      </div>
+      <p class="status" id="cellInfo"></p>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>The state is what matters for your decision:</p>
+    $$S = (\text{your sum} \in \{12, \dots, 21\},\ \text{dealer's card} \in \{A, 2, \dots, 10\},\ \text{usable ace} \in \{\text{yes}, \text{no}\})$$
+    <p>That is $10 \times 10 \times 2 = 200$ states. The deck is infinite (cards drawn with replacement), so the cards already seen don't matter. Sums below 12 are left out because hitting is always right there. A natural (21 on the deal) wins at once unless the dealer also has one, and involves no decision, so the maps leave it out too.</p>
+    <p>Rewards are $0$ during the hand and $+1$, $0$ or $-1$ at the end, with $\gamma = 1$. So every state in a hand has the same return, the final reward:</p>
+    $$G_t = R_T \quad \text{for every } t, \qquad V(s) = \frac{1}{N(s)} \sum_{i=1}^{N(s)} R_T^{(i)}$$
+    <p>The value of a state is your expected winnings from it. First-visit and every-visit (Lesson 36) agree here, because no state can repeat within a hand. A hit either raises your sum and keeps the ace status, or turns a usable ace into a non-usable one (soft 18 plus a 9 is hard 17). A hard hand of 12 or more can never become soft again.</p>
+    <p>DP could solve this too, but it would need $p(s', r \mid s, a)$, which includes the distribution of the dealer's final total given their up card. Monte Carlo needs only a simulator. As S&amp;B Figure 5.1 shows, the usable-ace map is noisier after 10,000 hands, since usable aces are rarer and those states get fewer samples.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  // ---- Blackjack rules (S&B Example 5.1): infinite deck, dealer sticks on 17+.
+  const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+  const SUITS = ['♠', '♥', '♦', '♣'];
+  const drawRank = () => Course.randInt(13);           // 0..12
+  const val = (rank) => Math.min(10, rank + 1);         // A = 1, faces = 10
+  const card = () => val(drawRank());
+  function add(h, c) {
+    let sum = h.sum + c, u = h.u;
+    if (c === 1 && sum + 10 <= 21) { sum += 10; u = true; }
+    if (sum > 21 && u) { sum -= 10; u = false; }
+    return { sum, u };
+  }
+  const EMPTY = { sum: 0, u: false };
+  function dealerPlays(up) {
+    let d = add(add(EMPTY, up), card());
+    while (d.sum < 17) d = add(d, card());
+    return d.sum;
+  }
+  const outcome = (mine, dealer) => (dealer > 21 || mine > dealer ? 1 : mine < dealer ? -1 : 0);
+
+  // One hand under "stick on 20 or 21". Returns the states visited and the reward.
+  function simHand() {
+    let h = add(add(EMPTY, card()), card());
+    const up = card(), hidden = card();
+    if (h.sum === 21) {   // natural
+      const dNat = add(add(EMPTY, up), hidden).sum === 21;
+      return { visited: [], r: dNat ? 0 : 1 };   // no decision is made, so no state is recorded
+    }
+    while (h.sum < 12) h = add(h, card());
+    const visited = [];
+    for (;;) {
+      visited.push([h.sum, h.u, up]);
+      if (h.sum >= 20) break;
+      h = add(h, card());
+      if (h.sum > 21) return { visited, r: -1 };
+    }
+    let d = add(add(EMPTY, up), hidden);
+    while (d.sum < 17) d = add(d, card());
+    return { visited, r: outcome(h.sum, d.sum) };
+  }
+
+  // ---- Exact values of the same policy (for comparison), by recursion over the infinite deck.
+  const PC = (c) => (c === 10 ? 4 / 13 : 1 / 13);
+  const dealerDist = (() => {
+    const cache = {};
+    return (up) => cache[up] || (cache[up] = (() => {
+      const out = new Array(6).fill(0);   // 17..21, bust
+      (function rec(h, p) {
+        if (h.sum > 21) { out[5] += p; return; }
+        if (h.sum >= 17) { out[h.sum - 17] += p; return; }
+        for (let c = 1; c <= 10; c++) rec(add(h, c), p * PC(c));
+      })(add(EMPTY, up), 1);
+      return out;
+    })());
+  })();
+  const stickValue = (sum, up) => { const d = dealerDist(up); let v = d[5]; for (let k = 0; k < 5; k++) v += sum > 17 + k ? d[k] : sum < 17 + k ? -d[k] : 0; return v; };
+  const exactMemo = new Map();
+  function exactV(sum, u, up) {
+    if (sum > 21) return -1;
+    const key = `${sum}${u}${up}`;
+    if (exactMemo.has(key)) return exactMemo.get(key);
+    let v;
+    if (sum >= 20) v = stickValue(sum, up);
+    else { v = 0; for (let c = 1; c <= 10; c++) { const h = add({ sum, u }, c); v += PC(c) * exactV(h.sum, h.u, up); } }
+    exactMemo.set(key, v); return v;
+  }
+
+  // ---- Monte Carlo prediction tables: index by sum 12..21, usable, dealer 1..10.
+  const ix = (sum, u, up) => ((sum - 12) * 2 + (u ? 1 : 0)) * 10 + (up - 1);
+  let Vs, Ns, hands, sel = null, cur = null;
+  function resetMC() { Vs = new Float64Array(200); Ns = new Float64Array(200); hands = 0; drawMaps(); }
+  function play(k) {
+    for (let i = 0; i < k; i++) {
+      const { visited, r } = simHand();
+      for (const [s, u, up] of visited) { const j = ix(s, u, up); Ns[j]++; Vs[j] += (r - Vs[j]) / Ns[j]; }
+    }
+    hands += k; drawMaps();
+  }
+  const DL = ['A', 2, 3, 4, 5, 6, 7, 8, 9, 10];
+  function drawMap(el, u) {
+    let html = '';
+    for (let sum = 21; sum >= 12; sum--) {
+      html += `<span class="h">${sum}</span>`;
+      for (let up = 1; up <= 10; up++) {
+        const j = ix(sum, u, up), n = Ns[j];
+        const isSel = sel && sel[0] === sum && sel[1] === u && sel[2] === up;
+        const isCur = cur && cur[0] === sum && cur[1] === u && cur[2] === up;
+        html += `<span class="c${isSel ? ' sel' : ''}${isCur ? ' cur' : ''}" data-s="${sum}" data-u="${u ? 1 : 0}" data-d="${up}" style="background:${n ? Course.heat(Vs[j], 1) : ''}"></span>`;
+      }
+    }
+    html += '<span></span>' + DL.map((d) => `<span class="h">${d}</span>`).join('') + '<span class="xl">dealer shows</span>';
+    el.innerHTML = html;
+  }
+  function drawMaps() {
+    drawMap($('hmU'), true); drawMap($('hmN'), false);
+    $('nHands').textContent = `${hands.toLocaleString()} hands`;
+    info();
+  }
+  function info() {
+    if (!sel) { $('cellInfo').textContent = hands ? 'Click a cell for its numbers.' : 'Press "+10,000 hands".'; return; }
+    const [s, u, d] = sel, j = ix(s, u, d);
+    $('cellInfo').textContent = `Sum ${s}, dealer shows ${DL[d - 1]}, ${u ? 'usable ace' : 'no usable ace'}: ` +
+      (Ns[j] ? `V = ${Vs[j].toFixed(3)} from ${Ns[j].toLocaleString()} hands.` : 'no hands yet.') +
+      ` Exact value ${exactV(s, u, d).toFixed(3)}.`;
+  }
+  ['hmU', 'hmN'].forEach((id) => $(id).addEventListener('click', (e) => {
+    const c = e.target.closest('.c'); if (!c) return;
+    sel = [+c.dataset.s, c.dataset.u === '1', +c.dataset.d]; drawMaps();
+  }));
+  $('b10k').addEventListener('click', () => play(10000));
+  $('b500k').addEventListener('click', () => {
+    if (hands >= 500000) return;
+    $('b500k').textContent = 'Running…'; $('b500k').disabled = true;
+    setTimeout(() => { play(500000 - hands); $('b500k').textContent = 'Up to 500,000'; $('b500k').disabled = false; }, 30);
+  });
+  $('bReset').addEventListener('click', resetMC);
+
+  // ---- The playable hand.
+  let P, D, pCards, dCards, over, stats = { n: 0, w: 0, d: 0, l: 0, sum: 0 };
+  const show = (rank) => {
+    const s = Course.choice(SUITS);
+    return `<span class="pc${s === '♥' || s === '♦' ? ' red' : ''}">${RANKS[rank]}${s}</span>`;
+  };
+  function deal() {
+    over = false;
+    const r1 = drawRank(), r2 = drawRank(), up = drawRank(), hid = drawRank();
+    pCards = [show(r1), show(r2)]; dCards = [show(up)];
+    P = add(add(EMPTY, val(r1)), val(r2));
+    D = { up: val(up), hiddenRank: hid, hiddenHTML: show(hid) };
+    $('result').textContent = '';
+    if (P.sum === 21) {
+      const dNat = add(add(EMPTY, D.up), val(hid)).sum === 21;
+      dCards.push(D.hiddenHTML);
+      return end(dNat ? 0 : 1, dNat ? 'Both have naturals: a draw.' : 'A natural 21 on the deal. You win.', 21);
+    }
+    autoHit(); render();
+  }
+  function autoHit() {
+    while (P.sum < 12) { const r = drawRank(); pCards.push(show(r)); P = add(P, val(r)); }
+  }
+  function render() {
+    $('pCards').innerHTML = pCards.join('');
+    $('dCards').innerHTML = dCards.join('') + (over ? '' : '<span class="pc back"></span>');
+    $('pSum').textContent = `= ${P.sum}${P.u ? ' (soft)' : ''}`;
+    $('dSum').textContent = over ? `= ${D.final}` : `shows ${DL[D.up - 1]}`;
+    $('bHit').disabled = $('bStick').disabled = over;
+    if (!over) {
+      cur = [P.sum, P.u, D.up];
+      const j = ix(P.sum, P.u, D.up);
+      $('state').innerHTML = `State <span class="badge">sum ${P.sum}, dealer ${DL[D.up - 1]}, ${P.u ? 'usable ace' : 'no usable ace'}</span>` +
+        (Ns && Ns[j] ? ` Monte Carlo says ${Vs[j] >= 0 ? '+' : ''}${Vs[j].toFixed(2)} for the stick-on-20 policy.` : '');
+    } else cur = null;
+    if (Vs) drawMaps();
+  }
+  function end(r, msg, finalDealer) {
+    over = true; D.final = finalDealer ?? D.final;
+    stats.n++; stats.sum += r; if (r > 0) stats.w++; else if (r < 0) stats.l++; else stats.d++;
+    $('result').innerHTML = `<span class="${r > 0 ? 'good' : r < 0 ? 'bad' : ''}">${msg} Reward ${r > 0 ? '+1' : r}.</span>`;
+    $('state').textContent = '';
+    $('sH').textContent = stats.n; $('sW').textContent = `${stats.w} / ${stats.d} / ${stats.l}`;
+    $('sAvg').textContent = (stats.sum / stats.n).toFixed(2);
+    render();
+  }
+  $('bHit').addEventListener('click', () => {
+    if (over) return;
+    const r = drawRank(); pCards.push(show(r)); P = add(P, val(r));
+    if (P.sum > 21) { dCards.push(D.hiddenHTML); return end(-1, `Bust at ${P.sum}.`, add(add(EMPTY, D.up), val(D.hiddenRank)).sum); }
+    render();
+  });
+  $('bStick').addEventListener('click', () => {
+    if (over) return;
+    dCards.push(D.hiddenHTML);
+    let d = add(add(EMPTY, D.up), val(D.hiddenRank));
+    while (d.sum < 17) { const r = drawRank(); dCards.push(show(r)); d = add(d, val(r)); }
+    const r = outcome(P.sum, d.sum);
+    end(r, d.sum > 21 ? `Dealer busts with ${d.sum}.` : `You ${P.sum}, dealer ${d.sum}.`, d.sum);
+  });
+  $('bDeal').addEventListener('click', deal);
+  resetMC();
+  deal();
+
+  Course.quiz([
+    {
+      q: 'You have a hard 20 (no usable ace) and hit anyway. What is the probability you don’t bust?',
+      answer: 1 / 13,
+      tol: 0.001,
+      hint: 'Only one rank keeps you at 21 or below.',
+      explain: 'Only an ace (counted as 1) works: probability $1/13 \\approx 0.077$.',
+    },
+    {
+      q: 'Four hands pass through the same state and end with rewards $+1$, $+1$, $-1$ and $0$. What is $V(s)$?',
+      answer: (1 + 1 - 1 + 0) / 4,
+      explain: 'Every state in a hand has return equal to the final reward, so $V = (1 + 1 - 1 + 0)/4 = 0.25$.',
+    },
+    {
+      q: 'How many states are there in this formulation of blackjack?',
+      answer: 10 * 10 * 2,
+      tol: 0,
+      explain: '10 player sums (12–21) × 10 dealer cards × 2 (usable ace or not) $= 200$.',
+    },
+    {
+      q: 'Why do first-visit and every-visit Monte Carlo give the same answer here?',
+      choices: [
+        'Because $\\gamma = 1$',
+        'Because a hand can never visit the same state twice',
+        'Because the deck is infinite',
+      ],
+      answer: 1,
+      explain: 'Each hit raises your sum, or turns a usable ace into a non-usable one, which never reverses. So no state repeats.',
+    },
+  ]);
+</script>
+</body>
+</html>

@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>62. Gradient descent on values | Learning RL</title>
+<meta name="description" content="Learn the weights from experience: each return nudges them downhill on the value error. Watch the weights roll across the error surface.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+  .pair h3 { font-size: 0.9rem; color: var(--muted); font-weight: 500; margin: 0 0 4px; }
+  #surf { width: 100%; aspect-ratio: 1; display: block; cursor: crosshair; touch-action: none; border-radius: 4px; }
+  #line, #fig { width: 100%; height: 260px; display: block; }
+  #line { aspect-ratio: auto; }
+  .key { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.85rem; color: var(--muted); }
+  .key b { display: inline-block; width: 16px; vertical-align: middle; margin-right: 4px; }
+  #eq { overflow-x: auto; min-height: 3.2em; }
+  @media (max-width: 560px) { .pair { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body data-lesson="62">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Gradient descent on values</h1>
+  <p class="lede">Lesson 61 found the best weights by solving equations that need the true values. An agent only sees returns. Stochastic gradient descent uses each return to nudge the weights a little way downhill on the value error, and the nudges add up to the best fit.</p>
+
+  <section class="card">
+    <p class="note">The 1000-state walk again, with two features: $\mathbf{x}(s) = (1, z)$ where $z$ runs from $-1$ at state 1 to $+1$ at state 1000. So $\hat v(s,\mathbf{w}) = w_1 + w_2 z$ is a straight line.</p>
+    <div class="pair">
+      <div>
+        <h3>Error surface $\overline{\text{VE}}(w_1, w_2)$. Click to move the start.</h3>
+        <canvas id="surf" aria-label="Contours of the value error over the two weights, with the path the weights have taken"></canvas>
+      </div>
+      <div>
+        <h3>The line it gives</h3>
+        <canvas id="line" aria-label="True values, the current straight-line estimate and recent returns"></canvas>
+        <div class="key">
+          <span><b style="border-top:3px solid var(--amber)"></b>$v_\pi$</span>
+          <span><b style="border-top:3px solid var(--accent)"></b>$\hat v$</span>
+          <span><b style="height:6px;width:6px;border-radius:50%;background:var(--blue)"></b>returns $G_t$</span>
+        </div>
+      </div>
+    </div>
+    <label class="slider"><span>Step size $\alpha$</span><input id="iA" type="range" min="0" max="4" step="1" value="2"><output></output></label>
+    <div id="eq"></div>
+    <div class="row">
+      <button id="bStep">Step</button>
+      <button id="bEp">Episode</button>
+      <button id="bRun" class="primary">Run</button>
+      <span class="spacer"></span>
+      <button id="bReset" class="quiet">Reset</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="k">Episodes</span><span class="v" id="sEp">0</span></div>
+      <div class="stat"><span class="k">Updates</span><span class="v" id="sUp">0</span></div>
+      <div class="stat"><span class="k">$\overline{\text{VE}}$ now</span><span class="v" id="sVE">–</span></div>
+      <div class="stat"><span class="k">Minimum</span><span class="v" id="sMin">–</span></div>
+    </div>
+
+    <div class="sub">
+      <h2>State aggregation, S&amp;B Figure 9.1</h2>
+      <p class="note">Gradient Monte Carlo with 10 groups of 100 states, $\alpha = 2 \times 10^{-5}$, for 100,000 episodes. Each step of the green staircase is one weight.</p>
+      <div class="row"><button id="bFig">Run 100,000 episodes</button><span class="muted" id="figStatus"></span></div>
+      <canvas id="fig" hidden aria-label="True values, the learned staircase and the state distribution"></canvas>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>The goal is to minimise the value error from Lesson 61, $\overline{\text{VE}}(\mathbf{w}) = \sum_s \mu(s)[v_\pi(s) - \hat v(s,\mathbf{w})]^2$. States arrive with distribution $\mu$, so one state $S_t$ gives a one-sample estimate of it. Stepping against that sample's gradient is <b>stochastic gradient descent</b> (S&amp;B eq. 9.4–9.5):</p>
+    $$\begin{aligned}
+      \mathbf{w}_{t+1} &= \mathbf{w}_t - \tfrac{1}{2}\alpha \nabla \big[v_\pi(S_t) - \hat v(S_t,\mathbf{w}_t)\big]^2 \\
+      &= \mathbf{w}_t + \alpha \big[v_\pi(S_t) - \hat v(S_t,\mathbf{w}_t)\big] \nabla \hat v(S_t,\mathbf{w}_t).
+    \end{aligned}$$
+    <p>The $\tfrac12$ cancels the 2 from the chain rule. Each step moves the weights in the direction that most reduces this state's error.</p>
+    <p>The agent does not know $v_\pi(S_t)$, so it uses a target $U_t$ in its place:</p>
+    $$\mathbf{w}_{t+1} = \mathbf{w}_t + \alpha \big[U_t - \hat v(S_t,\mathbf{w}_t)\big] \nabla \hat v(S_t,\mathbf{w}_t).$$
+    <p>If $\mathbb{E}[U_t \mid S_t] = v_\pi(S_t)$, the step is right on average, and with step sizes that shrink in the usual way ($\sum \alpha_t = \infty$, $\sum \alpha_t^2 < \infty$) $\mathbf{w}$ converges to a local minimum. The return $G_t$ qualifies, which gives <b>gradient Monte Carlo</b>. For a linear $\hat v$, $\nabla \hat v = \mathbf{x}(S_t)$ and $\overline{\text{VE}}$ is a bowl with one minimum, so local means global.</p>
+    <p>One update changes the estimate at $S_t$ itself by</p>
+    $$\hat v(S_t, \mathbf{w}_{t+1}) - \hat v(S_t, \mathbf{w}_t) = \alpha \big[G_t - \hat v(S_t,\mathbf{w}_t)\big]\, \lVert \mathbf{x}(S_t) \rVert^2 .$$
+    <p>So $\alpha \lVert \mathbf{x} \rVert^2$ is the fraction of the error removed at that state. Every other state moves too, by $\alpha [G_t - \hat v]\, \mathbf{x}(S_t)^\top \mathbf{x}(s)$.</p>
+    <p>Using a bootstrapped target such as $U_t = R_{t+1} + \gamma \hat v(S_{t+1}, \mathbf{w}_t)$ breaks the condition twice: its expectation is not $v_\pi(S_t)$, and it depends on $\mathbf{w}_t$ while the update ignores that dependence. S&amp;B call this a <b>semi-gradient</b> method. Linear semi-gradient TD(0) still converges on-policy (S&amp;B §9.4), to the TD fixed point rather than the minimum of $\overline{\text{VE}}$. Lesson 65 shows how it can fail off-policy.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const N = 1000, K = 100;
+
+  // ------------------------------------------------------------ the 1000-state walk (S&B Example 9.1)
+  function sweepSolve(update) {
+    let v = new Float64Array(N + 1), nv = new Float64Array(N + 1);
+    const P = new Float64Array(N + 1);
+    for (let it = 0; it < 3000; it++) {
+      for (let s = 1; s <= N; s++) P[s] = P[s - 1] + v[s];
+      let d = 0;
+      for (let s = 1; s <= N; s++) {
+        const lo = Math.max(1, s - K), hi = Math.min(N, s + K);
+        nv[s] = update(s, P[hi] - P[lo - 1] - v[s], lo, hi);
+        d = Math.max(d, Math.abs(nv[s] - v[s]));
+      }
+      [v, nv] = [nv, v];
+      if (d < 1e-9) break;
+    }
+    return v;
+  }
+  const vTrue = sweepSolve((s, inside, lo, hi) => (inside - (K - (s - lo)) + (K - (hi - s))) / (2 * K));
+  const eta = sweepSolve((s, inside) => (s === 500 ? 1 : 0) + inside / (2 * K));
+  const etaSum = eta.reduce((a, b) => a + b, 0);
+  const mu = Float64Array.from(eta, (e) => e / etaSum);
+
+  function episode() {
+    const states = [];
+    let s = 500, G;
+    for (;;) {
+      states.push(s);
+      const j = 1 + Course.randInt(K);
+      s += Math.random() < 0.5 ? -j : j;
+      if (s < 1) { G = -1; break; }
+      if (s > N) { G = 1; break; }
+    }
+    return { states, G };
+  }
+
+  // ------------------------------------------------------------ the quadratic VE(w) = c - 2 b.w + w.A w
+  const zOf = (s) => (s - 500.5) / 499.5;
+  let A11 = 0, A12 = 0, A22 = 0, b1 = 0, b2 = 0, c0 = 0;
+  for (let s = 1; s <= N; s++) {
+    const z = zOf(s), m = mu[s], v = vTrue[s];
+    A11 += m; A12 += m * z; A22 += m * z * z; b1 += m * v; b2 += m * v * z; c0 += m * v * v;
+  }
+  const VE = (w1, w2) => c0 - 2 * (b1 * w1 + b2 * w2) + A11 * w1 * w1 + 2 * A12 * w1 * w2 + A22 * w2 * w2;
+  const det = A11 * A22 - A12 * A12;
+  const wStar = [(A22 * b1 - A12 * b2) / det, (A11 * b2 - A12 * b1) / det];
+  const VEmin = VE(...wStar);
+
+  // ------------------------------------------------------------ learner state
+  const ALPHAS = [0.001, 0.003, 0.01, 0.03, 0.1];
+  const alpha = Course.slider('#iA', (v) => ALPHAS[v], () => {});
+  const W1 = [-1.2, 1.2], W2 = [-0.8, 2.2];
+  let w, path, queue, epCount, upCount, recent, last, timer = null;
+  let start = [-0.8, 1.9];
+
+  function reset() {
+    stop();
+    w = start.slice(); path = [w.slice()]; queue = []; epCount = 0; upCount = 0; recent = []; last = null;
+    Course.tex($('eq'), `\\mathbf{w} = (${w[0].toFixed(3)}, ${w[1].toFixed(3)}) \\quad \\text{press Step}`, true);
+    draw();
+  }
+
+  function update(showEq) {
+    if (!queue.length) {
+      const ep = episode();
+      queue = ep.states.map((s) => ({ s, G: ep.G }));
+      epCount++;
+    }
+    const { s, G } = queue.shift();
+    const a = ALPHAS[alpha()], z = zOf(s);
+    const v = w[0] + w[1] * z, err = G - v;
+    const old = w.slice();
+    w[0] += a * err; w[1] += a * err * z;
+    upCount++;
+    recent.push([s, G]); if (recent.length > 120) recent.shift();
+    last = { s, G };
+    if (upCount % 4 === 0 || showEq) path.push(w.slice());
+    if (path.length > 4000) path = path.filter((_, i) => i % 2 === 0);
+    if (showEq) {
+      Course.tex($('eq'),
+        `\\begin{aligned}\\mathbf{w} &\\leftarrow \\mathbf{w} + \\alpha\\,[G_t - \\hat v(S_t,\\mathbf{w})]\\,\\mathbf{x}(S_t) \\\\ ` +
+        `&= (${old[0].toFixed(3)}, ${old[1].toFixed(3)}) + ${a}\\,[${G > 0 ? '+1' : '-1'} - (${v.toFixed(3)})]\\,(1, ${z.toFixed(2)}) \\\\ ` +
+        `&= (${w[0].toFixed(3)}, ${w[1].toFixed(3)})\\end{aligned}`, true);
+    }
+  }
+  function runEpisode() {
+    if (!queue.length) update(false);
+    while (queue.length) update(false);
+  }
+
+  // ------------------------------------------------------------ drawing
+  const surf = $('surf'), sctx = surf.getContext('2d');
+  let bg = null;
+  function surfaceImage(W, H) {
+    // filled contour bands of sqrt(VE - VEmin), drawn once per size
+    const off = document.createElement('canvas'); off.width = W; off.height = H;
+    const o = off.getContext('2d'), img = o.createImageData(W, H);
+    const band = (x, y) => Math.floor(Math.sqrt(VE(W1[0] + (x / W) * (W1[1] - W1[0]), W2[1] - (y / H) * (W2[1] - W2[0])) - VEmin) / 0.08);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const b = band(x, y), edge = b !== band(x + 1, y) || b !== band(x, y + 1);
+      const t = Math.min(1, b / 14), i = 4 * (y * W + x);
+      img.data[i] = edge ? 160 : 255 - 45 * t; img.data[i + 1] = edge ? 170 : 255 - 25 * t; img.data[i + 2] = edge ? 180 : 255 - 10 * t; img.data[i + 3] = 255;
+    }
+    o.putImageData(img, 0, 0);
+    return off;
+  }
+  const SX = (w1, W) => ((w1 - W1[0]) / (W1[1] - W1[0])) * W;
+  const SY = (w2, H) => ((W2[1] - w2) / (W2[1] - W2[0])) * H;
+
+  function drawSurface() {
+    const dpr = window.devicePixelRatio || 1;
+    const W = surf.clientWidth, H = surf.clientHeight;
+    if (!W) return;
+    if (!bg || bg.width !== Math.round(W) || bg.height !== Math.round(H)) bg = surfaceImage(Math.round(W), Math.round(H));
+    surf.width = W * dpr; surf.height = H * dpr;
+    sctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    sctx.drawImage(bg, 0, 0, W, H);
+    sctx.font = '11px -apple-system, sans-serif'; sctx.fillStyle = '#6b7280';
+    sctx.textAlign = 'center'; sctx.textBaseline = 'bottom';
+    sctx.fillText('w₁ (offset) →', W / 2, H - 3);
+    sctx.save(); sctx.translate(12, H / 2); sctx.rotate(-Math.PI / 2); sctx.textBaseline = 'middle'; sctx.fillText('w₂ (slope) →', 0, 0); sctx.restore();
+    // axes through zero
+    sctx.strokeStyle = 'rgba(0,0,0,0.15)'; sctx.beginPath();
+    sctx.moveTo(SX(0, W), 0); sctx.lineTo(SX(0, W), H); sctx.moveTo(0, SY(0, H)); sctx.lineTo(W, SY(0, H)); sctx.stroke();
+    // path
+    sctx.strokeStyle = Course.colors.green; sctx.lineWidth = 1.5; sctx.beginPath();
+    path.forEach((p, i) => (i ? sctx.lineTo : sctx.moveTo).call(sctx, SX(p[0], W), SY(p[1], H)));
+    sctx.lineTo(SX(w[0], W), SY(w[1], H)); sctx.stroke();
+    // minimum
+    sctx.fillStyle = Course.colors.amber; sctx.font = '16px sans-serif'; sctx.textAlign = 'center'; sctx.textBaseline = 'middle';
+    sctx.fillText('★', SX(wStar[0], W), SY(wStar[1], H));
+    // start and current
+    sctx.strokeStyle = '#374151'; sctx.lineWidth = 1.5;
+    sctx.beginPath(); sctx.arc(SX(path[0][0], W), SY(path[0][1], H), 4, 0, 2 * Math.PI); sctx.stroke();
+    sctx.fillStyle = Course.colors.green; sctx.beginPath(); sctx.arc(SX(w[0], W), SY(w[1], H), 5, 0, 2 * Math.PI); sctx.fill();
+  }
+
+  const lineC = $('line'), lctx = lineC.getContext('2d');
+  function drawLine() {
+    const dpr = window.devicePixelRatio || 1;
+    const W = lineC.clientWidth, H = lineC.clientHeight;
+    if (!W) return;
+    lineC.width = W * dpr; lineC.height = H * dpr;
+    lctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    lctx.clearRect(0, 0, W, H);
+    const m = { l: 30, r: 6, t: 6, b: 26 }, YM = 1.25;
+    const X = (s) => m.l + ((s - 1) / (N - 1)) * (W - m.l - m.r);
+    const Y = (v) => m.t + ((YM - v) / (2 * YM)) * (H - m.t - m.b);
+    lctx.font = '11px -apple-system, sans-serif'; lctx.fillStyle = '#6b7280';
+    lctx.textAlign = 'right'; lctx.textBaseline = 'middle';
+    [-1, 0, 1].forEach((v) => {
+      lctx.strokeStyle = v ? '#eef0f3' : '#9ca3af'; lctx.lineWidth = 1;
+      lctx.beginPath(); lctx.moveTo(m.l, Y(v)); lctx.lineTo(W - m.r, Y(v)); lctx.stroke();
+      lctx.fillText(v, m.l - 5, Y(v));
+    });
+    lctx.textAlign = 'center'; lctx.textBaseline = 'top';
+    [1, 500, 1000].forEach((s) => lctx.fillText(s, Math.min(W - m.r - 12, Math.max(m.l + 4, X(s))), H - m.b + 5));
+    // recent returns, jittered a little vertically so they don't all overlap
+    recent.forEach(([s, G], i) => {
+      lctx.fillStyle = `rgba(42,122,226,${0.15 + (0.5 * i) / recent.length})`;
+      lctx.beginPath(); lctx.arc(X(s), Y(G) + ((s * 7919) % 9) - 4, 2.4, 0, 2 * Math.PI); lctx.fill();
+    });
+    lctx.strokeStyle = Course.colors.amber; lctx.lineWidth = 2.5; lctx.beginPath();
+    for (let s = 1; s <= N; s += 4) (s === 1 ? lctx.moveTo : lctx.lineTo).call(lctx, X(s), Y(vTrue[s]));
+    lctx.stroke();
+    lctx.strokeStyle = Course.colors.green; lctx.lineWidth = 3; lctx.beginPath();
+    lctx.moveTo(X(1), Y(w[0] + w[1] * zOf(1))); lctx.lineTo(X(N), Y(w[0] + w[1] * zOf(N))); lctx.stroke();
+    if (last) {
+      lctx.strokeStyle = Course.colors.blue; lctx.lineWidth = 2;
+      lctx.beginPath(); lctx.arc(X(last.s), Y(last.G), 5, 0, 2 * Math.PI); lctx.stroke();
+    }
+  }
+
+  function draw() {
+    drawSurface(); drawLine();
+    $('sEp').textContent = epCount;
+    $('sUp').textContent = upCount;
+    $('sVE').textContent = VE(...w).toFixed(4);
+    $('sMin').textContent = VEmin.toPrecision(2);
+  }
+
+  // ------------------------------------------------------------ controls
+  function stop() { clearInterval(timer); timer = null; $('bRun').textContent = 'Run'; }
+  $('bStep').addEventListener('click', () => { stop(); update(true); draw(); });
+  $('bEp').addEventListener('click', () => {
+    stop(); runEpisode();
+    Course.tex($('eq'), `\\text{Episode ${epCount} ended: } \\mathbf{w} = (${w[0].toFixed(3)}, ${w[1].toFixed(3)})`, true);
+    draw();
+  });
+  $('bRun').addEventListener('click', () => {
+    if (timer) return stop();
+    $('bRun').textContent = 'Pause';
+    timer = setInterval(() => {
+      runEpisode();
+      Course.tex($('eq'), `\\text{Episode ${epCount}: } \\mathbf{w} = (${w[0].toFixed(3)}, ${w[1].toFixed(3)}), \\quad \\mathbf{w}^* = (${wStar[0].toFixed(3)}, ${wStar[1].toFixed(3)})`, true);
+      draw();
+    }, 60);
+  });
+  $('bReset').addEventListener('click', reset);
+  surf.addEventListener('pointerdown', (e) => {
+    const r = surf.getBoundingClientRect();
+    start = [W1[0] + ((e.clientX - r.left) / r.width) * (W1[1] - W1[0]), W2[1] - ((e.clientY - r.top) / r.height) * (W2[1] - W2[0])];
+    reset();
+  });
+  new ResizeObserver(draw).observe(surf);
+  new ResizeObserver(draw).observe(lineC);
+
+  // ------------------------------------------------------------ Figure 9.1
+  const fig = $('fig'), fctx = fig.getContext('2d');
+  let figW = null;
+  function drawFig() {
+    if (!figW) return;
+    const dpr = window.devicePixelRatio || 1;
+    const W = fig.clientWidth, H = fig.clientHeight;
+    if (!W) return;
+    fig.width = W * dpr; fig.height = H * dpr;
+    fctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    fctx.clearRect(0, 0, W, H);
+    const m = { l: 34, r: 8, t: 8, b: 30 }, YM = 1.1;
+    const X = (s) => m.l + ((s - 1) / (N - 1)) * (W - m.l - m.r);
+    const Y = (v) => m.t + ((YM - v) / (2 * YM)) * (H - m.t - m.b);
+    const muMax = Math.max(...mu.filter((_, s) => s !== 500));
+    fctx.fillStyle = 'rgba(156,163,175,0.25)'; fctx.beginPath(); fctx.moveTo(X(1), H - m.b);
+    for (let s = 1; s <= N; s += 2) fctx.lineTo(X(s), Math.max(m.t, H - m.b - (mu[s] / muMax) * 70));
+    fctx.lineTo(X(N), H - m.b); fctx.fill();
+    fctx.font = '11px -apple-system, sans-serif'; fctx.fillStyle = '#6b7280';
+    fctx.textAlign = 'right'; fctx.textBaseline = 'middle';
+    [-1, -0.5, 0, 0.5, 1].forEach((v) => {
+      fctx.strokeStyle = v ? '#eef0f3' : '#9ca3af'; fctx.lineWidth = 1;
+      fctx.beginPath(); fctx.moveTo(m.l, Y(v)); fctx.lineTo(W - m.r, Y(v)); fctx.stroke();
+      fctx.fillText(v, m.l - 5, Y(v));
+    });
+    fctx.textAlign = 'center'; fctx.textBaseline = 'top';
+    [1, 500, 1000].forEach((s) => fctx.fillText(s, Math.min(W - m.r - 12, Math.max(m.l + 4, X(s))), H - m.b + 5));
+    fctx.fillText('state (grey: distribution μ)', (m.l + W) / 2, H - 13);
+    fctx.strokeStyle = Course.colors.amber; fctx.lineWidth = 2.5; fctx.beginPath();
+    for (let s = 1; s <= N; s += 4) (s === 1 ? fctx.moveTo : fctx.lineTo).call(fctx, X(s), Y(vTrue[s]));
+    fctx.stroke();
+    fctx.strokeStyle = Course.colors.green; fctx.lineWidth = 3;
+    figW.forEach((v, g) => { fctx.beginPath(); fctx.moveTo(X(g * 100 + 1), Y(v)); fctx.lineTo(X(g * 100 + 100), Y(v)); fctx.stroke(); });
+  }
+  new ResizeObserver(drawFig).observe(fig);
+  $('bFig').addEventListener('click', () => {
+    const b = $('bFig');
+    b.disabled = true; b.textContent = 'Running…';
+    $('fig').hidden = false;
+    figW = new Float64Array(10);
+    let done = 0;
+    const chunk = () => {
+      for (let i = 0; i < 10000; i++) {
+        const { states, G } = episode();
+        for (const s of states) { const g = Math.floor((s - 1) / 100); figW[g] += 2e-5 * (G - figW[g]); }
+      }
+      done += 10000;
+      $('figStatus').textContent = `${done.toLocaleString('en-GB')} episodes`;
+      drawFig();
+      if (done < 100000) setTimeout(chunk, 0);
+      else { b.disabled = false; b.textContent = 'Run again'; }
+    };
+    setTimeout(chunk, 30);
+  });
+
+  reset();
+
+  // ------------------------------------------------------------ quiz
+  const a1 = 0.1, z1 = 0.4, v1 = 0.1 + 0.5 * z1, e1 = 1 - v1;
+  Course.quiz([
+    {
+      q: '$\\mathbf{w} = (0.1, 0.5)$, $\\mathbf{x}(S_t) = (1, 0.4)$, $G_t = +1$, $\\alpha = 0.1$. What is the new $w_2$ after one gradient Monte Carlo update?',
+      answer: 0.5 + a1 * e1 * z1,
+      tol: 1e-6,
+      explain: '$\\hat v = 0.1 + 0.5 \\cdot 0.4 = 0.3$, error $= 0.7$, so $w_2 \\leftarrow 0.5 + 0.1 \\cdot 0.7 \\cdot 0.4 = 0.528$.',
+    },
+    {
+      q: 'Same update. By how much did $\\hat v(S_t, \\mathbf{w})$ itself go up?',
+      answer: a1 * e1 * (1 + z1 * z1),
+      tol: 1e-6,
+      hint: 'The change at $S_t$ is $\\alpha\\,[G_t - \\hat v]\\,\\lVert \\mathbf{x}(S_t) \\rVert^2$.',
+      explain: '$0.1 \\times 0.7 \\times (1^2 + 0.4^2) = 0.07 \\times 1.16 = 0.0812$.',
+    },
+    {
+      q: 'With $\\mathbf{x}(s) = (1, z)$ at a state where $z = 0.5$, what step size $\\alpha$ makes one update move $\\hat v(s)$ all the way to $G_t$?',
+      answer: 1 / (1 + 0.25),
+      tol: 1e-6,
+      explain: 'You need $\\alpha \\lVert \\mathbf{x} \\rVert^2 = 1$, so $\\alpha = 1/1.25 = 0.8$. Larger steps overshoot. Even $\\alpha = 0.1$ jitters, because each step chases a noisy $G_t = \\pm 1$.',
+    },
+    {
+      q: 'Why is TD(0) with $U_t = R_{t+1} + \\gamma \\hat v(S_{t+1}, \\mathbf{w})$ called a semi-gradient method?',
+      choices: [
+        'It only updates half of the weights',
+        'Its target depends on $\\mathbf{w}$, but the update treats the target as a constant',
+        'It uses half the step size of Monte Carlo',
+      ],
+      answer: 1,
+      explain: 'The true gradient of $[U_t - \\hat v(S_t,\\mathbf{w})]^2$ would include $\\gamma \\nabla \\hat v(S_{t+1}, \\mathbf{w})$. Semi-gradient methods drop that term.',
+    },
+  ]);
+</script>
+</body>
+</html>

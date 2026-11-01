@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>35. Learning without a model | Learning RL</title>
+<meta name="description" content="Monte Carlo prediction: play episodes, average the returns, and recover the values that dynamic programming needed a model for.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  #world { max-width: 320px; }
+  .gcell .id { position: absolute; top: 2px; left: 4px; font-size: max(9px, 0.5em); color: var(--muted); }
+  .gcell .v { font-weight: 600; color: var(--heading); font-size: 0.8em; }
+  .gcell .n { position: absolute; bottom: 2px; font-size: max(9px, 0.5em); color: var(--muted); }
+  .gcell .t { position: absolute; top: 2px; right: 4px; font-size: max(9px, 0.5em); color: var(--blue); font-weight: 600; }
+  .gcell.term { background: #e5e7eb; color: var(--muted); font-size: 0.75em; }
+  .gcell.trail { box-shadow: inset 0 0 0 2px rgba(42,122,226,0.5); }
+  .gcell.agent { box-shadow: inset 0 0 0 3px var(--blue); }
+  .hidden-model { border: 1px dashed var(--border); border-radius: 6px; padding: 8px 12px; color: var(--muted); font-size: 0.9rem; text-align: center; margin: 8px 0; }
+  #traj { font-size: 0.9rem; color: var(--body); overflow-wrap: anywhere; }
+  .logwrap { max-height: 260px; overflow-y: auto; }
+</style>
+</head>
+<body data-lesson="35">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Learning without a model</h1>
+  <p class="lede">Dynamic programming needs $p(s', r \mid s, a)$, the full rules of the world. Monte Carlo methods need only experience: play whole episodes, note the return that followed each state, and average. A value is an expected return, so the average of enough returns is the value.</p>
+
+  <section class="card">
+    <p class="hidden-model">$p(s', r \mid s, a)$: hidden. The agent sees only states, actions and rewards as they happen.</p>
+    <p class="note">The random policy on the gridworld from Lesson 30. Each episode starts in a random cell and ends in a grey corner. Cells show the average return $V(s)$ and, below it, how many returns were averaged.</p>
+    <div id="world"></div>
+    <div class="row center">
+      <button id="bOne" class="primary">Play episode</button>
+      <button id="b100">+100 episodes</button>
+      <button id="b1000">+1000</button>
+      <button id="bReset" class="quiet">Reset</button>
+    </div>
+    <div class="row center"><label class="muted"><input type="checkbox" id="cTrue"> compare with Lesson 30's DP values</label></div>
+    <p class="status" id="status"></p>
+    <p id="traj"></p>
+    <div class="logwrap"><table class="data" id="rets"></table></div>
+
+    <div class="sub">
+      <h2>How fast do the averages settle?</h2>
+      <p class="note">Worst error $\max_s |V(s) - v_\pi(s)|$ against episodes played so far. It shrinks roughly like $1/\sqrt{n}$.</p>
+      <canvas class="chart" id="chart"></canvas>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>By definition (Lesson 21) the value is an expected return:</p>
+    $$v_\pi(s) = \mathbb{E}_\pi\big[G_t \mid S_t = s\big]$$
+    <p>Each episode that passes through $s$ supplies one sample of $G_t$. <b>First-visit Monte Carlo</b> keeps, for each state, the returns that followed its first visit in each episode, and averages them:</p>
+    $$V(s) = \frac{1}{N(s)} \sum_{i=1}^{N(s)} G^{(i)}(s)$$
+    <p>where $N(s)$ counts those returns. Lesson 6's update keeps this average without storing the list: $V(s) \leftarrow V(s) + \tfrac{1}{N(s)}\big(G - V(s)\big)$.</p>
+    <p>Here every reward is $-1$ and $\gamma = 1$, so the return from time $t$ is minus the number of steps left:</p>
+    $$G_t = R_{t+1} + R_{t+2} + \cdots + R_T = -(T - t)$$
+    <p>The returns of different episodes are independent samples, so by the law of large numbers $V(s) \to v_\pi(s)$ as $N(s) \to \infty$. If the returns from $s$ have standard deviation $\sigma$, the average has standard error</p>
+    $$\text{SE} = \frac{\sigma}{\sqrt{N(s)}}$$
+    <p>so four times as many episodes halve the error. Nothing above uses $p$. The price: an update waits for the episode to end, and the estimates are noisy.</p>
+    <p>No state's estimate is computed from any other state's estimate. Unlike DP, Monte Carlo does not build values from neighbours' values (it does not <b>bootstrap</b>). It can estimate one state's value alone by starting episodes there.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  // Example 4.1 world. The simulator is the only place that knows the rules.
+  const TERM = (s) => s === 0 || s === 15;
+  const MOVES = [[-1, 0], [0, 1], [1, 0], [0, -1]];
+  function envStep(s, a) {
+    const r = Math.floor(s / 4) + MOVES[a][0], c = (s % 4) + MOVES[a][1];
+    const s2 = r < 0 || r > 3 || c < 0 || c > 3 ? s : r * 4 + c;
+    return { s2, r: -1, done: TERM(s2) };
+  }
+  // The DP answer from Lesson 30, used only for the comparison.
+  const V_PI = [0, -14, -20, -22, -14, -18, -20, -20, -20, -20, -18, -14, -22, -20, -14, 0];
+
+  // One episode under the equiprobable random policy, from a random non-terminal start.
+  function episode() {
+    let s = 1 + Course.randInt(14);
+    const states = [s], rewards = [];
+    for (;;) {
+      const { s2, r, done } = envStep(s, Course.randInt(4));
+      rewards.push(r); s = s2;
+      if (done) { states.push(s); return { states, rewards }; }
+      states.push(s);
+    }
+  }
+  // First-visit MC update. Returns [state, t, G] for each first visit.
+  function learn(ep) {
+    const T = ep.rewards.length, G = new Array(T + 1).fill(0);
+    for (let t = T - 1; t >= 0; t--) G[t] = ep.rewards[t] + G[t + 1];
+    const seen = new Set(), firsts = [];
+    for (let t = 0; t < T; t++) {
+      const s = ep.states[t];
+      if (seen.has(s)) continue;
+      seen.add(s); firsts.push([s, t, G[t]]);
+      N[s]++; V[s] += (G[t] - V[s]) / N[s];
+    }
+    episodes++;
+    return firsts;
+  }
+
+  let V = new Array(16).fill(0), N = new Array(16).fill(0), episodes = 0, err = [], trail = new Map(), agent = -1, busy = false;
+  const g = Course.grid($('world'), 4, 4, (r, c, cell) => {
+    const s = r * 4 + c;
+    if (TERM(s)) { cell.classList.add('term'); cell.textContent = 'end'; }
+    else {
+      const show = $('cTrue').checked;
+      cell.innerHTML = `<span class="id">${s}</span><span class="v">${N[s] ? V[s].toFixed(1) : '?'}</span>` +
+        `<span class="n">${show ? `DP ${V_PI[s]}` : `n=${N[s]}`}</span>`;
+      if (N[s]) cell.style.background = Course.heat(V[s], 30);
+    }
+    if (trail.has(s)) { cell.classList.add('trail'); if (!TERM(s)) cell.insertAdjacentHTML('beforeend', `<span class="t">t=${trail.get(s)}</span>`); }
+    if (s === agent) cell.classList.add('agent');
+  });
+  const chart = Course.lineChart($('chart'), { xLabel: 'episodes', yLabel: 'worst error', yMin: 0, xMin: 0 });
+  const worst = () => Math.max(...V.map((x, s) => (TERM(s) ? 0 : N[s] ? Math.abs(x - V_PI[s]) : NaN)).filter(isFinite));
+  function record() {
+    if ([...Array(14).keys()].every((i) => N[i + 1] > 0)) err.push([episodes, worst()]);
+    chart.draw([{ data: err.length ? err : [[0, 0]], color: Course.colors.green }]);
+  }
+
+  function reset() {
+    V = new Array(16).fill(0); N = new Array(16).fill(0); episodes = 0; err = [];
+    trail = new Map(); agent = -1;
+    $('status').textContent = 'No episodes yet. Press "Play episode".';
+    $('traj').textContent = ''; $('rets').innerHTML = '';
+    g.update(); record();
+  }
+
+  function showEpisode(ep, firsts) {
+    $('traj').innerHTML = `<b>Episode ${episodes}:</b> ${ep.states.map((s) => (TERM(s) ? 'end' : s)).join(' → ')} &nbsp;(T = ${ep.rewards.length})`;
+    $('rets').innerHTML = '<tr><th>state</th><th>first visit $t$</th><th>return $G_t = -(T - t)$</th><th>new $V(s)$</th></tr>' +
+      firsts.map(([s, t, G]) => `<tr><td>${s}</td><td>${t}</td><td>${G}</td><td>${V[s].toFixed(2)}</td></tr>`).join('');
+    Course.renderMath($('rets'));
+  }
+
+  $('bOne').addEventListener('click', () => {
+    if (busy) return;
+    const ep = episode();
+    busy = true; trail = new Map(); let i = 0;
+    const tick = () => {
+      if (i < ep.states.length) {
+        agent = ep.states[i];
+        if (!trail.has(agent)) trail.set(agent, i);
+        i++; g.update();
+        setTimeout(tick, ep.states.length > 30 ? 25 : 70);
+        return;
+      }
+      agent = -1;
+      const firsts = learn(ep);
+      showEpisode(ep, firsts);
+      $('status').textContent = `${episodes} episode${episodes > 1 ? 's' : ''}. Blue numbers mark when each cell was first visited.`;
+      g.update(); record(); busy = false;
+    };
+    tick();
+  });
+  function many(k) {
+    if (busy) return;
+    trail = new Map(); agent = -1;
+    let ep, firsts;
+    for (let i = 0; i < k; i++) { ep = episode(); firsts = learn(ep); if (i % 10 === 9) record(); }
+    showEpisode(ep, firsts);
+    $('status').textContent = `${episodes} episodes. Worst error ${worst().toFixed(2)}.`;
+    g.update(); record();
+  }
+  $('b100').addEventListener('click', () => many(100));
+  $('b1000').addEventListener('click', () => many(1000));
+  $('bReset').addEventListener('click', reset);
+  $('cTrue').addEventListener('change', () => g.update());
+  reset();
+
+  Course.quiz([
+    {
+      q: 'Three episodes pass through a cell. The returns after its first visits are $-10$, $-16$ and $-22$. What is $V(s)$?',
+      answer: (-10 - 16 - 22) / 3,
+      explain: '$(-10 - 16 - 22)/3 = -16$.',
+    },
+    {
+      q: 'An episode lasts $T = 9$ steps and a state is first visited at $t = 3$. Every reward is $-1$ and $\\gamma = 1$. What is the return $G_3$?',
+      answer: -(9 - 3),
+      tol: 0,
+      explain: 'Six rewards of $-1$ remain: $G_3 = -(9 - 3) = -6$.',
+    },
+    {
+      q: 'Returns from a state have standard deviation $12$. After 100 returns the standard error is $1.2$. How many returns give a standard error of $0.6$?',
+      answer: 100 * Math.pow(1.2 / 0.6, 2),
+      tol: 0,
+      hint: 'SE $= \\sigma / \\sqrt{N}$.',
+      explain: 'Halving the error needs $2^2 = 4$ times as many returns: $400$.',
+    },
+    {
+      q: 'What does Monte Carlo prediction need that dynamic programming does not?',
+      choices: [
+        'The transition probabilities $p(s\', r \\mid s, a)$',
+        'Episodes that end, so each return can be computed',
+        'A discount factor below 1',
+      ],
+      answer: 1,
+      explain: 'It needs complete returns, so episodes must terminate. In exchange it needs no model.',
+    },
+  ]);
+</script>
+</body>
+</html>

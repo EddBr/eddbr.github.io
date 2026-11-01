@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>92. Verifiable rewards | Learning RL</title>
+<meta name="description" content="Replace the learned reward model with a program that checks the answer: 1 if right, 0 if wrong. Harder to fool, but the signal is sparse.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .prob { background: var(--soft); border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; color: var(--heading); }
+  .vbtns button { padding: 0.35rem 0.7rem; font-size: 0.9rem; }
+  .tablewrap { overflow-x: auto; }
+  table.out td { text-align: left; }
+  table.out td.r { text-align: center; font-weight: 700; width: 3em; }
+  table.out td.ok { text-align: center; width: 4.5em; }
+  table.out code { font-size: 0.85rem; white-space: pre-wrap; }
+  tr.fp td.r { color: var(--red); background: var(--red-soft); }
+  tr.fn td.r { color: var(--amber); background: #fef3c7; }
+  #vdesc { min-height: 2.8em; }
+  .probs { display: flex; align-items: flex-end; gap: 2px; height: 120px; margin: 10px 0 2px; position: relative; }
+  .probs .pc { flex: 1; position: relative; height: 100%; background: #f3f4f6; border-radius: 2px; }
+  .probs .pc .f { position: absolute; left: 0; right: 0; bottom: 0; background: var(--accent); border-radius: 2px; }
+  .probs .pc .sig { position: absolute; left: 0; right: 0; height: 3px; background: var(--purple); }
+  .key { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.85rem; color: var(--muted); }
+  .key b { display: inline-block; width: 14px; height: 10px; vertical-align: middle; margin-right: 4px; border-radius: 2px; }
+</style>
+</head>
+<body data-lesson="92">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Verifiable rewards</h1>
+  <p class="lede">Lesson 91's problem came from a learned reward model that is wrong away from its data. For maths and code there is another option: a program checks the final answer and pays 1 if it is right, 0 if not. This is reinforcement learning with verifiable rewards (RLVR). It is much harder to game, but only if the checker is written carefully, and the reward is sparse.</p>
+
+  <section class="card">
+    <h2>Write the checker</h2>
+    <p class="prob">A pen costs £3. How many pens can you buy with £21?</p>
+    <p class="note">Six sampled answers. Pick a verifier and see which ones it pays. Red: paid for a wrong answer (the policy will learn to do more of this). Amber: refused a right answer.</p>
+    <div class="row vbtns" id="vbtns"></div>
+    <p class="note" id="vdesc"></p>
+    <div class="tablewrap">
+      <table class="data out">
+        <thead><tr><th>model output</th><th>really right?</th><th>$r$</th></tr></thead>
+        <tbody id="outs"></tbody>
+      </table>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="k">Wrong answers paid</span><span class="v" id="sFP">0</span></div>
+      <div class="stat"><span class="k">Right answers refused</span><span class="v" id="sFN">0</span></div>
+    </div>
+
+    <div class="sub">
+      <h2>Learning from 0s and 1s</h2>
+      <p class="note">30 problems of increasing difficulty $d_j$. The model's chance of solving problem $j$ is $p_j = \sigma(\theta - d_j)$, where $\theta$ is its skill and $\sigma$ the logistic function. Each training step samples one answer per problem, the verifier pays $r_j \in \{0, 1\}$, and REINFORCE (Lesson 73) updates $\theta$. Green: $p_j$. Purple tick: the learning signal $p_j(1-p_j)$, scaled so 0.25 is the top.</p>
+      <label class="slider"><span>Starting skill $\theta_0$</span><input id="iT" type="range" min="-8" max="2" step="0.5" value="-1"><output></output></label>
+      <div class="probs" id="probs"></div>
+      <div class="key"><span><b style="background:#059669"></b>pass rate $p_j$</span><span><b style="background:#7c3aed;height:3px"></b>signal $p_j(1-p_j)$</span><span>easy → hard</span></div>
+      <div class="row">
+        <button id="bRun" class="primary">Run</button>
+        <button id="bStep">Step</button>
+        <span class="spacer"></span>
+        <button id="bReset" class="quiet">Reset</button>
+      </div>
+      <div class="stats">
+        <div class="stat"><span class="k">Training step</span><span class="v" id="sStep">0</span></div>
+        <div class="stat"><span class="k">Skill $\theta$</span><span class="v" id="sTh">0</span></div>
+        <div class="stat"><span class="k">Mean pass rate</span><span class="v" id="sPass">0</span></div>
+        <div class="stat"><span class="k">Rewards of 1 this step</span><span class="v" id="sOnes">0</span></div>
+      </div>
+      <canvas class="chart" id="chart"></canvas>
+      <p class="note">Try $\theta_0 = -5$: almost every reward is 0, so $\theta$ barely moves for hundreds of steps, then takes off once the easiest problems start paying. At $\theta_0 = -8$ it hardly moves at all.</p>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>For a prompt $x$ with known answer $y^\star$ and a sampled response $y$, the verifiable reward is</p>
+    $$r(x, y) = \begin{cases} 1 & \text{answer in } y = y^\star \\ 0 & \text{otherwise} \end{cases}$$
+    <p>The checker is code, not a network, so it does not drift or extrapolate. But it is still a proxy for "solved the problem". The extraction rule is part of the reward, and any gap in it (like "contains a 7") is a gap the policy can learn to exploit, exactly as in Lesson 90.</p>
+    <p>With $p = \Pr(r = 1)$ the expected reward is just the pass rate, and the reward's variance is that of a coin flip:</p>
+    $$\mathbb{E}[r] = p, \qquad \operatorname{Var}(r) = p(1 - p)$$
+    <p>In the toy model, $\pi_\theta$ answers problem $j$ correctly with probability $p_j = \sigma(\theta - d_j)$. Then $\nabla_\theta \log \pi_\theta(r_j) = r_j - p_j$ and the REINFORCE gradient is</p>
+    $$\mathbb{E}\big[r_j \,(r_j - p_j)\big] = p_j (1 - p_j)$$
+    <p>Problems the model always fails ($p \approx 0$) or always solves ($p \approx 1$) teach it nothing. Learning happens on problems at the edge of its ability.</p>
+    <p>Sampling $k$ answers per problem helps on hard problems: the chance that at least one is right is</p>
+    $$\text{pass@}k = 1 - (1 - p)^k$$
+    <p>Tülu 3 (Lambert et al., 2024) trained with verifiable rewards on maths problems with known answers and on instructions with checkable constraints ("answer in under 50 words").</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+
+  // ------------------------------------------------------------ part 1: verifiers
+  const OUTS = [
+    { text: '21 ÷ 3 = 7.\nAnswer: 7', right: true },
+    { text: 'Each pen is £3, so 21/3.\nAnswer: 7.0', right: true },
+    { text: 'Answer: seven', right: true },
+    { text: 'Could be 6, 7 or 8.\nAnswer: 6, 7, 8', right: false },
+    { text: '21 × 3 = 63.\nAnswer: 63', right: false },
+    { text: '3 + 4 = 7 pens.\nAnswer: 7', right: true },
+  ];
+  const lastLine = (t) => t.split('\n').pop();
+  const afterAnswer = (t) => (lastLine(t).match(/^Answer:\s*(.*)$/) || [])[1];
+  const WORDS = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
+  const VERIFIERS = [
+    { name: 'Exact match', desc: 'Pays 1 only if the last line is exactly "Answer: 7".', f: (t) => lastLine(t) === 'Answer: 7' },
+    { name: 'Contains 7', desc: 'Pays 1 if a 7 appears anywhere in the final answer. Easy to write, easy to fool: list every number you can think of.', f: (t) => /7/.test(afterAnswer(t) || '') },
+    { name: 'Parse one number', desc: 'Takes the text after "Answer:", requires it to be a single number (digits or a word), and compares its value with 7.', f: (t) => {
+      const a = (afterAnswer(t) || '').trim().toLowerCase();
+      const v = /^-?\d+(\.\d+)?$/.test(a) ? Number(a) : WORDS[a];
+      return v === 7;
+    } },
+  ];
+  let vi = 0;
+  $('vbtns').innerHTML = VERIFIERS.map((v, i) => `<button data-i="${i}">${v.name}</button>`).join('');
+  $('vbtns').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { vi = +b.dataset.i; showVerifier(); } });
+  function showVerifier() {
+    const V = VERIFIERS[vi];
+    [...$('vbtns').children].forEach((b, i) => b.classList.toggle('on', i === vi));
+    $('vdesc').textContent = V.desc;
+    let fp = 0, fn = 0;
+    $('outs').innerHTML = OUTS.map((o) => {
+      const r = V.f(o.text) ? 1 : 0;
+      const cls = r && !o.right ? 'fp' : !r && o.right ? 'fn' : '';
+      if (cls === 'fp') fp++; if (cls === 'fn') fn++;
+      return `<tr class="${cls}"><td><code>${o.text}</code></td><td class="ok">${o.right ? '✓' : '✗'}</td><td class="r">${r}</td></tr>`;
+    }).join('');
+    $('sFP').textContent = fp; $('sFN').textContent = fn;
+    $('sFP').className = 'v ' + (fp ? 'bad' : 'good');
+  }
+  showVerifier();
+
+  // ------------------------------------------------------------ part 2: training on binary rewards
+  const J = 30, D = Array.from({ length: J }, (_, j) => (6 * j) / (J - 1));   // difficulties 0..6
+  const LR = 1;
+  const sig = (z) => 1 / (1 + Math.exp(-z));
+  const th0 = Course.slider('#iT', (v) => v.toFixed(1), reset);
+  let theta, t, hist, ones, timer = null;
+
+  $('probs').innerHTML = D.map(() => '<div class="pc"><div class="f"></div><div class="sig"></div></div>').join('');
+  const cols = [...$('probs').children];
+  const chart = Course.lineChart($('chart'), { xLabel: 'training step', yLabel: 'mean pass rate', yMin: 0, yMax: 1, xMin: 0 });
+
+  function reset() { stop(); theta = th0(); t = 0; ones = 0; hist = [[0, meanPass()]]; draw(); }
+  const meanPass = () => D.reduce((s, d) => s + sig(theta - d), 0) / J;
+
+  function step() {
+    let g = 0; ones = 0;
+    for (const d of D) {
+      const p = sig(theta - d), r = Math.random() < p ? 1 : 0;
+      ones += r;
+      g += r * (r - p);                 // REINFORCE: r * grad log pi(r)
+    }
+    theta += (LR * g) / J;
+    t++;
+    hist.push([t, meanPass()]);
+  }
+  function draw() {
+    cols.forEach((c, j) => {
+      const p = sig(theta - D[j]);
+      c.firstChild.style.height = `${100 * p}%`;
+      c.lastChild.style.bottom = `calc(${(100 * p * (1 - p)) / 0.25}% - 3px)`;
+      c.title = `d = ${D[j].toFixed(1)}, p = ${p.toFixed(3)}`;
+    });
+    $('sStep').textContent = t;
+    $('sTh').textContent = theta.toFixed(2);
+    $('sPass').textContent = meanPass().toFixed(3);
+    $('sOnes').textContent = `${ones} / ${J}`;
+    chart.draw([{ data: hist, color: Course.colors.green }], { });
+  }
+  function stop() { clearInterval(timer); timer = null; $('bRun').textContent = 'Run'; }
+  $('bRun').addEventListener('click', () => {
+    if (timer) return stop();
+    $('bRun').textContent = 'Pause';
+    timer = setInterval(() => { for (let i = 0; i < 4; i++) step(); draw(); if (t >= 2000) stop(); }, 30);
+  });
+  $('bStep').addEventListener('click', () => { step(); draw(); });
+  $('bReset').addEventListener('click', reset);
+  reset();
+
+  Course.quiz([
+    {
+      q: 'A model solves a problem 20% of the time. What is the variance of its 0/1 reward?',
+      answer: 0.2 * 0.8,
+      tol: 0.001,
+      explain: '$p(1-p) = 0.2 \\times 0.8 = 0.16$.',
+    },
+    {
+      q: 'With $p = 0.1$, what is pass@8, the chance that at least one of 8 samples is right?',
+      answer: 1 - Math.pow(0.9, 8),
+      tol: 0.005,
+      explain: '$1 - 0.9^8 = 1 - 0.430 = 0.570$.',
+    },
+    {
+      q: 'With $p = 0.05$, what is the smallest number of samples $k$ that gives at least a 50% chance of one correct answer?',
+      answer: Math.ceil(Math.log(0.5) / Math.log(0.95)),
+      tol: 0,
+      hint: 'Solve $1 - 0.95^k \\ge 0.5$.',
+      explain: '$0.95^k \\le 0.5 \\Rightarrow k \\ge \\ln 0.5 / \\ln 0.95 \\approx 13.5$, so $k = 14$.',
+    },
+    {
+      q: 'Training with the "Contains 7" verifier, what will the policy learn to do?',
+      choices: [
+        'Solve the problems more carefully',
+        'List several numbers in its final answer, since that is paid more often',
+        'Nothing, because the reward is still 0 or 1',
+      ],
+      answer: 1,
+      explain: 'Listing many numbers raises the chance of containing the right one, so it raises expected reward. The verifier is the reward, bugs included.',
+    },
+  ]);
+</script>
+</body>
+</html>

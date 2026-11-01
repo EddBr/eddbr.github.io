@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>68. Target networks | Learning RL</title>
+<meta name="description" content="Freeze a copy of the weights to compute targets, and chasing a moving target turns into a sequence of ordinary regressions. Watch it tame Baird's counterexample.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .chart.small { height: 200px; }
+  h3 { font-size: 0.9rem; color: var(--muted); font-weight: 500; margin: 12px 0 0; }
+</style>
+</head>
+<body data-lesson="68">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Target networks</h1>
+  <p class="lede">In Q-learning with a network, the target $r + \gamma \max_{a'} Q(s', a')$ moves every time the weights move, so each update chases a target it has just pushed away. DQN computes targets with a frozen copy of the weights and refreshes the copy only every $C$ updates.</p>
+
+  <section class="card">
+    <p class="note">Baird's counterexample from Lesson 65, with all three legs of the triad switched on: the same features, $\gamma = 0.99$, $\alpha = 0.01$ and off-policy semi-gradient TD(0). The only change is that targets use frozen weights $\mathbf{w}^-$, copied from $\mathbf{w}$ every $C$ steps. $C = 1$ is the plain method of Lesson 65.</p>
+    <label class="slider"><span>Copy every $C$</span><input id="iC" type="range" min="0" max="5" step="1" value="3"><output></output></label>
+    <h3>The chase, last 1,000 steps: the bottom state's value and its target</h3>
+    <canvas class="chart small" id="chase"></canvas>
+    <h3>RMS value error, log scale (true values are all 0)</h3>
+    <canvas class="chart small" id="err"></canvas>
+    <div class="stats">
+      <div class="stat"><span class="k">Steps</span><span class="v" id="sT">0</span></div>
+      <div class="stat"><span class="k">Copies made</span><span class="v" id="sK">0</span></div>
+      <div class="stat"><span class="k">RMS value</span><span class="v" id="sR">–</span></div>
+    </div>
+    <div class="row">
+      <button id="bRun" class="primary">Run 20,000 steps</button>
+      <button id="bCmp">Compare C = 1, 10, 100, 1,000</button>
+      <span class="spacer"></span>
+      <button id="bReset" class="quiet">Reset</button>
+    </div>
+    <p class="status" id="status"></p>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>DQN's target uses the frozen weights $\boldsymbol\theta^-$ (Mnih et al., 2015):</p>
+    $$y = r + \gamma \max_{a'} Q(s', a'; \boldsymbol\theta^-), \qquad \boldsymbol\theta^- \leftarrow \boldsymbol\theta \text{ every } C \text{ updates}.$$
+    <p>Between copies, $y$ does not depend on $\boldsymbol\theta$. Each phase is then ordinary regression onto fixed targets, true gradient descent on a fixed loss, with no feedback from the weights to the targets.</p>
+    <p>If every phase ran to convergence, phase $k+1$ would find the best fit to the targets made from phase $k$:</p>
+    $$\mathbf{w}_{k+1} = \arg\min_{\mathbf{w}} \sum_s d(s)\,\Big[\,\mathbb{E}_\pi\big[R_{t+1} + \gamma \hat v(S_{t+1}, \mathbf{w}_k) \mid S_t = s\big] - \hat v(s, \mathbf{w})\Big]^2 .$$
+    <p>That is value iteration with a regression step in the middle, often called fitted value iteration. It converges whenever "apply the Bellman backup, then fit" shrinks distances.</p>
+    <p>In Baird's example it does. Under $\pi$ every next state is the bottom one with reward 0, so every target is $\gamma \hat v(7, \mathbf{w}^-)$. With 8 weights and 7 states the features can fit any 7 values exactly, so after a long phase every state's value is about $\gamma \hat v(7, \mathbf{w}^-)$. Each copy therefore multiplies the values by about $\gamma = 0.99$, which is why large $C$ settles slowly but surely. (The first phase lifts the top states from 3 to about $0.99 \times 12$, so the RMS rises above its start before it shrinks.) With small $C$ the regression never finishes before the target moves, and the weights still run away.</p>
+    <p>It is not a cure. In Lesson 65's two-state example, fitting the first state's value $w$ to the target $2\gamma w^-$ gives</p>
+    $$w_{k+1} = 2\gamma\, w_k,$$
+    <p>which still diverges for $\gamma > 0.5$. The target network only makes it grow once per copy instead of a little every step. In the ablation of Mnih et al. (2015), removing the target network lowered the score on all five games tested. Removing replay instead hurt more on four of the five.</p>
+    <p>A smooth alternative, from DDPG (Lillicrap et al., 2016), is to move the copy a little every step: $\boldsymbol\theta^- \leftarrow \tau \boldsymbol\theta + (1 - \tau)\boldsymbol\theta^-$ with small $\tau$.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const GAMMA = 0.99, ALPHA = 0.01, STEPS = 20000;
+  const CS = [1, 10, 30, 100, 300, 1000];
+  const cIdx = Course.slider('#iC', (v) => CS[v].toLocaleString('en-GB'), () => reset());
+
+  // Baird's features (S&B Example 11.1): top states 2w_i + w_8, bottom state w_7 + 2w_8.
+  const X = Array.from({ length: 7 }, (_, s) => {
+    const x = new Float64Array(8);
+    if (s < 6) { x[s] = 2; x[7] = 1; } else { x[6] = 1; x[7] = 2; }
+    return x;
+  });
+  const dot = (a, b) => a.reduce((t, v, i) => t + v * b[i], 0);
+
+  function makeRun(C) {
+    const w = Float64Array.from([1, 1, 1, 1, 1, 1, 10, 1]);
+    let wt = w.slice(), s = Course.randInt(7), t = 0, copies = 0;
+    const rms = () => Math.sqrt(X.reduce((a, x) => a + dot(w, x) ** 2, 0) / 7);
+    const err = [[0, Math.log10(rms())]], chase = [];
+    function step() {
+      if (t % C === 0) { wt = w.slice(); copies++; }
+      const solid = Math.random() < 1 / 7;
+      const s2 = solid ? 6 : Course.randInt(6);
+      if (solid) {                                         // rho = 7 for solid, 0 for dashed
+        const x = X[s], d = 0 + GAMMA * dot(wt, X[s2]) - dot(w, x);
+        for (let i = 0; i < 8; i++) w[i] += ALPHA * 7 * d * x[i];
+      }
+      s = s2; t++;
+      if (t % 10 === 0) {
+        err.push([t, Math.log10(Math.max(1e-3, rms()))]);
+        chase.push([t, dot(w, X[6]), GAMMA * dot(wt, X[6])]);
+        if (chase.length > 100) chase.shift();
+      }
+    }
+    return { step, err, chase, rms, get t() { return t; }, get copies() { return copies; } };
+  }
+
+  const chaseChart = Course.lineChart($('chase'), { xLabel: 'step', yLabel: 'value' });
+  const errChart = Course.lineChart($('err'), { xLabel: 'step', yLabel: 'log₁₀ RMS', xMin: 0, xMax: STEPS, yMin: -1, yMax: 8 });
+  let run, timer = null, compare = null;
+
+  function reset() {
+    stop();
+    run = makeRun(CS[cIdx()]); compare = null;
+    $('status').textContent = `C = ${CS[cIdx()]}. Press Run.`;
+    show();
+  }
+  function show() {
+    const ch = run.chase.length ? run.chase : [[0, 12, 0.99 * 12]];
+    chaseChart.draw([
+      { data: ch.map(([t, v]) => [t, v]), color: Course.colors.green, label: 'v̂(bottom)' },
+      { data: ch.map(([t, , y]) => [t, y]), color: Course.colors.amber, dashed: true, label: 'target γ v̂⁻(bottom)' },
+    ]);
+    const lines = compare || [{ data: run.err, color: Course.colors.green, label: `C = ${CS[cIdx()]}` }];
+    errChart.draw(lines, { hlines: [{ y: Math.log10(Math.sqrt((6 * 9 + 144) / 7)), label: 'start', color: '#9ca3af' }] });
+    $('sT').textContent = run.t.toLocaleString('en-GB');
+    $('sK').textContent = run.copies.toLocaleString('en-GB');
+    const r = run.rms();
+    $('sR').textContent = r >= 1e4 ? r.toExponential(1) : r.toFixed(2);
+  }
+  function stop() { clearInterval(timer); timer = null; $('bRun').textContent = 'Run 20,000 steps'; }
+  $('bRun').addEventListener('click', () => {
+    if (timer) return stop();
+    if (run.t >= STEPS) reset();
+    compare = null;
+    $('bRun').textContent = 'Pause';
+    timer = setInterval(() => {
+      for (let k = 0; k < 150 && run.t < STEPS; k++) run.step();
+      show();
+      if (run.t >= STEPS) {
+        stop();
+        const r = run.rms();
+        $('status').textContent = r > 100 ? `C = ${CS[cIdx()]}: the weights ran away.` : `C = ${CS[cIdx()]}: the values stayed bounded and are shrinking towards 0.`;
+      }
+    }, 30);
+  });
+  $('bCmp').addEventListener('click', () => {
+    const b = $('bCmp');
+    stop(); b.disabled = true; b.textContent = 'Running…';
+    setTimeout(() => {
+      const cols = [Course.colors.red, Course.colors.amber, Course.colors.blue, Course.colors.green];
+      compare = [1, 10, 100, 1000].map((C, i) => {
+        const r = makeRun(C);
+        for (let k = 0; k < STEPS; k++) r.step();
+        return { data: r.err, color: cols[i], label: `C=${C}` };
+      });
+      show();
+      $('status').textContent = 'Small C still diverges. Large C gives each regression time to finish.';
+      b.disabled = false; b.textContent = 'Compare again';
+    }, 30);
+  });
+  $('bReset').addEventListener('click', reset);
+  reset();
+
+  // ------------------------------------------------------------ quiz
+  Course.quiz([
+    {
+      q: 'DQN copies the weights every $C = 10{,}000$ updates. It makes one update every 4 agent steps, and each step repeats its action for 4 frames. How many frames pass between copies?',
+      answer: 10000 * 4 * 4,
+      tol: 0,
+      hint: 'Updates to steps, then steps to frames.',
+      explain: '$10{,}000 \\times 4 \\times 4 = 160{,}000$ frames.',
+    },
+    {
+      q: 'In Baird\'s example the frozen weights give $\\hat v(7, \\mathbf{w}^-) = 10$ and $\\gamma = 0.99$. What target does a solid-action update aim at, whatever state it starts from?',
+      answer: 0.99 * 10,
+      tol: 1e-6,
+      explain: 'Reward 0 and next state 7: $y = 0 + 0.99 \\times 10 = 9.9$.',
+    },
+    {
+      q: 'Lesson 65\'s two-state example with a target network, each phase fitted fully: $w_{k+1} = 2\\gamma w_k$. With $\\gamma = 0.9$ and $w_0 = 1$, what is $w$ after 3 copies?',
+      answer: Math.pow(1.8, 3),
+      tol: 1e-6,
+      explain: '$1.8^3 = 5.832$. Still growing: target networks slow this divergence but do not stop it.',
+    },
+    {
+      q: 'With soft updates $\\boldsymbol\\theta^- \\leftarrow 0.01\\,\\boldsymbol\\theta + 0.99\\,\\boldsymbol\\theta^-$, the weight on an old copy shrinks by 0.99 per update. After how many updates is it first below one half?',
+      answer: Math.ceil(Math.log(0.5) / Math.log(0.99)),
+      tol: 0,
+      hint: 'Solve $0.99^k < 0.5$.',
+      explain: '$k > \\ln 0.5 / \\ln 0.99 \\approx 68.97$, so 69 updates.',
+    },
+  ]);
+</script>
+</body>
+</html>

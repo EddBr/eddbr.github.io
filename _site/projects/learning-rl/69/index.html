@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>69. Double DQN | Learning RL</title>
+<meta name="description" content="The max over noisy Q-values is biased upwards. Double DQN picks the action with one network and scores it with the other. Sample the noise and measure the bias yourself.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .nets { display: grid; grid-template-columns: 4.6rem minmax(0, 1fr); gap: 6px 10px; align-items: center; margin: 10px 0; }
+  .nets .lab { font-size: 0.85rem; color: var(--muted); line-height: 1.2; }
+  .qbars { position: relative; display: flex; gap: 3px; height: 90px; }
+  .qbars .col { flex: 1; position: relative; border-radius: 3px; }
+  .qbars .col::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; border-top: 1px solid #9ca3af; }
+  .qbars .col i { position: absolute; left: 12%; right: 12%; border-radius: 2px; }
+  .qbars.on .col i { background: var(--blue); }
+  .qbars.tg .col i { background: var(--purple); }
+  .qbars .col.pickD { background: rgba(220, 38, 38, 0.12); outline: 2px solid var(--red); outline-offset: -2px; }
+  .qbars .col.pickDD { background: var(--accent-soft); outline: 2px solid var(--accent); outline-offset: -2px; }
+  .qbars .col.selDD { outline: 2px dashed var(--accent); outline-offset: -2px; }
+  .key { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.85rem; color: var(--muted); }
+  .key b { display: inline-block; width: 14px; height: 10px; vertical-align: middle; margin-right: 4px; border-radius: 2px; }
+  #eqs { overflow-x: auto; min-height: 5.6em; }
+</style>
+</head>
+<body data-lesson="69">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Double DQN</h1>
+  <p class="lede">DQN's target takes a max over noisy estimates, and the max of noisy numbers is biased upwards: this is Lesson 55's maximisation bias with a network. Double DQN (van Hasselt, Guez &amp; Silver, 2016) lets the online network choose the action and the target network say what it is worth.</p>
+
+  <section class="card">
+    <p class="note">One next state $s'$ in which every action is truly worth 0. Each network's estimate is 0 plus noise. The online and target networks share some of their errors, because $\boldsymbol\theta^-$ is a recent copy of $\boldsymbol\theta$: that is the overlap.</p>
+    <label class="slider"><span>Actions $m$</span><input id="iM" type="range" min="2" max="18" step="1" value="6"><output></output></label>
+    <label class="slider"><span>Noise $\sigma$</span><input id="iS" type="range" min="0.1" max="2" step="0.1" value="1"><output></output></label>
+    <label class="slider"><span>Overlap $\rho$</span><input id="iR" type="range" min="0" max="1" step="0.05" value="0.5"><output></output></label>
+    <div class="nets">
+      <span class="lab">online<br>$Q(s', a; \boldsymbol\theta)$</span><div class="qbars on" id="rowOn"></div>
+      <span class="lab">target<br>$Q(s', a; \boldsymbol\theta^-)$</span><div class="qbars tg" id="rowTg"></div>
+    </div>
+    <div class="key">
+      <span><b style="outline:2px solid var(--red)"></b>DQN: best by target, scored by target</span>
+      <span><b style="outline:2px dashed var(--accent)"></b>Double: chosen by online</span>
+      <span><b style="outline:2px solid var(--accent);background:var(--accent-soft)"></b>Double: scored by target</span>
+    </div>
+    <div id="eqs"></div>
+    <div class="stats">
+      <div class="stat"><span class="k">Samples</span><span class="v" id="sN">0</span></div>
+      <div class="stat"><span class="k">Average, DQN</span><span class="v bad" id="sD">–</span></div>
+      <div class="stat"><span class="k">Average, Double</span><span class="v good" id="sDD">–</span></div>
+      <div class="stat"><span class="k">Truth</span><span class="v">0</span></div>
+    </div>
+    <p class="note" id="theory"></p>
+    <div class="row">
+      <button id="bOne" class="primary">Sample</button>
+      <button id="bMany">Sample ×1,000</button>
+      <span class="spacer"></span>
+      <button id="bReset" class="quiet">Reset</button>
+    </div>
+
+    <div class="sub">
+      <h2>Bias against the number of actions</h2>
+      <p class="note">As in van Hasselt et al. (2016): every true value equal, independent standard normal errors ($\sigma = 1$, $\rho = 0$). Lines are the exact expectations, dots are averages over 1,000 samples.</p>
+      <div class="row"><button id="bCurve">Run</button></div>
+      <canvas class="chart" id="curve" hidden></canvas>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>DQN's target picks and scores the next action with the same network:</p>
+    $$y^{\text{DQN}} = r + \gamma \max_{a} Q(s', a; \boldsymbol\theta^-) = r + \gamma\, Q\big(s', \textstyle\arg\max_a Q(s', a; \boldsymbol\theta^-); \boldsymbol\theta^-\big).$$
+    <p>Double DQN picks with the online weights and scores with the target weights:</p>
+    $$y^{\text{Double}} = r + \gamma\, Q\big(s', \textstyle\arg\max_a Q(s', a; \boldsymbol\theta); \boldsymbol\theta^-\big).$$
+    <p>Nothing else in DQN changes, and no extra network is needed: the target network already exists.</p>
+    <p><b>Why the max is biased.</b> Write each estimate as true value plus error, $Q(s', a) = q(s', a) + \varepsilon_a$. The max is a convex function, so by Jensen's inequality</p>
+    $$\mathbb{E}\big[\max_a (q_a + \varepsilon_a)\big] \;\ge\; \max_a\, \mathbb{E}[q_a + \varepsilon_a] = \max_a q_a \quad \text{when } \mathbb{E}[\varepsilon_a] = 0.$$
+    <p>Unbiased errors still give an upward-biased max. If every $q_a$ is equal and the errors are independent $\mathcal{N}(0, \sigma^2)$, the bias is $\sigma\, \mathbb{E}[\max \text{ of } m \text{ standard normals}]$. For $m = 2$ that is $\sigma / \sqrt{\pi} \approx 0.56\,\sigma$. It grows with $m$, slowly.</p>
+    <p><b>Why Double helps.</b> Let the online error be $\varepsilon_a$ and the target error $\varepsilon^-_a$, both $\mathcal{N}(0, \sigma^2)$ with correlation $\rho$ for the same action and independent across actions. Then $\mathbb{E}[\varepsilon^-_a \mid \varepsilon] = \rho\, \varepsilon_a$, and with $a^* = \arg\max_a (q_a + \varepsilon_a)$:</p>
+    $$\mathbb{E}\big[\varepsilon^-_{a^*}\big] = \rho\, \mathbb{E}\big[\varepsilon_{a^*}\big] = \rho\,\sigma\,\mathbb{E}[\max \text{ of } m \text{ standard normals}] \quad (\text{all } q_a \text{ equal}).$$
+    <p>The Double estimate's bias is $\rho$ times DQN's. With independent errors ($\rho = 0$) it is gone. In practice $\boldsymbol\theta^-$ lags $\boldsymbol\theta$ by up to $C$ updates, so $\rho$ is between 0 and 1 and the bias shrinks rather than vanishes. This is Double Q-learning (Lesson 55) with the two networks DQN already has, instead of two tables trained on separate data.</p>
+    <p>van Hasselt et al. (2016, Theorem 1) give a bound that needs no noise model. Suppose all true values in $s'$ equal $V_*(s')$, and the estimates' errors $Q(s', a) - V_*(s')$ sum to zero across the $m$ actions with mean square $C > 0$. Then</p>
+    $$\max_a Q(s', a) \;\ge\; V_*(s') + \sqrt{\frac{C}{m-1}}.$$
+    <p>Errors that cancel on average across actions still push the max up. Under the same conditions, the lowest possible error of the Double estimate is 0. They found that Double DQN's value estimates on Atari were much closer to the truth than DQN's, and its scores were higher on most games.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+
+  // ------------------------------------------------------------ E[max of m standard normals], by numerical integration
+  function Phi(x) {                                        // standard normal CDF (Abramowitz & Stegun 7.1.26)
+    const t = 1 / (1 + 0.3275911 * Math.abs(x) / Math.SQRT2);
+    const y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x / 2);
+    return x >= 0 ? 0.5 * (1 + y) : 0.5 * (1 - y);
+  }
+  const phi = (x) => Math.exp(-x * x / 2) / Math.sqrt(2 * Math.PI);
+  function expectedMax(m) {
+    let s = 0; const h = 0.005;
+    for (let x = -9; x <= 9; x += h) s += x * m * phi(x) * Math.pow(Phi(x), m - 1) * h;
+    return s;
+  }
+
+  // ------------------------------------------------------------ one next state
+  const M = Course.slider('#iM', (v) => v, () => reset());
+  const SIG = Course.slider('#iS', (v) => v.toFixed(1), () => reset());
+  const RHO = Course.slider('#iR', (v) => v.toFixed(2), () => reset());
+  let on, tg, n, sumD, sumDD;
+
+  // Correlated errors: target = sigma * z, online = sigma * (rho z + sqrt(1 - rho^2) z').
+  function draw1() {
+    const m = M(), s = SIG(), r = RHO();
+    const z = Array.from({ length: m }, Course.gauss);
+    tg = z.map((x) => s * x);
+    on = z.map((x) => s * (r * x + Math.sqrt(1 - r * r) * Course.gauss()));
+    const aD = tg.indexOf(Math.max(...tg)), aDD = on.indexOf(Math.max(...on));
+    return { aD, aDD, yD: tg[aD], yDD: tg[aDD] };
+  }
+
+  function reset() {
+    n = 0; sumD = 0; sumDD = 0;
+    const r = draw1();
+    render(r, true);
+  }
+
+  function render(r, fresh) {
+    const span = Math.max(2.5, SIG() * 2.5);
+    const bars = (vals, cls) => vals.map((v, a) => {
+      const h = (50 * Math.min(span, Math.abs(v))) / span;
+      return `<div class="col ${cls(a)}"><i style="${v >= 0 ? `bottom:50%;height:${h}%` : `top:50%;height:${h}%`}"></i></div>`;
+    }).join('');
+    $('rowOn').innerHTML = bars(on, (a) => (a === r.aDD ? 'selDD' : ''));
+    $('rowTg').innerHTML = bars(tg, (a) => [a === r.aD && 'pickD', a === r.aDD && 'pickDD'].filter(Boolean).join(' '));
+    Course.tex($('eqs'),
+      `\\begin{aligned}\\text{DQN: } & \\max_a Q(s',a;\\boldsymbol\\theta^-) = Q(s', a_{${r.aD + 1}}; \\boldsymbol\\theta^-) = ${r.yD.toFixed(2)} \\\\ ` +
+      `\\text{Double: } & Q(s', a_{${r.aDD + 1}}; \\boldsymbol\\theta^-) = ${r.yDD.toFixed(2)}, \\quad a_{${r.aDD + 1}} = \\arg\\max_a Q(s', a; \\boldsymbol\\theta)\\end{aligned}`, true);
+    $('sN').textContent = n.toLocaleString('en-GB');
+    $('sD').textContent = n ? (sumD / n).toFixed(3) : '–';
+    $('sDD').textContent = n ? (sumDD / n).toFixed(3) : '–';
+    const e = SIG() * expectedMax(M());
+    $('theory').innerHTML = `Expected values: DQN $\\sigma\\,\\mathbb{E}[\\max] = ${e.toFixed(3)}$, Double $\\rho\\,\\sigma\\,\\mathbb{E}[\\max] = ${(RHO() * e).toFixed(3)}$.`;
+    Course.renderMath($('theory'));
+  }
+
+  function sample(k) {
+    let r;
+    for (let i = 0; i < k; i++) { r = draw1(); n++; sumD += r.yD; sumDD += r.yDD; }
+    render(r);
+  }
+  $('bOne').addEventListener('click', () => sample(1));
+  $('bMany').addEventListener('click', () => sample(1000));
+  $('bReset').addEventListener('click', reset);
+  reset();
+
+  // ------------------------------------------------------------ bias against m
+  const curve = Course.lineChart($('curve'), { xLabel: 'number of actions m (log₂)', yLabel: 'bias', yMin: -0.5 });
+  $('bCurve').addEventListener('click', () => {
+    const b = $('bCurve');
+    b.disabled = true; b.textContent = 'Running…';
+    setTimeout(() => {
+      const ks = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+      const exact = ks.map((k) => [k, expectedMax(2 ** k)]);
+      const mcD = [], mcDD = [];
+      ks.forEach((k) => {
+        const m = 2 ** k;
+        let sD = 0, sDD = 0;
+        for (let rep = 0; rep < 1000; rep++) {
+          let best = -Infinity, bestOn = -Infinity, valDD = 0;
+          for (let a = 0; a < m; a++) {
+            const t = Course.gauss(), o = Course.gauss();           // independent online and target errors
+            if (t > best) best = t;
+            if (o > bestOn) { bestOn = o; valDD = t; }
+          }
+          sD += best; sDD += valDD;
+        }
+        mcD.push([k, sD / 1000]); mcDD.push([k, sDD / 1000]);
+      });
+      $('curve').hidden = false;
+      curve.draw([
+        { data: exact, color: Course.colors.red, label: 'DQN (max)' },
+        { data: ks.map((k) => [k, 0]), color: Course.colors.green, label: 'Double' },
+        { data: mcD, color: Course.colors.red, dots: true, width: 0.01 },
+        { data: mcDD, color: Course.colors.green, dots: true, width: 0.01 },
+      ]);
+      b.disabled = false; b.textContent = 'Run again';
+    }, 30);
+  });
+
+  // ------------------------------------------------------------ quiz
+  Course.quiz([
+    {
+      q: 'Two actions, both truly worth 0, independent errors with $\\sigma = 0.5$. What is the expected DQN estimate $\\mathbb{E}[\\max_a Q(s\', a)]$?',
+      answer: 0.5 / Math.sqrt(Math.PI),
+      tol: 0.003,
+      hint: 'For $m = 2$, $\\mathbb{E}[\\max] = \\sigma/\\sqrt{\\pi}$.',
+      explain: '$0.5/\\sqrt{\\pi} = 0.5/1.7725 = 0.282$.',
+    },
+    {
+      q: 'Same set-up, but the online and target errors have overlap $\\rho = 0.4$. What is the expected Double DQN estimate?',
+      answer: 0.4 * 0.5 / Math.sqrt(Math.PI),
+      tol: 0.002,
+      explain: 'The bias is $\\rho$ times DQN\'s: $0.4 \\times 0.282 = 0.113$.',
+    },
+    {
+      q: '$r = 1$, $\\gamma = 0.9$. Online $Q(s\', \\cdot\\,; \\boldsymbol\\theta) = (2, 5, 3)$ and target $Q(s\', \\cdot\\,; \\boldsymbol\\theta^-) = (4, 1, 3)$. What is the Double DQN target?',
+      answer: 1 + 0.9 * 1,
+      tol: 1e-6,
+      explain: 'The online network picks action 2 (value 5). The target network scores it at 1. $y = 1 + 0.9 \\times 1 = 1.9$. DQN would use $\\max(4, 1, 3) = 4$ and get $4.6$.',
+    },
+    {
+      q: 'Why does Double DQN reduce the bias without removing it entirely?',
+      choices: [
+        'The target network is a recent copy of the online network, so their errors are correlated',
+        'It still takes a max over the target network',
+        'It uses a smaller discount factor',
+      ],
+      answer: 0,
+      explain: 'The bias is $\\rho$ times DQN\'s. Only fully independent estimates ($\\rho = 0$), as in tabular Double Q-learning, remove it.',
+    },
+  ]);
+</script>
+</body>
+</html>

@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>22. Action values | Learning RL</title>
+<meta name="description" content="An action value scores one action in one state: take it, then follow the policy. Every cell splits into four triangles, one per action.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  #grid { max-width: 520px !important; }
+  #grid .gcell { padding: 0; border-color: #d1d5db; }
+  .gcell.goal { background: var(--accent-soft); }
+  .gcell.pit { background: var(--red-soft); }
+  .term { display: flex; flex-direction: column; align-items: center; line-height: 1.1; }
+  .term small { font-size: 0.6em; color: var(--heading); font-weight: 600; }
+  .tri { position: absolute; inset: 0; }
+  .tri.t0 { clip-path: polygon(0 0, 100% 0, 50% 50%); }
+  .tri.t1 { clip-path: polygon(100% 0, 100% 100%, 50% 50%); }
+  .tri.t2 { clip-path: polygon(0 100%, 100% 100%, 50% 50%); }
+  .tri.t3 { clip-path: polygon(0 0, 0 100%, 50% 50%); }
+  .tri.pick { outline: none; background-image: repeating-linear-gradient(45deg, rgba(42,122,226,0.35) 0 3px, transparent 3px 7px); }
+  .ql { position: absolute; font-size: 0.7em; font-weight: 600; color: #1f2937; line-height: 1; pointer-events: none; }
+  .ql.l0 { top: 9%; left: 50%; transform: translateX(-50%); }
+  .ql.l1 { right: 3%; top: 50%; transform: translateY(-50%); }
+  .ql.l2 { bottom: 9%; left: 50%; transform: translateX(-50%); }
+  .ql.l3 { left: 3%; top: 50%; transform: translateY(-50%); }
+  .diag { position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(45deg, transparent calc(50% - 0.5px), rgba(255,255,255,0.9) calc(50% - 0.5px), rgba(255,255,255,0.9) calc(50% + 0.5px), transparent calc(50% + 0.5px)),
+                linear-gradient(-45deg, transparent calc(50% - 0.5px), rgba(255,255,255,0.9) calc(50% - 0.5px), rgba(255,255,255,0.9) calc(50% + 0.5px), transparent calc(50% + 0.5px)); }
+  .best { position: absolute; width: 7px; height: 7px; border-radius: 50%; background: var(--heading); pointer-events: none; }
+  .best.b0 { top: 2px; left: calc(50% - 3.5px); } .best.b1 { right: 2px; top: calc(50% - 3.5px); }
+  .best.b2 { bottom: 2px; left: calc(50% - 3.5px); } .best.b3 { left: 2px; top: calc(50% - 3.5px); }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }
+  .seg button { border: 0; border-radius: 0; color: var(--muted); }
+  .seg button.on { color: #fff; }
+  #selEq { overflow-x: auto; overflow-y: hidden; text-align: center; min-height: 2.4em; }
+</style>
+</head>
+<body data-lesson="22">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Action values</h1>
+  <p class="lede">A state value says how good it is to <i>be</i> somewhere. An <b>action value</b> says how good it is to take one particular action there and then carry on with the policy. Comparing the action values in a state tells you which action to take.</p>
+
+  <section class="card">
+    <div class="row">
+      <span class="muted">Policy:</span>
+      <span class="seg"><button id="pRandom" class="on">Random</button><button id="pArrows">Arrows, ε = 0.2</button></span>
+    </div>
+    <p class="note">Each cell is split into four triangles, one per action. A triangle shows the exact $q_\pi(s, a)$: the expected return from taking that action once, then following the policy. Click any triangle to test it with episodes.</p>
+    <div id="grid"></div>
+    <div class="row center">
+      <label class="muted"><input type="checkbox" id="cBest"> mark the best action in each cell ●</label>
+    </div>
+    <div id="selEq"></div>
+    <div class="row">
+      <button id="bOne">Run 1 episode</button>
+      <button id="bHundred" class="primary">Run 100 episodes</button>
+      <span class="spacer"></span>
+      <button id="bReset" class="quiet">Reset</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="k">Episodes</span><span class="v" id="sN">0</span></div>
+      <div class="stat"><span class="k">Average return $Q(s, a)$</span><span class="v" id="sQ">–</span></div>
+      <div class="stat"><span class="k">Exact $q_\pi(s, a)$</span><span class="v" id="sExact">–</span></div>
+      <div class="stat"><span class="k">State value $v_\pi(s)$</span><span class="v" id="sV">–</span></div>
+    </div>
+    <canvas class="chart" id="chart" hidden></canvas>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>The <b>action-value function</b> of $\pi$ is the expected return after taking action $a$ in state $s$ and following $\pi$ afterwards:</p>
+    $$q_\pi(s, a) = \mathbb{E}_\pi\big[G_t \mid S_t = s, A_t = a\big]$$
+    <p>Compare $v_\pi(s) = \mathbb{E}_\pi[G_t \mid S_t = s]$ from Lesson 21. The only difference is that the first action is fixed instead of drawn from $\pi$. Everything after that comes from $\pi$ and the ice.</p>
+    <p>The episodes above estimate it the same way as before: start in $s$, force $A_0 = a$, follow $\pi$, and average the returns.</p>
+    $$Q(s, a) = \frac{1}{n}\sum_{i=1}^{n} G^{(i)} \;\longrightarrow\; q_\pi(s, a)$$
+    <p>There are $|\mathcal{S}| \times |\mathcal{A}|$ action values, here $16 \times 4 = 64$, against 16 state values. The extra numbers buy something: to choose an action you only compare four numbers,</p>
+    $$\arg\max_a q_\pi(s, a)$$
+    <p>with no need to know where the ice might send you. A state value alone cannot rank actions without that knowledge (Lesson 25). This is why the control methods from Lesson 51 onwards learn $Q$, not $V$.</p>
+    <p>Tick "mark the best action": under the random policy, the best action in a cell already points roughly towards 🏁 and away from 🕳️. Lesson 24 uses exactly that.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  // ---- The icy gridworld (Lessons 18–19's layout, used in Lessons 20–29) ---
+  // 4×5 grid. G = goal (+10, ends), P = pit (−10, ends), # = wall. Every other move pays `step`.
+  // An action goes where you meant with probability 1 − slip, and slips to each side with slip/2.
+  // Moving into the wall or the edge leaves you where you are.
+  const MAP = ['....G', '.#..P', '...#.', '.....'];
+  const ROWS = 4, COLS = 5, NS = ROWS * COLS;
+  const ARROW = ['↑', '→', '↓', '←'], ANAME = ['up', 'right', 'down', 'left'];
+  const DR = [-1, 0, 1, 0], DC = [0, 1, 0, -1];
+  const kind = (s) => MAP[Math.floor(s / COLS)][s % COLS];
+  const isWall = (s) => kind(s) === '#';
+  const isTerm = (s) => kind(s) === 'G' || kind(s) === 'P';
+  const STATES = [...Array(NS).keys()].filter((s) => !isWall(s) && !isTerm(s));
+  const START = 15;
+  const rc = (s) => [Math.floor(s / COLS), s % COLS];
+  const cellName = (s) => `(${rc(s)[0]},${rc(s)[1]})`;
+
+  function move(s, d) {
+    const [r, c] = rc(s), nr = r + DR[d], nc = c + DC[d];
+    if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) return s;
+    const s2 = nr * COLS + nc;
+    return isWall(s2) ? s : s2;
+  }
+  const reward = (W, s2) => (kind(s2) === 'G' ? W.goal : kind(s2) === 'P' ? W.pit : W.step);
+  // The three possible results of action a in state s: meant, slip clockwise, slip anticlockwise.
+  function outcomes(W, s, a) {
+    return [[a, 1 - W.slip], [(a + 1) % 4, W.slip / 2], [(a + 3) % 4, W.slip / 2]]
+      .filter(([, p]) => p > 0)
+      .map(([d, p]) => { const s2 = move(s, d); return { d, p, s2, r: reward(W, s2) }; });
+  }
+  const uniform = () => { const pi = []; STATES.forEach((s) => (pi[s] = [0.25, 0.25, 0.25, 0.25])); return pi; };
+  const deterministic = (arrows) => { const pi = []; STATES.forEach((s) => { pi[s] = [0, 0, 0, 0]; pi[s][arrows[s]] = 1; }); return pi; };
+
+  // Exact v_π: solve (I − γ P_π) v = r_π over the non-terminal states by Gaussian elimination.
+  function evaluate(W, pi) {
+    const n = STATES.length, idx = new Map(STATES.map((s, i) => [s, i]));
+    const A = STATES.map(() => new Array(n + 1).fill(0));
+    STATES.forEach((s, i) => {
+      A[i][i] += 1;
+      for (let a = 0; a < 4; a++) {
+        if (!pi[s][a]) continue;
+        for (const o of outcomes(W, s, a)) {
+          const w = pi[s][a] * o.p;
+          A[i][n] += w * o.r;
+          if (!isTerm(o.s2)) A[i][idx.get(o.s2)] -= W.gamma * w;
+        }
+      }
+    });
+    for (let c = 0; c < n; c++) {
+      let piv = c;
+      for (let r = c + 1; r < n; r++) if (Math.abs(A[r][c]) > Math.abs(A[piv][c])) piv = r;
+      [A[c], A[piv]] = [A[piv], A[c]];
+      for (let r = 0; r < n; r++) {
+        if (r === c || !A[r][c]) continue;
+        const f = A[r][c] / A[c][c];
+        for (let k = c; k <= n; k++) A[r][k] -= f * A[c][k];
+      }
+    }
+    const v = new Array(NS).fill(0);
+    STATES.forEach((s, i) => (v[s] = A[i][n] / A[i][i]));
+    return v;
+  }
+  // q(s, a) = Σ p(s', r | s, a) [r + γ v(s')]
+  const qOf = (W, v, s, a) => outcomes(W, s, a).reduce((t, o) => t + o.p * (o.r + W.gamma * v[o.s2]), 0);
+  const qAll = (W, v) => { const q = []; STATES.forEach((s) => (q[s] = [0, 1, 2, 3].map((a) => qOf(W, v, s, a)))); return q; };
+  // v_* by value iteration (Lesson 33), run to convergence.
+  function optimal(W) {
+    let v = new Array(NS).fill(0);
+    for (let k = 0; k < 5000; k++) {
+      let delta = 0;
+      const nv = v.slice();
+      STATES.forEach((s) => { nv[s] = Math.max(...[0, 1, 2, 3].map((a) => qOf(W, v, s, a))); delta = Math.max(delta, Math.abs(nv[s] - v[s])); });
+      v = nv;
+      if (delta < 1e-12) break;
+    }
+    return v;
+  }
+  function stepEnv(W, s, a) {
+    const os = outcomes(W, s, a), o = os[Course.sample(os.map((x) => x.p))];
+    return o;
+  }
+  // One episode under π from s0 (and optional forced first action a0). Returns the steps.
+  function episode(W, pi, s0, a0 = null, maxT = 1000) {
+    const steps = [];
+    let s = s0;
+    for (let t = 0; t < maxT && !isTerm(s); t++) {
+      const a = t === 0 && a0 !== null ? a0 : Course.sample(pi[s]);
+      const o = stepEnv(W, s, a);
+      steps.push({ s, a, d: o.d, r: o.r, s2: o.s2 });
+      s = o.s2;
+    }
+    return steps;
+  }
+  // Two decimals without a minus sign on zero.
+  const f2 = (x) => (Math.abs(x) < 0.005 ? 0 : x).toFixed(2);
+  const discounted = (W, steps) => steps.reduceRight((g, x) => x.r + W.gamma * g, 0);
+  // ---- end of the icy gridworld ---------------------------------------------
+
+  const W = { slip: 0.2, step: 0, goal: 10, pit: -10, gamma: 0.9 };
+  // Lesson 19's route: up the left side, then along the top row.
+  const PRESET = { 0: 1, 1: 1, 2: 1, 3: 1, 5: 0, 7: 0, 8: 0, 10: 0, 11: 3, 12: 0, 14: 2, 15: 0, 16: 3, 17: 3, 18: 3, 19: 3 };
+  const POLICIES = {
+    random: uniform(),
+    arrows: (() => { const pi = []; STATES.forEach((s) => (pi[s] = [0, 1, 2, 3].map((a) => (a === PRESET[s] ? 0.8 : 0) + 0.05))); return pi; })(),
+  };
+  let which = 'random', pi, v, q, sum, cnt, hist, sel = [START, 0];
+
+  function reset() {
+    pi = POLICIES[which];
+    v = evaluate(W, pi); q = qAll(W, v);
+    sum = {}; cnt = {}; hist = {};
+    draw();
+  }
+  const key = (s, a) => `${s},${a}`;
+
+  const G = Course.grid($('grid'), ROWS, COLS, (r, c, el) => {
+    const s = r * COLS + c, k = kind(s);
+    if (k === '#') { el.classList.add('wall'); return; }
+    if (k === 'G') { el.classList.add('goal'); el.innerHTML = '<span class="term">🏁<small>+10</small></span>'; return; }
+    if (k === 'P') { el.classList.add('pit'); el.innerHTML = '<span class="term">🕳️<small>−10</small></span>'; return; }
+    if (!q) return;
+    const top = Math.max(...q[s]);
+    el.innerHTML = [0, 1, 2, 3].map((a) => `<div class="tri t${a}${sel[0] === s && sel[1] === a ? ' pick' : ''}" style="background-color:${Course.heat(q[s][a], 10)}"></div>`).join('') +
+      '<div class="diag"></div>' +
+      [0, 1, 2, 3].map((a) => `<span class="ql l${a}">${q[s][a].toFixed(1)}</span>`).join('') +
+      ($('cBest').checked ? [0, 1, 2, 3].filter((a) => q[s][a] > top - 1e-9).map((a) => `<span class="best b${a}"></span>`).join('') : '');
+  });
+  // Which triangle was clicked: compare the offset from the cell centre.
+  $('grid').addEventListener('click', (e) => {
+    const cell = e.target.closest('.gcell');
+    if (!cell) return;
+    const s = +cell.dataset.r * COLS + +cell.dataset.c;
+    if (!STATES.includes(s)) return;
+    const b = cell.getBoundingClientRect(), dx = e.clientX - (b.left + b.width / 2), dy = e.clientY - (b.top + b.height / 2);
+    const a = Math.abs(dy) > Math.abs(dx) ? (dy < 0 ? 0 : 2) : (dx > 0 ? 1 : 3);
+    sel = [s, a];
+    draw();
+  });
+  $('grid').classList.add('clickable');
+
+  const chart = Course.lineChart($('chart'), { xLabel: 'episodes', yLabel: 'average return' });
+
+  function draw() {
+    G.update();
+    const [s, a] = sel, k = key(s, a), n = cnt[k] || 0;
+    const TA = ['\\uparrow', '\\rightarrow', '\\downarrow', '\\leftarrow'];
+    Course.tex($('selEq'), `q_\\pi\\big(${cellName(s)}, ${TA[a]}\\big) = ${f2(q[s][a])}`, true);
+    $('sN').textContent = n;
+    $('sQ').textContent = n ? f2(sum[k] / n) : '–';
+    $('sExact').textContent = f2(q[s][a]);
+    $('sV').textContent = f2(v[s]);
+    $('chart').hidden = !n;
+    if (n) chart.draw([{ data: hist[k].map((y, i) => [i + 1, y]), color: Course.colors.blue, label: 'Q(s, a)' }],
+      { hlines: [{ y: q[s][a], color: Course.colors.amber, label: 'q_π(s, a)' }, { y: v[s], color: Course.colors.grey, label: 'v_π(s)' }] });
+  }
+
+  function run(times) {
+    const [s, a] = sel, k = key(s, a);
+    sum[k] ??= 0; cnt[k] ??= 0; hist[k] ??= [];
+    for (let i = 0; i < times; i++) {
+      sum[k] += discounted(W, episode(W, pi, s, a)); cnt[k]++;
+      hist[k].push(sum[k] / cnt[k]);
+    }
+    draw();
+  }
+  $('bOne').addEventListener('click', () => run(1));
+  $('bHundred').addEventListener('click', () => run(100));
+  $('bReset').addEventListener('click', reset);
+  $('cBest').addEventListener('change', draw);
+  for (const [id, w] of [['pRandom', 'random'], ['pArrows', 'arrows']]) {
+    $(id).addEventListener('click', () => {
+      which = w;
+      $('pRandom').classList.toggle('on', w === 'random');
+      $('pArrows').classList.toggle('on', w === 'arrows');
+      reset();
+    });
+  }
+  reset();
+
+  Course.quiz([
+    {
+      q: 'How many action values does this grid have (16 non-terminal cells, 4 actions)?',
+      answer: 64,
+      tol: 0,
+      explain: 'One per state–action pair: $16 \\times 4 = 64$.',
+    },
+    {
+      q: 'Episodes that start with → in a cell return $10$, $10$ and $-8.1$. What is the estimate $Q(s, \\rightarrow)$?',
+      answer: (10 + 10 - 8.1) / 3,
+      tol: 0.005,
+      explain: '$(10 + 10 - 8.1)/3 = 11.9/3 \\approx 3.97$.',
+    },
+    {
+      q: 'On ice with no slipping and a step reward of 0, ↓ from cell $s$ always moves to a cell with $v_\\pi = 4$. With $\\gamma = 0.9$, what is $q_\\pi(s, \\downarrow)$?',
+      answer: 0.9 * 4,
+      tol: 0.001,
+      hint: 'The first reward is 0. Everything after it is the return from the next cell, discounted once.',
+      explain: '$G_t = 0 + \\gamma G_{t+1}$, and the expected $G_{t+1}$ from the next cell is $v_\\pi = 4$. So $q_\\pi = 0.9 \\times 4 = 3.6$.',
+    },
+    {
+      q: 'Why do control methods usually learn $Q(s, a)$ rather than $V(s)$?',
+      choices: [
+        'Action values are always larger',
+        'There are fewer action values than state values',
+        'With $Q$, choosing an action is an argmax over numbers you already have, with no model of where actions lead',
+      ],
+      answer: 2,
+      explain: 'Picking the best action from $V$ needs $p(s\', r \\mid s, a)$ to look one step ahead. $Q$ has that look-ahead built in.',
+    },
+  ]);
+</script>
+</body>
+</html>

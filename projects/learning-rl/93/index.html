@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>93. GRPO | Learning RL</title>
+<meta name="description" content="Group relative policy optimisation: sample several answers to one question, score them, and use each answer's standing within the group as its advantage. No critic needed.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .group { display: grid; grid-template-columns: repeat(auto-fill, minmax(66px, 1fr)); gap: 6px; margin: 12px 0; }
+  .ans { border: 1px solid var(--border); border-radius: 6px; padding: 6px 4px; text-align: center; background: var(--soft); }
+  .ans .mk { font-size: 1.3rem; font-weight: 700; line-height: 1.2; }
+  .ans .adv { font-size: 0.85rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .ans.right { background: var(--accent-soft); border-color: var(--accent); }
+  .ans.right .mk { color: var(--accent); }
+  .ans.wrong .mk { color: var(--red); }
+  .ans .bar { height: 5px; margin: 4px auto 0; border-radius: 3px; }
+  #eq { overflow-x: auto; min-height: 2.6em; }
+  #w { height: 220px; }
+</style>
+</head>
+<body data-lesson="93">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>GRPO</h1>
+  <p class="lede">PPO (Lesson 83) needs a critic to estimate advantages, and for a language model the critic is usually a second network about the size of the policy. Group relative policy optimisation drops it. It samples a group of answers to the same question, scores each with a verifier (Lesson 92), and measures each answer against the rest of its group.</p>
+
+  <section class="card">
+    <label class="slider"><span>Pass rate $p$</span><input id="iP" type="range" min="0" max="1" step="0.05" value="0.3"><output></output></label>
+    <label class="slider"><span>Group size $G$</span><input id="iG" type="range" min="2" max="16" step="1" value="4"><output></output></label>
+    <div class="group" id="group"></div>
+    <div id="eq"></div>
+    <p class="status" id="status"></p>
+    <div class="row">
+      <button id="bSample" class="primary">Sample group</button>
+      <button id="bMany">Sample 1000 groups</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="k">Groups with no signal (predicted)</span><span class="v" id="sPred">–</span></div>
+      <div class="stat"><span class="k">Groups with no signal (sampled)</span><span class="v" id="sObs">–</span></div>
+    </div>
+
+    <div class="sub">
+      <h2>How hard each question pushes</h2>
+      <p class="note">Expected size of the update on one question as a function of its pass rate $p$, for a large group. The dashed line is the slider's $p$.</p>
+      <canvas class="chart" id="w"></canvas>
+      <p class="note">Lesson 92's 30 problems, starting skill $\theta_0 = -3$, groups of $G = 8$ per problem, 300 steps, averaged over 10 runs. Three choices of advantage, everything else identical.</p>
+      <div class="row"><button id="bCompare">Run comparison</button></div>
+      <canvas class="chart" id="cmp" hidden></canvas>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>For a question $q$, sample $G$ answers $o_1, \dots, o_G$ from the current policy and score them, $r_i \in \{0, 1\}$. The advantage of answer $i$ is its reward standardised within the group:</p>
+    $$\hat A_i = \frac{r_i - \operatorname{mean}(r_1, \dots, r_G)}{\operatorname{std}(r_1, \dots, r_G)}$$
+    <p>The group mean plays the role of the critic's $V(s)$ (Lesson 76): it is a baseline that says how well the policy does on this question. Every token of answer $i$ gets the same $\hat A_i$. Here std is the population standard deviation; implementations differ slightly.</p>
+    <p>With $k$ correct answers, $\hat p = k/G$ and $\operatorname{std} = \sqrt{\hat p(1 - \hat p)}$, so</p>
+    $$\begin{aligned} \hat A_{\text{right}} &= \sqrt{\frac{1 - \hat p}{\hat p}} \\ \hat A_{\text{wrong}} &= -\sqrt{\frac{\hat p}{1 - \hat p}} \end{aligned}$$
+    <p>A rare success gets a large positive advantage. If every answer agrees (all right or all wrong), the advantages are all 0 and the question is skipped. That happens with probability</p>
+    $$p^G + (1 - p)^G$$
+    <p>The update is PPO's clipped objective (Lesson 83) with a KL penalty to a reference policy (Lesson 88), averaged over the group and over each answer's tokens:</p>
+    $$J(\theta) = \mathbb{E}\Big[ \frac{1}{G} \sum_{i=1}^{G} \frac{1}{|o_i|} \sum_{t=1}^{|o_i|} L_{i,t} \Big]$$
+    $$\begin{aligned} L_{i,t} = {} &\min\big(\rho_{i,t} \hat A_i,\ \operatorname{clip}(\rho_{i,t}, 1 \pm \varepsilon)\, \hat A_i\big) \\ &- \beta\, \mathbb{D}_{\mathrm{KL}}\big[\pi_\theta \,\|\, \pi_{\text{ref}}\big] \end{aligned}$$
+    <p>Here $\rho_{i,t} = \pi_\theta(o_{i,t} \mid q, o_{i,&lt;t}) / \pi_{\theta_{\text{old}}}(o_{i,t} \mid q, o_{i,&lt;t})$ is Lesson 82's probability ratio for token $t$. Shao et al. (2024) estimate the KL per token with $\frac{\pi_{\text{ref}}}{\pi_\theta} - \log \frac{\pi_{\text{ref}}}{\pi_\theta} - 1$, which is never negative.</p>
+    <p>Two details the comparison chart shows. The mean includes $r_i$ itself, which shrinks each expected update by a factor $(G-1)/G$. And dividing by the std rescales each question: in the toy model of Lesson 92 the expected update on a question goes from $p(1 - p)$ to about $\sqrt{p(1 - p)}$ for large $G$, so hard and nearly solved questions are pushed much harder. Here that escapes the low-reward start faster. Later work (Liu et al., 2025, "Dr. GRPO") argues the std term and the $1/|o_i|$ length average both bias what the model learns, and drops them.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const C = Course.colors;
+  const pS = Course.slider('#iP', (v) => v.toFixed(2), () => { sample(); drawW(); });
+  const gS = Course.slider('#iG', String, () => sample());
+
+  // Population mean and std; advantages are 0 when std is 0.
+  function advantages(r) {
+    const G = r.length, m = r.reduce((a, b) => a + b, 0) / G;
+    const s = Math.sqrt(r.reduce((a, b) => a + (b - m) ** 2, 0) / G);
+    return { m, s, A: r.map((x) => (s > 0 ? (x - m) / s : 0)) };
+  }
+  const drawGroup = () => Array.from({ length: gS() }, () => (Math.random() < pS() ? 1 : 0));
+  const zeroProb = () => Math.pow(pS(), gS()) + Math.pow(1 - pS(), gS());
+
+  function sample() {
+    const r = drawGroup(), { m, s, A } = advantages(r);
+    $('group').innerHTML = r.map((x, i) => {
+      const a = A[i], w = Math.min(100, Math.abs(a) * 30);
+      return `<div class="ans ${x ? 'right' : 'wrong'}"><div class="mk">${x ? '✓' : '✗'}</div>` +
+        `<div class="adv">${a >= 0 ? '+' : '−'}${Math.abs(a).toFixed(2)}</div>` +
+        `<div class="bar" style="width:${w}%;background:${a >= 0 ? C.green : C.red}"></div></div>`;
+    }).join('');
+    const k = r.reduce((a, b) => a + b, 0), G = r.length;
+    if (s > 0) {
+      Course.tex($('eq'), `\\begin{aligned} &\\operatorname{mean} = \\tfrac{${k}}{${G}} = ${m.toFixed(2)},\\quad \\operatorname{std} = ${s.toFixed(2)} \\\\ &\\hat A_{\\text{right}} = \\tfrac{1 - ${m.toFixed(2)}}{${s.toFixed(2)}} = ${((1 - m) / s).toFixed(2)} \\end{aligned}`, true);
+      $('status').textContent = `${k} of ${G} right. Right answers are pushed up, wrong ones down, and the pushes sum to zero.`;
+    } else {
+      Course.tex($('eq'), `\\operatorname{std} = 0 \\;\\Rightarrow\\; \\hat A_i = 0 \\text{ for every } i`, true);
+      $('status').textContent = `All ${k ? 'right' : 'wrong'}. Nothing to compare, so this question teaches nothing this round.`;
+    }
+    $('sPred').textContent = `${(100 * zeroProb()).toFixed(1)}%`;
+    $('sObs').textContent = '–';
+  }
+  $('bSample').addEventListener('click', sample);
+  $('bMany').addEventListener('click', () => {
+    let z = 0;
+    for (let i = 0; i < 1000; i++) if (advantages(drawGroup()).s === 0) z++;
+    $('sObs').textContent = `${(z / 10).toFixed(1)}%`;
+  });
+
+  // Expected update size per question as a function of p.
+  const wChart = Course.lineChart($('w'), { xLabel: 'pass rate p', yLabel: 'expected update', xMin: 0, xMax: 1, yMin: 0, yMax: 0.55 });
+  function drawW() {
+    const ps = Array.from({ length: 101 }, (_, i) => i / 100);
+    wChart.draw([
+      { data: ps.map((p) => [p, p * (1 - p)]), color: C.grey, label: 'r − mean' },
+      { data: ps.map((p) => [p, Math.sqrt(p * (1 - p))]), color: C.green, label: '(r − mean) / std' },
+    ], { vlines: [{ x: pS(), color: C.amber }] });
+  }
+
+  // Lesson 92's toy: 30 problems, p_j = sigmoid(theta - d_j), groups of G per problem.
+  const sig = (z) => 1 / (1 + Math.exp(-z));
+  const D = Array.from({ length: 30 }, (_, j) => (6 * j) / 29);
+  function train(mode, steps = 300, G = 8, theta0 = -3) {
+    let th = theta0;
+    const curve = [D.reduce((a, d) => a + sig(th - d), 0) / 30];
+    const r = new Array(G);
+    for (let t = 1; t <= steps; t++) {
+      let g = 0;
+      for (const d of D) {
+        const p = sig(th - d);
+        let m = 0;
+        for (let i = 0; i < G; i++) { r[i] = Math.random() < p ? 1 : 0; m += r[i]; }
+        m /= G;
+        let s = 0;
+        for (let i = 0; i < G; i++) s += (r[i] - m) ** 2;
+        s = Math.sqrt(s / G);
+        for (let i = 0; i < G; i++) {
+          const A = mode === 0 ? r[i] : mode === 1 ? r[i] - m : s > 0 ? (r[i] - m) / s : 0;
+          g += A * (r[i] - p);          // advantage times grad log pi
+        }
+      }
+      th += g / (30 * G);
+      curve.push(D.reduce((a, d) => a + sig(th - d), 0) / 30);
+    }
+    return curve;
+  }
+  const cmp = Course.lineChart($('cmp'), { xLabel: 'training step', yLabel: 'mean pass rate', yMin: 0, yMax: 1, xMin: 0 });
+  $('bCompare').addEventListener('click', () => {
+    $('bCompare').disabled = true; $('bCompare').textContent = 'Running…';
+    setTimeout(() => {
+      const avg = (mode) => {
+        let acc = null;
+        for (let k = 0; k < 10; k++) { const c = train(mode); acc = acc ? acc.map((v, i) => v + c[i]) : c; }
+        return acc.map((v) => v / 10);
+      };
+      $('cmp').hidden = false;
+      cmp.draw([
+        { data: avg(0), color: C.grey, label: 'Â = r' },
+        { data: avg(1), color: C.blue, label: 'r − mean' },
+        { data: avg(2), color: C.green, label: 'GRPO' },
+      ]);
+      $('bCompare').disabled = false; $('bCompare').textContent = 'Run again';
+    }, 30);
+  });
+
+  sample();
+  drawW();
+
+  Course.quiz([
+    {
+      q: 'A group of $G = 4$ answers scores $1, 0, 0, 0$. What is $\\hat A$ for the correct answer?',
+      answer: Math.sqrt(3),
+      tol: 0.01,
+      hint: 'mean $= 0.25$, std $= \\sqrt{0.25 \\times 0.75}$.',
+      explain: '$(1 - 0.25)/0.433 = \\sqrt{3} \\approx 1.73$.',
+    },
+    {
+      q: 'Same group. What is $\\hat A$ for each wrong answer?',
+      answer: -1 / Math.sqrt(3),
+      tol: 0.01,
+      explain: '$(0 - 0.25)/0.433 = -1/\\sqrt{3} \\approx -0.577$. Check: $1.73 + 3 \\times (-0.577) = 0$.',
+    },
+    {
+      q: 'A question the model solves 90% of the time, groups of $G = 8$. What fraction of groups give no learning signal?',
+      answer: Math.pow(0.9, 8) + Math.pow(0.1, 8),
+      tol: 0.005,
+      explain: '$0.9^8 + 0.1^8 \\approx 0.430$. Use the sliders to check.',
+    },
+    {
+      q: 'Compared with PPO for language models, what does GRPO remove?',
+      choices: [
+        'The clipped probability ratio',
+        'The learned value network (critic)',
+        'The KL penalty to a reference model',
+      ],
+      answer: 1,
+      explain: 'The group mean replaces the critic as the baseline. Clipping and the KL term stay.',
+    },
+  ]);
+</script>
+</body>
+</html>

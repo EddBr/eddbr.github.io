@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>28. Bellman in matrix form | Learning RL</title>
+<meta name="description" content="Stack every state's Bellman equation into one matrix equation and solve it with an inverse. Drag the transition matrix and watch the inverse and the values change.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .ptab { width: 100%; border-collapse: collapse; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+  .ptab th { color: var(--muted); font-weight: 500; padding: 4px; text-align: center; white-space: nowrap; }
+  .ptab th.rowh { text-align: left; }
+  .ptab td { padding: 4px 6px; text-align: center; }
+  .ptab input[type=range] { width: 100%; min-width: 0; accent-color: var(--accent); }
+  .ptab td b { display: block; color: var(--heading); }
+  .ptab td.r input { accent-color: var(--amber); }
+  .ptab td.r b { color: var(--amber); }
+  .mats { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; }
+  @media (max-width: 640px) { .mats { grid-template-columns: 1fr; } }
+  .mats > div { overflow-x: auto; overflow-y: hidden; }
+  .vrow { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; margin: 8px 0; }
+  .vrow span { padding: 6px 12px; border-radius: 6px; background: var(--accent-soft); color: var(--heading); font-weight: 600; font-variant-numeric: tabular-nums; }
+  #series { overflow-x: auto; overflow-y: hidden; }
+</style>
+</head>
+<body data-lesson="28">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Bellman in matrix form</h1>
+  <p class="lede">With $n$ states there are $n$ Bellman equations. Stack them and they become one matrix equation, $v = r + \gamma P v$, solved in one line with a matrix inverse. The inverse has a meaning of its own: it counts discounted future visits.</p>
+
+  <section class="card">
+    <p class="note">Lesson 16's three-state weather, with a reward for each kind of day (Lesson 27 had two states). Each row of sliders sets where a state goes tomorrow (rows are rescaled to add up to 1). The last column is the reward for a day in that state.</p>
+    <table class="ptab">
+      <thead><tr><th class="rowh">from \ to</th><th>☀️</th><th>☁️</th><th>🌧️</th><th>$r$</th></tr></thead>
+      <tbody id="ptab"></tbody>
+    </table>
+    <label class="slider"><span>Discount $\gamma$</span><input id="iG" type="range" min="0" max="0.99" step="0.01" value="0.9"><output></output></label>
+    <div class="vrow" id="vrow"></div>
+    <div class="mats">
+      <div id="mP"></div>
+      <div id="mA"></div>
+      <div id="mInv"></div>
+      <div id="mV"></div>
+    </div>
+    <p class="note" id="rowNote"></p>
+
+    <div class="sub">
+      <h2>Where the inverse comes from</h2>
+      <p class="note">Add up $\gamma^k P^k$, the discounted chance of being in each state $k$ days from now. Drag $K$ to add more terms and watch the sum approach the inverse above.</p>
+      <label class="slider"><span>Terms $K$</span><input id="iK" type="range" min="0" max="120" step="1" value="2"><output></output></label>
+      <div id="series"></div>
+      <p class="status" id="seriesNote"></p>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>Write the values as a column vector $v$, the expected rewards as $r$ (with $r_i = \mathbb{E}[R_{t+1} \mid S_t = i]$), and the transition probabilities as a matrix $P$ with $P_{ij} = \Pr\{S_{t+1} = j \mid S_t = i\}$. Then all $n$ Bellman equations at once read</p>
+    $$v = r + \gamma P v$$
+    <p>Row $i$ of $Pv$ is $\sum_j P_{ij} v_j$, the expected next value from state $i$, so this is exactly Lesson 27's pair of equations, for any number of states. Collect the $v$ terms:</p>
+    $$(I - \gamma P)\, v = r \quad\Longrightarrow\quad v = (I - \gamma P)^{-1} r$$
+    <p>The inverse exists whenever $\gamma &lt; 1$. Expanding it as a geometric series of matrices shows why:</p>
+    $$(I - \gamma P)^{-1} = \sum_{k=0}^{\infty} \gamma^k P^k$$
+    <p>$P^k_{ij}$ is the probability of being in $j$ exactly $k$ steps after starting in $i$. Every row of $P^k$ sums to 1, so the terms shrink like $\gamma^k$ and the series converges. Multiplying by $I - \gamma P$ telescopes it to $I$.</p>
+    <p>So entry $(i, j)$ of the inverse is the expected <b>discounted number of visits</b> to $j$ when starting from $i$. Each row sums to $\sum_k \gamma^k = 1/(1 - \gamma)$. Then $v_i = \sum_j (\text{discounted visits to } j) \times r_j$: rewards weighted by how much time you spend collecting them.</p>
+    <p>The catch is cost. Inverting an $n \times n$ matrix takes about $n^3$ operations. That is nothing for 3 states, slow for a million, and impossible for the roughly $10^{170}$ positions of Go. That is why the rest of the course uses iterative methods (Lesson 30) and sampling.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const NAMES = ['☀️', '☁️', '🌧️'], TN = ['S', 'C', 'R'];
+  const w = [[0.7, 0.2, 0.1], [0.3, 0.4, 0.3], [0.2, 0.3, 0.5]];  // Lesson 16's matrix
+  const r = [2, 0, -1];
+  const gam = Course.slider('#iG', (x) => x.toFixed(2), update);
+  const K = Course.slider('#iK', (x) => String(x), series);
+
+  $('ptab').innerHTML = [0, 1, 2].map((i) =>
+    `<tr><th class="rowh">${NAMES[i]}</th>` +
+    [0, 1, 2].map((j) => `<td><input type="range" min="0" max="1" step="0.05" value="${w[i][j]}" data-i="${i}" data-j="${j}" aria-label="weight from ${TN[i]} to ${TN[j]}"><b id="p${i}${j}"></b></td>`).join('') +
+    `<td class="r"><input type="range" min="-3" max="3" step="0.5" value="${r[i]}" data-r="${i}" aria-label="reward ${TN[i]}"><b id="r${i}"></b></td></tr>`).join('');
+  $('ptab').querySelectorAll('input').forEach((el) => el.addEventListener('input', () => {
+    if (el.dataset.r !== undefined) r[+el.dataset.r] = +el.value;
+    else w[+el.dataset.i][+el.dataset.j] = +el.value;
+    update();
+  }));
+
+  const Pm = () => w.map((row, i) => { const t = row.reduce((a, b) => a + b, 0); return t ? row.map((x) => x / t) : row.map((_, j) => (i === j ? 1 : 0)); });
+  const matmul = (A, B) => A.map((row) => B[0].map((_, j) => row.reduce((t, x, k) => t + x * B[k][j], 0)));
+  const I3 = () => [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+  // Gauss–Jordan inverse with partial pivoting.
+  function inverse(A) {
+    const n = A.length, M = A.map((row, i) => [...row, ...I3()[i]]);
+    for (let c = 0; c < n; c++) {
+      let p = c;
+      for (let k = c + 1; k < n; k++) if (Math.abs(M[k][c]) > Math.abs(M[p][c])) p = k;
+      [M[c], M[p]] = [M[p], M[c]];
+      const d = M[c][c];
+      for (let k = 0; k < 2 * n; k++) M[c][k] /= d;
+      for (let rr = 0; rr < n; rr++) if (rr !== c) { const f = M[rr][c]; for (let k = 0; k < 2 * n; k++) M[rr][k] -= f * M[c][k]; }
+    }
+    return M.map((row) => row.slice(n));
+  }
+  const f = (x, dp = 2) => (Math.abs(x) < 0.5 * Math.pow(10, -dp) ? 0 : x).toFixed(dp);
+  const bm = (M, dp = 2) => `\\begin{bmatrix} ${M.map((row) => row.map((x) => f(x, dp)).join(' & ')).join(' \\\\ ')} \\end{bmatrix}`;
+  const col = (v, dp = 2) => bm(v.map((x) => [x]), dp);
+  let inv;
+
+  function update() {
+    const P = Pm(), g = gam();
+    P.forEach((row, i) => row.forEach((x, j) => ($(`p${i}${j}`).textContent = x.toFixed(2))));
+    r.forEach((x, i) => ($(`r${i}`).textContent = x));
+    const A = P.map((row, i) => row.map((x, j) => (i === j ? 1 : 0) - g * x));
+    inv = inverse(A);
+    const v = inv.map((row) => row.reduce((t, x, j) => t + x * r[j], 0));
+    Course.tex($('mP'), `P = ${bm(P)}`, true);
+    Course.tex($('mA'), `I - \\gamma P = ${bm(A, 3)}`, true);
+    Course.tex($('mInv'), `(I - \\gamma P)^{-1} = ${bm(inv)}`, true);
+    Course.tex($('mV'), `v = (I - \\gamma P)^{-1} ${col(r, 1)} = ${col(v)}`, true);
+    $('vrow').innerHTML = v.map((x, i) => `<span>v(${NAMES[i]}) = ${f(x)}</span>`).join('');
+    $('rowNote').textContent = `Row sums of the inverse: ${inv.map((row) => f(row.reduce((a, b) => a + b, 0))).join(', ')}. Each equals 1/(1 − γ) = ${f(1 / (1 - g))}.`;
+    series();
+  }
+
+  function series() {
+    const P = Pm(), g = gam(), k = K();
+    let S = I3(), term = I3();
+    for (let t = 1; t <= k; t++) {
+      term = matmul(term, P).map((row) => row.map((x) => g * x));
+      S = S.map((row, i) => row.map((x, j) => x + term[i][j]));
+    }
+    const err = Math.max(...S.flatMap((row, i) => row.map((x, j) => Math.abs(x - inv[i][j]))));
+    Course.tex($('series'), `\\sum_{k=0}^{${k}} \\gamma^k P^k = ${bm(S)}`, true);
+    $('seriesNote').textContent = `Largest difference from the inverse: ${err < 0.005 ? '< 0.01' : err.toFixed(2)}. Each extra term adds less, because γᵏ shrinks.`;
+  }
+
+  update();
+
+  Course.quiz([
+    {
+      q: 'With $\\gamma = 0.9$, what does each row of $(I - \\gamma P)^{-1}$ add up to?',
+      answer: 1 / (1 - 0.9),
+      tol: 0.01,
+      explain: 'Each row of $P^k$ sums to 1, so a row of $\\sum_k \\gamma^k P^k$ sums to $\\sum_k 0.9^k = 1/(1 - 0.9) = 10$.',
+    },
+    {
+      q: 'Two states swap every step: $P = \\begin{bmatrix} 0 & 1 \\\\ 1 & 0 \\end{bmatrix}$, and $\\gamma = 0.5$. What is the top-left entry of $(I - \\gamma P)^{-1}$?',
+      answer: 4 / 3,
+      tol: 0.005,
+      hint: '$I - 0.5P = \\begin{bmatrix} 1 & -0.5 \\\\ -0.5 & 1 \\end{bmatrix}$. For a $2 \\times 2$ matrix, the inverse is $\\frac{1}{ad - bc}\\begin{bmatrix} d & -b \\\\ -c & a \\end{bmatrix}$.',
+      explain: 'The determinant is $1 - 0.25 = 0.75$, so the entry is $1/0.75 = 4/3$. As visits: you are at the start at steps $0, 2, 4, \\dots$, worth $1 + 0.25 + 0.0625 + \\dots = 4/3$.',
+    },
+    {
+      q: 'Solving takes about $n^3$ operations. If 100 states take 1 millisecond, about how many milliseconds do 1000 states take?',
+      answer: 1000,
+      tol: 1,
+      explain: '$10\\times$ the states is $10^3 = 1000\\times$ the work: about 1000 ms, a full second.',
+    },
+    {
+      q: 'What does entry $(i, j)$ of $(I - \\gamma P)^{-1}$ measure?',
+      choices: [
+        'The expected discounted number of visits to $j$, starting from $i$',
+        'The probability of going from $i$ to $j$ in one step',
+        'The value of state $j$',
+      ],
+      answer: 0,
+      explain: 'It is $\\sum_k \\gamma^k \\Pr\\{S_k = j \\mid S_0 = i\\}$. Multiplying by $r$ weights each state\'s reward by those visits.',
+    },
+  ]);
+</script>
+</body>
+</html>

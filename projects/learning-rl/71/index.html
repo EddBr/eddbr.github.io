@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>71. The policy gradient | Learning RL</title>
+<meta name="description" content="The gradient of expected return points towards actions that beat the average. One sampled action and its reward give a noisy but unbiased estimate of it.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .mapwrap { max-width: 420px; margin: 8px auto 0; }
+  #map { width: 100%; aspect-ratio: 1; display: block; cursor: crosshair; touch-action: none; border: 1px solid var(--border); border-radius: 6px; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.8rem; color: var(--muted); margin: 6px 0 0; justify-content: center; }
+  .legend > span::before { content: ""; display: inline-block; width: 16px; height: 0; vertical-align: middle; margin-right: 5px; border-top: 3px solid var(--accent); }
+  .legend > .s::before { border-top: 1px solid var(--blue); }
+  .legend > .m::before { border-top: 3px dashed var(--blue); }
+  .legend > .p::before { border-top: 2px solid #111; }
+  .probs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0 4px; }
+  .probs div { text-align: center; font-size: 0.8rem; color: var(--muted); }
+  .probs b { display: block; height: 8px; background: var(--accent); border-radius: 3px; margin: 3px auto 2px; transition: width 0.15s ease; }
+  #eq, #eq2 { min-height: 2.4em; text-align: center; margin: 6px 0; line-height: 2; }
+</style>
+</head>
+<body data-lesson="71">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>The policy gradient</h1>
+  <p class="lede">Gradient ascent on $J(\boldsymbol\theta)$ needs $\nabla J$. Its formula says: push up each action that beats the policy's average, and push harder for actions the policy plays often. The agent cannot compute that sum, but one sampled action and its reward give an estimate that is right on average.</p>
+
+  <section class="card">
+    <h2>A gradient you can sample</h2>
+    <p class="note">Three arms with true values $q(A) = 1$, $q(B) = 2$, $q(C) = 0$ and rewards $\mathcal{N}(q, 1)$. A softmax policy with preferences $\theta_A$, $\theta_B$ (horizontal, vertical) and $\theta_C = 0$. Shading is the expected reward $J$: darker is better. Click or drag on the map to move $\boldsymbol\theta$.</p>
+    <div class="mapwrap"><canvas id="map" aria-label="Map of J over theta A and theta B. Click to move theta."></canvas></div>
+    <div class="legend"><span>exact $\nabla J$</span><span class="s">one sample</span><span class="m">mean of samples</span><span class="p">path</span></div>
+    <div class="probs" id="probs"></div>
+    <div id="eq"></div>
+    <div id="eq2"></div>
+    <div class="row">
+      <button id="b1" class="primary">Sample 1</button>
+      <button id="b100">Sample 100</button>
+      <button id="bClimb">Take 30 steps</button>
+      <span class="spacer"></span>
+      <button id="bReset" class="quiet">Reset</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="k">Samples</span><span class="v" id="sN">0</span></div>
+      <div class="stat"><span class="k">Exact $\nabla J$</span><span class="v" id="sEx">–</span></div>
+      <div class="stat"><span class="k">Mean of samples</span><span class="v" id="sMean">–</span></div>
+    </div>
+    <p class="note">Single samples point all over the place. Their average lands on the green arrow. "Take 30 steps" moves $\boldsymbol\theta$ by $\alpha = 0.3$ times one fresh sample each step: noisy, but it climbs.</p>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p><b>One state first.</b> With softmax preferences $\theta_b$, the expected reward is</p>
+    $$J(\boldsymbol\theta) = \sum_a \pi(a)\, q(a)$$
+    <p>The softmax derivative from Lesson 13 is $\partial \pi(a)/\partial \theta_b = \pi(a)\big(\mathbb{1}_{a=b} - \pi(b)\big)$, so</p>
+    $$\frac{\partial J}{\partial \theta_b} = \sum_a q(a)\,\pi(a)\big(\mathbb{1}_{a=b} - \pi(b)\big) = \pi(b)\big(q(b) - J\big)$$
+    <p>An action better than average ($q(b) > J$) gets its preference pushed up, and the push is larger when the action is played often. That is the green arrow.</p>
+    <p>The middle sum is an average over $A \sim \pi$, and $\mathbb{E}[R \mid A] = q(A)$. So one action and its reward give an unbiased sample of the gradient:</p>
+    $$\frac{\partial J}{\partial \theta_b} = \mathbb{E}\Big[R\,\big(\mathbb{1}_{A=b} - \pi(b)\big)\Big]$$
+    <p>Each blue line is one such sample. "Unbiased" means their average converges to the true gradient.</p>
+    <p><b>Many states.</b> For an episodic MDP with $J(\boldsymbol\theta) = v_{\pi_{\boldsymbol\theta}}(s_0)$, the <b>policy gradient theorem</b> (S&amp;B §13.2) gives</p>
+    $$\nabla J(\boldsymbol\theta) \propto \sum_s \mu(s) \sum_a q_\pi(s,a)\, \nabla \pi(a \mid s, \boldsymbol\theta)$$
+    <p>$\mu(s)$ is the fraction of time spent in $s$ under $\pi$. Changing $\boldsymbol\theta$ also changes which states are visited, but the theorem needs no derivative of $\mu$: weight each state by how often it is visited, and in it push every action's probability by that action's value. Since $\mu$ is the on-policy distribution, the sum is an expectation over the states the agent actually meets:</p>
+    $$\nabla J(\boldsymbol\theta) \propto \mathbb{E}_\pi\Big[\sum_a q_\pi(S_t, a)\, \nabla \pi(a \mid S_t, \boldsymbol\theta)\Big]$$
+    <p>Lesson 72 turns the inner sum into a single sampled action, and Lesson 73 replaces $q_\pi$ with the sampled return $G_t$. The result is $\nabla J \propto \mathbb{E}_\pi\big[G_t \nabla \ln \pi(A_t \mid S_t, \boldsymbol\theta)\big]$.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const Q = [1, 2, 0], NAMES = ['A', 'B', 'C'], LO = -4, HI = 4, SCALE = 2, ALPHA = 0.3;
+  const canvas = $('map'), ctx = canvas.getContext('2d');
+  let th, samples, sum, path, last;
+
+  const pol = (t) => {
+    const h = [t[0], t[1], 0], m = Math.max(...h), e = h.map((x) => Math.exp(x - m)), s = e[0] + e[1] + e[2];
+    return e.map((x) => x / s);
+  };
+  const Jof = (t) => pol(t).reduce((a, p, i) => a + p * Q[i], 0);
+  const grad = (t) => { const p = pol(t), J = Jof(t); return [p[0] * (Q[0] - J), p[1] * (Q[1] - J)]; };
+  const f = (x, d = 2) => (Math.abs(x) < 0.5 * Math.pow(10, -d) ? (0).toFixed(d) : x.toFixed(d));
+
+  // Background: J over the plane, computed once at low resolution.
+  const RES = 90, bg = document.createElement('canvas');
+  bg.width = bg.height = RES;
+  (() => {
+    const g = bg.getContext('2d'), img = g.createImageData(RES, RES);
+    for (let j = 0; j < RES; j++) for (let i = 0; i < RES; i++) {
+      const t = [LO + ((i + 0.5) / RES) * (HI - LO), HI - ((j + 0.5) / RES) * (HI - LO)];
+      const J = Jof(t), k = J / 2;                        // J ranges over [0, 2]
+      const band = Math.abs((J * 4) % 1 - 0.5) > 0.47 ? 0.85 : 1;   // faint contour every 0.25
+      const o = 4 * (j * RES + i);
+      img.data[o] = (255 - k * (255 - 5) * 0.75) * band;
+      img.data[o + 1] = (255 - k * (255 - 150) * 0.75) * band;
+      img.data[o + 2] = (255 - k * (255 - 105) * 0.75) * band;
+      img.data[o + 3] = 255;
+    }
+    g.putImageData(img, 0, 0);
+  })();
+
+  function arrow(x0, y0, x1, y1, color, w, dashed) {
+    ctx.strokeStyle = ctx.fillStyle = color; ctx.lineWidth = w; ctx.setLineDash(dashed ? [5, 4] : []);
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke(); ctx.setLineDash([]);
+    const a = Math.atan2(y1 - y0, x1 - x0), L = Math.hypot(x1 - x0, y1 - y0), hs = Math.min(9, L * 0.5) + w;
+    if (L < 2) return;
+    ctx.beginPath(); ctx.moveTo(x1, y1);
+    ctx.lineTo(x1 - hs * Math.cos(a - 0.4), y1 - hs * Math.sin(a - 0.4));
+    ctx.lineTo(x1 - hs * Math.cos(a + 0.4), y1 - hs * Math.sin(a + 0.4)); ctx.fill();
+  }
+
+  function draw() {
+    const dpr = window.devicePixelRatio || 1, W = canvas.clientWidth;
+    canvas.width = canvas.height = W * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(bg, 0, 0, W, W);
+    const X = (x) => ((x - LO) / (HI - LO)) * W, Y = (y) => ((HI - y) / (HI - LO)) * W;
+
+    ctx.font = '11px -apple-system, sans-serif'; ctx.fillStyle = '#6b7280';
+    ctx.strokeStyle = 'rgba(0,0,0,0.12)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(X(0), 0); ctx.lineTo(X(0), W); ctx.moveTo(0, Y(0)); ctx.lineTo(W, Y(0)); ctx.stroke();
+    ctx.textAlign = 'right'; ctx.fillText('θ_A →', W - 4, Y(0) - 5);
+    ctx.textAlign = 'left'; ctx.fillText('↑ θ_B', X(0) + 4, 12);
+
+    if (path.length > 1) {
+      ctx.strokeStyle = '#111'; ctx.lineWidth = 1.5; ctx.beginPath();
+      path.forEach(([a, b], i) => (i ? ctx.lineTo(X(a), Y(b)) : ctx.moveTo(X(a), Y(b)))); ctx.stroke();
+    }
+    const x0 = X(th[0]), y0 = Y(th[1]), px = W / (HI - LO);
+    samples.slice(-40).forEach((g) => arrow(x0, y0, x0 + g[0] * SCALE * px, y0 - g[1] * SCALE * px, 'rgba(42,122,226,0.35)', 1));
+    if (samples.length) arrow(x0, y0, x0 + (sum[0] / samples.length) * SCALE * px, y0 - (sum[1] / samples.length) * SCALE * px, Course.colors.blue, 3, true);
+    const g = grad(th);
+    arrow(x0, y0, x0 + g[0] * SCALE * px, y0 - g[1] * SCALE * px, Course.colors.green, 3);
+    ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(x0, y0, 4.5, 0, 2 * Math.PI); ctx.fill();
+
+    const p = pol(th), J = Jof(th);
+    $('probs').innerHTML = p.map((x, i) => `<div>π(${NAMES[i]}) = ${x.toFixed(2)}<b style="width:${Math.max(2, 100 * x)}%"></b>q = ${Q[i]}</div>`).join('');
+    Course.tex($('eq'), `J = ${p.map((x, i) => `${x.toFixed(2)}(${Q[i]})`).join(' + ')} = ${J.toFixed(3)}, \\quad \\frac{\\partial J}{\\partial \\theta_A} = ${p[0].toFixed(2)}(1 - ${J.toFixed(2)}) = ${f(g[0], 3)}`);
+    if (last) {
+      const [A, R, s] = last;
+      Course.tex($('eq2'), `A = ${NAMES[A]},\\ R = ${R.toFixed(2)}: \\quad \\hat g = R\\,(\\mathbb{1}_{A=b} - \\pi(b)) = (${f(s[0])},\\ ${f(s[1])})`);
+    } else $('eq2').textContent = 'Press Sample to draw an action and a reward.';
+    $('sN').textContent = samples.length;
+    $('sEx').textContent = `(${f(g[0])}, ${f(g[1])})`;
+    $('sMean').textContent = samples.length ? `(${f(sum[0] / samples.length)}, ${f(sum[1] / samples.length)})` : '–';
+  }
+
+  function sample() {
+    const p = pol(th), A = Course.sample(p), R = Q[A] + Course.gauss();
+    const s = [R * ((A === 0) - p[0]), R * ((A === 1) - p[1])];
+    samples.push(s); sum[0] += s[0]; sum[1] += s[1]; last = [A, R, s];
+    return s;
+  }
+  function moveTo(t) { th = t; samples = []; sum = [0, 0]; last = null; path = [t.slice()]; draw(); }
+
+  $('b1').addEventListener('click', () => { sample(); draw(); });
+  $('b100').addEventListener('click', () => { for (let i = 0; i < 100; i++) sample(); draw(); });
+  $('bClimb').addEventListener('click', () => {
+    for (let i = 0; i < 30; i++) {
+      const s = sample();
+      th = [Math.max(LO, Math.min(HI, th[0] + ALPHA * s[0])), Math.max(LO, Math.min(HI, th[1] + ALPHA * s[1]))];
+      path.push(th.slice());
+    }
+    samples = []; sum = [0, 0];
+    draw();
+  });
+  $('bReset').addEventListener('click', () => moveTo([1.5, -2]));
+
+  let dragging = false;
+  const pick = (e) => {
+    const r = canvas.getBoundingClientRect();
+    moveTo([LO + ((e.clientX - r.left) / r.width) * (HI - LO), HI - ((e.clientY - r.top) / r.height) * (HI - LO)]);
+  };
+  canvas.addEventListener('pointerdown', (e) => { dragging = true; canvas.setPointerCapture(e.pointerId); pick(e); });
+  canvas.addEventListener('pointermove', (e) => { if (dragging) pick(e); });
+  canvas.addEventListener('pointerup', () => { dragging = false; });
+  new ResizeObserver(draw).observe(canvas);
+  moveTo([1.5, -2]);
+
+  // Quiz numbers.
+  const qp = [0.2, 0.5, 0.3], qJ = 0.2 * 1 + 0.5 * 2 + 0.3 * 0;
+  Course.quiz([
+    {
+      q: 'With $\\pi = (0.2, 0.5, 0.3)$ over arms A, B, C and $q = (1, 2, 0)$, what is $J$?',
+      answer: qJ,
+      explain: '$0.2(1) + 0.5(2) + 0.3(0) = 1.2$.',
+    },
+    {
+      q: 'Same policy. What is $\\partial J / \\partial \\theta_A$?',
+      answer: qp[0] * (1 - qJ),
+      tol: 0.001,
+      hint: 'Use $\\pi(b)(q(b) - J)$.',
+      explain: '$0.2\\,(1 - 1.2) = -0.04$. Arm A is worse than average, so its preference should go down, even though its value is positive.',
+    },
+    {
+      q: 'Same policy. The agent samples arm B and receives $R = 3$. What is this sample\'s estimate of $\\partial J / \\partial \\theta_B$?',
+      answer: 3 * (1 - qp[1]),
+      tol: 0.001,
+      explain: '$R(\\mathbb{1}_{A=B} - \\pi(B)) = 3(1 - 0.5) = 1.5$. The exact value is $0.5(2 - 1.2) = 0.4$: one sample is noisy.',
+    },
+    {
+      q: 'What does the policy gradient theorem let you avoid computing?',
+      choices: [
+        'The action values $q_\\pi(s, a)$',
+        'How changing $\\boldsymbol\\theta$ changes the state distribution $\\mu(s)$',
+        'The gradient of the policy $\\nabla \\pi(a \\mid s, \\boldsymbol\\theta)$',
+      ],
+      answer: 1,
+      explain: 'The effect of $\\boldsymbol\\theta$ on which states get visited depends on the unknown dynamics. The theorem shows the gradient needs only $\\mu$ itself, which sampling provides for free.',
+    },
+  ]);
+</script>
+</body>
+</html>

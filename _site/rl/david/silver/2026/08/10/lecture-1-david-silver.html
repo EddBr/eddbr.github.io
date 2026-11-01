@@ -85,14 +85,48 @@ Agent’s job is to maximise cumulative reward</p>
   </li>
 </ol>
 
-<p>| Situation                     | +ve Reward                     | -ve Reward                  |
-| —————————– | —————————— | ————————— |
-| Helicopter manouevres         | Following desired trajectory   | Crashing                    |
-| Backgammon                    | Winning                        | Losing                      |
-| Managing investment portfolio | Increasing $/£ in bank account | Losing money                |
-| Control a power station       | Producing power                | Exceeding safety thresholds |
-| Humanoid walk                 | Forward motion                 | Falling over                |
-| Atari games                   | Increasing score               | Decreasing score            |</p>
+<table>
+  <thead>
+    <tr>
+      <th>Situation</th>
+      <th>+ve Reward</th>
+      <th>-ve Reward</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Helicopter manouevres</td>
+      <td>Following desired trajectory</td>
+      <td>Crashing</td>
+    </tr>
+    <tr>
+      <td>Backgammon</td>
+      <td>Winning</td>
+      <td>Losing</td>
+    </tr>
+    <tr>
+      <td>Managing investment portfolio</td>
+      <td>Increasing $/£ in bank account</td>
+      <td>Losing money</td>
+    </tr>
+    <tr>
+      <td>Control a power station</td>
+      <td>Producing power</td>
+      <td>Exceeding safety thresholds</td>
+    </tr>
+    <tr>
+      <td>Humanoid walk</td>
+      <td>Forward motion</td>
+      <td>Falling over</td>
+    </tr>
+    <tr>
+      <td>Atari games</td>
+      <td>Increasing score</td>
+      <td>Decreasing score</td>
+    </tr>
+  </tbody>
+</table>
+
 <h2 id="sequential-decision-making">Sequential Decision Making</h2>
 <p><strong>Goal:</strong> Select actions to maximise total future reward</p>
 <ul>
@@ -112,9 +146,21 @@ Agent’s job is to maximise cumulative reward</p>
   </li>
 </ul>
 
-<p>| Agent                                                                                        | Environment                                                                            |
-| ——————————————————————————————– | ————————————————————————————– |
-| 1. Executes action $A_t$<br />2. Receives observation $O_t$<br />3. Receives scalar reward $R_t$ | 1. Receives action $A_t$<br />2. Emits observation $O_t$<br />3. Emits scalar reward $R_t$ |</p>
+<table>
+  <thead>
+    <tr>
+      <th>Agent</th>
+      <th>Environment</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1. Executes action $A_t$<br />2. Receives observation $O_t$<br />3. Receives scalar reward $R_t$</td>
+      <td>1. Receives action $A_t$<br />2. Emits observation $O_t$<br />3. Emits scalar reward $R_t$</td>
+    </tr>
+  </tbody>
+</table>
+
 <h2 id="history-and-state">History and State</h2>
 <h3 id="history">History</h3>
 <p>Sequence of observations, actions, rewards
@@ -138,15 +184,7 @@ Any function of history $S^a_t=f(H_t)$</p>
 <h2 id="information-state--markov-state">Information State / Markov State</h2>
 <p>Contains all useful information from the history</p>
 
-<table>
-  <tbody>
-    <tr>
-      <td>A state $S_t$ is Markov iff $\mathbb{P}[S_{t+1}</td>
-      <td>S_t]=\mathbb{P}[S_{t+1}</td>
-      <td>S_1,…,S_t]$</td>
-    </tr>
-  </tbody>
-</table>
+<p>A state $S_t$ is Markov iff $\mathbb{P}[S_{t+1}\vert S_t]=\mathbb{P}[S_{t+1}\vert S_1,…,S_t]$</p>
 
 <p>All of history is Markov (not very useful but true)</p>
 <h2 id="fully-observable-environments">Fully Observable Environments</h2>
@@ -176,21 +214,21 @@ Agent must construct it’s own state $S_t^a$:</p>
   <li>Value function $V$ - how good each state/action</li>
   <li>Model - agent’s representation of environment
     <h2 id="1-policy">1. Policy</h2>
-    <p>Map from state to action $a=\pi(s)$ or stochastically $\pi(a|s)=\mathbb{P}[A=a|S=s]$</p>
+    <p>Map from state to action $a=\pi(s)$ or stochastically $\pi(a\vert s)=\mathbb{P}[A=a\vert S=s]$</p>
   </li>
 </ol>
 
 <h2 id="2-value-function">2. Value Function</h2>
 <p>Value function is a prediction of future reward
 Used to evaluate the goodness/badness of states
-$V_\pi(s)=\mathbb{E}<em>\pi[R_t+\gamma R</em>{t+1}+\gamma^2 R_{t+2}+…|S_t=s]$</p>
+$V_\pi(s)=\mathbb{E}<em>\pi[R_t+\gamma R</em>{t+1}+\gamma^2 R_{t+2}+…\vert S_t=s]$</p>
 <h2 id="3-model">3. Model</h2>
 <p>Predicts what environment will do next
 Transitions: $\mathcal{P}$ predicts next state (i.e. dynamics)
 Rewards: $\mathcal{R}$ predicts next (immediate) reward</p>
 
-<p>$\mathcal{P}^a_{ss’}=\mathbb{P}[S’=s’|S=s,A=a]$
-$\mathcal{R}^a_{s}=\mathbb{P}[R|S=s,A=a]$</p>
+<p>$\mathcal{P}^a_{ss’}=\mathbb{P}[S’=s’\vert S=s,A=a]$
+$\mathcal{R}^a_{s}=\mathbb{P}[R\vert S=s,A=a]$</p>
 <h2 id="categorising-agents">Categorising Agents</h2>
 
 <table>
@@ -215,11 +253,26 @@ $\mathcal{R}^a_{s}=\mathbb{P}[R|S=s,A=a]$</p>
   </tbody>
 </table>
 
-<p>| Model free                   | Model Based                  |
-| —————————- | —————————- |
-| Policy and/or value function | Policy and/or value function |
-| No model                     | Model                        |
-![[Pasted image 20260809154439.png]]</p>
+<table>
+  <thead>
+    <tr>
+      <th>Model free</th>
+      <th>Model Based</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Policy and/or value function</td>
+      <td>Policy and/or value function</td>
+    </tr>
+    <tr>
+      <td>No model</td>
+      <td>Model</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>![[Pasted image 20260809154439.png]]</p>
 <h1 id="problems-within-rl">Problems within RL</h1>
 <h2 id="reinforcement-learning">Reinforcement Learning</h2>
 <ul>
@@ -246,12 +299,38 @@ Agent should discover a good policy from its experience of the environment, with
 Exploitation exploits known information to maximise reward</p>
 <h3 id="examples-2">Examples</h3>
 
-<p>| Example                      | Exploitation                    | Exploration             |
-| —————————- | ——————————- | ———————– |
-| Restaurant                   | Go to your favourite restaurant | Try a new restaurant    |
-| Online Banner Advertisements | Show must successful advert     | Show a different advert |
-| Oil drilling                 | Drill at best known location    | Drill at a new location |
-| Game playing                 | Play best move                  | Play different strategy |</p>
+<table>
+  <thead>
+    <tr>
+      <th>Example</th>
+      <th>Exploitation</th>
+      <th>Exploration</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Restaurant</td>
+      <td>Go to your favourite restaurant</td>
+      <td>Try a new restaurant</td>
+    </tr>
+    <tr>
+      <td>Online Banner Advertisements</td>
+      <td>Show must successful advert</td>
+      <td>Show a different advert</td>
+    </tr>
+    <tr>
+      <td>Oil drilling</td>
+      <td>Drill at best known location</td>
+      <td>Drill at a new location</td>
+    </tr>
+    <tr>
+      <td>Game playing</td>
+      <td>Play best move</td>
+      <td>Play different strategy</td>
+    </tr>
+  </tbody>
+</table>
+
 <h2 id="prediction-and-control">Prediction and Control</h2>
 <p>Prediction - evaluate the future given my policy
 Control - optimise the future (find the best policy)</p>

@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>33. Value iteration | Learning RL</title>
+<meta name="description" content="Replace the average in policy evaluation with a max and you get value iteration: one sweep that evaluates and improves at once.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  #world { max-width: 400px; }
+  .gcell .v { position: absolute; top: 2px; font-size: max(9px, 0.55em); font-weight: 600; color: var(--heading); }
+  .gcell .a { font-size: 1.1em; font-weight: 700; color: var(--heading); margin-top: 0.5em; }
+  .gcell .a.wrong { color: var(--amber); }
+  .gcell.goal { background: var(--accent); color: #fff; font-weight: 700; font-size: 0.8em; }
+  .gcell.pit { background: var(--red); color: #fff; font-weight: 700; font-size: 0.8em; }
+  .gcell.start::after { content: "S"; position: absolute; bottom: 1px; left: 4px; font-size: max(9px, 0.5em); color: var(--muted); }
+  .gcell.sel { box-shadow: inset 0 0 0 3px var(--blue); }
+  #eq { overflow-x: auto; min-height: 3.2em; }
+  @media (max-width: 560px) { #eq { font-size: 0.78em; } }
+</style>
+</head>
+<body data-lesson="33">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Value iteration</h1>
+  <p class="lede">Policy iteration waits for each evaluation to finish before improving. Value iteration doesn't wait: every sweep backs up each state with the best action instead of the policy's action. One button does both jobs.</p>
+
+  <section class="card">
+    <p class="note">The bridge from Lesson 32: goal $+10$, water $-10$, $\gamma = 0.9$. The arrows are greedy with respect to the current values. Amber arrows are not yet optimal. Click a cell to see its backup.</p>
+    <label class="slider"><span>slip</span><input id="iSlip" type="range" min="0" max="0.5" step="0.05" value="0.1"><output></output></label>
+    <div id="world"></div>
+    <div class="row center">
+      <button id="bSweep" class="primary">Sweep</button>
+      <button id="bRun">Run</button>
+      <button id="bReset" class="quiet">Reset</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="k">Sweeps $k$</span><span class="v" id="sK">0</span></div>
+      <div class="stat"><span class="k">Largest change $\Delta$</span><span class="v" id="sD">–</span></div>
+      <div class="stat"><span class="k">Arrows not yet optimal</span><span class="v" id="sW">–</span></div>
+    </div>
+    <div id="eq"></div>
+    <p class="status" id="status"></p>
+
+    <div class="sub">
+      <h2>Values converge slowly, the policy converges fast</h2>
+      <p class="note">Log scale. Green: the true error $\max_s |v_k(s) - v_*(s)|$. Grey: the bound $\tfrac{\gamma}{1-\gamma}\Delta$ that you can compute without knowing $v_*$. The dashed line marks the sweep after which the greedy arrows are optimal.</p>
+      <canvas class="chart" id="chart"></canvas>
+      <p class="status" id="cmp"></p>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>Value iteration turns the Bellman optimality equation (Lesson 29) into an update, the way Lesson 30 did with the expectation equation:</p>
+    $$v_{k+1}(s) = \max_a \sum_{s', r} p(s', r \mid s, a)\,\big[r + \gamma\, v_k(s')\big]$$
+    <p>Compare with policy evaluation: the weighted average over $\pi(a \mid s)$ has become a max over $a$. Equivalently, it is policy iteration where each evaluation is cut down to a single sweep, using the greedy action.</p>
+    <p><b>Convergence.</b> Two maxima can differ by no more than the largest gap between their terms: $|\max_a f(a) - \max_a g(a)| \le \max_a |f(a) - g(a)|$. Apply that with $v_*$, which satisfies the same equation:</p>
+    $$\begin{aligned}
+      |v_{k+1}(s) - v_*(s)| &\le \max_a \gamma \sum_{s', r} p(s', r \mid s, a)\,|v_k(s') - v_*(s')| \\
+      &\le \gamma \max_{s'} |v_k(s') - v_*(s')|
+    \end{aligned}$$
+    <p>The worst error shrinks by a factor $\gamma$ per sweep, the same rate as Lesson 30.</p>
+    <p><b>When to stop.</b> Write $\|x\| = \max_s |x(s)|$. By the triangle inequality and the line above,</p>
+    $$\|v_{k+1} - v_*\| \le \gamma\|v_k - v_{k+1}\| + \gamma\|v_{k+1} - v_*\| \;\Rightarrow\; \|v_{k+1} - v_*\| \le \frac{\gamma}{1-\gamma}\,\Delta$$
+    <p>where $\Delta = \|v_{k+1} - v_k\|$ is the largest change in the last sweep. So a small $\Delta$ certifies small error, and the loop stops when $\Delta$ falls below a threshold. At the end, act greedily with respect to the final values.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  // The bridge (Lesson 32).
+  const MAP = ['......', '.####.', 'S....G', '.PPPP.', '......'];
+  const R = MAP.length, C = MAP[0].length, N = R * C, GAMMA = 0.9;
+  const ch = (s) => MAP[Math.floor(s / C)][s % C];
+  const live = (s) => '.S'.includes(ch(s));
+  const MV = [[-1, 0], [0, 1], [1, 0], [0, -1]], ARROW = ['↑', '→', '↓', '←'];
+  const go = (s, a) => {
+    const r = Math.floor(s / C) + MV[a][0], c = (s % C) + MV[a][1];
+    return r < 0 || r >= R || c < 0 || c >= C || MAP[r][c] === '#' ? s : r * C + c;
+  };
+  function model(slip) {
+    return Array.from({ length: N }, (_, s) => [0, 1, 2, 3].map((a) => {
+      const out = [];
+      for (const [b, p] of [[a, 1 - slip], [(a + 1) % 4, slip / 2], [(a + 3) % 4, slip / 2]]) {
+        if (p === 0) continue;
+        const t = go(s, b);
+        out.push([p, t, ch(t) === 'G' ? 10 : ch(t) === 'P' ? -10 : 0]);
+      }
+      return out;
+    }));
+  }
+  const qsa = (P, v, s, a) => P[s][a].reduce((t, [p, s2, r]) => t + p * (r + GAMMA * v[s2]), 0);
+  const qs = (P, v, s) => [0, 1, 2, 3].map((a) => qsa(P, v, s, a));
+  // One synchronous value-iteration sweep.
+  function viSweep(P, v) {
+    const out = v.slice(); let d = 0;
+    for (let s = 0; s < N; s++) {
+      if (!live(s)) continue;
+      out[s] = Math.max(...qs(P, v, s));
+      d = Math.max(d, Math.abs(out[s] - v[s]));
+    }
+    return { v: out, d };
+  }
+  const greedyA = (P, v, s) => { const q = qs(P, v, s); return q.indexOf(Math.max(...q)); };
+  // An action is optimal if its q* is within 1e-6 of the best.
+  const isOpt = (s, a) => { const q = qs(P, vStar, s); return q[a] >= Math.max(...q) - 1e-6; };
+  const wrongCount = (v) => [...Array(N).keys()].filter((s) => live(s) && !isOpt(s, greedyA(P, v, s))).length;
+
+  const slip = Course.slider('#iSlip', (x) => x.toFixed(2), reset);
+  let P = model(slip()), vStar = solve(), v = new Array(N).fill(0), k = 0, sel = 2 * C + 4, timer = null, hist = [], lastD = null, okFrom = null;
+  const g = Course.grid($('world'), R, C, (r, c, cell) => {
+    const s = r * C + c, kk = ch(s);
+    if (kk === '#') return cell.classList.add('wall');
+    if (kk === 'G') { cell.classList.add('goal'); cell.textContent = '+10'; return; }
+    if (kk === 'P') { cell.classList.add('pit'); cell.textContent = '−10'; return; }
+    if (kk === 'S') cell.classList.add('start');
+    if (s === sel) cell.classList.add('sel');
+    cell.style.background = Course.heat(v[s], 14);
+    const a = greedyA(P, v, s);
+    cell.innerHTML = `<span class="v">${v[s].toFixed(1)}</span><span class="a${isOpt(s, a) ? '' : ' wrong'}">${ARROW[a]}</span>`;
+  });
+  const chart = Course.lineChart($('chart'), { xLabel: 'sweep k', yLabel: 'log₁₀ error', xMin: 0 });
+
+  function solve() {
+    let x = new Array(N).fill(0);
+    for (let i = 0; i < 2000; i++) { const r = viSweep(P, x); x = r.v; if (r.d < 1e-13) break; }
+    return x;
+  }
+  // Policy iteration's total evaluation sweeps from all-up, for comparison.
+  function piSweeps() {
+    const pi = new Array(N).fill(0), x = new Array(N).fill(0); let total = 0, rounds = 0;
+    for (;;) {
+      for (let kk = 1; ; kk++) {
+        let d = 0;
+        for (let s = 0; s < N; s++) { if (!live(s)) continue; const y = qsa(P, x, s, pi[s]); d = Math.max(d, Math.abs(y - x[s])); x[s] = y; }
+        if (d < 1e-4 || kk >= 2000) { total += kk; break; }
+      }
+      rounds++;
+      let changed = 0;
+      for (let s = 0; s < N; s++) {
+        if (!live(s)) continue;
+        const q = qs(P, x, s), m = Math.max(...q);
+        if (q[pi[s]] < m - 1e-9) { pi[s] = q.indexOf(m); changed++; }
+      }
+      if (!changed) return { total, rounds };
+    }
+  }
+
+  function showEq() {
+    const q = qs(P, v, sel), m = Math.max(...q);
+    Course.tex($('eq'), `v_{${k + 1}}(s) = \\max\\{${q.map((x, a) => `\\underset{${ARROW[a]}}{${x.toFixed(2)}}`).join(',\\ ')}\\} = ${m.toFixed(2)}`, true);
+  }
+  function draw() {
+    const err = hist.map((h, i) => [i, Math.log10(Math.max(1e-6, h.err))]);
+    const bound = hist.slice(1).map((h, i) => [i + 1, Math.log10(Math.max(1e-6, (GAMMA / (1 - GAMMA)) * h.d))]);
+    chart.draw([
+      { data: err, color: Course.colors.green, label: 'true error' },
+      { data: bound, color: Course.colors.grey, label: 'bound', dashed: true },
+    ], { vlines: okFrom !== null ? [{ x: okFrom, label: 'policy optimal', color: Course.colors.amber }] : [] });
+  }
+  const errOf = (x) => Math.max(...x.map((y, s) => Math.abs(y - vStar[s])));
+
+  function reset() {
+    stop();
+    P = model(slip()); vStar = solve();
+    v = new Array(N).fill(0); k = 0; lastD = null;
+    hist = [{ err: errOf(v), d: NaN }];
+    okFrom = wrongCount(v) === 0 ? 0 : null;
+    stats(); g.update(); showEq(); draw();
+    const pi = piSweeps();
+    $('cmp').textContent = `For comparison, policy iteration (Lesson 32) at this slip takes ${pi.rounds} rounds and ${pi.total} evaluation sweeps in total.`;
+    $('status').textContent = 'All values start at 0. Press "Sweep".';
+  }
+  function stats() {
+    $('sK').textContent = k;
+    $('sD').textContent = lastD === null ? '–' : lastD < 0.001 ? lastD.toExponential(1) : lastD.toFixed(3);
+    $('sW').textContent = wrongCount(v);
+  }
+  function step() {
+    const r = viSweep(P, v);
+    v = r.v; k++; lastD = r.d;
+    hist.push({ err: errOf(v), d: r.d });
+    const w = wrongCount(v);
+    if (w === 0 && okFrom === null) okFrom = k;
+    if (w > 0) okFrom = null;
+    stats(); g.update(); showEq(); draw();
+    $('status').textContent = w === 0
+      ? `Greedy arrows are optimal${okFrom !== null ? ` since sweep ${okFrom}` : ''}. The values are still within ${((GAMMA / (1 - GAMMA)) * r.d).toPrecision(2)} of $v_*$ (bound).`
+      : `${w} arrows still point the wrong way. Values far from the goal are still near 0: the +10 has not reached them yet.`;
+    Course.renderMath($('status'));
+    if (r.d < 1e-4) { stop(); $('status').textContent = `Stopped at sweep ${k}: Δ < 0.0001, so every value is within ${(GAMMA / (1 - GAMMA) * 1e-4).toFixed(4)} of optimal.`; }
+  }
+  function stop() { clearInterval(timer); timer = null; $('bRun').textContent = 'Run'; }
+
+  g.onClick((r, c) => { const s = r * C + c; if (live(s)) { sel = s; g.update(); showEq(); } });
+  $('bSweep').addEventListener('click', step);
+  $('bReset').addEventListener('click', reset);
+  $('bRun').addEventListener('click', () => {
+    if (timer) return stop();
+    $('bRun').textContent = 'Pause';
+    timer = setInterval(step, 150);
+  });
+  reset();
+
+  // Quiz: first backup next to the goal with slip 0.1 from v_0 = 0.
+  const P1 = model(0.1), v1 = Math.max(...qs(P1, new Array(N).fill(0), 2 * C + 4));
+
+  Course.quiz([
+    {
+      q: 'Slip $0.1$, $v_0 = 0$ everywhere. What is $v_1$ for the cell just left of the goal? (Moving right: $0.9$ to the goal, $0.05$ into the wall above, $0.05$ into the water.)',
+      answer: Math.round(v1 * 1e9) / 1e9,
+      hint: 'Only rewards count on the first sweep, since every $v_0$ is 0. Then take the best action.',
+      explain: 'Right gives $0.9(10) + 0.05(0) + 0.05(-10) = 8.5$, the best of the four, so $v_1 = 8.5$.',
+    },
+    {
+      q: 'With $\\gamma = 0.9$, the last sweep changed no value by more than $\\Delta = 0.01$. At most how far is $v_{k+1}$ from $v_*$?',
+      answer: (0.9 / 0.1) * 0.01,
+      tol: 0.0005,
+      explain: '$\\tfrac{\\gamma}{1-\\gamma}\\Delta = 9 \\times 0.01 = 0.09$.',
+    },
+    {
+      q: 'The worst error starts at $10$ and shrinks by a factor $0.9$ each sweep. How many sweeps until the guaranteed error is below $0.01$?',
+      answer: Math.ceil(Math.log(0.001) / Math.log(0.9)),
+      tol: 0,
+      hint: 'Solve $10 \\times 0.9^k &lt; 0.01$.',
+      explain: '$0.9^k &lt; 0.001 \\Rightarrow k &gt; \\ln 0.001 / \\ln 0.9 \\approx 65.6$, so 66 sweeps.',
+    },
+    {
+      q: 'How does value iteration relate to policy iteration?',
+      choices: [
+        'It is policy iteration with each evaluation cut to one sweep',
+        'It is policy iteration with a random policy',
+        'It needs a model only for the final greedy step',
+      ],
+      answer: 0,
+      explain: 'Improving after a single evaluation sweep, and folding the two into one max, gives exactly the value-iteration update.',
+    },
+  ]);
+</script>
+</body>
+</html>

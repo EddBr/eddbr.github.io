@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>91. Goodhart's law | Learning RL</title>
+<meta name="description" content="Fit a reward model, then optimise a policy against it. The proxy score keeps climbing while the true score rises, peaks and falls.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  #space { width: 100%; height: 260px; display: block; margin: 8px 0 0; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.85rem; color: var(--muted); margin: 4px 0 0; }
+  .legend > span::before { content: ""; display: inline-block; width: 16px; height: 0; vertical-align: middle; margin-right: 6px; border-top: 3px solid var(--accent); }
+  .legend > .k-true::before { border-top: 2px dashed var(--amber); }
+  .legend > .k-proxy::before { border-top-color: var(--blue); }
+  .legend > .k-data::before { width: 7px; height: 7px; border: 0; border-radius: 50%; background: #9ca3af; }
+  .legend > .k-ref::before { border-top: 2px dotted #9ca3af; }
+  #eq { overflow-x: auto; min-height: 2.6em; }
+</style>
+</head>
+<body data-lesson="91">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Goodhart's law</h1>
+  <p class="lede">"When a measure becomes a target, it ceases to be a good measure." A reward model (Lesson 87) is a measure fitted on what the model already does. Optimise hard against it and the policy moves to places the reward model never saw, where it is wrong. The proxy score keeps rising while the true score peaks and falls.</p>
+
+  <section class="card">
+    <p class="note">One feature of a response: $x$, how much longer it is than usual (in standard deviations). The true quality $r^*(x) = x - x^2/4$ rises with length up to $x = 2$, then padding makes answers worse. The reference model writes $x \sim \mathcal{N}(0, 1)$. People rate 40 of its answers (grey dots) and a straight-line reward model $\hat r(x) = w x + b$ is fitted to them.</p>
+    <canvas id="space" aria-label="Response length axis with true reward, fitted reward model and the policy's distribution"></canvas>
+    <div class="legend">
+      <span class="k-data">rated answers</span>
+      <span class="k-true">true quality $r^*$</span>
+      <span class="k-proxy">reward model $\hat r$</span>
+      <span>policy $\pi = \mathcal{N}(\mu, 1)$</span>
+      <span class="k-ref">reference</span>
+    </div>
+    <label class="slider"><span>KL penalty $\beta$</span><input id="iB" type="range" min="0" max="1" step="0.05" value="0"><output></output></label>
+    <div id="eq"></div>
+    <div class="row">
+      <button id="bRun" class="primary">Optimise</button>
+      <button id="bStep">Step</button>
+      <span class="spacer"></span>
+      <button id="bData" class="quiet">New ratings</button>
+      <button id="bReset" class="quiet">Reset policy</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="k">$\mathrm{KL}(\pi \,\|\, \pi_{\text{ref}})$</span><span class="v" id="sKL">0</span></div>
+      <div class="stat"><span class="k">Proxy score $\mathbb{E}_\pi[\hat r]$</span><span class="v" id="sP">0</span></div>
+      <div class="stat"><span class="k">True score $\mathbb{E}_\pi[r^*]$</span><span class="v" id="sT">0</span></div>
+    </div>
+    <canvas class="chart" id="chart"></canvas>
+    <p class="note">Gradient ascent on $\mathbb{E}_\pi[\hat r] - \beta\,\mathrm{KL}$, step size 0.05. The chart plots both scores against the KL the policy has travelled. Run with $\beta = 0$, then try $\beta = 0.5$.</p>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>The reward model is fitted by least squares on answers from the reference. For $x \sim \mathcal{N}(0,1)$ the best straight line through $r^*(x) = x - x^2/4$ has slope</p>
+    $$\begin{aligned} w &= \frac{\operatorname{Cov}(x, r^*(x))}{\operatorname{Var}(x)} \\ &= \frac{\mathbb{E}[x^2] - \tfrac14 \mathbb{E}[x^3]}{1} = 1 \end{aligned}$$
+    <p>because $\mathbb{E}[x^3] = 0$. Near the data the line is a fine fit. It says "longer is always better", which is only true for $x &lt; 2$.</p>
+    <p>For a policy $\pi = \mathcal{N}(\mu, 1)$, using $\mathbb{E}_\pi[x^2] = \mu^2 + 1$:</p>
+    $$\mathbb{E}_\pi[\hat r] = w\mu + b, \qquad \mathbb{E}_\pi[r^*] = \mu - \frac{\mu^2 + 1}{4}$$
+    <p>The proxy grows forever. The true score peaks at $\mu = 2$ and is back where it started at $\mu = 4$. How far the policy has moved is measured by the KL divergence (Lesson 81), which for two unit-variance Gaussians is</p>
+    $$\mathrm{KL}\big(\mathcal{N}(\mu,1) \,\|\, \mathcal{N}(0,1)\big) = \frac{\mu^2}{2}$$
+    <p>With the KL penalty of Lesson 88, the policy maximises $w\mu + b - \beta\mu^2/2$. Setting the derivative $w - \beta\mu$ to zero gives</p>
+    $$\mu^\star = \frac{w}{\beta}$$
+    <p>So $\beta$ decides how far the policy is allowed to chase the proxy. With $w = 1$, $\beta = 0.5$ stops exactly at the true peak. Too small and it overshoots into the region the reward model never saw.</p>
+    <p>Gao, Schulman and Hilton (2022) measured this with real language models, using a large "gold" reward model as the truth and smaller ones as proxies. Writing $d = \sqrt{\mathrm{KL}}$, the gold score under best-of-$n$ sampling fit $d(a - b\,d)$, and under RL fit $d(a - b \log d)$, for constants $a, b &gt; 0$ (their paper calls them $\alpha$ and $\beta$; this $b$ is not the KL coefficient). Here, with $\mu = \sqrt{2}\,d$, the true score is $-\tfrac14 + d(\sqrt 2 - d/2)$: the same shape as their best-of-$n$ curve.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const C = Course.colors;
+  const rTrue = (x) => x - (x * x) / 4;
+  const XMIN = -3, XMAX = 9, YMIN = -6, YMAX = 8;
+  const LR = 0.05, MU_MAX = 8.5;
+  let data, w, b, mu, trail, timer = null;
+
+  const beta = Course.slider('#iB', (v) => v.toFixed(2), () => { showEq(); });
+
+  function newData() {
+    data = Array.from({ length: 40 }, () => { const x = Course.gauss(); return [x, rTrue(x) + 0.5 * Course.gauss()]; });
+    const n = data.length, mx = data.reduce((s, d) => s + d[0], 0) / n, my = data.reduce((s, d) => s + d[1], 0) / n;
+    let sxy = 0, sxx = 0;
+    data.forEach(([x, y]) => { sxy += (x - mx) * (y - my); sxx += (x - mx) ** 2; });
+    w = sxy / sxx; b = my - w * mx;
+    reset();
+  }
+  function reset() { stop(); mu = 0; trail = [[0, b, -0.25]]; draw(); }
+
+  const scores = (m) => ({ kl: (m * m) / 2, proxy: w * m + b, truth: m - (m * m + 1) / 4 });
+
+  function showEq() {
+    const be = beta(), g = w - be * mu;
+    Course.tex($('eq'),
+      `\\begin{aligned}\\mu &\\leftarrow \\mu + 0.05\\,(w - \\beta\\mu) \\\\ &= ${mu.toFixed(2)} + 0.05\\,(${w.toFixed(2)} - ${be.toFixed(2)} \\times ${mu.toFixed(2)}) = ${(mu + LR * g).toFixed(2)}\\end{aligned}`, true);
+  }
+
+  function step() {
+    const m2 = Math.min(MU_MAX, mu + LR * (w - beta() * mu));
+    const done = Math.abs(m2 - mu) < 1e-3 || m2 >= MU_MAX;
+    mu = m2;
+    const s = scores(mu);
+    trail.push([s.kl, s.proxy, s.truth]);
+    draw();
+    return done;
+  }
+
+  const canvas = $('space'), ctx = canvas.getContext('2d');
+  function drawSpace() {
+    const dpr = window.devicePixelRatio || 1, W = canvas.clientWidth, H = canvas.clientHeight;
+    if (!W) return;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    const m = { l: 30, r: 8, t: 8, b: 26 };
+    const X = (x) => m.l + ((x - XMIN) / (XMAX - XMIN)) * (W - m.l - m.r);
+    const Y = (y) => m.t + ((YMAX - y) / (YMAX - YMIN)) * (H - m.t - m.b);
+    ctx.font = '11px -apple-system, sans-serif';
+    ctx.fillStyle = '#6b7280'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    for (let y = -6; y <= 6; y += 2) {
+      ctx.strokeStyle = y === 0 ? '#9ca3af' : '#eef0f3';
+      ctx.beginPath(); ctx.moveTo(m.l, Y(y)); ctx.lineTo(W - m.r, Y(y)); ctx.stroke();
+      ctx.fillText(y, m.l - 5, Y(y));
+    }
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    for (let x = -2; x <= 8; x += 2) ctx.fillText(x, X(x), H - m.b + 6);
+    ctx.textAlign = 'right'; ctx.fillText('x (extra length)', W - m.r, H - m.b - 14);
+
+    // policy densities, scaled to look like hills along the bottom
+    const dens = (x, c) => Math.exp(-0.5 * (x - c) ** 2);
+    const hill = (c, fill, stroke, dash) => {
+      ctx.beginPath();
+      for (let px = 0; px <= 200; px++) { const x = XMIN + (px / 200) * (XMAX - XMIN); const y = YMIN + 3.2 * dens(x, c); px ? ctx.lineTo(X(x), Y(y)) : ctx.moveTo(X(x), Y(y)); }
+      if (fill) { ctx.lineTo(X(XMAX), Y(YMIN)); ctx.lineTo(X(XMIN), Y(YMIN)); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); }
+      else { ctx.strokeStyle = stroke; ctx.setLineDash(dash); ctx.lineWidth = 1.5; ctx.stroke(); ctx.setLineDash([]); }
+    };
+    hill(mu, 'rgba(5,150,105,0.22)');
+    hill(0, null, '#9ca3af', [2, 3]);
+
+    ctx.save(); ctx.beginPath(); ctx.rect(m.l, m.t, W - m.l - m.r, H - m.t - m.b); ctx.clip();
+    // true quality
+    ctx.strokeStyle = C.amber; ctx.lineWidth = 2; ctx.setLineDash([6, 4]); ctx.beginPath();
+    for (let px = 0; px <= 200; px++) { const x = XMIN + (px / 200) * (XMAX - XMIN); px ? ctx.lineTo(X(x), Y(rTrue(x))) : ctx.moveTo(X(x), Y(rTrue(x))); }
+    ctx.stroke(); ctx.setLineDash([]);
+    // reward model
+    ctx.strokeStyle = C.blue; ctx.lineWidth = 2; ctx.beginPath();
+    ctx.moveTo(X(XMIN), Y(w * XMIN + b)); ctx.lineTo(X(XMAX), Y(w * XMAX + b)); ctx.stroke();
+    // data
+    ctx.fillStyle = 'rgba(107,114,128,0.6)';
+    data.forEach(([x, y]) => { ctx.beginPath(); ctx.arc(X(x), Y(y), 2.8, 0, 2 * Math.PI); ctx.fill(); });
+    ctx.restore();
+    // policy mean marker
+    ctx.strokeStyle = C.green; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(X(mu), Y(YMIN)); ctx.lineTo(X(mu), Y(YMIN + 3.2)); ctx.stroke();
+    ctx.fillStyle = C.green; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.fillText(`μ = ${mu.toFixed(2)}`, Math.min(W - 30, Math.max(m.l + 24, X(mu))), Y(YMIN + 3.2) - 3);
+  }
+
+  const chart = Course.lineChart($('chart'), { xLabel: 'KL(π ‖ π_ref)', yLabel: 'expected score', xMin: 0 });
+  function draw() {
+    drawSpace();
+    const s = scores(mu);
+    $('sKL').textContent = s.kl.toFixed(2);
+    $('sP').textContent = s.proxy.toFixed(2);
+    $('sT').textContent = s.truth.toFixed(2);
+    $('sT').className = 'v ' + (mu > 2.05 ? 'bad' : '');
+    const kmax = Math.max(4, ...trail.map((p) => p[0]));
+    // the full curves for reference, dashed, plus the path taken so far
+    const ref = [], refT = [];
+    for (let i = 0; i <= 60; i++) { const k = (i / 60) * kmax, m2 = Math.sqrt(2 * k); ref.push([k, w * m2 + b]); refT.push([k, m2 - (m2 * m2 + 1) / 4]); }
+    chart.draw([
+      { data: trail.map((p) => [p[0], p[1]]), color: C.blue, label: 'proxy', width: 3 },
+      { data: trail.map((p) => [p[0], p[2]]), color: C.amber, label: 'true', width: 3 },
+      { data: ref, color: 'rgba(42,122,226,0.25)', width: 1, dashed: true },
+      { data: refT, color: 'rgba(217,119,6,0.3)', width: 1, dashed: true },
+    ], { vlines: [{ x: 2, label: 'true peak', color: '#9ca3af' }] });
+    showEq();
+  }
+
+  function stop() { clearInterval(timer); timer = null; $('bRun').textContent = 'Optimise'; }
+  $('bRun').addEventListener('click', () => {
+    if (timer) return stop();
+    $('bRun').textContent = 'Pause';
+    timer = setInterval(() => { if (step()) stop(); }, 40);
+  });
+  $('bStep').addEventListener('click', step);
+  $('bReset').addEventListener('click', reset);
+  $('bData').addEventListener('click', newData);
+  new ResizeObserver(drawSpace).observe(canvas);
+  newData();
+
+  Course.quiz([
+    {
+      q: 'The policy has moved to $\\mu = 3$. What is $\\mathrm{KL}(\\pi \\,\\|\\, \\pi_{\\text{ref}})$?',
+      answer: 4.5,
+      explain: '$\\mu^2/2 = 9/2 = 4.5$.',
+    },
+    {
+      q: 'What is the true score $\\mathbb{E}_\\pi[r^*]$ at its best, $\\mu = 2$?',
+      answer: 2 - (4 + 1) / 4,
+      tol: 0.005,
+      hint: 'Use $\\mu - (\\mu^2 + 1)/4$.',
+      explain: '$2 - 5/4 = 0.75$. The reference policy scores $-0.25$.',
+    },
+    {
+      q: 'The fitted slope is $w = 1$. Which KL coefficient $\\beta$ makes the optimised policy stop exactly at the true peak?',
+      answer: 0.5,
+      explain: '$\\mu^\\star = w/\\beta = 2 \\Rightarrow \\beta = 0.5$.',
+    },
+    {
+      q: 'Why does the reward model rate $x = 6$ answers highly when they are actually bad?',
+      choices: [
+        'The human raters made mistakes',
+        'It was fitted only on answers near $x = 0$ and extrapolates a trend that stops holding',
+        'The KL penalty is too large',
+      ],
+      answer: 1,
+      explain: 'Almost no rated answer had $x &gt; 2$. A line that fits well near the data says nothing reliable far from it, and the optimiser goes exactly there.',
+    },
+  ]);
+</script>
+</body>
+</html>

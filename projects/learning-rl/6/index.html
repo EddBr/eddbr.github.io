@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>6. Averages, one step at a time | Learning RL</title>
+<meta name="description" content="Keep a running average with two numbers instead of a million. The update rule behind almost every RL algorithm.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .track { position: relative; height: 92px; margin: 8px 6px 4px; cursor: crosshair; touch-action: manipulation; }
+  .track .line { position: absolute; left: 0; right: 0; top: 46px; border-top: 2px solid var(--border); }
+  .track .tick { position: absolute; top: 52px; transform: translateX(-50%); font-size: 0.75rem; color: var(--muted); }
+  .track .past { position: absolute; top: 40px; width: 2px; height: 12px; margin-left: -1px; background: #cbd5e1; }
+  .marker { position: absolute; transform: translateX(-50%); text-align: center; font-size: 0.75rem; font-weight: 600; white-space: nowrap; transition: left 0.5s ease; }
+  .marker.q { top: 0; color: var(--accent); }
+  .marker.q::after { content: ""; display: block; width: 14px; height: 14px; margin: 2px auto 0; border-radius: 50%; background: var(--accent); }
+  .marker.r { top: 64px; color: var(--blue); }
+  .marker.r::before { content: ""; display: block; width: 0; height: 0; margin: 0 auto 2px; border: 7px solid transparent; border-bottom-color: var(--blue); border-top: 0; }
+  .gap { position: absolute; top: 44px; height: 6px; border-radius: 3px; background: rgba(42,122,226,0.18); transition: all 0.5s ease; }
+  .gap .stepped { position: absolute; top: 0; bottom: 0; background: var(--accent); border-radius: 3px; transition: all 0.5s ease; }
+  #eq { overflow-x: auto; min-height: 3.2em; }
+  .logwrap { max-height: 210px; overflow-y: auto; margin-top: 8px; }
+  #log tr:first-child td { background: var(--accent-soft); }
+</style>
+</head>
+<body data-lesson="6">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Averages, one step at a time</h1>
+  <p class="lede">An agent that pulls a lever a million times shouldn't store a million rewards. It can keep the average up to date with just two numbers: the current estimate and a count.</p>
+
+  <section class="card">
+    <p class="note">Click the line to add a reward, or draw one from a machine with a hidden average.</p>
+    <div class="track" id="track"></div>
+    <div id="eq"></div>
+    <div class="row">
+      <button id="bRand">Random reward</button>
+      <button id="bTen" class="quiet">+10 random rewards</button>
+      <span class="spacer"></span>
+      <button id="bReset" class="quiet">Reset</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="k">Incremental estimate</span><span class="v" id="sInc">–</span></div>
+      <div class="stat"><span class="k">Average of all rewards</span><span class="v" id="sFull">–</span></div>
+      <div class="stat"><span class="k">Numbers stored</span><span class="v" id="sMem">2 vs 0</span></div>
+    </div>
+    <div class="logwrap">
+      <table class="data">
+        <thead><tr><th>$n$</th><th>$R_n$</th><th>$Q_n$</th><th>error $R_n - Q_n$</th><th>step $\tfrac{1}{n}$</th><th>$Q_{n+1}$</th></tr></thead>
+        <tbody id="log"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>Let $Q_n$ be the estimate after $n-1$ rewards. Then $Q_{n+1}$ is the average of the first $n$:</p>
+    $$\begin{aligned}
+      Q_{n+1} &= \frac{1}{n}\sum_{i=1}^{n} R_i
+      = \frac{1}{n}\Big(R_n + \sum_{i=1}^{n-1} R_i\Big) \\
+      &= \frac{1}{n}\big(R_n + (n-1)\,Q_n\big) \\
+      &= Q_n + \frac{1}{n}\big(R_n - Q_n\big)
+    \end{aligned}$$
+    <p>Only $Q_n$ and $n$ are needed. The last line has a shape you will see in almost every lesson from here on:</p>
+    $$\text{New} \leftarrow \text{Old} + \text{StepSize}\,\big[\text{Target} - \text{Old}\big]$$
+    <p>$\text{Target} - \text{Old}$ is the <b>error</b>. Each update moves the estimate a fraction of the way towards the target. In the interactive, the blue bar is the error and the green part is the step actually taken.</p>
+    <p>Notice the first step: with $n = 1$ the step size is $1$, so $Q_2 = R_1$ whatever $Q_1$ was.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const LO = 0, HI = 10;
+  const pct = (x) => `${(100 * (Math.max(LO, Math.min(HI, x)) - LO)) / (HI - LO)}%`;
+  let Q, n, rewards, hidden;
+
+  function build() {
+    const t = $('track');
+    t.innerHTML = '<div class="line"></div>' +
+      Array.from({ length: HI - LO + 1 }, (_, i) => `<span class="tick" style="left:${pct(LO + i)}">${LO + i}</span>`).join('') +
+      '<div id="pastWrap"></div><div class="gap" id="gap"><div class="stepped" id="stepped"></div></div>' +
+      '<div class="marker q" id="mQ">Q</div><div class="marker r" id="mR" hidden>R</div>';
+  }
+
+  function reset() {
+    hidden = 3 + Math.random() * 4;
+    Q = 0; n = 0; rewards = [];
+    build();
+    $('log').innerHTML = '';
+    $('mQ').style.left = pct(Q);
+    $('mQ').textContent = `Q₁ = ${Q}`;
+    $('gap').style.width = '0';
+    Course.tex($('eq'), 'Q_1 = 0 \\quad \\text{(an arbitrary starting guess)}', true);
+    stats();
+  }
+
+  function stats() {
+    $('sInc').textContent = n ? Q.toFixed(3) : '–';
+    $('sFull').textContent = n ? (rewards.reduce((a, b) => a + b, 0) / n).toFixed(3) : '–';
+    $('sMem').textContent = `2 vs ${n}`;
+  }
+
+  function add(R, animate = true) {
+    R = Math.round(R * 10) / 10;
+    n++;
+    const old = Q, step = 1 / n, err = R - old;
+    Q = old + step * err;
+    rewards.push(R);
+
+    $('pastWrap').insertAdjacentHTML('beforeend', `<div class="past" style="left:${pct(R)}"></div>`);
+    const mR = $('mR');
+    mR.hidden = false; mR.style.left = pct(R); mR.textContent = `R${sub(n)} = ${R}`;
+
+    // Error bar from old Q to R; the green part is the step actually taken.
+    const a = Math.min(old, R), b = Math.max(old, R);
+    const gap = $('gap'), st = $('stepped');
+    gap.style.left = pct(a);
+    gap.style.width = `calc(${pct(b)} - ${pct(a)})`;
+    const frac = Math.min(1, step) * 100;
+    st.style.width = `${frac}%`;
+    st.style.left = R >= old ? '0' : `${100 - frac}%`;
+
+    const mQ = $('mQ');
+    mQ.style.transition = animate ? '' : 'none';
+    mQ.style.left = pct(Q);
+    mQ.textContent = `Q${sub(n + 1)} = ${Q.toFixed(2)}`;
+
+    Course.tex($('eq'),
+      `Q_{${n + 1}} = Q_{${n}} + \\tfrac{1}{${n}}(R_{${n}} - Q_{${n}}) = ${old.toFixed(2)} + \\tfrac{1}{${n}}(${R} - ${old.toFixed(2)}) = ${Q.toFixed(2)}`, true);
+
+    $('log').insertAdjacentHTML('afterbegin',
+      `<tr><td>${n}</td><td>${R}</td><td>${old.toFixed(2)}</td><td>${err.toFixed(2)}</td><td>1/${n}</td><td>${Q.toFixed(2)}</td></tr>`);
+    stats();
+  }
+
+  const subs = '₀₁₂₃₄₅₆₇₈₉';
+  function sub(k) { return String(k).split('').map((d) => subs[+d]).join(''); }
+
+  $('track').addEventListener('click', (e) => {
+    const r = $('track').getBoundingClientRect();
+    add(LO + ((e.clientX - r.left) / r.width) * (HI - LO));
+  });
+  const draw = () => Math.max(LO, Math.min(HI, hidden + 1.5 * Course.gauss()));
+  $('bRand').addEventListener('click', () => add(draw()));
+  $('bTen').addEventListener('click', () => { for (let i = 0; i < 10; i++) add(draw(), false); });
+  $('bReset').addEventListener('click', reset);
+  reset();
+
+  Course.quiz([
+    {
+      q: 'After 4 rewards the average is 5. The 5th reward is 10. What is the new average?',
+      answer: 6,
+      explain: '$5 + \\tfrac{1}{5}(10 - 5) = 6$. Check: the total goes from 20 to 30, and $30/5 = 6$.',
+    },
+    {
+      q: 'What is the step size for the 100th reward?',
+      answer: 0.01,
+      tol: 0.0001,
+      explain: '$1/n = 1/100$. Each new reward moves the average less as $n$ grows.',
+    },
+    {
+      q: '$Q_n = 4$ and $R_n = 7$. The update moved the estimate to $Q_{n+1} = 4.5$. What is $n$?',
+      answer: 6,
+      hint: 'The step taken is $\\tfrac{1}{n}$ of the error.',
+      explain: 'The error is $3$ and the step was $0.5$, so $\\tfrac{1}{n} = 0.5/3 = 1/6$.',
+    },
+  ]);
+</script>
+</body>
+</html>

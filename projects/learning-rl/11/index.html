@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>11. Beliefs as distributions | Learning RL</title>
+<meta name="description" content="Instead of one number per arm, keep a whole curve of plausible values. Flip a coin and watch its Beta curve sharpen.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .flips { display: flex; flex-wrap: wrap; gap: 3px; min-height: 24px; margin: 6px 0; }
+  .flip { width: 20px; height: 20px; border-radius: 50%; font-size: 0.7rem; font-weight: 700; display: flex; align-items: center; justify-content: center; color: #fff; }
+  .flip.h { background: var(--accent); }
+  .flip.t { background: #9ca3af; }
+  .flip.more { background: none; color: var(--muted); width: auto; }
+  #eq, #eq2 { overflow-x: auto; min-height: 2.6em; }
+  .coins { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .coinbox { border: 1px solid var(--border); border-radius: 8px; padding: 10px; text-align: center; }
+  .coinbox h3 { margin: 0 0 4px; font-size: 1rem; }
+  .coinbox .muted { font-size: 0.85rem; }
+  .coinbox .row { justify-content: center; margin: 6px 0 0; }
+  .coinbox button { padding: 0.35rem 0.7rem; }
+</style>
+</head>
+<body data-lesson="11">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Beliefs as distributions</h1>
+  <p class="lede">So far each arm had one number, its estimate $Q(a)$. A Bayesian agent keeps a whole curve instead: how plausible each possible value is. The curve's width says how sure the agent is, and that is what exploration needs.</p>
+
+  <section class="card">
+    <p class="note">A coin lands heads with an unknown probability $\theta$. Flip it and watch the belief about $\theta$ change.</p>
+    <canvas class="chart" id="chart"></canvas>
+    <p class="note" style="text-align:center;margin:0">Belief $= \text{Beta}(\alpha + h,\ \beta + t)$, with $h$ heads and $t$ tails:</p>
+    <div id="eq"></div>
+    <div class="flips" id="flips"></div>
+    <div class="row">
+      <button id="bFlip" class="primary">Flip</button>
+      <button id="bTen">Flip ×10</button>
+      <button id="bReveal" class="quiet">Reveal θ</button>
+      <span class="spacer"></span>
+      <button id="bNew" class="quiet">New coin</button>
+    </div>
+    <label class="slider"><span>Prior α</span><input id="iA" type="range" min="1" max="10" step="1" value="1"><output></output></label>
+    <label class="slider"><span>Prior β</span><input id="iB" type="range" min="1" max="10" step="1" value="1"><output></output></label>
+    <div class="stats">
+      <div class="stat"><span class="k">Heads / tails</span><span class="v" id="sHT">0 / 0</span></div>
+      <div class="stat"><span class="k">Mean of belief</span><span class="v" id="sMean">–</span></div>
+      <div class="stat"><span class="k">95% of belief in</span><span class="v" id="sInt">–</span></div>
+    </div>
+    <p class="note">The dashed curve is the belief before the last flip. A prior of $\alpha = \beta = 1$ is flat: every $\theta$ equally plausible.</p>
+
+    <div class="sub">
+      <h2>Comparing two coins</h2>
+      <p class="note">Two hidden coins. Flip each a few times. Two curves give something one number per coin cannot: the probability that A is really better than B.</p>
+      <div class="coins">
+        <div class="coinbox"><h3 style="color:var(--blue)">Coin A</h3><div class="muted" id="cA">0 heads, 0 tails</div><div class="row"><button id="bA">Flip A</button></div></div>
+        <div class="coinbox"><h3 style="color:var(--amber)">Coin B</h3><div class="muted" id="cB">0 heads, 0 tails</div><div class="row"><button id="bB">Flip B</button></div></div>
+      </div>
+      <canvas class="chart" id="chart2"></canvas>
+      <div id="eq2"></div>
+      <div class="row"><button id="bRev2" class="quiet">Reveal both</button><span class="spacer"></span><button id="bNew2" class="quiet">New coins</button></div>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>A belief about $\theta \in [0, 1]$ is a probability density over it. The <b>Beta distribution</b> with parameters $\alpha, \beta > 0$ is</p>
+    $$p(\theta) = \frac{\theta^{\alpha-1}(1-\theta)^{\beta-1}}{B(\alpha, \beta)}$$
+    <p>$B(\alpha, \beta)$ is the constant that makes the area under the curve equal 1.</p>
+    <p>After $h$ heads and $t$ tails, the probability of that sequence given $\theta$ (the <b>likelihood</b>) is $\theta^h(1-\theta)^t$. Bayes' rule multiplies prior by likelihood:</p>
+    $$\begin{aligned}
+      p(\theta \mid \text{data}) &\propto p(\text{data} \mid \theta)\, p(\theta) \\
+      &\propto \theta^{h}(1-\theta)^{t} \\ &\qquad \cdot\, \theta^{\alpha-1}(1-\theta)^{\beta-1} \\
+      &= \theta^{\alpha+h-1}(1-\theta)^{\beta+t-1}
+    \end{aligned}$$
+    <p>That is the shape of another Beta. So the belief stays a Beta, and updating means adding counts:</p>
+    $$\text{Beta}(\alpha, \beta) \;\xrightarrow{\;h \text{ heads},\ t \text{ tails}\;}\; \text{Beta}(\alpha + h,\ \beta + t)$$
+    <p>A head adds 1 to $\alpha$, a tail adds 1 to $\beta$. The prior acts like $\alpha - 1$ heads and $\beta - 1$ tails seen before you start. With $\alpha = \beta = 1$ the belief is $\text{Beta}(1 + \text{heads},\ 1 + \text{tails})$.</p>
+    <p>The mean and variance of $\text{Beta}(\alpha, \beta)$ are</p>
+    $$\mathbb{E}[\theta] = \frac{\alpha}{\alpha + \beta}$$
+    $$\operatorname{Var}[\theta] = \frac{\alpha\beta}{(\alpha+\beta)^2(\alpha+\beta+1)}$$
+    <p>The mean is also the probability the next flip is heads. The variance shrinks roughly like $1/n$ with $n$ flips, so the width (standard deviation) shrinks like $1/\sqrt{n}$, the same rate as the UCB bonus in Lesson 9.</p>
+    <p>Two independent beliefs answer "which is better?": $P(\theta_A > \theta_B) = \int_0^1 p_A(x)\,P(\theta_B < x)\,dx$, the chance that A's value is $x$ and B's is below it, summed over $x$. Lesson 12 turns this into a way to choose arms.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+
+  // ------------------------------------------------------------ Beta helpers
+  // log Γ(x) by the Lanczos approximation (g = 7).
+  const LG = [0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313,
+    -176.61503916999185, 12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
+  function lgamma(x) {
+    if (x < 0.5) return Math.log(Math.PI / Math.sin(Math.PI * x)) - lgamma(1 - x);
+    x -= 1;
+    let a = LG[0];
+    const t = x + 7.5;
+    for (let i = 1; i < 9; i++) a += LG[i] / (x + i);
+    return 0.5 * Math.log(2 * Math.PI) + (x + 0.5) * Math.log(t) - t + Math.log(a);
+  }
+  function betaPdf(x, a, b) {
+    if (x <= 0) return a < 1 ? Infinity : a === 1 ? Math.exp(-lbeta(a, b)) : 0;
+    if (x >= 1) return b < 1 ? Infinity : b === 1 ? Math.exp(-lbeta(a, b)) : 0;
+    return Math.exp((a - 1) * Math.log(x) + (b - 1) * Math.log(1 - x) - lbeta(a, b));
+  }
+  const lbeta = (a, b) => lgamma(a) + lgamma(b) - lgamma(a + b);
+  // An invisible line above the tallest curve keeps flat curves off the top edge.
+  const headroom = (lines) => {
+    const top = Math.max(...lines.flatMap((l) => l.data.map((p) => p[1]).filter(isFinite)));
+    return [{ y: top * 1.18, color: 'rgba(0,0,0,0)' }];
+  };
+  const XS = Array.from({ length: 401 }, (_, i) => i / 400);
+  const curve = (a, b) => XS.map((x) => [x, betaPdf(x, a, b)]);
+  // Quantile by trapezoid CDF on a fine grid.
+  function quantiles(a, b, ps) {
+    const M = 4000, cdf = [0];
+    let prev = betaPdf(0, a, b);
+    for (let i = 1; i <= M; i++) { const f = betaPdf(i / M, a, b); cdf.push(cdf[i - 1] + (prev + f) / (2 * M)); prev = f; }
+    const tot = cdf[M];
+    return ps.map((p) => { let i = 0; while (i < M && cdf[i] / tot < p) i++; return i / M; });
+  }
+  // P(θA > θB) = ∫ fA(x) FB(x) dx.
+  function probGreater(a1, b1, a2, b2) {
+    const M = 2000;
+    let F = 0, s = 0, prevB = betaPdf(0, a2, b2);
+    for (let i = 1; i <= M; i++) {
+      const x = i / M, fb = betaPdf(x, a2, b2);
+      F += (prevB + fb) / (2 * M); prevB = fb;
+      s += betaPdf(x, a1, b1) * F / M;
+    }
+    return Math.min(1, Math.max(0, s));
+  }
+
+  // ------------------------------------------------------------ one coin
+  let theta, h, t, seq, prevAB, revealed;
+  const priorMoved = () => { prevAB = null; draw(); };
+  const pa = Course.slider('#iA', (v) => v, priorMoved);
+  const pb = Course.slider('#iB', (v) => v, priorMoved);
+  const chart = Course.lineChart($('chart'), { xLabel: 'θ (chance of heads)', yLabel: 'density', xMin: 0, xMax: 1, yMin: 0 });
+
+  function newCoin() {
+    theta = 0.05 + 0.9 * Math.random();
+    h = 0; t = 0; seq = []; prevAB = null; revealed = false;
+    $('bReveal').textContent = 'Reveal θ';
+    draw();
+  }
+  function flip() {
+    prevAB = [pa() + h, pb() + t];
+    const H = Math.random() < theta;
+    H ? h++ : t++;
+    seq.push(H);
+  }
+  function draw() {
+    const a = pa() + h, b = pb() + t;
+    const lines = [];
+    if (prevAB) lines.push({ data: curve(...prevAB), color: Course.colors.grey, dashed: true, width: 1.5 });
+    lines.push({ data: curve(a, b), color: Course.colors.green, width: 2.5 });
+    const mean = a / (a + b);
+    const vlines = [{ x: mean, label: 'mean', color: Course.colors.green }];
+    if (revealed) vlines.push({ x: theta, label: `true θ = ${theta.toFixed(2)}`, color: Course.colors.amber });
+    chart.draw(lines, { vlines, hlines: headroom(lines) });
+    Course.tex($('eq'), `\\text{Beta}(${pa()} + ${h},\\ ${pb()} + ${t}) = \\text{Beta}(${a},\\ ${b})`, true);
+    $('sHT').textContent = `${h} / ${t}`;
+    $('sMean').textContent = mean.toFixed(3);
+    const [lo, hi] = quantiles(a, b, [0.025, 0.975]);
+    $('sInt').textContent = `${lo.toFixed(2)}–${hi.toFixed(2)}`;
+    const shown = seq.slice(-40);
+    $('flips').innerHTML = (seq.length > 40 ? `<span class="flip more">+${seq.length - 40}</span>` : '') +
+      shown.map((H) => `<span class="flip ${H ? 'h' : 't'}">${H ? 'H' : 'T'}</span>`).join('');
+  }
+
+  $('bFlip').addEventListener('click', () => { flip(); draw(); });
+  $('bTen').addEventListener('click', () => { const before = [pa() + h, pb() + t]; for (let i = 0; i < 10; i++) flip(); prevAB = before; draw(); });
+  $('bReveal').addEventListener('click', () => { revealed = !revealed; $('bReveal').textContent = revealed ? 'Hide θ' : 'Reveal θ'; draw(); });
+  $('bNew').addEventListener('click', newCoin);
+  newCoin();
+
+  // ------------------------------------------------------------ two coins
+  let co, rev2;
+  const chart2 = Course.lineChart($('chart2'), { xLabel: 'θ', yLabel: 'density', xMin: 0, xMax: 1, yMin: 0 });
+  function newCoins() {
+    co = [0, 1].map(() => ({ theta: 0.2 + 0.6 * Math.random(), h: 0, t: 0 }));
+    rev2 = false;
+    $('bRev2').textContent = 'Reveal both';
+    draw2();
+  }
+  function draw2() {
+    const [A, B] = co;
+    const ls = [
+      { data: curve(1 + A.h, 1 + A.t), color: Course.colors.blue, label: 'A' },
+      { data: curve(1 + B.h, 1 + B.t), color: Course.colors.amber, label: 'B' },
+    ];
+    chart2.draw(ls, { hlines: headroom(ls), vlines: rev2 ? [{ x: A.theta, color: Course.colors.blue, label: 'A' }, { x: B.theta, color: Course.colors.amber, label: 'B' }] : [] });
+    $('cA').textContent = `${A.h} heads, ${A.t} tails`;
+    $('cB').textContent = `${B.h} heads, ${B.t} tails`;
+    const p = probGreater(1 + A.h, 1 + A.t, 1 + B.h, 1 + B.t);
+    Course.tex($('eq2'), `P(\\theta_A > \\theta_B \\mid \\text{flips}) \\approx ${p.toFixed(3)}`, true);
+  }
+  [0, 1].forEach((i) => $(i ? 'bB' : 'bA').addEventListener('click', () => {
+    const c = co[i];
+    Math.random() < c.theta ? c.h++ : c.t++;
+    draw2();
+  }));
+  $('bRev2').addEventListener('click', () => { rev2 = !rev2; $('bRev2').textContent = rev2 ? 'Hide' : 'Reveal both'; draw2(); });
+  $('bNew2').addEventListener('click', newCoins);
+  newCoins();
+
+  // ------------------------------------------------------------ quiz
+  const a1 = 8, b1 = 4;
+  Course.quiz([
+    {
+      q: 'Start from the flat prior $\\text{Beta}(1, 1)$. You see 7 heads and 3 tails. What is the mean of your belief about $\\theta$?',
+      answer: a1 / (a1 + b1),
+      tol: 0.005,
+      explain: 'The belief is $\\text{Beta}(8, 4)$, with mean $8/12 \\approx 0.667$.',
+    },
+    {
+      q: 'What is the standard deviation of that same belief, $\\text{Beta}(8, 4)$?',
+      answer: Math.sqrt((a1 * b1) / ((a1 + b1) ** 2 * (a1 + b1 + 1))),
+      tol: 0.003,
+      hint: 'Variance is $\\frac{\\alpha\\beta}{(\\alpha+\\beta)^2(\\alpha+\\beta+1)}$. Take the square root.',
+      explain: '$\\frac{8 \\times 4}{12^2 \\times 13} = \\frac{32}{1872} \\approx 0.0171$, and $\\sqrt{0.0171} \\approx 0.131$.',
+    },
+    {
+      q: 'Prior $\\text{Beta}(2, 2)$. You see 3 heads and 1 tail. What probability should you give to heads on the next flip?',
+      answer: 5 / 8,
+      tol: 0.005,
+      explain: 'The belief becomes $\\text{Beta}(5, 3)$. The chance of heads next is its mean, $5/8 = 0.625$.',
+    },
+    {
+      q: 'What does the prior $\\text{Beta}(2, 2)$ act like?',
+      choices: [
+        'Certainty that $\\theta = 0.5$',
+        'Having already seen 1 head and 1 tail',
+        'Having already seen 2 heads and 2 tails',
+      ],
+      answer: 1,
+      explain: '$\\text{Beta}(2, 2) = \\text{Beta}(1 + 1,\\ 1 + 1)$: the flat prior plus one head and one tail. It leans gently towards $0.5$.',
+    },
+  ]);
+</script>
+</body>
+</html>

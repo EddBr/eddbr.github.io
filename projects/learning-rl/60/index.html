@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>60. Tables don't scale | Learning RL</title>
+<meta name="description" content="Count the states in real problems, then watch a table of values starve for data as a random walk grows from 100 to 100,000 states.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .counts { display: flex; flex-direction: column; gap: 4px; margin: 10px 0; }
+  .crow { display: grid; grid-template-columns: minmax(0, 11rem) minmax(0, 1fr) 6.5rem; gap: 8px; align-items: center; padding: 4px 6px; border-radius: 4px; cursor: pointer; font-size: 0.88rem; color: var(--body); }
+  .crow:hover { background: var(--soft); }
+  .crow.sel { background: var(--accent-soft); }
+  .crow .lane { position: relative; height: 12px; background: var(--soft); border-radius: 3px; }
+  .crow .lane i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); border-radius: 3px; }
+  .crow.ref .lane i { background: var(--grey, #9ca3af); }
+  .crow.off .lane i { background: repeating-linear-gradient(90deg, var(--accent) 0 8px, #34d399 8px 12px); }
+  .crow .n { text-align: right; font-variant-numeric: tabular-nums; color: var(--heading); white-space: nowrap; overflow: hidden; }
+  .scale { display: grid; grid-template-columns: minmax(0, 11rem) minmax(0, 1fr) 6.5rem; gap: 8px; padding: 0 6px; font-size: 0.72rem; color: var(--muted); }
+  .scale div { display: flex; justify-content: space-between; }
+  #detail { min-height: 3.2em; overflow-x: auto; }
+  #walk { width: 100%; height: 260px; display: block; margin: 8px 0; }
+  .key { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.85rem; color: var(--muted); }
+  .key b { display: inline-block; width: 16px; vertical-align: middle; margin-right: 4px; }
+  .seg { display: inline-flex; flex-wrap: wrap; gap: 0; }
+  .seg button { border-radius: 0; margin-left: -1px; padding: 0.35rem 0.7rem; }
+  .seg button:first-child { border-radius: 4px 0 0 4px; margin-left: 0; }
+  .seg button:last-child { border-radius: 0 4px 4px 0; }
+  @media (max-width: 560px) {
+    .crow, .scale { grid-template-columns: minmax(0, 7.2rem) minmax(0, 1fr) 5.2rem; font-size: 0.8rem; }
+    .scale { font-size: 0.68rem; }
+    .scale .mid { display: none; }
+  }
+</style>
+</head>
+<body data-lesson="60">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Tables don't scale</h1>
+  <p class="lede">Every method so far stores one number per state, or per state–action pair. That is fine for Lesson 1's corridor of 6 cells. For real problems the table fails twice: it does not fit in memory, and the agent never visits most of its entries.</p>
+
+  <section class="card">
+    <h2>Count the states</h2>
+    <p class="note">Bars are on a log scale: each step to the right is 10 times more states. Click a row for what a table would cost.</p>
+    <div class="counts" id="counts"></div>
+    <div class="scale"><span></span><div><span>1</span><span class="mid">10<sup>50</sup></span><span>10<sup>100</sup></span><span class="mid">10<sup>150</sup></span><span>10<sup>200</sup></span></div><span></span></div>
+    <label class="slider"><span>Image side $n$</span><input id="iSide" type="range" min="1" max="84" step="1" value="8"><output></output></label>
+    <label class="slider"><span>Grey levels $L$</span><input id="iLev" type="range" min="1" max="8" step="1" value="1"><output></output></label>
+    <div id="detail" class="status"></div>
+  </section>
+
+  <section class="card">
+    <h2>One number per state</h2>
+    <p class="note">The random walk of S&amp;B Example 9.1, at four sizes. Start in the middle, jump left or right by up to a tenth of the walk's length, and finish at an end: $-1$ on the left, $+1$ on the right. The table averages the returns seen from each state (Monte Carlo, Lesson 35).</p>
+    <div class="row">
+      <span class="muted">States</span>
+      <span class="seg" id="sizes"></span>
+    </div>
+    <canvas id="walk" aria-label="True values and table estimates across the states of the random walk"></canvas>
+    <div class="key">
+      <span><b style="border-top:3px solid var(--amber)"></b>true value $v_\pi(s)$</span>
+      <span><b style="height:6px;background:var(--blue);border-radius:50%;width:6px"></b>table entry $V(s)$</span>
+      <span id="gKey" hidden><b style="border-top:3px solid var(--accent)"></b>one value per group</span>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="k">Episodes</span><span class="v" id="sEp">0</span></div>
+      <div class="stat"><span class="k">States never visited</span><span class="v" id="sUnseen">–</span></div>
+      <div class="stat"><span class="k">RMS error, table</span><span class="v" id="sErr">–</span></div>
+      <div class="stat" id="stG" hidden><span class="k">RMS error, 10 groups</span><span class="v" id="sErrG">–</span></div>
+    </div>
+    <div class="row">
+      <button id="b1">Run 1 episode</button>
+      <button id="b10" class="primary">Run 10 episodes</button>
+      <span class="spacer"></span>
+      <button id="bGroup" class="quiet">Share within 10 groups</button>
+      <button id="bReset" class="quiet">Reset</button>
+    </div>
+    <p class="status" id="wStatus"></p>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>A tabular method stores $V(s)$ for every state, or $Q(s,a)$ for every pair. Memory grows as $|\mathcal{S}|$ or $|\mathcal{S}||\mathcal{A}|$, where $|\mathcal{S}|$ is the number of states and $|\mathcal{A}|$ the number of actions.</p>
+    <p>Raw sensor input makes $|\mathcal{S}|$ explode. An $n \times n$ image with $L$ grey levels per pixel has</p>
+    $$L^{\,n^2} = 10^{\,n^2 \log_{10} L} \text{ possible values.}$$
+    <p>Each pixel multiplies the count by $L$, so the exponent grows with the number of pixels. Most of those images never occur, but a table has no way to know which.</p>
+    <p>Data is the bigger problem. A Monte Carlo table entry is an average of $N(s)$ returns, so its standard error is</p>
+    $$\operatorname{SE}\big[V(s)\big] = \frac{\sigma_s}{\sqrt{N(s)}}, \qquad N(s) \approx \mu(s)\,T,$$
+    <p>where $\sigma_s$ is the standard deviation of the return from $s$, $T$ is the total number of steps of experience, and $\mu(s)$ is the fraction of time spent in $s$. If time is spread roughly evenly, $\mu(s) \approx 1/|\mathcal{S}|$, and</p>
+    $$\operatorname{SE}\big[V(s)\big] \approx \sigma_s \sqrt{\frac{|\mathcal{S}|}{T}}.$$
+    <p>To keep the same accuracy with 10 times more states, a table needs 10 times more experience. The reason is that each entry learns only from visits to its own state.</p>
+    <p>The way out is to replace the table with a function $\hat v(s, \mathbf{w}) \approx v_\pi(s)$ with a weight vector $\mathbf{w} \in \mathbb{R}^d$ and $d \ll |\mathcal{S}|$. Changing one weight then changes the estimate of many states, so experience in one state informs its neighbours. That is <b>generalisation</b>, and "Share within 10 groups" is its simplest form, state aggregation (S&amp;B §9.3). Lessons 61 to 64 build it properly.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const LOG_MAX = 200;
+
+  // ------------------------------------------------------------ counting states
+  const side = Course.slider('#iSide', (v) => `${v}`, () => { sel = 'img'; renderCounts(); });
+  const LEVELS = [2, 4, 8, 16, 32, 64, 128, 256];
+  const lev = Course.slider('#iLev', (v) => `${LEVELS[v - 1]}`, () => { sel = 'img'; renderCounts(); });
+  const items = () => [
+    { id: 'cor', name: 'Corridor (Lesson 1)', log: Math.log10(6), exact: 6 },
+    { id: 'cliff', name: 'Cliff walking (Lesson 53)', log: Math.log10(48), exact: 48 },
+    { id: 'ttt', name: 'Tic-tac-toe positions', log: Math.log10(5478), exact: 5478 },
+    { id: 'bg', name: 'Backgammon positions', log: 20, approx: true },
+    { id: 'chess', name: 'Chess positions', log: 44, approx: true },
+    { id: 'atoms', name: 'Atoms in the universe', log: 80, approx: true, ref: true },
+    { id: 'go', name: 'Go positions, 19×19', log: 170 + Math.log10(2.08) },
+    { id: 'img', name: `${side()}×${side()} image, ${LEVELS[lev() - 1]} levels`, log: side() * side() * Math.log10(LEVELS[lev() - 1]) },
+    { id: 'dqn', name: 'DQN input (Lesson 66)', log: 4 * 84 * 84 * Math.log10(256) },
+  ];
+  let sel = 'ttt';
+
+  // Number as TeX: exact below a million, otherwise m × 10^k.
+  function texCount(it) {
+    if (it.exact !== undefined) return it.exact.toLocaleString('en-GB').replace(/,/g, '{,}');
+    const k = Math.floor(it.log), m = Math.pow(10, it.log - k);
+    const pre = it.approx ? '\\approx ' : '';
+    if (it.log < 6) return String(Math.round(Math.pow(10, it.log)));
+    if (it.approx || k > 999) return `${pre}10^{${k.toLocaleString('en-GB').replace(/,/g, '{,}')}}`;
+    return `${m.toFixed(1)} \\times 10^{${k}}`;
+  }
+  // Large quantities in words for the detail line.
+  function texBig(log, unit) {
+    const k = Math.floor(log);
+    return k < 3 ? `${Math.round(Math.pow(10, log))}\\text{ ${unit}}` : `10^{${k.toLocaleString('en-GB').replace(/,/g, '{,}')}}\\text{ ${unit}}`;
+  }
+  function bytesText(log) {
+    const b = Math.pow(10, log + Math.log10(4));
+    const units = [['bytes', 1], ['KB', 1e3], ['MB', 1e6], ['GB', 1e9], ['TB', 1e12]];
+    if (log + Math.log10(4) < 15) {
+      const [u, s] = units.filter(([, s]) => b >= s).pop() || units[0];
+      return `${+(b / s).toPrecision(3)}\\text{ ${u}}`;
+    }
+    return texBig(log + Math.log10(4), 'bytes');
+  }
+  function timeText(log) {
+    const secs = log - 9;                         // a billion visits per second
+    if (secs < -3) return `${+(Math.pow(10, secs + 6)).toPrecision(2)}\\ \\mu\\text{s}`;
+    if (secs < 0) return `${+(Math.pow(10, secs + 3)).toPrecision(2)}\\text{ ms}`;
+    if (secs < Math.log10(3600)) return `${+(Math.pow(10, secs)).toPrecision(2)}\\text{ s}`;
+    const years = secs - Math.log10(3.156e7);
+    if (years < 6) return `${+(Math.pow(10, years)).toPrecision(2)}\\text{ years}`;
+    return texBig(years, 'years');
+  }
+
+  function renderCounts() {
+    const its = items();
+    $('counts').innerHTML = its.map((it) => {
+      const w = Math.min(100, (100 * it.log) / LOG_MAX);
+      const cls = ['crow', it.ref && 'ref', it.log > LOG_MAX && 'off', it.id === sel && 'sel'].filter(Boolean).join(' ');
+      return `<div class="${cls}" data-id="${it.id}"><span>${it.name}</span><span class="lane"><i style="width:${Math.max(0.6, w)}%"></i></span><span class="n" id="n-${it.id}"></span></div>`;
+    }).join('');
+    its.forEach((it) => Course.tex($(`n-${it.id}`), it.log > LOG_MAX ? `${texCount(it)}` : texCount(it)));
+    const it = its.find((x) => x.id === sel);
+    if (it.ref) {
+      $('detail').innerHTML = 'About $10^{80}$ atoms. A table with more entries than this could never be stored.';
+      Course.renderMath($('detail'));
+    } else {
+      $('detail').innerHTML = `${it.name}: a float32 table needs <span id="dB"></span>. At a billion visits per second, visiting each state once takes <span id="dT"></span>.`;
+      Course.tex($('dB'), bytesText(it.log));
+      Course.tex($('dT'), timeText(it.log));
+    }
+  }
+  $('counts').addEventListener('click', (e) => {
+    const r = e.target.closest('.crow');
+    if (r) { sel = r.dataset.id; renderCounts(); }
+  });
+  renderCounts();
+
+  // ------------------------------------------------------------ the random walk
+  const SIZES = [100, 1000, 10000, 100000];
+  let N = 1000, K, vTrue, sum, cnt, eps, grouped = false;
+  const trueCache = {};
+
+  // v_pi by Jacobi sweeps, using prefix sums so each sweep costs O(N).
+  function trueValues(n) {
+    if (trueCache[n]) return trueCache[n];
+    const k = n / 10;
+    let v = new Float64Array(n + 1), nv = new Float64Array(n + 1);
+    const P = new Float64Array(n + 1);
+    for (let sweep = 0; sweep < 2000; sweep++) {
+      for (let s = 1; s <= n; s++) P[s] = P[s - 1] + v[s];
+      let d = 0;
+      for (let s = 1; s <= n; s++) {
+        const lo = Math.max(1, s - k), hi = Math.min(n, s + k);
+        // neighbours inside the walk, plus -1 / +1 for jumps off either end
+        const tot = P[hi] - P[lo - 1] - v[s] - (k - (s - lo)) + (k - (hi - s));
+        nv[s] = tot / (2 * k);
+        d = Math.max(d, Math.abs(nv[s] - v[s]));
+      }
+      [v, nv] = [nv, v];
+      if (d < 1e-7) break;
+    }
+    return (trueCache[n] = v);
+  }
+
+  function reset() {
+    K = N / 10;
+    vTrue = trueValues(N);
+    sum = new Float64Array(N + 1); cnt = new Uint32Array(N + 1); eps = 0;
+    $('wStatus').textContent = `${N.toLocaleString('en-GB')} states, jumps of 1 to ${K.toLocaleString('en-GB')}. Run some episodes.`;
+    $('sizes').innerHTML = SIZES.map((n) => `<button class="${n === N ? 'on' : ''}" data-n="${n}">${n.toLocaleString('en-GB')}</button>`).join('');
+    draw();
+  }
+
+  function episode() {
+    const visited = [];
+    let s = N / 2, G;
+    for (;;) {
+      visited.push(s);
+      const j = 1 + Course.randInt(K);
+      s += Math.random() < 0.5 ? -j : j;
+      if (s < 1) { G = -1; break; }
+      if (s > N) { G = 1; break; }
+    }
+    for (const x of visited) { sum[x] += G; cnt[x]++; }   // every-visit Monte Carlo (gamma = 1, reward only at the end)
+    eps++;
+    return { len: visited.length, distinct: new Set(visited).size, G };
+  }
+
+  function groupValues() {
+    const gs = new Float64Array(10), gc = new Float64Array(10);
+    for (let s = 1; s <= N; s++) { const g = Math.floor(((s - 1) * 10) / N); gs[g] += sum[s]; gc[g] += cnt[s]; }
+    return Array.from(gs, (x, g) => (gc[g] ? x / gc[g] : 0));
+  }
+
+  const canvas = $('walk'), ctx = canvas.getContext('2d');
+  function draw() {
+    const dpr = window.devicePixelRatio || 1;
+    const W = canvas.clientWidth, H = canvas.clientHeight;
+    if (!W) return;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    const m = { l: 34, r: 8, t: 8, b: 30 };
+    const X = (s) => m.l + ((s - 1) / (N - 1)) * (W - m.l - m.r);
+    const Y = (v) => m.t + ((1 - v) / 2) * (H - m.t - m.b);
+    ctx.font = '11px -apple-system, sans-serif';
+    ctx.fillStyle = '#6b7280'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    [-1, -0.5, 0, 0.5, 1].forEach((v) => {
+      ctx.strokeStyle = v === 0 ? '#9ca3af' : '#eef0f3';
+      ctx.beginPath(); ctx.moveTo(m.l, Y(v)); ctx.lineTo(W - m.r, Y(v)); ctx.stroke();
+      ctx.fillText(v, m.l - 6, Y(v));
+    });
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    [1, N / 2, N].forEach((s) => ctx.fillText(s.toLocaleString('en-GB'), Math.min(W - m.r - 14, Math.max(m.l + 4, X(s))), H - m.b + 6));
+    ctx.fillText('state', (m.l + W) / 2, H - 13);
+
+    // table entries: one dot per visited state
+    ctx.fillStyle = 'rgba(42,122,226,0.55)';
+    const r = N > 5000 ? 1 : N > 500 ? 1.6 : 2.6;
+    for (let s = 1; s <= N; s++) {
+      if (!cnt[s]) continue;
+      const y = Y(sum[s] / cnt[s]);
+      ctx.fillRect(X(s) - r, y - r, 2 * r, 2 * r);
+    }
+    // true values
+    ctx.strokeStyle = Course.colors.amber; ctx.lineWidth = 2.5; ctx.beginPath();
+    const stride = Math.max(1, Math.floor(N / 600));
+    for (let s = 1; s <= N; s += stride) (s === 1 ? ctx.moveTo : ctx.lineTo).call(ctx, X(s), Y(vTrue[s]));
+    ctx.lineTo(X(N), Y(vTrue[N]));
+    ctx.stroke();
+    // groups
+    if (grouped) {
+      const g = groupValues();
+      ctx.strokeStyle = Course.colors.green; ctx.lineWidth = 3;
+      g.forEach((v, i) => {
+        ctx.beginPath(); ctx.moveTo(X(1 + (i * N) / 10), Y(v)); ctx.lineTo(X(((i + 1) * N) / 10), Y(v)); ctx.stroke();
+      });
+    }
+    stats();
+  }
+
+  function stats() {
+    let unseen = 0, e2 = 0, eg2 = 0;
+    const g = grouped ? groupValues() : null;
+    for (let s = 1; s <= N; s++) {
+      if (!cnt[s]) unseen++;
+      const V = cnt[s] ? sum[s] / cnt[s] : 0;       // unvisited entries keep their initial 0
+      e2 += (V - vTrue[s]) ** 2;
+      if (g) eg2 += (g[Math.floor(((s - 1) * 10) / N)] - vTrue[s]) ** 2;
+    }
+    $('sEp').textContent = eps;
+    $('sUnseen').textContent = `${((100 * unseen) / N).toFixed(unseen === N || unseen === 0 ? 0 : 1)}%`;
+    $('sErr').textContent = Math.sqrt(e2 / N).toFixed(3);
+    $('sErrG').textContent = Math.sqrt(eg2 / N).toFixed(3);
+  }
+
+  function run(k) {
+    let last, distinct = 0;
+    for (let i = 0; i < k; i++) { last = episode(); distinct += last.distinct; }
+    $('wStatus').textContent = k === 1
+      ? `That episode visited ${last.distinct} different states and ended ${last.G > 0 ? 'on the right (+1)' : 'on the left (−1)'}. Every state it passed gets that return.`
+      : `${eps} episodes so far. Each of the last ${k} visited ${Math.round(distinct / k)} different states on average, out of ${N.toLocaleString('en-GB')}.`;
+    draw();
+  }
+
+  $('sizes').addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (b) { N = +b.dataset.n; reset(); }
+  });
+  $('b1').addEventListener('click', () => run(1));
+  $('b10').addEventListener('click', () => run(10));
+  $('bGroup').addEventListener('click', () => {
+    grouped = !grouped;
+    $('bGroup').classList.toggle('on', grouped);
+    $('gKey').hidden = !grouped; $('stG').hidden = !grouped;
+    draw();
+  });
+  $('bReset').addEventListener('click', reset);
+  new ResizeObserver(draw).observe(canvas);
+  reset();
+
+  // ------------------------------------------------------------ quiz
+  Course.quiz([
+    {
+      q: 'Tic-tac-toe has 5,478 reachable positions. How many bytes does a float32 table of $V(s)$ need (4 bytes per entry)?',
+      answer: 5478 * 4,
+      tol: 0,
+      explain: '$5478 \\times 4 = 21{,}912$ bytes. Tiny. Tic-tac-toe is a table-sized problem.',
+    },
+    {
+      q: 'A black-and-white image (2 levels) is $10 \\times 10$ pixels. The number of possible images is $10^k$. What is $k$, to one decimal place?',
+      answer: 100 * Math.log10(2),
+      tol: 0.06,
+      hint: '$L^{n^2} = 10^{\\,n^2 \\log_{10} L}$.',
+      explain: '$2^{100} = 10^{100 \\log_{10} 2} = 10^{30.1}$. A thumbnail already has more states than a table could hold.',
+    },
+    {
+      q: 'With 100,000 states, an episode of the walk visits about 85 different states (run 10 to check). What is the fewest whole number of episodes that could visit every state at least once?',
+      answer: Math.ceil(100000 / 85),
+      tol: 0,
+      explain: '$100{,}000 / 85 = 1176.5$, so at least 1177 episodes, and in practice far more because episodes overlap.',
+    },
+    {
+      q: 'With 10 groups, 10 episodes give a decent estimate at every size, while the table gets worse as the walk grows. Why?',
+      choices: [
+        'Groups use a larger step size',
+        'Each group value averages returns from many states, so every visit informs a whole group, not one entry',
+        'Groups only cover the states that were visited',
+      ],
+      answer: 1,
+      explain: 'The group has 10 numbers to learn whatever the size. That is generalisation: one experience updates the estimate of many states.',
+    },
+  ]);
+</script>
+</body>
+</html>

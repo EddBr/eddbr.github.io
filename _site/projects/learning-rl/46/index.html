@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>46. The TD error | Learning RL</title>
+<meta name="description" content="The TD error is surprise: reward plus new estimate minus old estimate. Watch it move from the reward to the cue that predicts it, as dopamine neurons do.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .dplot { position: relative; height: 170px; margin: 10px 0 0 30px; }
+  .dplot .zero { position: absolute; left: 0; right: 0; top: 50%; border-top: 1px solid #9ca3af; }
+  .dplot .cols { position: absolute; inset: 0; display: flex; gap: 2px; }
+  .dplot .c { flex: 1; position: relative; }
+  .dplot .c .b { position: absolute; left: 0; right: 0; border-radius: 2px; }
+  .dplot .c.cue { background: rgba(42,122,226,0.08); }
+  .dplot .c.rew { background: rgba(217,119,6,0.10); }
+  .dplot .yl { position: absolute; left: -30px; width: 26px; text-align: right; font-size: 0.7rem; color: var(--muted); transform: translateY(-50%); }
+  .tl { display: flex; gap: 2px; margin-left: 30px; font-size: 0.7rem; color: var(--muted); }
+  .tl span { flex: 1; text-align: center; }
+  .tl .cue { color: var(--blue); font-weight: 600; }
+  .tl .rew { color: var(--amber); font-weight: 600; }
+  .vrow { display: flex; gap: 2px; margin: 6px 0 0 30px; height: 26px; }
+  .vrow span { flex: 1; border-radius: 2px; font-size: 0.6rem; display: flex; align-items: center; justify-content: center; color: var(--heading); }
+  .lab { font-size: 0.75rem; color: var(--muted); margin: 8px 0 0; }
+  #raster { width: 100%; height: 180px; display: block; margin-top: 4px; }
+  #eq { overflow-x: auto; min-height: 2.6em; }
+  @media (max-width: 560px) { .vrow span { font-size: 0; } }
+</style>
+</head>
+<body data-lesson="46">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>The TD error</h1>
+  <p class="lede">The bracket in Lesson 45's update has a name: the TD error, $\delta$. It is surprise: how much better or worse things just turned out than the agent expected. Dopamine neurons in the brain fire in a pattern that closely matches it.</p>
+
+  <section class="card">
+    <p class="note">Each trial lasts 20 time steps. A light comes on at step 4 (blue) and juice arrives 8 steps later, at step 12 (amber). The agent learns a value for each step since the light with TD(0). Bars show $\delta$ at each step of the latest trial.</p>
+    <div class="dplot" id="dplot"></div>
+    <div class="tl" id="tl"></div>
+    <p class="lab">$V$ at each step after the latest trial (darker green = higher):</p>
+    <div class="vrow" id="vrow"></div>
+    <div id="eq"></div>
+    <label class="slider"><span>Step size $\alpha$</span><input id="iA" type="range" min="0.05" max="1" step="0.05" value="0.3"><output></output></label>
+    <div class="row">
+      <button id="bTrial" class="primary">Run trial</button>
+      <button id="bRun">Run</button>
+      <label class="muted"><input type="checkbox" id="cOmit"> withhold the juice</label>
+      <span class="spacer"></span>
+      <button id="bReset" class="quiet">Reset</button>
+    </div>
+    <p class="status" id="status"></p>
+    <p class="lab">Every trial so far, newest at the bottom (green $\delta &gt; 0$, red $\delta &lt; 0$):</p>
+    <canvas id="raster"></canvas>
+    <p class="note">Train for 30 or so trials, then tick "withhold the juice" and run one more.</p>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>The TD error at step $t$ compares the old estimate with the one-step target:</p>
+    $$\delta_t = R_{t+1} + \gamma V(S_{t+1}) - V(S_t)$$
+    <p>Positive means things went better than expected; negative means worse. TD(0) is then $V(S_t) \leftarrow V(S_t) + \alpha\,\delta_t$.</p>
+    <p>If $V$ does not change during an episode, the Monte Carlo error is the discounted sum of the TD errors (S&amp;B eq. 6.6). Add and subtract $\gamma V(S_{t+1})$:</p>
+    $$\begin{aligned}
+      G_t - V(S_t) &= R_{t+1} + \gamma G_{t+1} - V(S_t) + \gamma V(S_{t+1}) - \gamma V(S_{t+1}) \\
+      &= \delta_t + \gamma\big(G_{t+1} - V(S_{t+1})\big) \\
+      &= \delta_t + \gamma \delta_{t+1} + \gamma^2\big(G_{t+2} - V(S_{t+2})\big) \\
+      &= \sum_{k=t}^{T-1} \gamma^{k-t} \delta_k
+    \end{aligned}$$
+    <p>The last line uses $G_T - V(S_T) = 0 - 0$ at the terminal state. Monte Carlo waits for the whole sum; TD uses each term as it arrives.</p>
+    <p>In the trial, the steps before the light share one value, held at $0$: in experiments the light comes at unpredictable times, so nothing before it predicts juice. With $\gamma = 1$ and the values learned, every step from the light until the juice is worth $1$ and later steps are worth $0$. So:</p>
+    $$\delta_{\text{light}} = 0 + 1 - 0 = 1, \qquad \delta_{\text{juice}} = 1 + 0 - 1 = 0, \qquad \delta_{\text{no juice}} = 0 + 0 - 1 = -1$$
+    <p>The surprise moves to the earliest reliable predictor of reward, and a missing reward produces a dip.</p>
+    <p>Schultz, Dayan and Montague (1997) showed that midbrain dopamine neurons in monkeys do the same three things: they fire for unexpected juice, shift their firing to a cue that predicts the juice, and pause when predicted juice does not arrive. The tabular model also predicts that the burst creeps backwards step by step during learning; whether real neurons show that gradual shift has been debated for years.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const T = 20, CUE = 4, REW = 12, YMAX = 1.2;
+  const alpha = Course.slider('#iA', (v) => v.toFixed(2));
+  // State at time t: before the light, one shared state with V fixed at 0; from the light on, "k = t - CUE steps since the light".
+  let V, trials, deltas, history, timer = null;
+
+  function reset() {
+    stop();
+    V = new Array(T - CUE).fill(0);
+    trials = 0; deltas = new Array(T + 1).fill(0); history = [];
+    $('status').textContent = 'Values start at 0, so the juice is a complete surprise. Press "Run trial".';
+    Course.tex($('eq'), '\\delta_t = R_{t+1} + \\gamma V(S_{t+1}) - V(S_t)', true);
+    draw();
+  }
+  const vAt = (t) => (t < CUE || t >= T ? 0 : V[t - CUE]);
+
+  // One trial of TD(0), gamma = 1. deltas[t+1] is the error on arriving at step t+1.
+  function trial() {
+    const omit = $('cOmit').checked, a = alpha();
+    deltas = new Array(T + 1).fill(0);
+    let juice = null;
+    for (let t = 0; t < T; t++) {
+      const r = t + 1 === REW && !omit ? 1 : 0;
+      const d = r + vAt(t + 1) - vAt(t);
+      deltas[t + 1] = d;
+      if (t >= CUE) V[t - CUE] += a * d;   // the pre-light state stays at 0
+      if (t + 1 === REW) juice = { r, vNext: vAt(t + 1), vOld: vAt(t) - (t >= CUE ? a * d : 0), d };
+    }
+    trials++;
+    history.push(deltas.slice(1));
+    const dc = deltas[CUE], dr = deltas[REW];
+    $('status').textContent = `Trial ${trials}${omit ? ' (no juice)' : ''}: δ at the light ${dc.toFixed(2)}, δ at juice time ${dr.toFixed(2)}.`;
+    Course.tex($('eq'), `\\text{juice time: }\\delta = ${juice.r} + ${juice.vNext.toFixed(2)} - ${juice.vOld.toFixed(2)} = ${juice.d.toFixed(2)}`, true);
+  }
+
+  function draw() {
+    const Y = (y) => 50 - (50 * y) / YMAX;
+    let html = '<div class="zero"></div>';
+    [1, 0, -1].forEach((y) => { html += `<span class="yl" style="top:${Y(y)}%">${y}</span>`; });
+    html += '<div class="cols">' + Array.from({ length: T }, (_, i) => {
+      const t = i + 1, d = deltas[t];
+      const cls = t === CUE ? ' cue' : t === REW ? ' rew' : '';
+      const top = Y(Math.max(d, 0)), bot = Y(Math.min(d, 0));
+      const col = d >= 0 ? Course.colors.green : Course.colors.red;
+      return `<div class="c${cls}" title="step ${t}: δ = ${d.toFixed(3)}"><div class="b" style="top:${top}%;height:${bot - top}%;background:${col}"></div></div>`;
+    }).join('') + '</div>';
+    $('dplot').innerHTML = html;
+    $('tl').innerHTML = Array.from({ length: T }, (_, i) => {
+      const t = i + 1;
+      return `<span class="${t === CUE ? 'cue' : t === REW ? 'rew' : ''}">${t === CUE ? '💡' : t === REW ? '🧃' : t % 4 === 0 ? t : ''}</span>`;
+    }).join('');
+    $('vrow').innerHTML = Array.from({ length: T }, (_, i) => {
+      const t = i + 1, v = vAt(t);
+      return `<span title="V = ${v.toFixed(3)}" style="background:${Course.heat(v, 1)}">${t >= CUE && t < T ? v.toFixed(1) : ''}</span>`;
+    }).join('');
+    drawRaster();
+  }
+
+  function drawRaster() {
+    const c = $('raster'), ctx = c.getContext('2d');
+    const dpr = window.devicePixelRatio || 1, W = c.clientWidth, H = c.clientHeight;
+    if (!W) return;
+    c.width = W * dpr; c.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#f9fafb'; ctx.fillRect(30, 0, W - 30, H);
+    const rows = history.slice(-60), n = Math.max(rows.length, 20);
+    const cw = (W - 30) / T, rh = H / n;
+    rows.forEach((row, i) => row.forEach((d, j) => {
+      ctx.fillStyle = Course.heat(d, 1);
+      ctx.fillRect(30 + j * cw, i * rh, cw - 1, Math.max(rh - (rh > 4 ? 1 : 0), 1));
+    }));
+    ctx.fillStyle = '#6b7280'; ctx.font = '10px sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    if (rows.length) {
+      ctx.fillText(String(history.length - rows.length + 1), 26, rh / 2);
+      ctx.fillText(String(history.length), 26, (rows.length - 0.5) * rh);
+    } else ctx.fillText('trial', 26, 8);
+  }
+  new ResizeObserver(drawRaster).observe($('raster'));
+
+  function stop() { clearInterval(timer); timer = null; $('bRun').textContent = 'Run'; }
+  $('bTrial').addEventListener('click', () => { trial(); draw(); });
+  $('bRun').addEventListener('click', () => {
+    if (timer) return stop();
+    $('bRun').textContent = 'Pause';
+    timer = setInterval(() => { trial(); draw(); }, 250);
+  });
+  $('bReset').addEventListener('click', reset);
+  reset();
+
+  // ------------------------------------------------------------ quiz
+  Course.quiz([
+    {
+      q: '$V(S_t) = 8$, $R_{t+1} = 0$, $V(S_{t+1}) = 10$ and $\\gamma = 0.9$. What is $\\delta_t$?',
+      answer: 0 + 0.9 * 10 - 8,
+      tol: 0.0005,
+      explain: '$0 + 0.9 \\times 10 - 8 = 1$. Things look better than expected, with no reward yet.',
+    },
+    {
+      q: 'After training, every step from the light until the juice is worth $1$ and the steps after are worth $0$ ($\\gamma = 1$). The juice is withheld. What is $\\delta$ at the moment the juice should have come?',
+      answer: 0 + 0 - 1,
+      tol: 0.0005,
+      explain: '$\\delta = 0 + 0 - 1 = -1$: the dip. Tick "withhold the juice" to see it.',
+    },
+    {
+      q: 'An episode from $S_0$ has TD errors $0.5, -0.2, 0.3$ (with $V$ held fixed, $\\gamma = 1$). $V(S_0) = 2$. What was the return $G_0$?',
+      answer: 2 + 0.5 - 0.2 + 0.3,
+      tol: 0.0005,
+      hint: 'The Monte Carlo error $G_0 - V(S_0)$ is the sum of the TD errors.',
+      explain: '$G_0 = V(S_0) + \\sum_k \\delta_k = 2 + 0.6 = 2.6$.',
+    },
+    {
+      q: 'A monkey has learned that a light predicts juice. What do its dopamine neurons do when the light comes on and the juice then arrives as usual?',
+      choices: [
+        'Fire at the juice only',
+        'Fire at the light, and barely respond to the juice',
+        'Fire at both equally',
+        'Pause at the light',
+      ],
+      answer: 1,
+      explain: 'The light is the surprise, since it arrives unpredictably. The juice is fully predicted, so $\\delta \\approx 0$ when it arrives.',
+    },
+  ]);
+</script>
+</body>
+</html>

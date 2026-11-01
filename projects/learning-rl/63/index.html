@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>63. Generalisation | Learning RL</title>
+<meta name="description" content="Train one state and its neighbours learn too. Click to train a coarse-coded value function and see how feature width sets how far each update spreads.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  #pad { width: 100%; height: 300px; display: block; cursor: crosshair; touch-action: none; margin: 8px 0; }
+  .three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .three h3 { font-size: 0.85rem; color: var(--muted); font-weight: 500; margin: 0; text-align: center; }
+  .three canvas { width: 100%; height: 150px; display: block; }
+  #upd { overflow-x: auto; min-height: 2.6em; }
+  @media (max-width: 560px) { .three { grid-template-columns: 1fr; } .three canvas { height: 120px; } }
+</style>
+</head>
+<body data-lesson="63">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Generalisation</h1>
+  <p class="lede">With shared features, an update to one state changes the estimates of every state that shares those features. That is how an agent can value states it has never visited. The features decide how far each update spreads.</p>
+
+  <section class="card">
+    <p class="note">The state is a number between 0 and 1. Each feature is an interval and is 1 for states inside it (coarse coding, S&amp;B §9.5.3). <b>Click or drag on the chart</b> to set a target there: the estimate at that point moves halfway to it.</p>
+    <label class="slider"><span>Feature width</span><input id="iW" type="range" min="1" max="30" step="1" value="9"><output></output></label>
+    <canvas id="pad" aria-label="The value estimate over states 0 to 1. Click to train it toward a target."></canvas>
+    <div id="upd"></div>
+    <div class="stats">
+      <div class="stat"><span class="k">Features</span><span class="v" id="sD">–</span></div>
+      <div class="stat"><span class="k">Active per state, $n$</span><span class="v" id="sN">–</span></div>
+      <div class="stat"><span class="k">Step size $\alpha = 0.5/n$</span><span class="v" id="sA">–</span></div>
+    </div>
+    <div class="row"><button id="bDemo">Train at 0.5 toward 1</button><span class="spacer"></span><button id="bClear" class="quiet">Clear</button></div>
+
+    <div class="sub">
+      <h2>Narrow, medium and broad features</h2>
+      <p class="note">After S&amp;B Example 9.3: learn a square wave (amber) from random samples, with $\alpha = 0.2/n$. In all three, a new feature starts every 0.01; only the width differs.</p>
+      <div class="three">
+        <div><h3>narrow</h3><canvas id="c0"></canvas></div>
+        <div><h3>medium</h3><canvas id="c1"></canvas></div>
+        <div><h3>broad</h3><canvas id="c2"></canvas></div>
+      </div>
+      <div class="row"><button id="bWave" class="primary">Train to 10 samples</button><span class="muted" id="waveStatus">0 samples</span><span class="spacer"></span><button id="bWaveReset" class="quiet">Reset</button></div>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>For a linear estimate, one update at state $s$ with error $\delta = U - \hat v(s,\mathbf{w})$ is $\Delta\mathbf{w} = \alpha\,\delta\,\mathbf{x}(s)$. Any other state $s'$ then changes by</p>
+    $$\Delta \hat v(s') = \Delta\mathbf{w}^\top \mathbf{x}(s') = \alpha\,\delta\;\mathbf{x}(s)^\top \mathbf{x}(s').$$
+    <p>States move in proportion to how much their features overlap with $s$. With no overlap, they do not move at all.</p>
+    <p>With binary features, $\mathbf{x}(s)^\top\mathbf{x}(s')$ counts the features the two states share. If every state has exactly $n$ active features and $\alpha = f/n$:</p>
+    $$\Delta \hat v(s') = f\,\delta \cdot \frac{\text{shared features}}{n}.$$
+    <p>At $s$ itself all $n$ are shared, so the estimate moves a fraction $f$ of the way to the target (here $f = 0.5$). For intervals of width $W$ packed evenly, the shared fraction falls off linearly with distance, which is the triangle you see:</p>
+    $$\frac{\text{shared}}{n} \approx \max\!\Big(0,\; 1 - \frac{|s - s'|}{W}\Big).$$
+    <p>Wide features generalise far and learn the rough shape quickly. Narrow features generalise little and need samples everywhere. In S&amp;B Example 9.3 the final functions end up similar: width mostly changes how learning spreads early on, while the fineness of the final answer depends on how many features there are.</p>
+    <p><b>Tile coding</b> (S&amp;B §9.5.4) is the practical version. It uses $n$ grids ("tilings"), each offset slightly from the others. Each tiling has exactly one active tile, so exactly $n$ features are active. With $\alpha = 1/n$ an update moves the estimate all the way to the target, and with $\alpha = 1/(10n)$ it moves a tenth of the way.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+
+  // Coarse coder over [0, 1]: `per` feature starts per unit length, each feature `n` starts wide.
+  // Feature i covers [(i - n) / per, i / per), so every state lies in exactly n features.
+  function coder(n, per) {
+    const width = n / per, d = per + n;
+    const active = (s) => {
+      const k = Math.floor(s * per + 1e-9), out = [];
+      for (let i = k + 1; i <= k + n; i++) out.push(i - 1);
+      return out;
+    };
+    const span = (i) => [(i + 1 - n) / per, (i + 1) / per];
+    return { width, active, span, d };
+  }
+  const value = (w, idx) => idx.reduce((t, i) => t + w[i], 0);
+
+  // ------------------------------------------------------------ click-to-train pad
+  const F = 0.5, YM = 1.5;
+  let C, w, lastS = null, lastY = null;
+  const nAct = Course.slider('#iW', (v) => (v / 60).toFixed(2), () => { build(); draw(); });
+
+  function build() {
+    C = coder(nAct(), 60);
+    w = new Float64Array(C.d);
+    lastS = null;
+    const n = C.active(0.5).length;
+    $('sD').textContent = C.d; $('sN').textContent = n; $('sA').textContent = (F / n).toFixed(4);
+    Course.tex($('upd'), '\\text{Click the chart to train.}', true);
+  }
+  function train(s, y, show) {
+    const idx = C.active(s), n = idx.length, a = F / n;
+    const old = value(w, idx), d = y - old;
+    idx.forEach((i) => { w[i] += a * d; });
+    lastS = s; lastY = y;
+    if (show) {
+      Course.tex($('upd'),
+        `\\begin{aligned}\\hat v(${s.toFixed(2)}) &\\leftarrow ${old.toFixed(2)} + ${n}\\cdot\\tfrac{0.5}{${n}}\\,\\big(${y.toFixed(2)} - (${old.toFixed(2)})\\big) \\\\ &= ${value(w, idx).toFixed(2)}\\end{aligned}`, true);
+    }
+  }
+
+  const pad = $('pad'), ctx = pad.getContext('2d');
+  let geom;
+  function draw() {
+    const dpr = window.devicePixelRatio || 1;
+    const W = pad.clientWidth, H = pad.clientHeight;
+    if (!W) return;
+    pad.width = W * dpr; pad.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    const m = { l: 30, r: 8, t: 8, b: 60 };
+    const X = (s) => m.l + s * (W - m.l - m.r);
+    const Y = (v) => m.t + ((YM - v) / (2 * YM)) * (H - m.t - m.b);
+    geom = { m, W, H };
+    ctx.font = '11px -apple-system, sans-serif'; ctx.fillStyle = '#6b7280';
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    [-1, 0, 1].forEach((v) => {
+      ctx.strokeStyle = v ? '#eef0f3' : '#9ca3af'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(m.l, Y(v)); ctx.lineTo(W - m.r, Y(v)); ctx.stroke();
+      ctx.fillText(v, m.l - 5, Y(v));
+    });
+    // features of the last trained state, drawn as bars under the chart
+    const fy0 = H - m.b + 8, rowH = 4;
+    if (lastS !== null) {
+      const idx = C.active(lastS);
+      ctx.fillStyle = 'rgba(42,122,226,0.12)';
+      ctx.fillRect(X(Math.max(0, lastS - C.width)), m.t, X(Math.min(1, lastS + C.width)) - X(Math.max(0, lastS - C.width)), H - m.b - m.t);
+      ctx.fillStyle = Course.colors.blue;
+      idx.forEach((i, k) => {
+        const [lo, hi] = C.span(i);
+        const a = Math.max(0, lo), b = Math.min(1, hi);
+        ctx.fillRect(X(a), fy0 + (k % 8) * (rowH + 1), X(b) - X(a), rowH);
+      });
+      ctx.fillStyle = '#6b7280'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+      ctx.fillText(`the ${idx.length} features active at ${lastS.toFixed(2)} (shaded: states that share one)`, m.l, fy0 + 8 * (rowH + 1) + 2);
+    }
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillStyle = '#6b7280';
+    // estimate
+    ctx.strokeStyle = Course.colors.green; ctx.lineWidth = 3; ctx.beginPath();
+    for (let k = 0; k <= 400; k++) { const s = Math.min(0.99999, k / 400); (k ? ctx.lineTo : ctx.moveTo).call(ctx, X(s), Y(value(w, C.active(s)))); }
+    ctx.stroke();
+    if (lastS !== null) {
+      ctx.fillStyle = Course.colors.blue; ctx.beginPath(); ctx.arc(X(lastS), Y(lastY), 5, 0, 2 * Math.PI); ctx.fill();
+      ctx.strokeStyle = Course.colors.blue; ctx.setLineDash([3, 3]); ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(X(lastS), Y(lastY)); ctx.lineTo(X(lastS), Y(value(w, C.active(lastS)))); ctx.stroke(); ctx.setLineDash([]);
+    }
+  }
+
+  function at(e) {
+    const r = pad.getBoundingClientRect(), { m, W, H } = geom;
+    const s = (e.clientX - r.left - m.l) / (W - m.l - m.r);
+    const y = YM - ((e.clientY - r.top - m.t) / (H - m.t - m.b)) * 2 * YM;
+    if (s < 0 || s >= 1 || y < -YM || y > YM) return null;
+    return [s, y];
+  }
+  let dragging = false, lastDrag = 0;
+  pad.addEventListener('pointerdown', (e) => {
+    const p = at(e); if (!p) return;
+    pad.setPointerCapture(e.pointerId); dragging = true;
+    train(p[0], p[1], true); draw();
+  });
+  pad.addEventListener('pointermove', (e) => {
+    if (!dragging || Date.now() - lastDrag < 40) return;
+    const p = at(e); if (!p) return;
+    lastDrag = Date.now();
+    train(p[0], p[1], true); draw();
+  });
+  pad.addEventListener('pointerup', () => { dragging = false; });
+  $('bDemo').addEventListener('click', () => { train(0.5, 1, true); draw(); });
+  $('bClear').addEventListener('click', () => { build(); draw(); });
+  new ResizeObserver(draw).observe(pad);
+  build();
+
+  // ------------------------------------------------------------ square wave, three widths
+  const WIDTHS = [0.05, 0.15, 0.45], PER = 100;
+  const wave = (s) => (s >= 0.3 && s < 0.7 ? 1 : 0);
+  const SCHEDULE = [10, 40, 160, 640, 2560, 10240];
+  let coders, weights, samples, stage;
+  function waveReset() {
+    coders = WIDTHS.map((wd) => coder(Math.round(wd * PER), PER));
+    weights = coders.map((c) => new Float64Array(c.d));
+    samples = 0; stage = 0;
+    $('bWave').textContent = `Train to ${SCHEDULE[0]} samples`; $('bWave').disabled = false;
+    $('waveStatus').textContent = '0 samples';
+    drawWaves();
+  }
+  function trainWave(k) {
+    for (let t = 0; t < k; t++) {
+      const s = Math.random();
+      coders.forEach((c, j) => {
+        const idx = c.active(s), a = 0.2 / idx.length, d = wave(s) - value(weights[j], idx);
+        idx.forEach((i) => { weights[j][i] += a * d; });
+      });
+    }
+    samples += k;
+  }
+  function drawWaves() {
+    [0, 1, 2].forEach((j) => {
+      const cv = $(`c${j}`), g = cv.getContext('2d');
+      const dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
+      if (!W) return;
+      cv.width = W * dpr; cv.height = H * dpr;
+      g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+      const X = (s) => 4 + s * (W - 8), Y = (v) => 8 + ((1.3 - v) / 1.6) * (H - 26);
+      g.strokeStyle = '#e5e7eb'; g.beginPath(); g.moveTo(0, Y(0)); g.lineTo(W, Y(0)); g.stroke();
+      g.strokeStyle = Course.colors.amber; g.lineWidth = 2; g.beginPath();
+      g.moveTo(X(0), Y(0)); g.lineTo(X(0.3), Y(0)); g.lineTo(X(0.3), Y(1)); g.lineTo(X(0.7), Y(1)); g.lineTo(X(0.7), Y(0)); g.lineTo(X(1), Y(0)); g.stroke();
+      g.strokeStyle = Course.colors.green; g.lineWidth = 2.5; g.beginPath();
+      for (let k = 0; k <= 300; k++) { const s = Math.min(0.99999, k / 300); (k ? g.lineTo : g.moveTo).call(g, X(s), Y(value(weights[j], coders[j].active(s)))); }
+      g.stroke();
+      // one feature's width as a bar
+      g.fillStyle = Course.colors.blue;
+      g.fillRect(X(0.5 - WIDTHS[j] / 2), H - 8, X(0.5 + WIDTHS[j] / 2) - X(0.5 - WIDTHS[j] / 2), 4);
+    });
+  }
+  $('bWave').addEventListener('click', () => {
+    trainWave(SCHEDULE[stage] - samples);
+    $('waveStatus').textContent = `${samples.toLocaleString('en-GB')} samples`;
+    stage++;
+    if (stage < SCHEDULE.length) $('bWave').textContent = `Train to ${SCHEDULE[stage].toLocaleString('en-GB')} samples`;
+    else { $('bWave').textContent = 'Done'; $('bWave').disabled = true; }
+    drawWaves();
+  });
+  $('bWaveReset').addEventListener('click', waveReset);
+  [0, 1, 2].forEach((j) => new ResizeObserver(drawWaves).observe($(`c${j}`)));
+  waveReset();
+
+  // ------------------------------------------------------------ quiz
+  Course.quiz([
+    {
+      q: 'Tile coding with 8 tilings and $\\alpha = 0.1/8$. The estimate at $s$ is 0 and the target is 1. What is the estimate at $s$ after one update?',
+      answer: 8 * (0.1 / 8) * 1,
+      tol: 1e-6,
+      explain: 'Each of the 8 active weights rises by $\\tfrac{0.1}{8} \\times 1$, so the estimate rises by $8 \\times \\tfrac{0.1}{8} = 0.1$.',
+    },
+    {
+      q: 'Same update. A state $s\'$ shares 6 of its 8 tiles with $s$ and also started at 0. What is its estimate now?',
+      answer: 6 * (0.1 / 8),
+      tol: 1e-6,
+      hint: '$\\Delta \\hat v(s\') = \\alpha\\,\\delta\\,\\mathbf{x}(s)^\\top\\mathbf{x}(s\')$.',
+      explain: '$\\tfrac{0.1}{8} \\times 1 \\times 6 = 0.075$.',
+    },
+    {
+      q: 'Intervals of width $W = 0.2$, $f = 0.5$. You train at $s = 0.5$ with error $\\delta = 1$. Roughly how much does the estimate at $s\' = 0.6$ change?',
+      answer: 0.5 * (1 - 0.1 / 0.2),
+      tol: 0.01,
+      explain: 'Shared fraction $\\approx 1 - 0.1/0.2 = 0.5$, so the change is $0.5 \\times 1 \\times 0.5 = 0.25$. Try it on the pad with width 0.20.',
+    },
+    {
+      q: 'In the square-wave comparison, what do broad features change most?',
+      choices: [
+        'How sharp the final learned function can be',
+        'How far each sample spreads, so the rough shape appears after fewer samples',
+        'The value the estimate converges to in the middle of the wave',
+      ],
+      answer: 1,
+      explain: 'Broad features generalise widely early on. After many samples all three look alike, because the number of features, not their width, limits the detail.',
+    },
+  ]);
+</script>
+</body>
+</html>

@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>94. Sparse rewards and curiosity | Learning RL</title>
+<meta name="description" content="One reward, far away. A random explorer rarely finds it. An agent paid a small bonus for visiting new places sweeps the maze systematically.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .pair h3 { font-size: 0.9rem; color: var(--heading); margin: 0; text-align: center; }
+  .pair h3 small { display: block; font-weight: 400; color: var(--muted); }
+  .pair canvas { width: 100%; display: block; margin: 6px 0 0; }
+  .key { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.85rem; color: var(--muted); justify-content: center; }
+  .key b { display: inline-block; width: 14px; height: 10px; vertical-align: middle; margin-right: 4px; border-radius: 2px; }
+  @media (max-width: 560px) { .pair { gap: 8px; } .pair h3 small { font-size: 0.7rem; } }
+</style>
+</head>
+<body data-lesson="94">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Sparse rewards and curiosity</h1>
+  <p class="lede">When the only reward is at the far end of a maze, every value is zero until the agent stumbles on it, and ε-greedy stumbles slowly. A curious agent pays itself a small bonus for going somewhere new. The bonus fades with familiarity, so it keeps pushing towards the parts of the maze it knows least.</p>
+
+  <section class="card">
+    <label class="slider"><span>Bonus scale $\beta$</span><input id="iB" type="range" min="0.02" max="0.3" step="0.02" value="0.1"><output></output></label>
+    <div class="pair">
+      <div>
+        <h3>ε-greedy <small id="hA"></small></h3>
+        <canvas id="gA" aria-label="epsilon-greedy agent in the four-room maze"></canvas>
+      </div>
+      <div>
+        <h3>Count bonus <small id="hB"></small></h3>
+        <canvas id="gB" aria-label="count-bonus agent in the four-room maze"></canvas>
+      </div>
+    </div>
+    <div class="key">
+      <span><b style="background:#059669"></b>agent</span>
+      <span><b style="background:rgba(42,122,226,0.6)"></b>visits $N(s)$, darker = more</span>
+      <span><b style="background:#fef3c7;border:1px solid #d97706"></b>G: the only reward</span>
+    </div>
+    <p class="status" id="status"></p>
+    <div class="row">
+      <button id="bRun" class="primary">Run</button>
+      <button id="bEp">+5 episodes</button>
+      <span class="spacer"></span>
+      <button id="bReset" class="quiet">Reset</button>
+    </div>
+    <p class="note">The four-room gridworld (Sutton, Precup &amp; Singh, 1999). Each episode starts at S and lasts at most 100 steps. Reward $+1$ at G, 0 everywhere else. Both agents run Q-learning with $\alpha = 0.1$, $\gamma = 0.95$, $\varepsilon = 0.1$. The right one adds $\beta/\sqrt{N(s')}$ to every reward, with visit counts kept across episodes.</p>
+
+    <div class="sub">
+      <h2>How often is the goal found?</h2>
+      <p class="note">Fraction of 40 independent runs that have reached G at least once, by episode.</p>
+      <div class="row"><button id="bCompare">Run comparison</button></div>
+      <canvas class="chart" id="cmp" hidden></canvas>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>With reward only at G and all values starting at 0, Q-learning's targets $R + \gamma \max_a Q(S', a)$ are all 0 until the first arrival. Before that, ε-greedy with random tie-breaking is a random walk. A random walk spreads out like $\sqrt{t}$, so crossing a maze takes a number of steps that grows with the square of its size, and doorways make it worse.</p>
+    <p>A count-based bonus adds an intrinsic reward for reaching $s'$:</p>
+    $$\tilde R_{t+1} = R_{t+1} + \frac{\beta}{\sqrt{N(S_{t+1})}}$$
+    <p>$N(s)$ counts visits to $s$ so far, including this one. A first visit pays $\beta$, the hundredth pays $\beta/10$. Well-trodden states stop paying, so their values sink below those of places seldom seen. Bellemare et al. (2016) extended this to images by estimating "pseudo-counts" from a density model, which made progress on Montezuma's Revenge, an Atari game where ε-greedy DQN scores almost nothing.</p>
+    <p>One detail matters. An action never tried has $Q = 0$, but a tried one has collected bonuses and has $Q &gt; 0$. A greedy agent would then prefer what it already knows. So the bonus agent starts every value at the most a stream of bonuses could be worth:</p>
+    $$Q_0 = \sum_{k=0}^{\infty} \gamma^k \beta = \frac{\beta}{1 - \gamma}$$
+    <p>This is Lesson 8's optimism, sized to the bonus. Untried actions look as good as anything can, until tried.</p>
+    <p>Curiosity (Pathak et al., 2017) replaces counts with surprise. A forward model predicts the features of the next state, $\hat\phi(s_{t+1})$, and the bonus is its error:</p>
+    $$r^i_t = \frac{\eta}{2} \big\lVert \hat\phi(s_{t+1}) - \phi(s_{t+1}) \big\rVert^2$$
+    <p>Places the model cannot yet predict pay well. Once learned, they stop paying, just as a count does. Pure noise (a TV showing static) stays unpredictable forever, so a naive curious agent can get stuck watching it.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const DIRS = [[-1, 0], [0, 1], [1, 0], [0, -1]];
+
+  // ------------------------------------------------------------ canvas gridworld (as in Lesson 59)
+  function drawGrid(canvas, R, C, o = {}) {
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const W = canvas.clientWidth;
+    if (!W) return;
+    const cs = Math.min(W / C, o.maxCell || 26), gw = cs * C, x0 = (W - gw) / 2, H = cs * R + 2;
+    canvas.style.height = `${H}px`;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    const X = (c) => x0 + c * cs, Y = (r) => 1 + r * cs;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) {
+      const p = o.paint(r * C + c) || {};
+      ctx.fillStyle = p.fill || '#f9fafb';
+      ctx.fillRect(X(c) + 0.5, Y(r) + 0.5, cs - 1, cs - 1);
+      if (p.text) {
+        ctx.fillStyle = p.textColor || '#374151';
+        ctx.font = `600 ${Math.round(cs * 0.55)}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+        ctx.fillText(p.text, X(c) + cs / 2, Y(r) + cs / 2 + 1);
+      }
+    }
+    if (o.agent !== undefined) {
+      const r = Math.floor(o.agent / C), c = o.agent % C;
+      ctx.fillStyle = '#059669'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(X(c) + cs / 2, Y(r) + cs / 2, cs * 0.32, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+    }
+  }
+
+  // ------------------------------------------------------------ the four-room world
+  const MAP = [
+    'wwwwwwwwwwwww',
+    'w     w     w',
+    'w     w     w',
+    'w           w',
+    'w     w     w',
+    'w     w     w',
+    'ww wwww     w',
+    'w     www www',
+    'w     w     w',
+    'w     w     w',
+    'w           w',
+    'w     w     w',
+    'wwwwwwwwwwwww',
+  ];
+  const R = 13, C = 13, START = 1 * C + 1, GOAL = 11 * C + 11, T = 100;
+  const ALPHA = 0.1, GAMMA = 0.95, EPS = 0.1;
+  const isWall = (s) => MAP[Math.floor(s / C)][s % C] === 'w';
+  function envStep(s, a) {
+    const s2 = (Math.floor(s / C) + DIRS[a][0]) * C + (s % C) + DIRS[a][1];
+    return isWall(s2) ? s : s2;
+  }
+  const beta = Course.slider('#iB', (v) => v.toFixed(2), reset);
+
+  function agent(b) {
+    const q0 = b / (1 - GAMMA);
+    return { b, Q: Array.from({ length: R * C }, () => [q0, q0, q0, q0]), N: new Array(R * C).fill(0), s: START, t: 0, ep: 0, found: -1, wins: 0 };
+  }
+  // One step. Returns true when the episode ends (goal or time limit).
+  function act(A) {
+    if (A.t === 0) A.N[A.s]++;
+    const s = A.s, a = Math.random() < EPS ? Course.randInt(4) : Course.argmax(A.Q[s]);
+    const s2 = envStep(s, a);
+    A.N[s2]++;
+    const done = s2 === GOAL;
+    const r = (done ? 1 : 0) + (A.b ? A.b / Math.sqrt(A.N[s2]) : 0);
+    const target = r + (done ? 0 : GAMMA * Math.max(...A.Q[s2]));
+    A.Q[s][a] += ALPHA * (target - A.Q[s][a]);
+    A.s = s2; A.t++;
+    if (done || A.t >= T) {
+      if (done) { A.wins++; if (A.found < 0) A.found = A.ep + 1; }
+      A.ep++; A.t = 0; A.s = START;
+      return true;
+    }
+    return false;
+  }
+
+  let Ag, Bg, timer = null;
+  function reset() { stop(); Ag = agent(0); Bg = agent(beta()); draw(); }
+
+  function paintFor(A) {
+    const nmax = Math.max(1, ...A.N.map((n, s) => (s === START ? 0 : n)));
+    return (s) => {
+      if (isWall(s)) return { fill: '#4b5563' };
+      if (s === GOAL) return { fill: '#fef3c7', text: 'G', textColor: '#b45309' };
+      const p = {};
+      if (A.N[s]) p.fill = `rgba(42,122,226,${(0.08 + 0.62 * Math.log(1 + A.N[s]) / Math.log(1 + nmax)).toFixed(3)})`;
+      if (s === START) { p.text = 'S'; }
+      return p;
+    };
+  }
+  const seen = (A) => A.N.filter((n, s) => n > 0 && !isWall(s)).length;
+  const open = MAP.join('').split('').filter((c) => c === ' ').length;
+  function draw() {
+    drawGrid($('gA'), R, C, { paint: paintFor(Ag), agent: Ag.s });
+    drawGrid($('gB'), R, C, { paint: paintFor(Bg), agent: Bg.s });
+    const line = (A) => `episode ${A.ep + 1} · ${seen(A)}/${open} cells seen · G reached ${A.wins}×`;
+    $('hA').textContent = line(Ag);
+    $('hB').textContent = line(Bg);
+    const f = (A, name) => (A.found > 0 ? `${name} first reached G in episode ${A.found}.` : `${name} has not found G yet.`);
+    $('status').textContent = Ag.ep || Bg.ep ? `${f(Ag, 'ε-greedy')} ${f(Bg, 'Count bonus')}` : 'Press Run. Both agents start at S knowing nothing.';
+  }
+
+  function stop() { clearInterval(timer); timer = null; $('bRun').textContent = 'Run'; }
+  $('bRun').addEventListener('click', () => {
+    if (timer) return stop();
+    $('bRun').textContent = 'Pause';
+    timer = setInterval(() => { for (let i = 0; i < 5; i++) { act(Ag); act(Bg); } draw(); }, 30);
+  });
+  $('bEp').addEventListener('click', () => {
+    for (const A of [Ag, Bg]) { const e = A.ep + 5; while (A.ep < e) act(A); }
+    draw();
+  });
+  $('bReset').addEventListener('click', reset);
+  new ResizeObserver(draw).observe($('gA'));
+
+  const cmp = Course.lineChart($('cmp'), { xLabel: 'episode', yLabel: '% of runs found G', yMin: 0, yMax: 100, xMin: 1 });
+  $('bCompare').addEventListener('click', () => {
+    $('bCompare').disabled = true; $('bCompare').textContent = 'Running…';
+    setTimeout(() => {
+      const EP = 60, RUNS = 40;
+      const curve = (b) => {
+        const hit = new Array(EP).fill(0);
+        for (let k = 0; k < RUNS; k++) {
+          const A = agent(b);
+          while (A.ep < EP) act(A);
+          if (A.found > 0) for (let e = A.found - 1; e < EP; e++) hit[e]++;
+        }
+        return hit.map((h, e) => [e + 1, (100 * h) / RUNS]);
+      };
+      $('cmp').hidden = false;
+      cmp.draw([
+        { data: curve(0), color: Course.colors.grey, label: 'ε-greedy' },
+        { data: curve(beta()), color: Course.colors.green, label: `count bonus, β = ${beta()}` },
+      ]);
+      $('bCompare').disabled = false; $('bCompare').textContent = 'Run again';
+    }, 30);
+  });
+
+  reset();
+
+  Course.quiz([
+    {
+      q: 'With $\\beta = 0.1$, what bonus does the agent get for entering a cell on its 25th visit?',
+      answer: 0.1 / 5,
+      tol: 0.0005,
+      explain: '$0.1/\\sqrt{25} = 0.1/5 = 0.02$.',
+    },
+    {
+      q: 'With $\\beta = 0.1$ and $\\gamma = 0.95$, what initial value $Q_0$ does the bonus agent use?',
+      answer: 0.1 / 0.05,
+      explain: '$\\beta/(1-\\gamma) = 0.1/0.05 = 2$.',
+    },
+    {
+      q: 'With $\\beta = 0.1$, how many visits $N$ before the bonus first drops below $0.01$?',
+      answer: 101,
+      tol: 0,
+      hint: 'You need $0.1/\\sqrt{N} &lt; 0.01$.',
+      explain: '$\\sqrt{N} &gt; 10 \\Rightarrow N &gt; 100$, so $N = 101$. At $N = 100$ it is exactly $0.01$.',
+    },
+    {
+      q: 'Why does the bonus agent start its values at $\\beta/(1-\\gamma)$ rather than 0?',
+      choices: [
+        'To make learning faster once G is found',
+        'Otherwise tried actions, which have earned bonuses, look better than untried ones and the agent stops exploring',
+        'Because the goal reward is 1',
+      ],
+      answer: 1,
+      explain: 'With $Q_0 = 0$, any bonus already earned makes a familiar action beat an untried one. Starting at the largest possible bonus value keeps untried actions attractive.',
+    },
+  ]);
+</script>
+</body>
+</html>

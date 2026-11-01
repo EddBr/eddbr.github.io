@@ -1,0 +1,122 @@
+[
+ {
+  "model": "objects",
+  "target": "goldfish",
+  "lr": 0.12,
+  "seed": 1,
+  "robust": true,
+  "file": "objects-goldfish-s1.jpg"
+ },
+ {
+  "model": "objects",
+  "target": "tarantula",
+  "lr": 0.12,
+  "seed": 2,
+  "robust": true,
+  "file": "objects-tarantula-s2.jpg"
+ },
+ {
+  "model": "objects",
+  "target": "flamingo",
+  "lr": 0.12,
+  "seed": 1,
+  "robust": true,
+  "file": "objects-flamingo-s1.jpg"
+ },
+ {
+  "model": "textures",
+  "target": "paisley",
+  "lr": 0.1,
+  "seed": 1,
+  "robust": true,
+  "file": "textures-paisley-s1.jpg"
+ },
+ {
+  "model": "textures",
+  "target": "cobwebbed",
+  "lr": 0.1,
+  "seed": 1,
+  "robust": true,
+  "file": "textures-cobwebbed-s1.jpg"
+ },
+ {
+  "model": "textures",
+  "target": "marbled",
+  "lr": 0.1,
+  "seed": 1,
+  "robust": true,
+  "file": "textures-marbled-s1.jpg"
+ },
+ {
+  "model": "styles",
+  "target": "Ukiyo-e",
+  "lr": 0.1,
+  "seed": 1,
+  "robust": true,
+  "file": "styles-ukiyo-e-s1.jpg"
+ },
+ {
+  "model": "styles",
+  "target": "Pointillism",
+  "lr": 0.1,
+  "seed": 1,
+  "robust": true,
+  "file": "styles-pointillism-s1.jpg"
+ },
+ {
+  "model": "styles",
+  "target": "Cubism",
+  "lr": 0.1,
+  "seed": 1,
+  "robust": true,
+  "file": "styles-cubism-s1.jpg"
+ },
+ {
+  "model": "scenes",
+  "target": "lighthouse",
+  "lr": 0.15,
+  "seed": 1,
+  "robust": true,
+  "file": "scenes-lighthouse-s1.jpg"
+ },
+ {
+  "model": "scenes",
+  "target": "bamboo forest",
+  "lr": 0.15,
+  "seed": 1,
+  "robust": true,
+  "file": "scenes-bamboo-forest-s1.jpg"
+ },
+ {
+  "model": "scenes",
+  "target": "volcano",
+  "lr": 0.15,
+  "seed": 1,
+  "robust": true,
+  "file": "scenes-volcano-s1.jpg"
+ },
+ {
+  "model": "beauty",
+  "target": "beautiful",
+  "lr": 0.15,
+  "seed": 1,
+  "robust": true,
+  "file": "beauty-beautiful-s1.jpg"
+ },
+ {
+  "model": "beauty",
+  "target": "ugly",
+  "lr": 0.15,
+  "seed": 1,
+  "robust": true,
+  "file": "beauty-ugly-s1.jpg"
+ },
+ {
+  "model": "scenes",
+  "target": "lighthouse",
+  "lr": 0.15,
+  "seed": 1,
+  "robust": false,
+  "file": "scenes-lighthouse-s1-norobust.jpg"
+ }
+]

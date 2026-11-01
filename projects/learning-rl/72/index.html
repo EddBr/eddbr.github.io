@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>72. The log-derivative trick | Learning RL</title>
+<meta name="description" content="Why policy gradients use the gradient of log π: rare actions are sampled rarely, so each sample must push harder by a factor of 1/π.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .eq { min-height: 2.4em; text-align: center; margin: 6px 0; line-height: 2; }
+  .split { display: grid; grid-template-columns: auto 1fr 1fr 1fr; gap: 6px 10px; align-items: center; font-size: 0.9rem; margin: 10px 0; }
+  .split .h { font-size: 0.78rem; color: var(--muted); text-align: center; }
+  .split .a { font-weight: 600; color: var(--heading); }
+  .cellbar { position: relative; height: 22px; background: var(--soft); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }
+  .cellbar i { position: absolute; top: 0; bottom: 0; }
+  .cellbar span { position: relative; display: block; text-align: center; font-size: 0.8rem; line-height: 22px; color: var(--heading); font-variant-numeric: tabular-nums; }
+  .cellbar .mid { position: absolute; top: 0; bottom: 0; left: 50%; border-left: 1px solid #9ca3af; }
+</style>
+</head>
+<body data-lesson="72">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>The log-derivative trick</h1>
+  <p class="lede">The policy gradient is a sum over all actions, but an agent only sees the action it sampled. Dividing that action's gradient by its probability fixes the bookkeeping: a rare action turns up rarely, so each time it does, it must push harder. $\nabla \pi / \pi$ is exactly $\nabla \ln \pi$.</p>
+
+  <section class="card">
+    <h2>Rare actions push harder</h2>
+    <p class="note">Two actions, one parameter: $\pi(\rightarrow) = \sigma(\theta) = 1/(1 + e^{-\theta})$ and $\pi(\leftarrow) = 1 - \sigma(\theta)$. Drag $\theta$.</p>
+    <label class="slider"><span>$\theta$</span><input id="th" type="range" min="-4" max="4" step="0.05" value="-1.5"><output></output></label>
+    <canvas class="chart" id="curves"></canvas>
+    <p class="note">Green: $\pi(\rightarrow \mid \theta)$. Purple: $\ln \pi(\rightarrow \mid \theta)$. Dashed lines are tangents at your $\theta$. The log curve's slope is the green curve's slope divided by its height.</p>
+    <div class="split" id="split"></div>
+    <div class="eq" id="eq1"></div>
+    <p class="note">Columns: how often the action is sampled, how hard one sample pushes $\theta$, and the product. The product is $\nabla_\theta \pi(a)$ for both actions, whatever $\theta$ is. Push $\theta$ far left: right becomes rare, and its push grows towards 1 while its frequency shrinks.</p>
+
+    <div class="sub">
+      <h2>Estimating the gradient from samples</h2>
+      <p class="note">Rewards are fixed: $q(\rightarrow) = 2$ and $q(\leftarrow) = 1$. Each sample draws $A \sim \pi$ and records $R\,\nabla_\theta \ln \pi(A)$. The wrong estimator forgets to divide by $\pi$ and records $R\,\nabla_\theta \pi(A)$.</p>
+      <div class="row">
+        <button id="b10" class="primary">Sample 10</button>
+        <button id="b500">Sample 500</button>
+        <span class="spacer"></span>
+        <button id="bClear" class="quiet">Reset</button>
+      </div>
+      <canvas class="chart" id="est"></canvas>
+      <div class="stats">
+        <div class="stat"><span class="k">Samples</span><span class="v" id="sN">0</span></div>
+        <div class="stat"><span class="k">True $\nabla J$</span><span class="v" id="sTrue">–</span></div>
+        <div class="stat"><span class="k">With $\ln$</span><span class="v" id="sLog">–</span></div>
+        <div class="stat"><span class="k">Without</span><span class="v" id="sRaw">–</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>The chain rule applied to $\ln$ gives the identity that names this lesson:</p>
+    $$\nabla \ln \pi(a \mid s, \boldsymbol\theta) = \frac{\nabla \pi(a \mid s, \boldsymbol\theta)}{\pi(a \mid s, \boldsymbol\theta)}$$
+    <p>The gradient of the log is the gradient divided by the probability.</p>
+    <p><b>Why it is needed.</b> The gradient of an expectation over actions is a weighted sum of $\nabla\pi$, not an expectation. Multiplying and dividing by $\pi$ turns it back into one:</p>
+    $$\nabla\, \mathbb{E}_{A \sim \pi}[f(A)] = \sum_a f(a)\, \nabla \pi(a) = \sum_a \pi(a)\, f(a)\, \frac{\nabla \pi(a)}{\pi(a)} = \mathbb{E}_{A \sim \pi}\big[f(A)\, \nabla \ln \pi(A)\big]$$
+    <p>Here $f$ must not depend on $\boldsymbol\theta$. The last form is an average over sampled actions, so one sample $f(A)\nabla\ln\pi(A)$ is an unbiased estimate. Without the $1/\pi$, each action's term is weighted by how often it is sampled as well, which is the wrong estimator in the second chart.</p>
+    <p><b>The softmax case.</b> With linear preferences $h(s,a,\boldsymbol\theta) = \boldsymbol\theta^\top\mathbf{x}(s,a)$ (Lesson 70), $\ln \pi(a \mid s) = \boldsymbol\theta^\top\mathbf{x}(s,a) - \ln \sum_b e^{\boldsymbol\theta^\top\mathbf{x}(s,b)}$, so</p>
+    $$\nabla \ln \pi(a \mid s, \boldsymbol\theta) = \mathbf{x}(s,a) - \sum_b \pi(b \mid s, \boldsymbol\theta)\, \mathbf{x}(s,b)$$
+    <p>This is S&amp;B eq. 13.9: the action's features minus the average features. For the one-parameter policy above it gives $1 - \pi(\rightarrow)$ for right and $-\pi(\rightarrow)$ for left.</p>
+    <p><b>Whole trajectories.</b> The probability of a trajectory $\tau = (S_0, A_0, S_1, A_1, \dots, S_T)$ is</p>
+    $$P(\tau \mid \boldsymbol\theta) = p(S_0) \prod_{t=0}^{T-1} \pi(A_t \mid S_t, \boldsymbol\theta)\, p(S_{t+1} \mid S_t, A_t)$$
+    <p>The log turns the product into a sum, and the dynamics terms do not depend on $\boldsymbol\theta$, so their gradients are zero:</p>
+    $$\nabla \ln P(\tau \mid \boldsymbol\theta) = \sum_{t=0}^{T-1} \nabla \ln \pi(A_t \mid S_t, \boldsymbol\theta)$$
+    <p>With $f(\tau) = G(\tau)$, the return of the trajectory, the same trick gives a gradient the agent can estimate without knowing $p$:</p>
+    $$\nabla J(\boldsymbol\theta) = \mathbb{E}_{\tau}\Big[G(\tau) \sum_{t=0}^{T-1} \nabla \ln \pi(A_t \mid S_t, \boldsymbol\theta)\Big]$$
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const C = Course.colors, QR = 2, QL = 1;
+  const sig = (x) => 1 / (1 + Math.exp(-x));
+  const th = Course.slider('#th', (v) => v.toFixed(2), () => { drawTop(); clearEst(); });
+
+  const curves = Course.lineChart($('curves'), { xLabel: 'θ', yMin: -4.5, yMax: 1.2, xMin: -4.5, xMax: 4.5 });
+  const xs = []; for (let x = -4.5; x <= 4.5001; x += 0.05) xs.push(x);
+
+  function bar(v, max, color) {
+    const w = Math.min(50, (50 * Math.abs(v)) / max);
+    return `<div class="cellbar"><div class="mid"></div><i style="background:${color};opacity:0.35;left:${v >= 0 ? 50 : 50 - w}%;width:${w}%"></i><span>${v.toFixed(3)}</span></div>`;
+  }
+
+  function drawTop() {
+    const t = th(), p = sig(t), lp = Math.log(p);
+    const tan = (y0, m) => [[t - 1.2, y0 - 1.2 * m], [t + 1.2, y0 + 1.2 * m]];
+    curves.draw([
+      { data: xs.map((x) => [x, sig(x)]), color: C.green, label: 'π(→)' },
+      { data: xs.map((x) => [x, Math.log(sig(x))]), color: C.purple, label: 'ln π(→)' },
+      { data: tan(p, p * (1 - p)), color: C.green, dashed: true, width: 1.5 },
+      { data: tan(lp, 1 - p), color: C.purple, dashed: true, width: 1.5 },
+      { data: [[t, p], [t, lp]], color: '#111', dots: true, width: 0.5 },
+    ], { hlines: [{ y: 0, color: '#9ca3af' }] });
+
+    const rows = [
+      ['→', p, 1 - p],
+      ['←', 1 - p, -p],
+    ];
+    $('split').innerHTML = '<span></span><span class="h">how often<br>π(a)</span><span class="h">push per sample<br>∇ln π(a)</span><span class="h">average push<br>π · ∇ln π</span>' +
+      rows.map(([a, freq, push]) => `<span class="a">${a}</span>${bar(freq, 1, C.blue)}${bar(push, 1, C.purple)}${bar(freq * push, 0.25, C.green)}`).join('');
+    Course.tex($('eq1'), `\\nabla_\\theta \\pi(\\rightarrow) = \\pi(1-\\pi) = ${(p * (1 - p)).toFixed(3)}, \\quad \\nabla_\\theta \\ln \\pi(\\rightarrow) = \\frac{${(p * (1 - p)).toFixed(3)}}{${p.toFixed(3)}} = ${(1 - p).toFixed(3)}`);
+  }
+
+  // ------------------------------------------------------------ estimator
+  const est = Course.lineChart($('est'), { xLabel: 'samples', yLabel: 'estimate of ∇J' });
+  let n, sLog, sRaw, hLog, hRaw;
+  function clearEst() { n = 0; sLog = 0; sRaw = 0; hLog = []; hRaw = []; drawEst(); }
+  function sampleN(k) {
+    const p = sig(th());
+    for (let i = 0; i < k; i++) {
+      const right = Math.random() < p, R = right ? QR : QL;
+      sLog += R * (right ? 1 - p : -p);                     // R ∇ln π(A)
+      sRaw += R * (right ? p * (1 - p) : -p * (1 - p));     // R ∇π(A): wrong
+      n++; hLog.push([n, sLog / n]); hRaw.push([n, sRaw / n]);
+    }
+    drawEst();
+  }
+  function drawEst() {
+    const p = sig(th()), truth = (QR - QL) * p * (1 - p);
+    $('sN').textContent = n;
+    $('sTrue').textContent = truth.toFixed(3);
+    $('sLog').textContent = n ? (sLog / n).toFixed(3) : '–';
+    $('sRaw').textContent = n ? (sRaw / n).toFixed(3) : '–';
+    const thin = (h) => (h.length > 400 ? h.filter((_, i) => i % Math.ceil(h.length / 400) === 0 || i === h.length - 1) : h);
+    est.draw(n ? [
+      { data: thin(hLog), color: C.blue, label: 'R ∇ln π(A)' },
+      { data: thin(hRaw), color: C.red, label: 'R ∇π(A)' },
+    ] : [{ data: [[0, truth], [1, truth]], color: 'rgba(0,0,0,0)' }], { hlines: [{ y: truth, label: 'true ∇J', color: C.amber }] });
+  }
+  $('b10').addEventListener('click', () => sampleN(10));
+  $('b500').addEventListener('click', () => sampleN(500));
+  $('bClear').addEventListener('click', clearEst);
+
+  drawTop(); clearEst();
+
+  Course.quiz([
+    {
+      q: 'For the one-parameter policy, $\\pi(\\rightarrow) = 0.2$. What is $\\nabla_\\theta \\ln \\pi(\\rightarrow)$?',
+      answer: 0.8,
+      explain: '$1 - \\pi(\\rightarrow) = 0.8$. Equivalently $\\pi(1-\\pi)/\\pi = 0.16/0.2$.',
+    },
+    {
+      q: 'An action has $\\pi(a) = 0.25$ and $\\nabla \\pi(a) = 0.15$. What is $\\nabla \\ln \\pi(a)$?',
+      answer: 0.15 / 0.25,
+      tol: 0.001,
+      explain: '$0.15 / 0.25 = 0.6$.',
+    },
+    {
+      q: 'The one-parameter policy has $\\pi(\\rightarrow) = 0.7$ in every state. An episode takes actions →, →, ← and has return $G = 5$. What is the sampled gradient $G \\sum_t \\nabla_\\theta \\ln \\pi(A_t)$?',
+      answer: 5 * (0.3 + 0.3 - 0.7),
+      tol: 0.001,
+      hint: 'Right contributes $1 - 0.7$, left contributes $-0.7$.',
+      explain: '$5\\,(0.3 + 0.3 - 0.7) = 5 \\times (-0.1) = -0.5$.',
+    },
+    {
+      q: 'Why do the transition probabilities $p(S_{t+1} \\mid S_t, A_t)$ vanish from $\\nabla \\ln P(\\tau \\mid \\boldsymbol\\theta)$?',
+      choices: [
+        'They are assumed deterministic',
+        'After taking the log they are added terms that do not depend on $\\boldsymbol\\theta$, so their gradient is zero',
+        'They cancel against $p(S_0)$',
+      ],
+      answer: 1,
+      explain: 'The log turns the product into a sum. Only the policy terms depend on $\\boldsymbol\\theta$, so the agent never needs a model.',
+    },
+  ]);
+</script>
+</body>
+</html>

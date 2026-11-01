@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>66. DQN | Learning RL</title>
+<meta name="description" content="Pixels in, one Q-value per action out. Train a small deep Q-network to play Catch, poke its inputs, then count the parameters of the Atari network.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .game { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: center; }
+  #screen { max-width: 280px; margin: 6px auto; gap: 2px; }
+  #screen .gcell { background: #111827; border-color: #1f2937; border-radius: 2px; }
+  #screen .gcell.ball { background: #fbbf24; }
+  #screen .gcell.pad { background: #34d399; }
+  #screen .gcell.both { background: linear-gradient(#fbbf24 50%, #34d399 50%); }
+  .qv { display: flex; flex-direction: column; gap: 8px; }
+  .qrow { display: grid; grid-template-columns: 2.2rem minmax(0, 1fr) 3.4rem; gap: 6px; align-items: center; font-size: 0.9rem; color: var(--muted); }
+  .qrow .lane { position: relative; height: 18px; background: var(--soft); border-radius: 3px; }
+  .qrow .lane::after { content: ""; position: absolute; left: 50%; top: -2px; bottom: -2px; border-left: 1px solid #9ca3af; }
+  .qrow .lane i { position: absolute; top: 0; bottom: 0; border-radius: 3px; background: var(--blue); }
+  .qrow.best .lane i { background: var(--accent); }
+  .qrow.best { color: var(--heading); font-weight: 600; }
+  .qrow .n { text-align: right; font-variant-numeric: tabular-nums; }
+  .flow { font-size: 0.8rem; color: var(--muted); text-align: center; margin: 2px 0 6px; }
+  table.layers tr { cursor: pointer; }
+  table.layers tr.sel td { background: var(--accent-soft); }
+  table.layers td:first-child, table.layers th:first-child { text-align: left; }
+  #layerInfo { overflow-x: auto; min-height: 3.4em; }
+  .tablewrap { overflow-x: auto; }
+  @media (max-width: 560px) { .game { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body data-lesson="66">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>DQN</h1>
+  <p class="lede">A deep Q-network is Q-learning (Lesson 52) with a neural network in place of the table. The screen goes in, one value per action comes out, and the agent picks the largest. Mnih et al. (2015) trained one network design, with the same settings, on 49 Atari games.</p>
+
+  <section class="card">
+    <h2>Catch</h2>
+    <p class="note">A ball falls one row per step. Move the paddle (green) under it: $+1$ for a catch, $-1$ for a miss. The network sees the 49 pixels and outputs $Q(s, a)$ for left, stay and right. <b>Click a pixel</b> to move the ball, or the bottom row to move the paddle, and watch the values change.</p>
+    <div class="game">
+      <div>
+        <div id="screen"></div>
+        <p class="flow">49 pixels → 32 hidden units → 3 values</p>
+      </div>
+      <div>
+        <div class="qv" id="qv"></div>
+        <p class="status" id="act"></p>
+      </div>
+    </div>
+    <canvas class="chart" id="chart" style="height:190px"></canvas>
+    <div class="stats">
+      <div class="stat"><span class="k">Episodes</span><span class="v" id="sEp">0</span></div>
+      <div class="stat"><span class="k">Exploration $\varepsilon$</span><span class="v" id="sEps">1.00</span></div>
+      <div class="stat"><span class="k">Greedy catch rate</span><span class="v" id="sGreedy">–</span></div>
+    </div>
+    <div class="row">
+      <button id="bTrain" class="primary">Train</button>
+      <button id="bPlay">Play a game</button>
+      <span class="spacer"></span>
+      <button id="bNew" class="quiet">New network</button>
+    </div>
+
+    <div class="sub">
+      <h2>The Atari network</h2>
+      <p class="note">The architecture from Mnih et al. (2015). The input is the last 4 frames, each converted to greyscale and shrunk to $84 \times 84$. One frame cannot show which way a ball is moving, so a stack of four is used to make the state closer to Markov (Lesson 15). Click a layer.</p>
+      <label class="slider"><span>Actions</span><input id="iAct" type="range" min="4" max="18" step="1" value="18"><output></output></label>
+      <div class="tablewrap"><table class="data layers" id="layers"></table></div>
+      <div id="layerInfo"></div>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>The network $Q(s, a; \boldsymbol\theta)$ takes a state and outputs one number for each action. One forward pass gives all of $Q(s, \cdot\,; \boldsymbol\theta)$, so the greedy action and the $\max$ in the Q-learning target cost a single evaluation.</p>
+    <p>DQN minimises the squared TD error over transitions $(s, a, r, s')$ drawn uniformly from a replay memory $\mathcal{D}$ (Lesson 67):</p>
+    $$L(\boldsymbol\theta) = \mathbb{E}_{(s,a,r,s') \sim U(\mathcal{D})}\Big[\big(\underbrace{r + \gamma \max_{a'} Q(s', a'; \boldsymbol\theta^-)}_{y} - Q(s, a; \boldsymbol\theta)\big)^2\Big].$$
+    <p>The target $y$ uses older weights $\boldsymbol\theta^-$, copied from $\boldsymbol\theta$ every $C$ updates (Lesson 68). At the end of an episode, $y = r$.</p>
+    <p>The target is treated as a constant, as in every semi-gradient method (Lesson 62), so the gradient is</p>
+    $$\nabla_{\boldsymbol\theta} L = -2\,\mathbb{E}\big[(y - Q(s, a; \boldsymbol\theta))\, \nabla_{\boldsymbol\theta} Q(s, a; \boldsymbol\theta)\big].$$
+    <p>Only the output for the action actually taken gets an error signal. The other outputs change only through the weights they share.</p>
+    <p>The agent acts ε-greedily. In the paper, ε falls from 1 to 0.1 over the first million frames. Other settings: discount 0.99, minibatch 32, replay memory of the last 1,000,000 transitions, $C = 10{,}000$, each action repeated for 4 frames, and rewards clipped to $[-1, 1]$ so one step size works across games.</p>
+    <p>DQN has all three legs of Lesson 65's deadly triad: a neural network, bootstrapped targets, and off-policy learning from old data. Replay and the target network are what kept it stable enough to work.</p>
+    <p>A convolutional layer with $k \times k$ filters, stride $t$ and $C_{\text{out}}$ filters, applied to an $n \times n \times C_{\text{in}}$ input (no padding), gives</p>
+    $$n_{\text{out}} = \frac{n - k}{t} + 1, \qquad \text{parameters} = k \cdot k \cdot C_{\text{in}} \cdot C_{\text{out}} + C_{\text{out}}.$$
+    <p>Each filter has a weight for every position and input channel it covers, plus a bias. The same filter slides across the whole image, which is why the convolutional layers are small and the first fully connected layer holds most of the parameters.</p>
+    <p class="note">The Catch agent is a scaled-down DQN: a fully connected network instead of a convolutional one, Adam instead of RMSProp, replay memory 5,000, minibatch 32, $C = 100$, $\gamma = 0.99$, and ε falling from 1 to 0.1 over 500 episodes.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const W = 7, H = 7, A = 3, NI = W * H, NH = 32;
+  const ACTS = ['←', 'stay', '→'];
+
+  // ------------------------------------------------------------ the game
+  const newGame = () => ({ bx: Course.randInt(W), by: 0, px: 3 });
+  const pixels = (s) => [s.by * W + s.bx, (H - 1) * W + s.px];   // indices of the two lit pixels
+  function step(s, a) {
+    const px = Math.max(0, Math.min(W - 1, s.px + a - 1));
+    const n = { bx: s.bx, by: s.by + 1, px };
+    if (n.by === H - 1) return { n, r: n.bx === px ? 1 : -1, done: true };
+    return { n, r: 0, done: false };
+  }
+
+  // ------------------------------------------------------------ the network: 49 -> 32 ReLU -> 3
+  function newNet() {
+    return {
+      W1: Float64Array.from({ length: NH * NI }, () => Course.gauss() * Math.sqrt(2 / NI)), b1: new Float64Array(NH),
+      W2: Float64Array.from({ length: A * NH }, () => Course.gauss() * Math.sqrt(1 / NH)), b2: new Float64Array(A),
+    };
+  }
+  const copy = (p) => ({ W1: p.W1.slice(), b1: p.b1.slice(), W2: p.W2.slice(), b2: p.b2.slice() });
+  function forward(p, x) {
+    const h = new Float64Array(NH);
+    for (let j = 0; j < NH; j++) {
+      let z = p.b1[j];
+      for (const i of x) z += p.W1[j * NI + i];          // inputs are 0/1, so only lit pixels count
+      h[j] = z > 0 ? z : 0;
+    }
+    const q = new Float64Array(A);
+    for (let a = 0; a < A; a++) { let z = p.b2[a]; for (let j = 0; j < NH; j++) z += p.W2[a * NH + j] * h[j]; q[a] = z; }
+    return { h, q };
+  }
+  const maxOf = (q) => Math.max(...q);
+
+  const GAMMA = 0.99, CAP = 5000, BATCH = 32, C = 100, LR = 1e-3, EPS_EPISODES = 500;
+  let net, target, adam, buffer, updates, episodes, history, wins, timer = null;
+
+  function reset() {
+    stop();
+    net = newNet(); target = copy(net);
+    const z = (k) => new Float64Array(net[k].length);
+    adam = { m: { W1: z('W1'), b1: z('b1'), W2: z('W2'), b2: z('b2') }, v: { W1: z('W1'), b1: z('b1'), W2: z('W2'), b2: z('b2') }, t: 0 };
+    buffer = []; updates = 0; episodes = 0; history = []; wins = [];
+    poke = newGame(); poke.by = 2;
+    $('sGreedy').textContent = '–';
+    render();
+  }
+
+  // One gradient step on a minibatch from replay, targets from the frozen copy.
+  function learn() {
+    const g = { W1: new Float64Array(NH * NI), b1: new Float64Array(NH), W2: new Float64Array(A * NH), b2: new Float64Array(A) };
+    for (let k = 0; k < BATCH; k++) {
+      const t = buffer[Course.randInt(buffer.length)];
+      const { h, q } = forward(net, t.x);
+      const y = t.done ? t.r : t.r + GAMMA * maxOf(forward(target, t.x2).q);
+      const d = (q[t.a] - y) / BATCH;                     // d(loss/2)/dQ(s,a)
+      g.b2[t.a] += d;
+      for (let j = 0; j < NH; j++) {
+        g.W2[t.a * NH + j] += d * h[j];
+        if (h[j] > 0) { const dh = d * net.W2[t.a * NH + j]; g.b1[j] += dh; for (const i of t.x) g.W1[j * NI + i] += dh; }
+      }
+    }
+    adam.t++;
+    for (const key of ['W1', 'b1', 'W2', 'b2']) {
+      const P = net[key], G = g[key], Mo = adam.m[key], V = adam.v[key];
+      for (let i = 0; i < P.length; i++) {
+        if (G[i] === 0 && Mo[i] === 0) continue;
+        Mo[i] = 0.9 * Mo[i] + 0.1 * G[i];
+        V[i] = 0.999 * V[i] + 0.001 * G[i] * G[i];
+        P[i] -= (LR * (Mo[i] / (1 - 0.9 ** adam.t))) / (Math.sqrt(V[i] / (1 - 0.999 ** adam.t)) + 1e-8);
+      }
+    }
+    if (++updates % C === 0) target = copy(net);
+  }
+
+  const epsilon = () => Math.max(0.1, 1 - (0.9 * episodes) / EPS_EPISODES);
+  function trainEpisode() {
+    let s = newGame(), done = false, r = 0;
+    const eps = epsilon();
+    while (!done) {
+      const x = pixels(s);
+      const a = Math.random() < eps ? Course.randInt(A) : Course.argmax([...forward(net, x).q]);
+      const o = step(s, a);
+      const tr = { x, a, r: o.r, x2: pixels(o.n), done: o.done };
+      if (buffer.length < CAP) buffer.push(tr); else buffer[(updates + episodes) % CAP] = tr;
+      learn();
+      s = o.n; done = o.done; r = o.r;
+    }
+    episodes++;
+    wins.push(r > 0 ? 1 : 0);
+    const recent = wins.slice(-50);
+    if (episodes % 10 === 0) history.push([episodes, (100 * recent.reduce((a, b) => a + b, 0)) / recent.length]);
+  }
+  function greedyRate() {
+    let ok = 0;
+    for (let bx = 0; bx < W; bx++) {                       // every starting column, paddle in the middle
+      let s = { bx, by: 0, px: 3 }, o;
+      do { o = step(s, Course.argmax([...forward(net, pixels(s)).q])); s = o.n; } while (!o.done);
+      ok += o.r > 0;
+    }
+    return ok / W;
+  }
+
+  // ------------------------------------------------------------ display
+  let poke;
+  const screen = Course.grid($('screen'), H, W, (r, c, cell) => {
+    if (!poke) return;
+    const ball = r === poke.by && c === poke.bx, pad = r === H - 1 && c === poke.px;
+    if (ball && pad) cell.classList.add('both'); else if (ball) cell.classList.add('ball'); else if (pad) cell.classList.add('pad');
+  });
+  $('screen').style.maxWidth = '260px';
+  screen.onClick((r, c) => {
+    stopPlay();
+    if (r === H - 1) poke.px = c; else { poke.by = r; poke.bx = c; }
+    render();
+  });
+  const chart = Course.lineChart($('chart'), { xLabel: 'episode', yLabel: '% caught (last 50)', yMin: 0, yMax: 100, xMin: 0 });
+
+  function render() {
+    screen.update();
+    const q = [...forward(net, pixels(poke)).q];
+    const best = q.indexOf(Math.max(...q));
+    const span = Math.max(1.2, ...q.map(Math.abs));
+    $('qv').innerHTML = q.map((v, a) => {
+      const w = (50 * Math.abs(v)) / span, left = v >= 0 ? 50 : 50 - w;
+      return `<div class="qrow${a === best ? ' best' : ''}"><span>${ACTS[a]}</span><span class="lane"><i style="left:${left}%;width:${w}%"></i></span><span class="n">${v.toFixed(2)}</span></div>`;
+    }).join('');
+    const steps = H - 1 - poke.by, dist = poke.bx - poke.px;
+    $('act').innerHTML = `Greedy action: <b>${ACTS[best]}</b>. Ball ${dist === 0 ? 'is above the paddle' : `${Math.abs(dist)} column${Math.abs(dist) > 1 ? 's' : ''} ${dist > 0 ? 'right' : 'left'}`}, ${steps} step${steps > 1 ? 's' : ''} to fall.`;
+    $('sEp').textContent = episodes;
+    $('sEps').textContent = epsilon().toFixed(2);
+    chart.draw(history.length ? [{ data: history, color: Course.colors.green }] : [{ data: [[0, 0]], color: '#fff' }],
+      { hlines: [{ y: 100 / 7, label: 'random play: 1 in 7', color: '#9ca3af' }] });
+  }
+
+  function stop() { clearInterval(timer); timer = null; $('bTrain').textContent = episodes ? 'Train more' : 'Train'; }
+  $('bTrain').addEventListener('click', () => {
+    if (timer) return stop();
+    stopPlay();
+    $('bTrain').textContent = 'Pause';
+    const goal = episodes + 800;
+    timer = setInterval(() => {
+      for (let k = 0; k < 15 && episodes < goal; k++) trainEpisode();
+      if (episodes % 50 < 15) $('sGreedy').textContent = `${Math.round(100 * greedyRate())}%`;
+      render();
+      if (episodes >= goal) { $('sGreedy').textContent = `${Math.round(100 * greedyRate())}%`; stop(); }
+    }, 30);
+  });
+
+  let playTimer = null;
+  function stopPlay() { clearInterval(playTimer); playTimer = null; }
+  $('bPlay').addEventListener('click', () => {
+    stop(); stopPlay();
+    poke = newGame();
+    render();
+    playTimer = setInterval(() => {
+      if (poke.by >= H - 1) { stopPlay(); return; }
+      const q = [...forward(net, pixels(poke)).q];
+      const o = step(poke, Course.argmax(q));
+      poke = o.n;
+      if (o.done) {
+        stopPlay();
+        screen.update();
+        $('act').innerHTML = o.r > 0 ? '<b class="good">Caught. Reward +1.</b>' : '<b class="bad">Missed. Reward −1.</b>';
+        return;
+      }
+      render();
+    }, 350);
+  });
+  $('bNew').addEventListener('click', reset);
+  reset();
+  // A first state worth poking: ball two columns right of the paddle.
+  poke = { bx: 5, by: 2, px: 3 };
+  render();
+
+  // ------------------------------------------------------------ the Atari network
+  const nAct = Course.slider('#iAct', (v) => v, () => layers());
+  let selLayer = 1;
+  function layers() {
+    const A_ = nAct();
+    const conv = (name, n, cin, k, t, cout) => ({ name, n, cin, k, t, cout, out: (n - k) / t + 1, params: k * k * cin * cout + cout, conv: true });
+    const L1 = conv('Conv 1: 32 filters 8×8, stride 4', 84, 4, 8, 4, 32);
+    const L2 = conv('Conv 2: 64 filters 4×4, stride 2', L1.out, 32, 4, 2, 64);
+    const L3 = conv('Conv 3: 64 filters 3×3, stride 1', L2.out, 64, 3, 1, 64);
+    const flat = L3.out * L3.out * 64;
+    const L4 = { name: 'Fully connected, 512 units', fin: flat, fout: 512, params: flat * 512 + 512, shape: '512' };
+    const L5 = { name: `Output: one value per action`, fin: 512, fout: A_, params: 512 * A_ + A_, shape: `${A_}` };
+    const rows = [
+      { name: 'Input: 4 frames', shape: '84×84×4', params: 0 },
+      { ...L1, shape: `${L1.out}×${L1.out}×32` }, { ...L2, shape: `${L2.out}×${L2.out}×64` }, { ...L3, shape: `${L3.out}×${L3.out}×64` }, L4, L5,
+    ];
+    const total = rows.reduce((t, r) => t + r.params, 0);
+    $('layers').innerHTML = '<tr><th>Layer</th><th>Output</th><th>Parameters</th></tr>' +
+      rows.map((r, i) => `<tr data-i="${i}" class="${i === selLayer ? 'sel' : ''}"><td>${r.name}</td><td>${r.shape}</td><td>${r.params.toLocaleString('en-GB')}</td></tr>`).join('') +
+      `<tr><td><b>Total</b></td><td></td><td><b>${total.toLocaleString('en-GB')}</b></td></tr>`;
+    const r = rows[selLayer];
+    if (selLayer === 0) Course.tex($('layerInfo'), '84 \\times 84 \\times 4 = 28{,}224 \\text{ inputs, each a grey level from 0 to 255}', true);
+    else if (r.conv) Course.tex($('layerInfo'),
+      `\\begin{aligned} n_{\\text{out}} &= \\tfrac{${r.n} - ${r.k}}{${r.t}} + 1 = ${r.out} \\\\ \\text{params} &= ${r.k} \\cdot ${r.k} \\cdot ${r.cin} \\cdot ${r.cout} + ${r.cout} = ${r.params.toLocaleString('en-GB').replace(/,/g, '{,}')} \\end{aligned}`, true);
+    else Course.tex($('layerInfo'),
+      `\\text{params} = ${r.fin.toLocaleString('en-GB').replace(/,/g, '{,}')} \\cdot ${r.fout} + ${r.fout} = ${r.params.toLocaleString('en-GB').replace(/,/g, '{,}')}${selLayer === 4 ? `\\quad (${L3.out} \\cdot ${L3.out} \\cdot 64 = ${flat.toLocaleString('en-GB').replace(/,/g, '{,}')} \\text{ inputs})` : ''}`, true);
+  }
+  $('layers').addEventListener('click', (e) => {
+    const tr = e.target.closest('tr[data-i]');
+    if (tr) { selLayer = +tr.dataset.i; layers(); }
+  });
+  layers();
+
+  // ------------------------------------------------------------ quiz
+  Course.quiz([
+    {
+      q: 'The first convolutional layer applies $8 \\times 8$ filters with stride 4 to an $84 \\times 84$ input. How wide is its output?',
+      answer: (84 - 8) / 4 + 1,
+      tol: 0,
+      explain: '$(84 - 8)/4 + 1 = 19 + 1 = 20$.',
+    },
+    {
+      q: 'That layer has 32 filters over 4 input channels. How many parameters does it have, biases included?',
+      answer: 8 * 8 * 4 * 32 + 32,
+      tol: 0,
+      hint: '$k \\cdot k \\cdot C_{\\text{in}} \\cdot C_{\\text{out}} + C_{\\text{out}}$.',
+      explain: '$8 \\cdot 8 \\cdot 4 \\cdot 32 + 32 = 8192 + 32 = 8224$.',
+    },
+    {
+      q: 'A transition has $r = 0$, $\\gamma = 0.99$, and the target network gives $Q(s\', \\cdot\\,; \\boldsymbol\\theta^-) = (1.2, 0.5, 2.0)$. What is the target $y$?',
+      answer: 0.99 * 2.0,
+      tol: 1e-6,
+      explain: '$y = 0 + 0.99 \\times \\max(1.2, 0.5, 2.0) = 1.98$.',
+    },
+    {
+      q: 'Why does DQN output one value per action instead of taking $(s, a)$ as input?',
+      choices: [
+        'It needs fewer training examples per action',
+        'One forward pass gives $Q(s, a)$ for every action, so the greedy action and the max in the target are cheap',
+        'Convolutional layers cannot take actions as input',
+      ],
+      answer: 1,
+      explain: 'With $(s, a)$ as input, finding $\\max_a Q(s, a)$ would need one pass per action, up to 18 for Atari.',
+    },
+  ]);
+</script>
+</body>
+</html>

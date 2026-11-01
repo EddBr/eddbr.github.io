@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>34. Generalised policy iteration | Learning RL</title>
+<meta name="description" content="Values chase the policy, the policy chases the values, and both end at the optimum. The pattern behind almost every RL method.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  #world { max-width: 340px; }
+  .gcell .v { position: absolute; top: 2px; font-size: max(9px, 0.55em); font-weight: 600; color: var(--heading); }
+  .gcell .a { font-size: 1.1em; font-weight: 700; color: var(--heading); margin-top: 0.5em; }
+  .gcell .a.wrong { color: var(--amber); }
+  .gcell.goal { background: var(--accent); color: #fff; font-weight: 700; font-size: 0.8em; }
+  .gcell.pit { background: var(--red); color: #fff; font-weight: 700; font-size: 0.8em; }
+  .gcell.start::after { content: "S"; position: absolute; bottom: 1px; left: 4px; font-size: max(9px, 0.5em); color: var(--muted); }
+  .ms { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; align-items: center; }
+  .ms button { padding: 0.3rem 0.7rem; }
+  #phase { font-weight: 600; }
+  #phase.eval { color: var(--accent); }
+  #phase.imp { color: var(--blue); }
+</style>
+</head>
+<body data-lesson="34">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Generalised policy iteration</h1>
+  <p class="lede">Policy iteration evaluates fully, then improves. Value iteration evaluates for one sweep, then improves. Anything in between also works. Generalised policy iteration (GPI) is the name for any mix of the two processes, and nearly every method in this course is one.</p>
+
+  <section class="card">
+    <p class="note">The bridge from Lessons 32–33, slip $0.1$. Pick how many evaluation sweeps $m$ to run before each greedy improvement. Amber arrows are not yet optimal.</p>
+    <div class="ms" id="ms"></div>
+    <div id="world"></div>
+    <div class="row center">
+      <button id="bStep" class="primary">Step</button>
+      <button id="bRun">Run</button>
+      <button id="bReset" class="quiet">Reset</button>
+    </div>
+    <p class="status"><span id="phase"></span> <span id="status"></span></p>
+    <canvas class="chart" id="chart"></canvas>
+    <p class="note">Each line is an average over the 21 cells where you choose an action. Green: the current estimate $v$. Blue: the true value $v_\pi$ of the current arrows. Amber dashed: $v_*$. Evaluation pulls green towards blue. Improvement lifts blue towards amber.</p>
+
+    <div class="sub">
+      <h2>How much evaluation is worth it?</h2>
+      <p class="note">Each setting runs until the policy is stable and $\Delta &lt; 10^{-4}$. An evaluation sweep computes one action value per cell. An improvement computes all four, so it costs as much as four sweeps. Cost = sweeps + 4 × improvements.</p>
+      <div class="row"><button id="bCompare">Run comparison</button></div>
+      <table class="data" id="cmp" hidden></table>
+      <p class="note" id="cmpNote" hidden>Neither extreme is cheapest. With $m = 1$ an expensive improvement follows every cheap sweep. With large $m$ most sweeps polish values for a policy that is about to change. A small $m$ between them, here 3, does least work. The more actions per state, the more an improvement costs, and the larger the best $m$.</p>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>GPI runs two processes on a value estimate $v$ and a policy $\pi$:</p>
+    $$\begin{aligned} &\text{evaluation:} && v \to v_\pi \\ &\text{improvement:} && \pi \to \text{greedy}(v) \end{aligned}$$
+    <p>Evaluation makes $v$ consistent with $\pi$. Improvement makes $\pi$ greedy with respect to $v$. Each one spoils the other: a new policy makes the old values wrong, and new values can make the policy no longer greedy.</p>
+    <p>The version here, called <b>modified policy iteration</b>, runs $m$ sweeps of Lesson 30's update and then one greedy improvement:</p>
+    $$v(s) \leftarrow \sum_{s', r} p(s', r \mid s, \pi(s))\,\big[r + \gamma\, v(s')\big] \quad (m \text{ sweeps})$$
+    $$\pi(s) \leftarrow \arg\max_a \sum_{s', r} p(s', r \mid s, a)\,\big[r + \gamma\, v(s')\big]$$
+    <p>With $m = 1$ this is value iteration. As $m \to \infty$ it is policy iteration. By Lesson 30, $m$ sweeps multiply the worst evaluation error by at most $\gamma^m$, so large $m$ buys accuracy the next improvement may throw away.</p>
+    <p><b>Where it ends.</b> Both processes stop changing things only when $v = v_\pi$ and $\pi$ is greedy with respect to $v$. Then</p>
+    $$v(s) = \max_a \sum_{s', r} p(s', r \mid s, a)\,\big[r + \gamma\, v(s')\big]$$
+    <p>which is the Bellman optimality equation, so $v = v_*$ and $\pi$ is optimal. The processes compete in the short run and agree in the long run.</p>
+    <p>The sweeps need not even be complete or in order. <b>Asynchronous DP</b> (S&amp;B §4.5) backs up states in any order, as long as every state keeps getting backed up. Monte Carlo (next unit) and TD learning are also GPI: they swap the model-based evaluation for estimates built from experience.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  // The bridge (Lesson 32), slip 0.1.
+  const MAP = ['......', '.####.', 'S....G', '.PPPP.', '......'];
+  const R = MAP.length, C = MAP[0].length, N = R * C, GAMMA = 0.9, SLIP = 0.1;
+  const ch = (s) => MAP[Math.floor(s / C)][s % C];
+  const live = (s) => '.S'.includes(ch(s));
+  const LIVE = [...Array(N).keys()].filter(live);
+  const MV = [[-1, 0], [0, 1], [1, 0], [0, -1]], ARROW = ['↑', '→', '↓', '←'];
+  const go = (s, a) => {
+    const r = Math.floor(s / C) + MV[a][0], c = (s % C) + MV[a][1];
+    return r < 0 || r >= R || c < 0 || c >= C || MAP[r][c] === '#' ? s : r * C + c;
+  };
+  const P = Array.from({ length: N }, (_, s) => [0, 1, 2, 3].map((a) => {
+    const out = [];
+    for (const [b, p] of [[a, 1 - SLIP], [(a + 1) % 4, SLIP / 2], [(a + 3) % 4, SLIP / 2]]) {
+      const t = go(s, b);
+      out.push([p, t, ch(t) === 'G' ? 10 : ch(t) === 'P' ? -10 : 0]);
+    }
+    return out;
+  }));
+  const qsa = (v, s, a) => P[s][a].reduce((t, [p, s2, r]) => t + p * (r + GAMMA * v[s2]), 0);
+  const qs = (v, s) => [0, 1, 2, 3].map((a) => qsa(v, s, a));
+  // One synchronous evaluation sweep for deterministic pi. Returns the largest change.
+  function evalSweep(v, pi) {
+    const old = v.slice(); let d = 0;
+    for (const s of LIVE) { v[s] = qsa(old, s, pi[s]); d = Math.max(d, Math.abs(v[s] - old[s])); }
+    return d;
+  }
+  // Greedy improvement, keeping the current action unless another is strictly better.
+  function improve(v, pi) {
+    let changed = 0;
+    for (const s of LIVE) {
+      const q = qs(v, s), m = Math.max(...q);
+      if (q[pi[s]] < m - 1e-9) { pi[s] = q.indexOf(m); changed++; }
+    }
+    return changed;
+  }
+  function exactV(pi) {
+    const v = new Array(N).fill(0);
+    for (let i = 0; i < 3000; i++) if (evalSweep(v, pi) < 1e-12) break;
+    return v;
+  }
+  const vStar = (() => {
+    let v = new Array(N).fill(0);
+    for (let i = 0; i < 3000; i++) {
+      const old = v.slice(); let d = 0;
+      for (const s of LIVE) { v[s] = Math.max(...qs(old, s)); d = Math.max(d, Math.abs(v[s] - old[s])); }
+      if (d < 1e-12) break;
+    }
+    return v;
+  })();
+  const isOpt = (s, a) => qsa(vStar, s, a) >= Math.max(...qs(vStar, s)) - 1e-6;
+  const mean = (v) => LIVE.reduce((t, s) => t + v[s], 0) / LIVE.length;
+
+  // One GPI run as a step machine: m sweeps, improve, repeat.
+  function makeRun(m) {
+    const st = { v: new Array(N).fill(0), pi: new Array(N).fill(0), sweeps: 0, inRound: 0, lastD: Infinity, improvements: 0, done: false, optAt: null };
+    st.vpi = exactV(st.pi);
+    st.step = () => {
+      if (st.done) return 'done';
+      const roundOver = m === Infinity ? st.lastD < 1e-4 : st.inRound >= m;
+      if (!roundOver) {
+        st.lastD = evalSweep(st.v, st.pi); st.sweeps++; st.inRound++;
+        return 'eval';
+      }
+      const changed = improve(st.v, st.pi);
+      st.improvements++; st.inRound = 0;
+      st.lastChanged = changed;
+      if (changed) { st.vpi = exactV(st.pi); if (m === Infinity) st.lastD = Infinity; }
+      const opt = LIVE.every((s) => isOpt(s, st.pi[s]));
+      if (opt && st.optAt === null) st.optAt = st.sweeps;
+      if (!opt) st.optAt = null;
+      if (!changed && st.lastD < 1e-4) st.done = true;
+      return 'imp';
+    };
+    return st;
+  }
+
+  const MS = [1, 2, 5, 10, Infinity];
+  let m = 5, run = makeRun(m), hist, timer = null;
+  $('ms').innerHTML = '<span class="muted">sweeps per improvement $m$:</span>' +
+    MS.map((x, i) => `<button data-i="${i}" class="quiet">${x === Infinity ? '∞' : x}</button>`).join('');
+  Course.renderMath($('ms'));
+
+  const g = Course.grid($('world'), R, C, (r, c, cell) => {
+    const s = r * C + c, k = ch(s);
+    if (k === '#') return cell.classList.add('wall');
+    if (k === 'G') { cell.classList.add('goal'); cell.textContent = '+10'; return; }
+    if (k === 'P') { cell.classList.add('pit'); cell.textContent = '−10'; return; }
+    if (k === 'S') cell.classList.add('start');
+    cell.style.background = Course.heat(run.v[s], 14);
+    const a = run.pi[s];
+    cell.innerHTML = `<span class="v">${run.v[s].toFixed(1)}</span><span class="a${isOpt(s, a) ? '' : ' wrong'}">${ARROW[a]}</span>`;
+  });
+  const chart = Course.lineChart($('chart'), { xLabel: 'total sweeps', yLabel: 'average value', xMin: 0 });
+
+  function draw() {
+    chart.draw([
+      { data: hist.map((h) => [h.x, h.v]), color: Course.colors.green, label: 'estimate v' },
+      { data: hist.map((h) => [h.x, h.vpi]), color: Course.colors.blue, label: 'true vπ' },
+    ], { hlines: [{ y: mean(vStar), label: 'v*', color: Course.colors.amber }] });
+  }
+  function record() { hist.push({ x: run.sweeps, v: mean(run.v), vpi: mean(run.vpi) }); }
+
+  function reset() {
+    stop();
+    run = makeRun(m); hist = []; record();
+    [...$('ms').querySelectorAll('button')].forEach((b) => b.classList.toggle('on', MS[+b.dataset.i] === m));
+    $('phase').textContent = ''; $('phase').className = '';
+    $('status').textContent = 'Every arrow starts pointing up and $v = 0$. Press "Step".';
+    Course.renderMath($('status'));
+    g.update(); draw();
+  }
+  function step() {
+    const what = run.step();
+    if (what === 'done') return stop();
+    record();
+    if (what === 'eval') {
+      $('phase').textContent = 'Evaluate.'; $('phase').className = 'eval';
+      $('status').textContent = `Sweep ${run.inRound}${m === Infinity ? '' : ` of ${m}`} for this policy (total ${run.sweeps}). Values move towards this policy's true values.`;
+    } else {
+      $('phase').textContent = 'Improve.'; $('phase').className = 'imp';
+      $('status').textContent = run.done
+        ? `Nothing changed and Δ < 0.0001: done after ${run.sweeps} sweeps and ${run.improvements} improvements.`
+        : `${run.lastChanged} arrow${run.lastChanged === 1 ? '' : 's'} changed${run.lastChanged ? ', so the policy’s true value jumped' : ''}.`;
+      if (run.done) stop();
+    }
+    g.update(); draw();
+  }
+  function stop() { clearInterval(timer); timer = null; $('bRun').textContent = 'Run'; }
+
+  $('ms').addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    m = MS[+b.dataset.i]; reset();
+  });
+  $('bStep').addEventListener('click', step);
+  $('bReset').addEventListener('click', reset);
+  $('bRun').addEventListener('click', () => {
+    if (timer) return stop();
+    if (run.done) reset();
+    $('bRun').textContent = 'Pause';
+    timer = setInterval(step, m === 1 ? 120 : 60);
+  });
+  reset();
+
+  $('bCompare').addEventListener('click', () => {
+    const rows = [1, 2, 3, 5, 10, 20, Infinity].map((mm) => {
+      const r = makeRun(mm);
+      for (let i = 0; i < 20000 && !r.done; i++) r.step();
+      return `<tr><td>${mm === Infinity ? '∞ (policy iteration)' : mm === 1 ? '1 (value iteration)' : mm}</td><td>${r.optAt}</td><td>${r.sweeps} + ${r.improvements}</td><td>${r.sweeps + 4 * r.improvements}</td></tr>`;
+    });
+    $('cmp').innerHTML = '<tr><th>$m$</th><th>sweeps until policy optimal</th><th>sweeps + improvements</th><th>cost</th></tr>' + rows.join('');
+    Course.renderMath($('cmp'));
+    $('cmp').hidden = false; $('cmpNote').hidden = false;
+  });
+
+  Course.quiz([
+    {
+      q: 'With $\\gamma = 0.9$, $m = 5$ evaluation sweeps multiply the worst evaluation error by at most what factor?',
+      answer: Math.pow(0.9, 5),
+      tol: 0.001,
+      explain: '$\\gamma^m = 0.9^5 \\approx 0.590$. Each sweep multiplies the worst error by at most $\\gamma$ (Lesson 30).',
+    },
+    {
+      q: 'With $\\gamma = 0.9$, what is the smallest $m$ that guarantees each round at least halves the evaluation error?',
+      answer: Math.ceil(Math.log(0.5) / Math.log(0.9)),
+      tol: 0,
+      hint: 'Solve $0.9^m \\le 0.5$.',
+      explain: '$m \\ge \\ln 0.5 / \\ln 0.9 \\approx 6.58$, so $m = 7$.',
+    },
+    {
+      q: 'Which setting of $m$ is value iteration?',
+      choices: ['$m = 1$', '$m = 10$', '$m = \\infty$'],
+      answer: 0,
+      explain: 'One evaluation sweep with the greedy action is the max backup of Lesson 33.',
+    },
+    {
+      q: 'GPI has stopped: improvement changes nothing and evaluation changes nothing. Why must the policy be optimal?',
+      choices: [
+        'Because the number of policies is finite',
+        'Because $v = v_\\pi$ and $\\pi$ is greedy for $v$, so $v$ satisfies the Bellman optimality equation',
+        'Because the values have stopped changing, whatever the policy',
+      ],
+      answer: 1,
+      explain: 'Greedy plus consistent means $v(s) = \\max_a \\sum p\\,[r + \\gamma v(s\')]$ for every $s$, whose only solution is $v_*$.',
+    },
+  ]);
+</script>
+</body>
+</html>

@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>32. Policy iteration | Learning RL</title>
+<meta name="description" content="Evaluate, improve, repeat. Policy iteration finds the optimal policy of a slippery gridworld in a handful of rounds.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  #world { max-width: 400px; }
+  .gcell .v { position: absolute; top: 2px; font-size: max(9px, 0.55em); font-weight: 600; color: var(--heading); }
+  .gcell .a { font-size: 1.1em; font-weight: 700; color: var(--heading); margin-top: 0.5em; }
+  .gcell.goal { background: var(--accent); color: #fff; font-weight: 700; font-size: 0.8em; }
+  .gcell.pit { background: var(--red); color: #fff; font-weight: 700; font-size: 0.8em; }
+  .gcell.start::after { content: "S"; position: absolute; bottom: 1px; left: 4px; font-size: max(9px, 0.5em); color: var(--muted); }
+  .gcell.changed { box-shadow: inset 0 0 0 3px var(--amber); }
+  .gcell.stale .v { color: var(--muted); font-weight: 400; }
+  .logwrap { max-height: 200px; overflow-y: auto; margin-top: 8px; }
+  #log tr:last-child td { background: var(--accent-soft); }
+</style>
+</head>
+<body data-lesson="32">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Policy iteration</h1>
+  <p class="lede">Lesson 30 finds a policy's values. Lesson 31 turns values into a better policy. Alternate the two and the policy keeps improving until it stops changing, at which point it is optimal.</p>
+
+  <section class="card">
+    <p class="note"><b>The bridge.</b> Reach the goal (+10) without falling into the water (−10). Every other move gives $0$, and $\gamma = 0.9$. The ice is slippery: you move the way you meant with probability $1 - \text{slip}$, otherwise sideways, half each way. Walls and edges leave you in place. Click a cell to turn its arrow.</p>
+    <label class="slider"><span>slip</span><input id="iSlip" type="range" min="0" max="0.5" step="0.05" value="0.1"><output></output></label>
+    <div id="world"></div>
+    <div class="row center">
+      <button id="bEval" class="primary">Evaluate</button>
+      <button id="bImp" class="primary">Improve</button>
+      <button id="bRun">Run</button>
+      <button id="bReset" class="quiet">Reset</button>
+    </div>
+    <p class="status" id="status"></p>
+    <div class="logwrap">
+      <table class="data">
+        <thead><tr><th>round</th><th>evaluation sweeps</th><th>arrows changed</th><th>$v_\pi(\text{S})$</th></tr></thead>
+        <tbody id="log"></tbody>
+      </table>
+    </div>
+    <p class="note">Each evaluation runs Lesson 30's in-place sweeps until $\Delta &lt; 10^{-4}$. Amber outlines mark arrows the last improvement changed. Try slip 0, 0.1 and 0.3. At 0 the best route crosses the bridge. At 0.1 it takes the top detour. At 0.3 most bridge cells point into the wall above, so a slip can only go sideways along the bridge, never into the water.</p>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>Policy iteration alternates evaluation (E) and greedy improvement (I), starting from any policy $\pi_0$:</p>
+    $$\pi_0 \xrightarrow{\;E\;} v_{\pi_0} \xrightarrow{\;I\;} \pi_1 \xrightarrow{\;E\;} v_{\pi_1} \xrightarrow{\;I\;} \pi_2 \xrightarrow{\;E\;} \cdots \xrightarrow{\;I\;} \pi_* \xrightarrow{\;E\;} v_*$$
+    <p>Each arrow is one button. Evaluation solves for $v_{\pi_i}$. Improvement sets</p>
+    $$\pi_{i+1}(s) = \arg\max_a \sum_{s', r} p(s', r \mid s, a)\,\big[r + \gamma\, v_{\pi_i}(s')\big]$$
+    <p>keeping the old action when it is already among the best.</p>
+    <p><b>Why it stops.</b> By the policy improvement theorem (Lesson 31), $v_{\pi_{i+1}} \ge v_{\pi_i}$ in every state, and if the policy changes, some state strictly improves. So no policy can come back once it has been left. A finite MDP has finitely many deterministic policies, $|\mathcal{A}|^{|\mathcal{S}|}$ of them, so the sequence must end. It ends when improvement changes nothing, which by Lesson 31 means the policy is optimal.</p>
+    <p><b>Why keep the old action on ties.</b> If two actions are equally good and improvement switched between them freely, the policy could flip back and forth forever without getting better (S&amp;B Exercise 4.4). Changing only on a strict improvement rules that out.</p>
+    <p>In practice policy iteration takes very few rounds compared with $|\mathcal{A}|^{|\mathcal{S}|}$. Here there are $4^{21}$ deterministic policies and it needs fewer than ten rounds. The cost sits inside each evaluation, which is a full loop of sweeps on its own.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  // The bridge: S start, G goal (+10), P water (−10), # wall. Rewards 0 otherwise, gamma 0.9.
+  const MAP = ['......', '.####.', 'S....G', '.PPPP.', '......'];
+  const R = MAP.length, C = MAP[0].length, N = R * C, GAMMA = 0.9, START = 2 * C;
+  const ch = (s) => MAP[Math.floor(s / C)][s % C];
+  const live = (s) => '.S'.includes(ch(s));
+  const MV = [[-1, 0], [0, 1], [1, 0], [0, -1]], ARROW = ['↑', '→', '↓', '←'];
+  const go = (s, a) => {
+    const r = Math.floor(s / C) + MV[a][0], c = (s % C) + MV[a][1];
+    return r < 0 || r >= R || c < 0 || c >= C || MAP[r][c] === '#' ? s : r * C + c;
+  };
+  // p(s', r | s, a) as a list of [prob, s', r].
+  function model(slip) {
+    return Array.from({ length: N }, (_, s) => [0, 1, 2, 3].map((a) => {
+      const out = [];
+      for (const [b, p] of [[a, 1 - slip], [(a + 1) % 4, slip / 2], [(a + 3) % 4, slip / 2]]) {
+        if (p === 0) continue;
+        const t = go(s, b);
+        out.push([p, t, ch(t) === 'G' ? 10 : ch(t) === 'P' ? -10 : 0]);
+      }
+      return out;
+    }));
+  }
+  const qsa = (P, v, s, a) => P[s][a].reduce((t, [p, s2, r]) => t + p * (r + GAMMA * v[s2]), 0);
+  function evaluate(P, pi, v) {
+    for (let k = 1; ; k++) {
+      let d = 0;
+      for (let s = 0; s < N; s++) {
+        if (!live(s)) continue;
+        const x = qsa(P, v, s, pi[s]);
+        d = Math.max(d, Math.abs(x - v[s])); v[s] = x;
+      }
+      if (d < 1e-4 || k >= 2000) return k;
+    }
+  }
+  function improve(P, pi, v) {
+    const changed = [];
+    for (let s = 0; s < N; s++) {
+      if (!live(s)) continue;
+      const q = [0, 1, 2, 3].map((a) => qsa(P, v, s, a)), m = Math.max(...q);
+      if (q[pi[s]] < m - 1e-9) { pi[s] = q.indexOf(m); changed.push(s); }
+    }
+    return changed;
+  }
+
+  const slip = Course.slider('#iSlip', (x) => x.toFixed(2), reset);
+  let P, pi = new Array(N).fill(0), v = new Array(N).fill(0), round = 0, evaluated = false, changed = [], timer = null, stable = false;
+  const g = Course.grid($('world'), R, C, (r, c, cell) => {
+    const s = r * C + c, k = ch(s);
+    if (k === '#') return cell.classList.add('wall');
+    if (k === 'G') { cell.classList.add('goal'); cell.textContent = '+10'; return; }
+    if (k === 'P') { cell.classList.add('pit'); cell.textContent = '−10'; return; }
+    if (k === 'S') cell.classList.add('start');
+    if (!evaluated) cell.classList.add('stale');
+    cell.style.background = Course.heat(v[s], 14);
+    cell.innerHTML = `<span class="v">${evaluated ? v[s].toFixed(1) : '?'}</span><span class="a">${ARROW[pi[s]]}</span>`;
+    if (changed.includes(s)) cell.classList.add('changed');
+  });
+
+  function reset() {
+    stop();
+    P = model(slip()); pi = new Array(N).fill(0); v = new Array(N).fill(0);
+    round = 0; evaluated = false; changed = []; stable = false;
+    $('log').innerHTML = '';
+    $('status').textContent = 'Every arrow starts pointing up. Press "Evaluate" to find this policy’s values.';
+    g.update();
+  }
+  function doEval() {
+    if (evaluated) { $('status').textContent = 'Already evaluated. Press "Improve".'; return; }
+    const k = evaluate(P, pi, v);
+    evaluated = true; changed = []; round++;
+    $('log').insertAdjacentHTML('beforeend', `<tr><td>${round}</td><td>${k}</td><td id="c${round}">–</td><td>${v[START].toFixed(3)}</td></tr>`);
+    $('log').parentElement.parentElement.scrollTop = 1e6;
+    $('status').textContent = `Evaluated in ${k} sweeps. The numbers are now this policy’s true values.`;
+    g.update();
+  }
+  function doImprove() {
+    if (!evaluated) { $('status').textContent = 'Evaluate first: improvement needs this policy’s values.'; return; }
+    changed = improve(P, pi, v);
+    const cell = $(`c${round}`); if (cell) cell.textContent = changed.length;
+    if (!changed.length) {
+      stable = true; stop();
+      $('status').textContent = `Policy stable after ${round} rounds. No arrow can do better, so this policy is optimal and the values are $v_*$.`;
+      Course.renderMath($('status'));
+    } else {
+      evaluated = false;
+      $('status').textContent = `${changed.length} arrow${changed.length > 1 ? 's' : ''} changed. The old values no longer match the new policy: evaluate again.`;
+    }
+    g.update();
+  }
+  function stop() { clearInterval(timer); timer = null; $('bRun').textContent = 'Run'; }
+
+  g.onClick((r, c) => {
+    const s = r * C + c; if (!live(s)) return;
+    pi[s] = (pi[s] + 1) % 4; evaluated = false; changed = []; stable = false;
+    $('status').textContent = 'You changed the policy. Evaluate it to see its values.';
+    g.update();
+  });
+  $('bEval').addEventListener('click', doEval);
+  $('bImp').addEventListener('click', doImprove);
+  $('bReset').addEventListener('click', reset);
+  $('bRun').addEventListener('click', () => {
+    if (timer) return stop();
+    if (stable) reset();
+    $('bRun').textContent = 'Pause';
+    timer = setInterval(() => (evaluated ? doImprove() : doEval()), 700);
+  });
+  reset();
+
+  // Quiz: a one-step lookahead next to the goal, with slip 0.1.
+  const qNear = 0.9 * 10 + 0.05 * (0 + GAMMA * 8) + 0.05 * (-10);
+
+  Course.quiz([
+    {
+      q: 'The bridge has 21 cells where you choose an action, each with 4 actions. How many deterministic policies are there?',
+      answer: Math.pow(4, 21),
+      hint: 'Each cell chooses independently. You can type 4^21.',
+      explain: '$4^{21} \\approx 4.4 \\times 10^{12}$. Policy iteration visits fewer than ten of them.',
+    },
+    {
+      q: 'No slip. From the cell three moves from the goal along the bridge, a policy walks straight there. What is its value? ($\\gamma = 0.9$, only the last move pays $+10$.)',
+      answer: Math.round(10 * Math.pow(0.9, 2) * 1e9) / 1e9,
+      explain: 'The reward arrives on the third step: $\\gamma^2 \\times 10 = 8.1$.',
+    },
+    {
+      q: 'Slip $0.1$. You stand just left of the goal and the current values give $v(s) = 8$ there. Moving right reaches the goal with $0.9$, slips up into the wall (stay put) with $0.05$, and slips into the water with $0.05$. What is $q(s, \\rightarrow)$?',
+      answer: Math.round(qNear * 1e9) / 1e9,
+      hint: 'Add up probability × (reward + 0.9 × value of where you land). Terminal states are worth 0.',
+      explain: '$0.9(10) + 0.05(0 + 0.9 \\times 8) + 0.05(-10) = 9 + 0.36 - 0.5 = 8.86$.',
+    },
+    {
+      q: 'Improvement only changes an arrow when another action is strictly better. Why?',
+      choices: [
+        'It makes each evaluation faster',
+        'Switching between equally good actions could make the policy cycle forever without the loop ever reporting "stable"',
+        'Ties are impossible in a finite MDP',
+      ],
+      answer: 1,
+      explain: 'Equal $q$-values give equal policies in value, so switching gains nothing and can cycle. The strict rule guarantees termination.',
+    },
+  ]);
+</script>
+</body>
+</html>

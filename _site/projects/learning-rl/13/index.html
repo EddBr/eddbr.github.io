@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>13. Softmax and gradient bandits | Learning RL</title>
+<meta name="description" content="Turn preferences into probabilities with softmax, then learn the preferences by gradient ascent on expected reward.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .pbars { display: flex; align-items: flex-end; gap: 10px; height: 150px; margin: 12px 0 4px; }
+  .pbars .col { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
+  .pbars .bar { width: 100%; flex: none; }
+  .pbars .lab { font-size: 0.8rem; font-weight: 600; color: var(--heading); margin-bottom: 2px; font-variant-numeric: tabular-nums; }
+  .pbars .col.picked .bar { background: var(--blue); }
+  .hrow { display: flex; gap: 10px; }
+  .hrow span { flex: 1; text-align: center; font-size: 0.8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+  #eq, #upd { overflow-x: auto; min-height: 2.6em; }
+  .twin { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .twin h3 { font-size: 0.9rem; margin: 0; color: var(--heading); }
+  .hbars { position: relative; display: flex; gap: 6px; height: 120px; margin: 6px 0 2px; }
+  .hbars .zero { position: absolute; left: 0; right: 0; top: 50%; border-top: 1px solid #9ca3af; }
+  .hbars .hcol { flex: 1; position: relative; }
+  .hbars .hfill { position: absolute; left: 0; right: 0; background: var(--purple); border-radius: 2px; transition: all 0.15s ease; }
+  .hbars .hcol.neg .hfill { background: var(--red); }
+  @media (max-width: 560px) { .twin { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body data-lesson="13">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Softmax and gradient bandits</h1>
+  <p class="lede">Instead of estimating values, an agent can keep a <b>preference</b> for each action and turn preferences into probabilities with the softmax function. Then it learns the preferences directly: push up the action just taken if the reward beat the average, push it down if not. This is the seed of every policy-gradient method in Lessons 70 onwards.</p>
+
+  <section class="card">
+    <h2>Preferences to probabilities</h2>
+    <p class="note">Drag the preferences $H(a)$ and the temperature $\tau$. The bars are the probabilities $\pi(a)$.</p>
+    <div class="pbars" id="pbars"></div>
+    <div class="hrow" id="hrow"></div>
+    <label class="slider"><span>$H(1)$</span><input id="h0" type="range" min="-3" max="3" step="0.1" value="1"><output></output></label>
+    <label class="slider"><span>$H(2)$</span><input id="h1" type="range" min="-3" max="3" step="0.1" value="0.5"><output></output></label>
+    <label class="slider"><span>$H(3)$</span><input id="h2" type="range" min="-3" max="3" step="0.1" value="0"><output></output></label>
+    <label class="slider"><span>$H(4)$</span><input id="h3" type="range" min="-3" max="3" step="0.1" value="-1"><output></output></label>
+    <label class="slider"><span>Temperature $\tau$</span><input id="tau" type="range" min="0.05" max="5" step="0.05" value="1"><output></output></label>
+    <div id="eq"></div>
+    <div class="row">
+      <button id="bShift" class="quiet">Add 1 to every H</button>
+      <button id="bReset1" class="quiet">Reset</button>
+    </div>
+    <p class="note">Low temperature: nearly greedy. High temperature: nearly uniform. Adding the same number to every preference changes nothing.</p>
+
+    <div class="sub">
+      <h2>Learning the preferences</h2>
+      <p class="note">Four arms with true values around $+4$ (as in S&amp;B Figure 2.5), rewards $\mathcal{N}(q_*(a), 1)$. The gradient bandit algorithm with temperature 1.</p>
+      <div class="twin">
+        <div><h3>Preferences $H(a)$</h3><div class="hbars" id="hbars"></div><div class="hrow arow"></div></div>
+        <div><h3>Policy $\pi(a)$</h3><div class="pbars" id="pbars2" style="height:120px;margin-top:6px"></div><div class="hrow arow"></div></div>
+      </div>
+      <div id="upd"></div>
+      <label class="slider"><span>Step size $\alpha$</span><input id="alpha" type="range" min="0.01" max="0.5" step="0.01" value="0.1"><output></output></label>
+      <div class="row">
+        <button id="bStep" class="primary">Step</button>
+        <button id="bRun">Run</button>
+        <label class="muted"><input type="checkbox" id="cBase" checked> baseline $\bar R$</label>
+        <span class="spacer"></span>
+        <button id="bNew" class="quiet">New arms</button>
+      </div>
+      <div class="stats">
+        <div class="stat"><span class="k">Steps</span><span class="v" id="sT">0</span></div>
+        <div class="stat"><span class="k">Baseline $\bar R$</span><span class="v" id="sBar">–</span></div>
+        <div class="stat"><span class="k">$\pi$(best arm)</span><span class="v" id="sBest">–</span></div>
+      </div>
+      <p class="note">Untick the baseline and step a few times. Every reward is about $+4$, so whatever arm is picked gets pushed up, good or bad.</p>
+    </div>
+
+    <div class="sub">
+      <h2>With and without the baseline</h2>
+      <p class="note">% of steps choosing the best arm, 10-armed testbed with $q_*(a) \sim \mathcal{N}(4, 1)$, averaged over 200 bandits (S&amp;B Figure 2.5).</p>
+      <div class="row"><button id="bCompare">Run comparison</button></div>
+      <canvas class="chart" id="chart" hidden></canvas>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>The <b>softmax</b> (Boltzmann) distribution turns preferences $H_t(a)$ into probabilities:</p>
+    $$\pi_t(a) = \frac{e^{H_t(a)/\tau}}{\sum_{b} e^{H_t(b)/\tau}}$$
+    <p>Every $\pi_t(a)$ is positive and they sum to 1. Adding a constant $c$ to every $H$ multiplies top and bottom by $e^{c/\tau}$, so only differences between preferences matter. As $\tau \to 0$ all the probability goes to the largest $H$; as $\tau \to \infty$ it spreads evenly. The gradient bandit uses $\tau = 1$.</p>
+    <p>After playing $A_t$ and receiving $R_t$, the <b>gradient bandit algorithm</b> (S&amp;B §2.8) updates</p>
+    $$\begin{aligned}
+      H_{t+1}(A_t) &= H_t(A_t) + \alpha\,(R_t - \bar R_t)\,\big(1 - \pi_t(A_t)\big) \\
+      H_{t+1}(a) &= H_t(a) - \alpha\,(R_t - \bar R_t)\,\pi_t(a)
+    \end{aligned}$$
+    <p>The second line is for every action $a \ne A_t$.</p>
+    <p>$\bar R_t$ is the <b>baseline</b>: the average of the rewards before step $t$, with $\bar R_1 = R_1$ (S&amp;B §2.8). A reward above it raises the chosen action's preference and lowers the rest. A reward below it does the opposite.</p>
+    <p><b>Why it works.</b> The expected reward is $\mathbb{E}[R_t] = \sum_x \pi_t(x)\,q_*(x)$. The softmax derivative (with $\tau = 1$) is</p>
+    $$\frac{\partial \pi_t(x)}{\partial H_t(a)} = \pi_t(x)\,\big(\mathbb{1}_{a = x} - \pi_t(a)\big)$$
+    <p>where $\mathbb{1}_{a=x}$ is 1 if $a = x$ and 0 otherwise. These derivatives sum to 0 over $x$, so any baseline $B$ can be subtracted for free:</p>
+    $$\begin{aligned}
+      \frac{\partial\, \mathbb{E}[R_t]}{\partial H_t(a)} &= \sum_x \big(q_*(x) - B\big)\,\pi_t(x)\,\big(\mathbb{1}_{a=x} - \pi_t(a)\big) \\
+      &= \mathbb{E}\Big[\big(q_*(A_t) - B\big)\big(\mathbb{1}_{a=A_t} - \pi_t(a)\big)\Big] \\
+      &= \mathbb{E}\Big[\big(R_t - \bar R_t\big)\big(\mathbb{1}_{a=A_t} - \pi_t(a)\big)\Big]
+    \end{aligned}$$
+    <p>The second line reads the sum as an average over $A_t \sim \pi_t$. The third uses $\mathbb{E}[R_t \mid A_t] = q_*(A_t)$ and takes $B = \bar R_t$. The update is one sample of this gradient times $\alpha$: <b>stochastic gradient ascent</b> on expected reward. The baseline does not change the expected update, but it shrinks its variance, which is why learning is so much faster with it.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const softmax = (H, tau = 1) => {
+    const m = Math.max(...H), e = H.map((h) => Math.exp((h - m) / tau)), s = e.reduce((a, b) => a + b, 0);
+    return e.map((x) => x / s);
+  };
+  const f2 = (x) => (Math.abs(x) < 0.005 ? '0' : x.toFixed(2));
+
+  // ------------------------------------------------------------ part 1: softmax
+  const hs = [0, 1, 2, 3].map((i) => Course.slider(`#h${i}`, (v) => v.toFixed(1), draw1));
+  const tau = Course.slider('#tau', (v) => v.toFixed(2), draw1);
+  // Shift every preference by the same amount, down instead of up if up would hit the slider's end.
+  const shiftBy = () => {
+    const H = hs.map((g) => g());
+    return Math.max(...H) + 1 <= 3 ? 1 : Math.min(...H) - 1 >= -3 ? -1 : 0;
+  };
+  function draw1() {
+    const H = hs.map((g) => g()), p = softmax(H, tau());
+    const d = shiftBy();
+    $('bShift').textContent = d < 0 ? 'Subtract 1 from every H' : 'Add 1 to every H';
+    $('bShift').disabled = d === 0;
+    $('pbars').innerHTML = p.map((x) => `<div class="col"><span class="lab">${(100 * x).toFixed(0)}%</span><div class="bar" style="height:${Math.max(1, 115 * x)}px"></div></div>`).join('');
+    $('hrow').innerHTML = H.map((h, i) => `<span>a = ${i + 1}</span>`).join('');
+    const t = tau();
+    const ex = H.map((h) => Math.exp(h / t)), tot = ex.reduce((a, b) => a + b, 0);
+    Course.tex($('eq'), `\\pi(1) = \\frac{e^{${f2(H[0])}/${t.toFixed(2)}}}{\\sum_b e^{H(b)/${t.toFixed(2)}}} = \\frac{${ex[0].toPrecision(3)}}{${tot.toPrecision(3)}} = ${p[0].toFixed(3)}`, true);
+  }
+  $('bShift').addEventListener('click', () => {
+    const d = shiftBy();
+    if (!d) return;
+    [0, 1, 2, 3].forEach((i) => { const el = $(`h${i}`); el.value = (+el.value + d).toFixed(1); el.dispatchEvent(new Event('input')); });
+  });
+  $('bReset1').addEventListener('click', () => {
+    [1, 0.5, 0, -1].forEach((v, i) => { const el = $(`h${i}`); el.value = v; el.dispatchEvent(new Event('input')); });
+    $('tau').value = 1; $('tau').dispatchEvent(new Event('input'));
+  });
+  draw1();
+
+  // ------------------------------------------------------------ part 2: gradient bandit, live
+  const K2 = 4, HMAX = 4;
+  let q, H, rbar, t, last, timer = null;
+  const alpha = Course.slider('#alpha', (v) => v.toFixed(2));
+  function newArms() {
+    stop();
+    q = Array.from({ length: K2 }, () => 4 + Course.gauss());
+    H = new Array(K2).fill(0); rbar = 0; t = 0; last = -1;
+    Course.tex($('upd'), '\\text{All } H = 0 \\text{, so } \\pi \\text{ is uniform. Press Step.}', true);
+    draw2();
+  }
+  function draw2() {
+    const p = softmax(H), best = q.indexOf(Math.max(...q));
+    $('hbars').innerHTML = '<div class="zero"></div>' + H.map((h) => {
+      const c = Math.max(-HMAX, Math.min(HMAX, h)), half = (50 * Math.abs(c)) / HMAX;
+      return `<div class="hcol${h < 0 ? ' neg' : ''}"><div class="hfill" style="${h >= 0 ? `bottom:50%` : `top:50%`};height:${half}%"></div></div>`;
+    }).join('');
+    $('pbars2').innerHTML = p.map((x, a) => `<div class="col${a === last ? ' picked' : ''}"><span class="lab">${(100 * x).toFixed(0)}%</span><div class="bar" style="height:${Math.max(1, 95 * x)}px"></div></div>`).join('');
+    const labs = q.map((v, a) => `<span>arm ${a + 1}${a === best ? ' ★' : ''}<br>q* = ${v.toFixed(2)}</span>`).join('');
+    document.querySelectorAll('.arow').forEach((el) => { el.innerHTML = labs; });
+    $('sT').textContent = t;
+    $('sBar').textContent = t ? rbar.toFixed(2) : '–';
+    $('sBest').textContent = `${(100 * p[best]).toFixed(0)}%`;
+  }
+  function step() {
+    const p = softmax(H), a = Course.sample(p), r = q[a] + Course.gauss();
+    const useBase = $('cBase').checked;
+    t++;
+    if (t === 1) rbar = r;                 // R̄_1 = R_1
+    const base = useBase ? rbar : 0, d = r - base, al = alpha();
+    const old = H[a];
+    for (let b = 0; b < K2; b++) H[b] += b === a ? al * d * (1 - p[b]) : -al * d * p[b];
+    rbar += (r - rbar) / t;                // average of rewards so far, for the next step
+    last = a;
+    Course.tex($('upd'),
+      `H(${a + 1}) \\leftarrow ${f2(old)} + ${al.toFixed(2)}\\,(${r.toFixed(2)} - ${base.toFixed(2)})(1 - ${p[a].toFixed(2)}) = ${H[a].toFixed(2)}`, true);
+    draw2();
+  }
+  function stop() { clearInterval(timer); timer = null; $('bRun').textContent = 'Run'; }
+  $('bStep').addEventListener('click', step);
+  $('bRun').addEventListener('click', () => {
+    if (timer) return stop();
+    $('bRun').textContent = 'Pause';
+    timer = setInterval(step, 120);
+  });
+  $('bNew').addEventListener('click', newArms);
+  newArms();
+
+  // ------------------------------------------------------------ part 3: Figure 2.5
+  const K = 10, RUNS = 200, STEPS = 1000;
+  const CONFIGS = [
+    { alpha: 0.1, base: true, color: Course.colors.blue, label: 'α = 0.1, baseline' },
+    { alpha: 0.4, base: true, color: Course.colors.green, label: 'α = 0.4, baseline' },
+    { alpha: 0.1, base: false, color: Course.colors.amber, label: 'α = 0.1, none' },
+    { alpha: 0.4, base: false, color: Course.colors.red, label: 'α = 0.4, none' },
+  ];
+  function optimalRate(cfg) {
+    const hits = new Float64Array(STEPS);
+    const h = new Float64Array(K), e = new Float64Array(K);
+    for (let run = 0; run < RUNS; run++) {
+      const qs = Array.from({ length: K }, () => 4 + Course.gauss()), best = qs.indexOf(Math.max(...qs));
+      h.fill(0);
+      let rb = 0;
+      for (let s = 1; s <= STEPS; s++) {
+        let m = -Infinity;
+        for (let j = 0; j < K; j++) if (h[j] > m) m = h[j];
+        let sum = 0;
+        for (let j = 0; j < K; j++) { e[j] = Math.exp(h[j] - m); sum += e[j]; }
+        let u = Math.random() * sum, a = 0;
+        for (; a < K - 1; a++) { u -= e[a]; if (u < 0) break; }
+        const r = qs[a] + Course.gauss();
+        if (s === 1) rb = r;
+        const d = r - (cfg.base ? rb : 0);
+        for (let j = 0; j < K; j++) h[j] += cfg.alpha * d * ((j === a ? 1 : 0) - e[j] / sum);
+        rb += (r - rb) / s;
+        if (a === best) hits[s - 1]++;
+      }
+    }
+    return Array.from(hits, (x) => (100 * x) / RUNS);
+  }
+  const chart = Course.lineChart($('chart'), { xLabel: 'step', yLabel: '% best arm', yMin: 0, yMax: 100 });
+  $('bCompare').addEventListener('click', () => {
+    $('bCompare').disabled = true; $('bCompare').textContent = 'Running…';
+    setTimeout(() => {
+      $('chart').hidden = false;
+      chart.draw(CONFIGS.map((c) => ({ data: optimalRate(c), color: c.color, label: c.label })));
+      $('bCompare').disabled = false; $('bCompare').textContent = 'Run again';
+    }, 30);
+  });
+
+  // ------------------------------------------------------------ quiz
+  Course.quiz([
+    {
+      q: 'Three actions with preferences $H = (1, 0, 0)$ and $\\tau = 1$. What is $\\pi(1)$?',
+      answer: Math.E / (Math.E + 2),
+      tol: 0.003,
+      explain: '$\\frac{e^1}{e^1 + e^0 + e^0} = \\frac{2.718}{4.718} \\approx 0.576$.',
+    },
+    {
+      q: 'Same preferences, now $\\tau = 0.5$. What is $\\pi(1)$?',
+      answer: Math.exp(2) / (Math.exp(2) + 2),
+      tol: 0.003,
+      hint: 'Divide every preference by $\\tau$ first.',
+      explain: '$\\frac{e^{2}}{e^{2} + 2} = \\frac{7.389}{9.389} \\approx 0.787$. Lower temperature, more greedy.',
+    },
+    {
+      q: 'The agent picks an action with $\\pi_t(A_t) = 0.25$ and gets $R_t = 2$. The baseline is $\\bar R_t = 1$ and $\\alpha = 0.1$. By how much does $H(A_t)$ increase?',
+      answer: 0.1 * (2 - 1) * (1 - 0.25),
+      tol: 0.001,
+      explain: '$\\alpha(R_t - \\bar R_t)(1 - \\pi_t(A_t)) = 0.1 \\times 1 \\times 0.75 = 0.075$.',
+    },
+    {
+      q: 'You add 5 to every preference. What happens to the policy?',
+      choices: ['It becomes more greedy', 'Nothing: only differences between preferences matter', 'It becomes uniform'],
+      answer: 1,
+      explain: 'Every term gains a factor $e^{5/\\tau}$, top and bottom, which cancels.',
+    },
+  ]);
+</script>
+</body>
+</html>

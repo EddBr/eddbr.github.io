@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>84. Entropy bonuses | Learning RL</title>
+<meta name="description" content="Add a bonus for uncertainty and a policy stops committing too early. Too much bonus and it never commits. Find the balance with a slider.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .pbars { display: flex; gap: 8px; height: 130px; align-items: flex-end; border-bottom: 1px solid #9ca3af; margin-top: 8px; }
+  .pbars .col { flex: 1; position: relative; height: 100%; }
+  .pbars .fill { position: absolute; left: 0; right: 0; bottom: 0; background: var(--accent); border-radius: 3px 3px 0 0; transition: height 0.15s ease; }
+  .pbars .lab { position: absolute; left: 0; right: 0; text-align: center; font-size: 0.75rem; color: var(--heading); font-variant-numeric: tabular-nums; }
+  .xs { display: flex; gap: 8px; font-size: 0.75rem; color: var(--muted); }
+  .xs span { flex: 1; text-align: center; }
+  .key { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.85rem; color: var(--muted); margin: 0; }
+  .key > span::before { content: ""; display: inline-block; width: 16px; vertical-align: middle; margin-right: 5px; border-top: 3px solid; }
+  .key .kb::before { border-color: var(--accent); }
+  .key .ks::before { border-color: var(--red); }
+  .key .kt::before { border-color: var(--amber); border-top-style: dashed; }
+</style>
+</head>
+<body data-lesson="84">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Entropy bonuses</h1>
+  <p class="lede">A policy gradient learner can become certain before it has seen enough, as in Lesson 80. Adding a bonus $\beta H(\pi)$ for the policy's entropy pays it to stay uncertain. A small $\beta$ buys exploration; a large one stops the policy committing at all.</p>
+
+  <section class="card">
+    <h2>What the bonus aims for</h2>
+    <p class="note">A 5-armed bandit with $q = (0.2, 0.4, 0.6, 0.8, 1.0)$. The bars show the policy that maximises $\mathbb{E}_\pi[q] + \beta H(\pi)$ exactly. Drag $\beta$.</p>
+    <label class="slider"><span>Entropy weight $\beta$</span><input id="iB" type="range" min="0" max="12" step="1" value="4"><output></output></label>
+    <div class="pbars" id="bars"></div>
+    <div class="xs"><span>$q = 0.2$</span><span>$0.4$</span><span>$0.6$</span><span>$0.8$</span><span>$1.0$</span></div>
+    <div class="stats">
+      <div class="stat"><span class="k">Expected reward $\mathbb{E}_\pi[q]$</span><span class="v" id="sQ">–</span></div>
+      <div class="stat"><span class="k">Entropy $H(\pi)$</span><span class="v" id="sH">–</span></div>
+      <div class="stat"><span class="k">Maximum, $\log 5$</span><span class="v">1.609</span></div>
+    </div>
+
+    <div class="sub">
+      <h2>Learning with the bonus</h2>
+      <p class="note">Twenty learners, same bandit, reward noise $\mathcal{N}(0,1)$, gradient bandit with $\alpha = 1$ plus the entropy gradient, 1000 steps. The same $\beta$ slider applies. Each line is one learner's entropy.</p>
+      <div class="row"><button id="bRun">Run 20 learners</button><button id="bSweep" class="quiet">Sweep β</button></div>
+      <canvas class="chart" id="ent" style="height:220px"></canvas>
+      <p class="key"><span class="kb">ends preferring the best arm</span><span class="ks">ends preferring a worse arm</span><span class="kt">entropy of the target above</span></p>
+      <div class="stats">
+        <div class="stat"><span class="k">Prefer the best arm</span><span class="v" id="sBest">–</span></div>
+        <div class="stat"><span class="k">Average reward per step</span><span class="v" id="sAvg">–</span></div>
+      </div>
+      <canvas class="chart" id="sweep" style="height:200px" hidden></canvas>
+      <p class="status" id="status"></p>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>The <b>entropy</b> of a policy in state $s$ is</p>
+    $$H\big(\pi(\cdot \mid s)\big) = -\sum_a \pi(a \mid s)\log \pi(a \mid s), \qquad 0 \le H \le \log|\mathcal{A}|$$
+    <p>It is 0 for a deterministic policy and $\log|\mathcal{A}|$ for the uniform one. By Lesson 81, $H = \log|\mathcal{A}| - D_{\mathrm{KL}}(\pi \,\|\, \text{uniform})$, so a bonus on entropy is a pull towards uniform.</p>
+    <p>PPO adds it to the clipped objective with a weight $c_2$ (Schulman et al. 2017, eq. 9), alongside a value-function loss with weight $c_1$:</p>
+    $$L_t^{\text{CLIP}+\text{VF}+S}(\theta) = \hat{\mathbb{E}}_t\Big[L_t^{\text{CLIP}}(\theta) - c_1 L_t^{\text{VF}}(\theta) + c_2\, H\big(\pi_\theta(\cdot \mid s_t)\big)\Big]$$
+    <p>The paper writes the entropy term as $S[\pi_\theta](s_t)$. This page calls its weight $\beta$.</p>
+    <p><b>The gradient for a softmax policy.</b> With $\partial \pi_a / \partial \theta_b = \pi_a(\mathbb{1}_{a=b} - \pi_b)$ and $\sum_a \pi_a = 1$,</p>
+    $$\begin{aligned}
+      \frac{\partial H}{\partial \theta_b} &= -\sum_a \frac{\partial \pi_a}{\partial \theta_b}\big(\log \pi_a + 1\big) = -\pi_b(\log\pi_b + 1) + \pi_b \sum_a \pi_a(\log\pi_a + 1) \\
+      &= -\pi_b\big(\log \pi_b + H\big)
+    \end{aligned}$$
+    <p>Actions more likely than typical ($\log\pi_b &gt; -H$) are pushed down and rarer ones pushed up. The learners above add $\alpha\beta\,\partial H / \partial\theta_b$ to each gradient bandit update.</p>
+    <p><b>The exact target.</b> Maximise $\sum_a \pi(a) q(a) + \beta H(\pi)$ subject to $\sum_a \pi(a) = 1$. With a multiplier $\lambda$, setting the derivative in $\pi(a)$ to zero gives</p>
+    $$q(a) - \beta\big(\log \pi(a) + 1\big) + \lambda = 0 \quad\Rightarrow\quad \pi_\beta(a) = \frac{e^{q(a)/\beta}}{\sum_b e^{q(b)/\beta}}$$
+    <p>The bonus turns "pick the best" into the softmax of Lesson 13 with temperature $\beta$. As $\beta \to 0$ it becomes greedy; as $\beta \to \infty$, uniform. Lesson 88 uses the same calculation with a KL penalty in place of entropy.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const C = Course.colors;
+  const Q = [0.2, 0.4, 0.6, 0.8, 1.0], K = 5, T = 1000, ALPHA = 1;
+  const BETAS = [0, 0.02, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.75, 1, 2, 5];
+  const softmax = (th) => { const m = Math.max(...th), e = th.map((x) => Math.exp(x - m)), s = e.reduce((a, b) => a + b, 0); return e.map((x) => x / s); };
+  const ent = (p) => -p.reduce((s, x) => (x > 0 ? s + x * Math.log(x) : s), 0);
+  const target = (b) => (b === 0 ? Q.map((_, a) => (a === K - 1 ? 1 : 0)) : softmax(Q.map((q) => q / b)));
+
+  $('bars').innerHTML = Q.map(() => '<div class="col"><div class="fill"></div><span class="lab"></span></div>').join('');
+  const beta = Course.slider('#iB', (i) => BETAS[i], () => { drawTarget(); runLearners(); });
+
+  function drawTarget() {
+    const b = BETAS[beta()], p = target(b);
+    [...$('bars').children].forEach((col, a) => {
+      col.firstChild.style.height = `${85 * p[a]}%`;
+      col.lastChild.style.bottom = `calc(${85 * p[a]}% + 2px)`;
+      col.lastChild.textContent = p[a].toFixed(2);
+    });
+    $('sQ').textContent = p.reduce((s, x, a) => s + x * Q[a], 0).toFixed(3);
+    $('sH').textContent = ent(p).toFixed(3);
+  }
+
+  // Gradient bandit (S&B §2.8) plus beta * dH/dtheta, dH/dtheta_b = -pi_b (log pi_b + H).
+  function learner(b, record) {
+    const th = new Array(K).fill(0), curve = [];
+    let rbar = 0, total = 0;
+    for (let t = 1; t <= T; t++) {
+      const p = softmax(th), H = ent(p);
+      if (record && (t % 10 === 1)) curve.push([t - 1, H]);
+      const a = Course.sample(p), r = Q[a] + Course.gauss();
+      if (t === 1) rbar = r;   // Rbar_1 = R_1, as in Lesson 13
+      total += r;
+      for (let c = 0; c < K; c++) {
+        const pg = (r - rbar) * ((c === a ? 1 : 0) - p[c]);
+        const eg = p[c] > 0 ? -p[c] * (Math.log(p[c]) + H) : 0;
+        th[c] += ALPHA * (pg + b * eg);
+      }
+      rbar += (r - rbar) / t;
+    }
+    const p = softmax(th);
+    if (record) curve.push([T, ent(p)]);
+    return { curve, p, avg: total / T };
+  }
+
+  const entChart = Course.lineChart($('ent'), { xLabel: 'step', yLabel: 'entropy H(π)', xMin: 0, xMax: T, yMin: 0, yMax: 1.7 });
+  function runLearners() {
+    const b = BETAS[beta()];
+    let best = 0, avg = 0;
+    const lines = Array.from({ length: 20 }, () => {
+      const { curve, p, avg: a } = learner(b, true);
+      const ok = p.indexOf(Math.max(...p)) === K - 1;
+      best += ok; avg += a;
+      return { data: curve, width: 1.3, color: ok ? C.green : C.red };
+    });
+    entChart.draw(lines, { hlines: [{ y: ent(target(b)), color: C.amber, label: 'H(π_β)' }] });
+    $('sBest').textContent = `${best} / 20`;
+    $('sAvg').textContent = (avg / 20).toFixed(3);
+  }
+
+  const sweepChart = Course.lineChart($('sweep'), { xLabel: 'β (log scale: 0.02 to 5)', yLabel: 'avg reward per step' });
+  $('bSweep').addEventListener('click', () => {
+    const btn = $('bSweep');
+    btn.disabled = true; btn.textContent = 'Running…';
+    setTimeout(() => {
+      const bs = BETAS.slice(1), R = 60;
+      const pts = bs.map((b) => {
+        let s = 0;
+        for (let k = 0; k < R; k++) s += learner(b, false).avg;
+        return [Math.log10(b), s / R];
+      });
+      let s0 = 0;
+      for (let k = 0; k < R; k++) s0 += learner(0, false).avg;
+      $('sweep').hidden = false;
+      sweepChart.draw([{ data: pts, color: C.green, dots: true }], {
+        hlines: [{ y: s0 / R, label: 'β = 0', color: C.grey }, { y: 1, label: 'always best arm', color: C.amber }],
+      });
+      const top = pts.reduce((m, p) => (p[1] > m[1] ? p : m));
+      $('status').textContent = `Each point averages ${R} learners. Best here: β ≈ ${Math.pow(10, top[0]).toFixed(2)}, ${top[1].toFixed(3)} per step, against ${(s0 / R).toFixed(3)} with no bonus.`;
+      btn.disabled = false; btn.textContent = 'Sweep again';
+    }, 30);
+  });
+  $('bRun').addEventListener('click', runLearners);
+  drawTarget();
+  runLearners();
+
+  const H3 = ent([0.7, 0.2, 0.1]);
+  const H2 = ent([0.8, 0.2]);
+  Course.quiz([
+    {
+      q: 'What does the entropy-regularised optimum $\\pi_\\beta$ become as $\\beta \\to \\infty$?',
+      choices: ['Greedy on the best arm', 'Uniform over all arms', 'Proportional to $q(a)$', 'It does not change'],
+      answer: 1,
+      explain: '$e^{q(a)/\\beta} \\to 1$ for every arm, so every arm gets $1/|\\mathcal{A}|$. Drag $\\beta$ to 5 to see it.',
+    },
+    {
+      q: 'What is the entropy, in nats, of the policy $(0.7, 0.2, 0.1)$?',
+      answer: H3,
+      tol: 0.005,
+      explain: '$-(0.7\\log 0.7 + 0.2\\log 0.2 + 0.1\\log 0.1) = 0.250 + 0.322 + 0.230 = 0.802$.',
+    },
+    {
+      q: 'Two arms with $q = (1, 0)$ and $\\beta = 0.5$. What probability does $\\pi_\\beta$ give the first arm?',
+      answer: Math.exp(2) / (Math.exp(2) + 1),
+      tol: 0.002,
+      explain: '$e^{1/0.5} / (e^{2} + e^{0}) = 7.389 / 8.389 = 0.881$.',
+    },
+    {
+      q: 'A softmax policy is $\\pi = (0.8, 0.2)$. What is $\\partial H / \\partial \\theta_1$?',
+      answer: -0.8 * (Math.log(0.8) + H2),
+      tol: 0.003,
+      hint: 'First find $H = -(0.8\\log 0.8 + 0.2\\log 0.2)$.',
+      explain: '$H = 0.500$, so $-0.8(\\log 0.8 + 0.500) = -0.8(-0.223 + 0.500) = -0.222$. The bonus pushes the dominant action down.',
+    },
+  ]);
+</script>
+</body>
+</html>

@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>85. A language model is a policy | Learning RL</title>
+<meta name="description" content="Tokens are actions, the text so far is the state, a finished reply is an episode. Write a sentence one action at a time, then train a tiny language model with REINFORCE.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .sentence { font: 500 1.25rem/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--soft); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; min-height: 2.8em; overflow-wrap: anywhere; }
+  .sentence .prompt { color: var(--muted); }
+  .sentence .tok { color: var(--heading); border-bottom: 2px solid var(--accent); margin-left: 0.4em; }
+  .sentence .cursor { display: inline-block; width: 0.55em; height: 1.1em; vertical-align: -0.15em; margin-left: 0.3em; background: var(--accent); opacity: 0.5; }
+  .toks { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: 10px 0; }
+  .toks button { position: relative; overflow: hidden; padding: 6px 2px 4px; font: 500 0.95rem ui-monospace, SFMono-Regular, Menlo, monospace; display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--heading); border-color: var(--border); }
+  .toks button .p { font: 400 0.72rem var(--font); color: var(--muted); font-variant-numeric: tabular-nums; position: relative; }
+  .toks button .w { position: relative; }
+  .toks button .lvl { position: absolute; left: 0; bottom: 0; top: 0; background: var(--accent-soft); }
+  .toks button:hover:not(:disabled) { background: var(--soft); color: var(--heading); }
+  .logwrap { max-height: 220px; overflow: auto; }
+  .reward { font-weight: 600; }
+  #eqSeq { overflow-x: auto; min-height: 2.6em; }
+  .tops { font: 0.9rem ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .tops td:first-child { text-align: left; }
+</style>
+</head>
+<body data-lesson="85">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>A language model is a policy</h1>
+  <p class="lede">A language model gives a probability to every possible next token, given the text so far. Read that as RL: the text so far is the state, the next token is the action, and a finished reply is an episode. Everything from Lessons 70 to 84 then applies to it.</p>
+
+  <section class="card">
+    <h2>Be the policy</h2>
+    <p class="note">A toy model with 10 tokens. The prompt is "the". Click a token to take that action, or let the model sample. "." ends the episode. Reward: 1 if the sentence mentions the mat, else 0.</p>
+    <div class="sentence" id="text"></div>
+    <div class="toks" id="toks"></div>
+    <label class="slider"><span>Temperature $\tau$</span><input id="iT" type="range" min="0.2" max="3" step="0.1" value="1"><output></output></label>
+    <div class="row">
+      <button id="bOne">Sample a token</button>
+      <button id="bAll" class="primary">Sample to the end</button>
+      <span class="spacer"></span>
+      <button id="bNew" class="quiet">Start again</button>
+    </div>
+    <div id="eqSeq"></div>
+    <p class="status" id="status"></p>
+    <div class="logwrap">
+      <table class="data">
+        <thead><tr><th>$t$</th><th>state $s_t$</th><th>action $a_t$</th><th>$\pi(a_t \mid s_t)$</th><th>$\log \pi$</th></tr></thead>
+        <tbody id="log"></tbody>
+      </table>
+    </div>
+
+    <div class="sub">
+      <h2>Train it with REINFORCE</h2>
+      <p class="note">Each episode samples a sentence at $\tau = 1$, scores it, and nudges the log-probability of every token in it by $\alpha(R - b)$, with $b$ the average reward so far (Lessons 73 and 74). $\alpha = 0.2$.</p>
+      <div class="row">
+        <button id="bTrain">Train 50 episodes</button>
+        <button id="bReset" class="quiet">Reset model</button>
+      </div>
+      <canvas class="chart" id="curve" style="height:200px"></canvas>
+      <p class="note">Most likely complete sentences, with exact probabilities:</p>
+      <table class="data tops"><tbody id="tops"></tbody></table>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>Given a prompt $x$, a language model with parameters $\theta$ generates a reply $y = (y_1, \dots, y_T)$ one token at a time. The probability of the whole reply is the product of the per-token probabilities:</p>
+    $$\begin{aligned} \pi_\theta(y \mid x) &= \prod_{t=1}^{T} \pi_\theta(y_t \mid x, y_{&lt;t}) \\ \log \pi_\theta(y \mid x) &= \sum_{t=1}^{T} \log \pi_\theta(y_t \mid x, y_{&lt;t}) \end{aligned}$$
+    <p>$y_{&lt;t}$ is the tokens before position $t$. Multiplying many probabilities quickly underflows, so models work with the sum of logs. The line under the buttons shows it for your sentence.</p>
+    <p><b>As an MDP.</b></p>
+    $$\begin{aligned} &s_t = (x, y_{&lt;t}), \qquad a_t = y_t, \qquad s_{t+1} = (x, y_{\le t}), \\ &R = r(x, y) \text{ at the end}, \qquad \gamma = 1 \end{aligned}$$
+    <p>The state is everything written so far, an action is one token, and the transition is deterministic: append the token. The reward usually arrives only when the reply is finished, so the return of every step is $G_t = r(x, y)$.</p>
+    <p><b>The policy.</b> The network outputs a score (logit) $z_v$ for each token $v$ in the vocabulary, and a softmax with temperature $\tau$ turns them into probabilities:</p>
+    $$\pi_\theta(v \mid s_t) = \frac{e^{z_v(s_t)/\tau}}{\sum_{u} e^{z_u(s_t)/\tau}}$$
+    <p>$\tau &lt; 1$ sharpens the distribution towards the top token; $\tau &gt; 1$ flattens it. This toy's logits depend only on the last token. A real model's depend on the whole of $s_t$.</p>
+    <p><b>The gradient.</b> REINFORCE with a baseline (Lessons 73 and 74), applied to whole replies:</p>
+    $$\nabla_\theta J(\theta) = \mathbb{E}_{y \sim \pi_\theta(\cdot \mid x)}\Big[\big(r(x, y) - b\big) \sum_{t=1}^{T} \nabla_\theta \log \pi_\theta(y_t \mid s_t)\Big]$$
+    <p>Every token in a good reply is made more likely; every token in a bad one less likely. The hard part is scale: a vocabulary of $|\mathcal{V}| \approx 10^5$ tokens and replies of hundreds of tokens give $|\mathcal{V}|^T$ possible episodes. Watch the top sentences above: training piles probability onto a few rewarded sentences. Lesson 88 deals with that.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const V = ['the', 'cat', 'dog', 'sat', 'ran', 'on', 'mat', 'away', 'home', '.'];
+  const EOS = 9, MAT = 6, MAXLEN = 8, ALPHA = 0.2;
+  // Next-token probabilities given the last token, before smoothing.
+  const BASE = {
+    the: { cat: 0.4, dog: 0.4, mat: 0.2 },
+    cat: { sat: 0.5, ran: 0.35, '.': 0.15 },
+    dog: { sat: 0.3, ran: 0.55, '.': 0.15 },
+    sat: { on: 0.6, '.': 0.4 },
+    ran: { away: 0.45, home: 0.35, on: 0.1, '.': 0.1 },
+    on: { the: 1 },
+    mat: { '.': 1 },
+    away: { '.': 0.9, home: 0.1 },
+    home: { '.': 1 },
+    '.': { '.': 1 },
+  };
+  let Z, seq, curve, episodes, bsum;
+
+  const softmax = (z, tau = 1) => { const m = Math.max(...z), e = z.map((x) => Math.exp((x - m) / tau)), s = e.reduce((a, b) => a + b, 0); return e.map((x) => x / s); };
+  const ctx = (s) => (s.length ? V[s[s.length - 1]] : 'the');
+  const tau = Course.slider('#iT', (v) => v.toFixed(1), () => drawTokens());
+
+  function resetModel() {
+    // Logits = log(prob + 0.01): every token keeps a little probability.
+    Z = {};
+    for (const c in BASE) Z[c] = V.map((v) => Math.log((BASE[c][v] || 0) + 0.01));
+    episodes = 0; bsum = 0;
+    curve = [[0, pReward()]];
+  }
+
+  // Exact probability that a sampled sentence (tau = 1) mentions "mat".
+  function pReward() {
+    const memo = new Map();
+    const f = (c, seen, d) => {
+      if (d === MAXLEN) return seen ? 1 : 0;
+      const k = `${c}|${seen}|${d}`;
+      if (memo.has(k)) return memo.get(k);
+      const p = softmax(Z[c]);
+      let s = 0;
+      V.forEach((v, i) => { const sn = seen || i === MAT; s += p[i] * (i === EOS ? +sn : f(v, sn, d + 1)); });
+      memo.set(k, s);
+      return s;
+    };
+    return f('the', false, 0);
+  }
+
+  // Most likely complete sentences (tau = 1), by depth-first search with pruning.
+  function topSentences(n = 5) {
+    const out = [];
+    const go = (c, words, lp, d) => {
+      if (lp < Math.log(0.004)) return;
+      const p = softmax(Z[c]);
+      V.forEach((v, i) => {
+        const l = lp + Math.log(p[i]);
+        if (i === EOS || d + 1 === MAXLEN) out.push({ s: [...words, v].join(' '), p: Math.exp(l), r: [...words, v].includes('mat') });
+        else go(v, [...words, v], l, d + 1);
+      });
+    };
+    go('the', ['the'], 0, 0);
+    return out.sort((a, b) => b.p - a.p).slice(0, n);
+  }
+
+  const done = () => seq.length && (seq[seq.length - 1] === EOS || seq.length >= MAXLEN);
+  const rewardOf = (s) => (s.includes(MAT) ? 1 : 0);
+
+  function drawTokens() {
+    const p = softmax(Z[ctx(seq)], tau());
+    $('toks').innerHTML = V.map((v, i) =>
+      `<button data-i="${i}" ${done() ? 'disabled' : ''}><span class="lvl" style="width:${100 * p[i]}%"></span><span class="w">${v}</span><span class="p">${p[i].toFixed(2)}</span></button>`).join('');
+  }
+
+  function drawText() {
+    $('text').innerHTML = '<span class="prompt">the</span>' + seq.map((i) => `<span class="tok">${V[i]}</span>`).join('') + (done() ? '' : '<span class="cursor"></span>');
+    const lps = $('log').dataset.lps ? JSON.parse($('log').dataset.lps) : [];
+    if (!seq.length) { Course.tex($('eqSeq'), '\\log \\pi_\\theta(y \\mid x) = 0', true); $('status').textContent = 'State: the prompt. Pick the first action.'; return; }
+    const sum = lps.reduce((a, b) => a + b, 0);
+    Course.tex($('eqSeq'), `\\log \\pi_\\theta(y \\mid x) = ${lps.map((l) => `(${l.toFixed(2)})`).join(' + ')} = ${sum.toFixed(2)}, \\quad \\pi_\\theta(y \\mid x) = ${Math.exp(sum) < 0.001 ? Math.exp(sum).toExponential(1).replace('e', '\\times 10^{') + '}' : Math.exp(sum).toFixed(3)}`, true);
+    if (done()) {
+      const r = rewardOf(seq);
+      $('status').innerHTML = `Episode over after ${seq.length} actions. Reward <span class="reward ${r ? 'good' : 'bad'}">${r}</span>.`;
+    } else $('status').textContent = `${seq.length} action${seq.length > 1 ? 's' : ''} so far. No reward until the episode ends.`;
+  }
+
+  function act(i) {
+    if (done()) return;
+    const c = ctx(seq), p = softmax(Z[c], tau());
+    const state = ['the', ...seq.map((k) => V[k])].join(' ');
+    const lps = $('log').dataset.lps ? JSON.parse($('log').dataset.lps) : [];
+    lps.push(Math.log(p[i]));
+    $('log').dataset.lps = JSON.stringify(lps);
+    $('log').insertAdjacentHTML('beforeend', `<tr><td>${seq.length + 1}</td><td>"${state}"</td><td>${V[i]}</td><td>${p[i].toFixed(3)}</td><td>${Math.log(p[i]).toFixed(2)}</td></tr>`);
+    seq.push(i);
+    drawTokens(); drawText();
+  }
+  function newEpisode() { seq = []; $('log').innerHTML = ''; $('log').dataset.lps = '[]'; drawTokens(); drawText(); }
+
+  $('toks').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) act(+b.dataset.i); });
+  $('bOne').addEventListener('click', () => { if (done()) newEpisode(); act(Course.sample(softmax(Z[ctx(seq)], tau()))); });
+  $('bAll').addEventListener('click', () => { if (done()) newEpisode(); while (!done()) act(Course.sample(softmax(Z[ctx(seq)], tau()))); });
+  $('bNew').addEventListener('click', newEpisode);
+
+  // REINFORCE on whole sentences, baseline = mean reward so far.
+  const chart = Course.lineChart($('curve'), { xLabel: 'training episodes', yLabel: 'P(reward = 1)', yMin: 0, yMax: 1, xMin: 0 });
+  function train(n) {
+    for (let k = 0; k < n; k++) {
+      const steps = [];
+      let c = 'the';
+      for (let d = 0; d < MAXLEN; d++) {
+        const p = softmax(Z[c]), i = Course.sample(p);
+        steps.push({ c, i, p });
+        if (i === EOS) break;
+        c = V[i];
+      }
+      const R = steps.some((s) => s.i === MAT) ? 1 : 0;
+      const b = episodes ? bsum / episodes : 0;
+      for (const s of steps) for (let j = 0; j < V.length; j++) Z[s.c][j] += ALPHA * (R - b) * ((j === s.i ? 1 : 0) - s.p[j]);
+      episodes++; bsum += R;
+    }
+    curve.push([episodes, pReward()]);
+  }
+  function drawTraining() {
+    chart.draw([{ data: curve, color: Course.colors.green, dots: true }]);
+    $('tops').innerHTML = topSentences().map((t) => `<tr><td>${t.s}</td><td>${t.p.toFixed(3)}</td><td class="${t.r ? 'good' : 'muted'}">R = ${+t.r}</td></tr>`).join('');
+  }
+  $('bTrain').addEventListener('click', () => { train(50); drawTraining(); drawTokens(); });
+  $('bReset').addEventListener('click', () => { resetModel(); drawTraining(); newEpisode(); });
+
+  resetModel();
+  drawTraining();
+  newEpisode();
+
+  const T = 0.5, zs = [2, 1, 0], ez = zs.map((z) => Math.exp(z / T));
+  Course.quiz([
+    {
+      q: 'A model writes a 3-token reply. The tokens had probabilities $0.5$, $0.4$ and $0.25$ when chosen. What is $\\pi_\\theta(y \\mid x)$?',
+      answer: 0.5 * 0.4 * 0.25,
+      tol: 0.0005,
+      explain: '$0.5 \\times 0.4 \\times 0.25 = 0.05$.',
+    },
+    {
+      q: 'Same reply. What is $\\log \\pi_\\theta(y \\mid x)$ (natural log)?',
+      answer: Math.log(0.05),
+      tol: 0.01,
+      explain: '$\\log 0.5 + \\log 0.4 + \\log 0.25 = -0.693 - 0.916 - 1.386 = -2.996$.',
+    },
+    {
+      q: 'Three tokens have logits $(2, 1, 0)$. With temperature $\\tau = 0.5$, what probability does the first token get?',
+      answer: ez[0] / ez.reduce((a, b) => a + b, 0),
+      tol: 0.003,
+      explain: '$e^{4} / (e^{4} + e^{2} + e^{0}) = 54.6 / 63.0 = 0.867$. At $\\tau = 1$ it would be $0.665$.',
+    },
+    {
+      q: 'In the RL view of a language model, what is the state $s_t$?',
+      choices: ['The last token only', 'The prompt and every token generated so far', 'The reward so far', 'The model\'s parameters $\\theta$'],
+      answer: 1,
+      explain: '$s_t = (x, y_{<t})$. Appending a token is the (deterministic) transition.',
+    },
+  ]);
+</script>
+</body>
+</html>

@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>87. Reward models | Learning RL</title>
+<meta name="description" content="Fit a reward model to pairwise preferences with the Bradley–Terry loss. It generalises to answers nobody rated, and it learns the raters' biases along with their taste.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  #plane { width: 100%; max-width: 420px; aspect-ratio: 1; display: block; margin: 8px auto; cursor: crosshair; touch-action: manipulation; }
+  #eqW { overflow-x: auto; min-height: 2.6em; }
+  .vs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 8px 0; }
+  .vs > div { border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; background: var(--soft); font-size: 0.9rem; color: var(--body); }
+  .vs b { color: var(--heading); }
+</style>
+</head>
+<body data-lesson="87">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Reward models</h1>
+  <p class="lede">Lesson 86 gave a score to five fixed answers. RL needs a score for any answer the policy might write, including ones no person has seen. A reward model is a function fitted to the comparisons with the Bradley–Terry loss, so it can score new answers. It learns whatever the raters reward, biases included.</p>
+
+  <section class="card">
+    <h2>Fit a reward model</h2>
+    <p class="note">Each dot is an answer, placed by two features: how correct it is and how long it is. A simulated rater compared 120 random pairs, preferring answers with higher $u = 4 \cdot \text{correct} + b \cdot \text{length}$ (with Bradley–Terry noise). The reward model $r_{\mathbf w} = w_1 \cdot \text{correct} + w_2 \cdot \text{length}$ is fitted to those choices. Shading is its score. Click the square to score a new answer.</p>
+    <label class="slider"><span>Rater's length bias $b$</span><input id="iB" type="range" min="0" max="5" step="0.5" value="1"><output></output></label>
+    <canvas id="plane"></canvas>
+    <div id="eqW"></div>
+    <div class="stats">
+      <div class="stat"><span class="k">Held-out agreement, reward model</span><span class="v" id="sAcc">–</span></div>
+      <div class="stat"><span class="k">Same, rater's own scores</span><span class="v" id="sBayes">–</span></div>
+    </div>
+    <div class="vs">
+      <div><b>Long and wrong</b><br>correct 0.1, length 1.0<br>$r$ = <span id="rLW">–</span></div>
+      <div><b>Short and right</b><br>correct 0.9, length 0.1<br>$r$ = <span id="rSR">–</span></div>
+    </div>
+    <p class="status" id="status"></p>
+    <canvas class="chart" id="loss" style="height:180px"></canvas>
+    <div class="row">
+      <button id="bNew">New comparisons</button>
+      <span class="spacer"></span>
+      <span class="muted" id="sClick"></span>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>A <b>reward model</b> $r_\phi(x, y)$ maps a prompt $x$ and a reply $y$ to a number. The data is a set $\mathcal{D}$ of triples $(x, y_w, y_l)$: a prompt, the preferred reply and the other one. Bradley–Terry (Lesson 86) with $r_\phi$ in place of a table of scores gives the loss (Ouyang et al. 2022, eq. 1)</p>
+    $$\begin{aligned} \mathcal{L}(\phi) = -\,\mathbb{E}_{(x, y_w, y_l) \sim \mathcal{D}}\Big[&\log \sigma\big(r_\phi(x, y_w) \\ &\;- r_\phi(x, y_l)\big)\Big] \end{aligned}$$
+    <p>It is the negative log-likelihood of the observed choices. A pair the model already orders confidently costs almost nothing; a pair it orders the wrong way costs a lot.</p>
+    <p><b>Gradient.</b> Write $\Delta = r_\phi(x, y_w) - r_\phi(x, y_l)$. Since $\frac{d}{d\Delta}\big(-\log\sigma(\Delta)\big) = -(1 - \sigma(\Delta))$,</p>
+    $$\begin{aligned} \nabla_\phi \mathcal{L} = -\,\mathbb{E}\Big[&\big(1 - \sigma(\Delta)\big) \\ &\times\big(\nabla_\phi r_\phi(x, y_w) - \nabla_\phi r_\phi(x, y_l)\big)\Big] \end{aligned}$$
+    <p>Descent raises the winner's score and lowers the loser's, weighted by how surprised the model was. For the linear model on this page, $\nabla_{\mathbf w} r = \mathbf f$ (the feature vector), so this is logistic regression on feature differences $\mathbf f_w - \mathbf f_l$. A constant term would cancel in $\Delta$, so there is no bias: scores are only defined up to a shift, as before.</p>
+    <p><b>In practice</b> $r_\phi$ is a copy of the language model with its next-token layer replaced by a single number read at the last token. It is trained on tens or hundreds of thousands of comparisons, and its output becomes $R$ in Lesson 85's MDP.</p>
+    <p><b>It learns the raters, not the truth.</b> If raters favour longer answers, a well-fitted reward model does too, and so does any policy optimised against it. Push $b$ up and the long, wrong answer outscores the short, right one. Lesson 88 limits how hard a policy can push on these flaws.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const sig = (z) => 1 / (1 + Math.exp(-z));
+  const NA = 40, NP = 120, NT = 400, STEPS = 400, LR = 1.0;
+  let pts, pairs, test, w, losses, probe = null;
+
+  const bias = Course.slider('#iB', (v) => v.toFixed(1), () => { fresh(); });
+  const u = (f) => 4 * f[0] + bias() * f[1];
+  const r = (f) => w[0] * f[0] + w[1] * f[1];
+
+  function makePairs(n) {
+    return Array.from({ length: n }, () => {
+      const i = Course.randInt(NA); let j = Course.randInt(NA - 1); if (j >= i) j++;
+      return Math.random() < sig(u(pts[i]) - u(pts[j])) ? [i, j] : [j, i];
+    });
+  }
+
+  // Full-batch gradient descent on the Bradley-Terry loss.
+  function fit() {
+    w = [0, 0]; losses = [];
+    for (let s = 0; s <= STEPS; s++) {
+      let L = 0; const g = [0, 0];
+      for (const [a, b] of pairs) {
+        const d0 = pts[a][0] - pts[b][0], d1 = pts[a][1] - pts[b][1], D = w[0] * d0 + w[1] * d1;
+        L += Math.log(1 + Math.exp(-D));
+        const c = 1 - sig(D);
+        g[0] -= c * d0; g[1] -= c * d1;
+      }
+      losses.push([s, L / pairs.length]);
+      if (s < STEPS) { w[0] -= (LR * g[0]) / pairs.length; w[1] -= (LR * g[1]) / pairs.length; }
+    }
+  }
+
+  function fresh() {
+    pts = Array.from({ length: NA }, () => [Math.random(), Math.random()]);
+    pairs = makePairs(NP); test = makePairs(NT);
+    fit(); draw();
+  }
+
+  const canvas = $('plane'), ctx = canvas.getContext('2d');
+  const lossChart = Course.lineChart($('loss'), { xLabel: 'gradient step', yLabel: 'loss', xMin: 0, xMax: STEPS, yMin: 0 });
+  const PAD = 34;
+
+  function draw() {
+    const dpr = window.devicePixelRatio || 1, S = canvas.clientWidth;
+    if (!S) return;
+    canvas.width = S * dpr; canvas.height = S * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, S, S);
+    const L = S - PAD - 8, X = (c) => PAD + c * L, Y = (l) => 8 + (1 - l) * L;
+    const corners = [[0, 0], [1, 0], [0, 1], [1, 1]].map(r), M = Math.max(...corners.map(Math.abs), 1e-6);
+    const mid = (Math.max(...corners) + Math.min(...corners)) / 2;
+    const N = 24;
+    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+      const f = [(i + 0.5) / N, (j + 0.5) / N];
+      ctx.fillStyle = Course.heat((r(f) - mid) / (M || 1), 1.1);
+      ctx.fillRect(X(i / N), Y((j + 1) / N), L / N + 0.5, L / N + 0.5);
+    }
+    ctx.strokeStyle = '#9ca3af'; ctx.strokeRect(PAD, 8, L, L);
+    ctx.fillStyle = '#6b7280'; ctx.font = '11px -apple-system, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.fillText('correctness →', PAD + L / 2, S - 18);
+    [0, 0.5, 1].forEach((t) => ctx.fillText(t, X(t), 8 + L + 2));
+    ctx.save(); ctx.translate(10, 8 + L / 2); ctx.rotate(-Math.PI / 2); ctx.fillText('length →', 0, -4); ctx.restore();
+    // Answers.
+    pts.forEach((f) => { ctx.beginPath(); ctx.arc(X(f[0]), Y(f[1]), 4, 0, 2 * Math.PI); ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#374151'; ctx.stroke(); });
+    // The two test answers.
+    const mark = (f, label) => {
+      ctx.fillStyle = Course.colors.amber; ctx.beginPath(); ctx.arc(X(f[0]), Y(f[1]), 6, 0, 2 * Math.PI); ctx.fill();
+      ctx.fillStyle = '#111'; ctx.textAlign = f[0] < 0.5 ? 'left' : 'right'; ctx.textBaseline = 'middle';
+      ctx.fillText(label, X(f[0]) + (f[0] < 0.5 ? 10 : -10), Y(f[1]));
+    };
+    mark([0.1, 1.0], 'long, wrong'); mark([0.9, 0.1], 'short, right');
+    if (probe) { ctx.strokeStyle = Course.colors.blue; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(X(probe[0]), Y(probe[1]), 7, 0, 2 * Math.PI); ctx.stroke(); ctx.lineWidth = 1; }
+
+    Course.tex($('eqW'), `\\begin{gathered} r_{\\mathbf w} = ${w[0].toFixed(2)}\\cdot\\text{correct} + ${w[1].toFixed(2)}\\cdot\\text{length} \\\\ \\text{rater: } u = 4\\cdot\\text{correct} + ${bias()}\\cdot\\text{length} \\end{gathered}`, true);
+    const acc = test.filter(([a, b]) => r(pts[a]) > r(pts[b])).length / NT;
+    const bay = test.filter(([a, b]) => u(pts[a]) > u(pts[b])).length / NT;
+    $('sAcc').textContent = `${(100 * acc).toFixed(0)}%`;
+    $('sBayes').textContent = `${(100 * bay).toFixed(0)}%`;
+    const lw = r([0.1, 1]), sr = r([0.9, 0.1]);
+    $('rLW').textContent = lw.toFixed(2); $('rSR').textContent = sr.toFixed(2);
+    $('status').textContent = `The reward model gives P(long and wrong ≻ short and right) = ${sig(lw - sr).toFixed(2)}.` +
+      (lw > sr ? ' It prefers the wrong answer, because the raters did.' : '');
+    lossChart.draw([{ data: losses, color: Course.colors.green }], { hlines: [{ y: Math.log(2), label: 'log 2 (coin flip)', color: Course.colors.grey }] });
+    $('sClick').textContent = probe ? `new answer (${probe[0].toFixed(2)}, ${probe[1].toFixed(2)}): r = ${r(probe).toFixed(2)}` : '';
+  }
+
+  canvas.addEventListener('click', (e) => {
+    const b = canvas.getBoundingClientRect(), L = b.width - PAD - 8;
+    const c = (e.clientX - b.left - PAD) / L, l = 1 - (e.clientY - b.top - 8) / L;
+    if (c < 0 || c > 1 || l < 0 || l > 1) return;
+    probe = [c, l]; draw();
+  });
+  new ResizeObserver(() => pts && draw()).observe(canvas);
+  $('bNew').addEventListener('click', fresh);
+  fresh();
+
+  const wq = [4, 1], fA = [1, 0.2], fB = [0.5, 1];
+  const rA = wq[0] * fA[0] + wq[1] * fA[1], rB = wq[0] * fB[0] + wq[1] * fB[1];
+  Course.quiz([
+    {
+      q: 'For one comparison the reward model gives the winner $2$ more than the loser. What is the loss $-\\log\\sigma(\\Delta)$?',
+      answer: Math.log(1 + Math.exp(-2)),
+      tol: 0.002,
+      explain: '$-\\log\\sigma(2) = \\log(1 + e^{-2}) = 0.127$.',
+    },
+    {
+      q: 'What is the loss on a pair when the reward model gives both replies the same score?',
+      answer: Math.log(2),
+      tol: 0.002,
+      explain: '$-\\log\\sigma(0) = \\log 2 = 0.693$, the dashed line on the loss chart.',
+    },
+    {
+      q: 'A linear reward model has $\\mathbf w = (4, 1)$ on (correct, length). Answer A has features $(1, 0.2)$, answer B $(0.5, 1)$. What is $P(A \\succ B)$?',
+      answer: sig(rA - rB),
+      tol: 0.003,
+      explain: `$r_A = 4.2$, $r_B = 3$, so $\\sigma(1.2) = 0.769$.`,
+    },
+    {
+      q: 'Why does the reward model on this page have no constant term $w_0$?',
+      choices: [
+        'It would make training unstable',
+        'It cancels in $r_\\phi(y_w) - r_\\phi(y_l)$, so the loss cannot see it',
+        'Constants are always zero in RL',
+        'It would be learned as the length bias',
+      ],
+      answer: 1,
+      explain: 'Bradley–Terry depends only on score differences, so any shift of every score gives the same loss.',
+    },
+  ]);
+</script>
+</body>
+</html>

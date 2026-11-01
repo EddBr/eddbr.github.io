@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>38. Monte Carlo control | Learning RL</title>
+<meta name="description" content="A blackjack bot that learns when to hit, from nothing but played hands. Monte Carlo with exploring starts, then ε-greedy.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .maps { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .maps h3 { font-size: 0.9rem; color: var(--muted); font-weight: 500; text-align: center; margin: 0 0 4px; }
+  .hm { display: grid; grid-template-columns: 22px repeat(10, 1fr); gap: 1px; font-size: 0.7rem; font-variant-numeric: tabular-nums; }
+  .hm .h { color: var(--muted); text-align: center; align-self: center; }
+  .hm .c { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 2px; cursor: pointer; font-size: 0.65rem; font-weight: 700; }
+  .hm .c.H { background: #dbeafe; color: #1d4ed8; }
+  .hm .c.S { background: var(--accent-soft); color: #047857; }
+  .hm .c.off { outline: 2px solid var(--amber); outline-offset: -2px; }
+  .hm .c.sel { outline: 2px solid var(--heading); outline-offset: -2px; }
+  .hm .xl { grid-column: 2 / -1; text-align: center; color: var(--muted); }
+  .key { display: inline-block; padding: 0 6px; border-radius: 3px; font-weight: 700; font-size: 0.8rem; }
+  .key.H { background: #dbeafe; color: #1d4ed8; }
+  .key.S { background: var(--accent-soft); color: #047857; }
+  @media (max-width: 560px) { .maps { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body data-lesson="38">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Monte Carlo control</h1>
+  <p class="lede">Lesson 37 measured a fixed policy. Control means finding a good one. Apply generalised policy iteration (Lesson 34) with Monte Carlo as the evaluation step: estimate action values from played hands, act greedily on them, repeat.</p>
+
+  <section class="card">
+    <p class="note">S&amp;B Example 5.3: Monte Carlo with exploring starts. Each hand starts in a random state with a random first action, then follows the current greedy policy. It starts from "stick on 20 or 21". <span class="key H">H</span> hit, <span class="key S">S</span> stick. Amber outlines mark cells that differ from the exact optimal policy.</p>
+    <div class="row">
+      <button id="bRun" class="primary">Run</button>
+      <button id="b100k">+100,000 hands</button>
+      <button id="bReset" class="quiet">Reset</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="k">Hands played</span><span class="v" id="sN">0</span></div>
+      <div class="stat"><span class="k">Cells matching optimal</span><span class="v" id="sM">–</span></div>
+      <div class="stat"><span class="k">Expected reward per hand</span><span class="v" id="sV">–</span></div>
+    </div>
+    <div class="maps">
+      <div><h3>Usable ace</h3><div class="hm" id="hmU"></div></div>
+      <div><h3>No usable ace</h3><div class="hm" id="hmN"></div></div>
+    </div>
+    <p class="status" id="cellInfo"></p>
+    <canvas class="chart" id="chart"></canvas>
+    <p class="note">"Expected reward per hand" is exact: the greedy policy's value averaged over the initial deal, computed from the rules (the learner never sees this). The best possible is <span id="optV"></span> per hand. Some cells take millions of hands, such as hard 16 against a 10 and hard 12 against a 4, where hitting and sticking differ by less than 0.01.</p>
+
+    <div class="sub">
+      <h2>Without exploring starts</h2>
+      <p class="note">Real hands start from the deal, not from a state you choose. The fix is to keep exploring: an <b>ε-greedy</b> policy (S&amp;B §5.4) picks a random action with probability $\varepsilon = 0.1$. Both learners play 1,000,000 hands. The lines show the exact value of each one's greedy policy.</p>
+      <div class="row"><button id="bCompare">Run comparison</button></div>
+      <canvas class="chart" id="chart2" hidden></canvas>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>Without a model, $V$ is not enough to act on: choosing $\arg\max_a \sum p\,[r + \gamma V(s')]$ needs $p$. So Monte Carlo control estimates action values $Q(s, a)$ instead, by averaging the returns that followed each state–action pair:</p>
+    $$Q(S_t, A_t) \leftarrow Q(S_t, A_t) + \frac{1}{N(S_t, A_t)}\big(G_t - Q(S_t, A_t)\big)$$
+    <p>Then the policy improves greedily, with no model needed:</p>
+    $$\pi(s) = \arg\max_a Q(s, a)$$
+    <p>This is GPI with one episode of evaluation between improvements. Greedy with respect to $q_\pi$ is an improvement by Lesson 31's theorem.</p>
+    <p><b>The exploration problem.</b> A greedy policy never tries the actions it thinks are worse, so their $Q$ never gets corrected. <b>Exploring starts</b> fixes this by starting each episode at a random state–action pair, so every pair is tried infinitely often.</p>
+    <p><b>ε-greedy</b> fixes it without control over starts. With $|\mathcal{A}(s)|$ actions:</p>
+    $$\pi(a \mid s) = \begin{cases} 1 - \varepsilon + \dfrac{\varepsilon}{|\mathcal{A}(s)|} & a = \arg\max_{a'} Q(s, a') \\[2mm] \dfrac{\varepsilon}{|\mathcal{A}(s)|} & \text{otherwise} \end{cases}$$
+    <p>Every action keeps probability at least $\varepsilon/|\mathcal{A}(s)|$. The policy improvement theorem still holds within the class of such policies, so this converges to the best ε-soft policy, not the best policy. Its greedy part is what the comparison plots.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  // ---- Blackjack rules (Lesson 37).
+  const card = () => Math.min(10, 1 + Course.randInt(13));
+  function add(h, c) {
+    let sum = h.sum + c, u = h.u;
+    if (c === 1 && sum + 10 <= 21) { sum += 10; u = true; }
+    if (sum > 21 && u) { sum -= 10; u = false; }
+    return { sum, u };
+  }
+  const EMPTY = { sum: 0, u: false };
+  const outcome = (mine, dealer) => (dealer > 21 || mine > dealer ? 1 : mine < dealer ? -1 : 0);
+  function dealerFinal(up) {
+    let d = add(add(EMPTY, up), card());
+    while (d.sum < 17) d = add(d, card());
+    return d.sum;
+  }
+  // ---- Tables: state index 0..199, action 0 = stick, 1 = hit.
+  const ix = (sum, u, up) => ((sum - 12) * 2 + (u ? 1 : 0)) * 10 + (up - 1);
+  const ALL = [];
+  for (let s = 12; s <= 21; s++) for (const u of [false, true]) for (let d = 1; d <= 10; d++) ALL.push([s, u, d]);
+
+  function makeLearner() {
+    const L = { Q: new Float64Array(400), N: new Float64Array(400), pi: new Uint8Array(200), hands: 0 };
+    for (const [s, u, d] of ALL) L.pi[ix(s, u, d)] = s < 20 ? 1 : 0;
+    return L;
+  }
+  // Play from player hand h vs dealer up card, first action a0 (or null to follow the policy).
+  // Records (state, action) pairs, then does the first-visit MC update and greedy improvement.
+  function playFrom(L, h, up, a0, eps) {
+    const pairs = [];
+    let r, a = a0;
+    for (;;) {
+      const j = ix(h.sum, h.u, up);
+      if (a === null) a = eps && Math.random() < eps ? Course.randInt(2) : L.pi[j];
+      pairs.push(j * 2 + a);
+      if (a === 0) { r = outcome(h.sum, dealerFinal(up)); break; }
+      h = add(h, card());
+      if (h.sum > 21) { r = -1; break; }
+      a = null;
+    }
+    for (const k of pairs) {
+      L.N[k]++; L.Q[k] += (r - L.Q[k]) / L.N[k];
+      const j = k >> 1, qs = L.Q[2 * j], qh = L.Q[2 * j + 1];
+      if (qh > qs) L.pi[j] = 1; else if (qs > qh) L.pi[j] = 0;   // ties keep the current action
+    }
+    L.hands++;
+  }
+  function esEpisode(L) {
+    const [s, u, d] = ALL[Course.randInt(200)];
+    playFrom(L, { sum: s, u }, d, Course.randInt(2), 0);
+  }
+  function dealEpisode(L, eps) {
+    let h = add(add(EMPTY, card()), card());
+    const up = card();
+    if (h.sum === 21) { L.hands++; return; }     // natural: no decision to learn from
+    while (h.sum < 12) h = add(h, card());
+    playFrom(L, h, up, null, eps);
+  }
+
+  // ---- Exact evaluation of any deterministic policy over the infinite deck.
+  const PC = (c) => (c === 10 ? 4 / 13 : 1 / 13);
+  const dist = {};
+  function dealerDist(up) {
+    if (dist[up]) return dist[up];
+    const out = new Array(6).fill(0);
+    (function rec(h, p) {
+      if (h.sum > 21) { out[5] += p; return; }
+      if (h.sum >= 17) { out[h.sum - 17] += p; return; }
+      for (let c = 1; c <= 10; c++) rec(add(h, c), p * PC(c));
+    })(add(EMPTY, up), 1);
+    return (dist[up] = out);
+  }
+  const stickV = (sum, up) => { const d = dealerDist(up); let v = d[5]; for (let k = 0; k < 5; k++) v += sum > 17 + k ? d[k] : sum < 17 + k ? -d[k] : 0; return v; };
+  // policy(j) -> 0/1, or null for optimal. Returns V(sum, u, up).
+  function solver(policy) {
+    const memo = new Map();
+    const V = (sum, u, up) => {
+      if (sum > 21) return -1;
+      const key = sum * 100 + (u ? 50 : 0) + up;
+      if (memo.has(key)) return memo.get(key);
+      let hv = 0;
+      for (let c = 1; c <= 10; c++) { const h = add({ sum, u }, c); hv += PC(c) * V(h.sum, h.u, up); }
+      const sv = stickV(sum, up);
+      const v = sum < 12 ? hv : policy ? (policy(ix(sum, u, up)) ? hv : sv) : Math.max(hv, sv);
+      memo.set(key, v); return v;
+    };
+    return V;
+  }
+  function dealValue(policy) {
+    const V = solver(policy); let tot = 0;
+    for (let a = 1; a <= 10; a++) for (let b = 1; b <= 10; b++) for (let up = 1; up <= 10; up++) {
+      const p = PC(a) * PC(b) * PC(up), h = add(add(EMPTY, a), b);
+      tot += p * (h.sum === 21 ? 1 - (up === 1 ? 4 / 13 : up === 10 ? 1 / 13 : 0) : V(h.sum, h.u, up));
+    }
+    return tot;
+  }
+  const Vopt = solver(null);
+  const qStar = (j, sum, u, up) => {
+    let hv = 0;
+    for (let c = 1; c <= 10; c++) { const h = add({ sum, u }, c); hv += PC(c) * Vopt(h.sum, h.u, up); }
+    return [stickV(sum, up), hv];
+  };
+  const OPT = new Uint8Array(200);
+  for (const [s, u, d] of ALL) { const [qs, qh] = qStar(0, s, u, d); OPT[ix(s, u, d)] = qh > qs ? 1 : 0; }
+  const OPT_V = dealValue(null);
+  $('optV').textContent = OPT_V.toFixed(3);
+
+  // ---- UI
+  const DL = ['A', 2, 3, 4, 5, 6, 7, 8, 9, 10];
+  let L, hist, sel = null, timer = null;
+  function drawMap(el, u) {
+    let html = '';
+    for (let sum = 21; sum >= 12; sum--) {
+      html += `<span class="h">${sum}</span>`;
+      for (let up = 1; up <= 10; up++) {
+        const j = ix(sum, u, up), a = L.pi[j];
+        const isSel = sel === j;
+        html += `<span class="c ${a ? 'H' : 'S'}${a !== OPT[j] ? ' off' : ''}${isSel ? ' sel' : ''}" data-j="${j}" data-s="${sum}" data-u="${u ? 1 : 0}" data-d="${up}">${a ? 'H' : 'S'}</span>`;
+      }
+    }
+    html += '<span></span>' + DL.map((d) => `<span class="h">${d}</span>`).join('') + '<span class="xl">dealer shows</span>';
+    el.innerHTML = html;
+  }
+  const chart = Course.lineChart($('chart'), { xLabel: 'log₁₀ hands played', yLabel: 'reward per hand' });
+  function render() {
+    drawMap($('hmU'), true); drawMap($('hmN'), false);
+    let match = 0; for (let j = 0; j < 200; j++) if (L.pi[j] === OPT[j]) match++;
+    const v = dealValue((j) => L.pi[j]);
+    $('sN').textContent = L.hands.toLocaleString();
+    $('sM').textContent = `${match} / 200`;
+    $('sV').textContent = v.toFixed(3);
+    const x = Math.log10(Math.max(1, L.hands));
+    if (L.hands && (!hist.length || hist[hist.length - 1][0] !== x)) hist.push([x, v]);
+    chart.draw([{ data: hist.length ? hist : [[3, v]], color: Course.colors.green, label: 'greedy policy', dots: hist.length < 3 }],
+      { hlines: [{ y: OPT_V, label: 'optimal', color: Course.colors.amber }] });
+    info();
+  }
+  function info() {
+    if (sel === null) { $('cellInfo').textContent = 'Click a cell to see its action values.'; return; }
+    const c = document.querySelector(`.c[data-j="${sel}"]`);
+    const s = +c.dataset.s, u = c.dataset.u === '1', d = +c.dataset.d;
+    const [qs, qh] = qStar(sel, s, u, d);
+    $('cellInfo').textContent = `Sum ${s}, dealer ${DL[d - 1]}, ${u ? 'usable ace' : 'no usable ace'}. ` +
+      `Q(stick) = ${L.Q[2 * sel].toFixed(3)} (${L.N[2 * sel]} hands), Q(hit) = ${L.Q[2 * sel + 1].toFixed(3)} (${L.N[2 * sel + 1]} hands). ` +
+      `Exact: q*(stick) = ${qs.toFixed(3)}, q*(hit) = ${qh.toFixed(3)}.`;
+  }
+  ['hmU', 'hmN'].forEach((id) => $(id).addEventListener('click', (e) => {
+    const c = e.target.closest('.c'); if (!c) return;
+    sel = +c.dataset.j; render();
+  }));
+  function reset() { stop(); L = makeLearner(); hist = []; render(); }
+  function train(k) { for (let i = 0; i < k; i++) esEpisode(L); render(); }
+  function stop() { clearInterval(timer); timer = null; $('bRun').textContent = 'Run'; }
+  $('bRun').addEventListener('click', () => {
+    if (timer) return stop();
+    $('bRun').textContent = 'Pause';
+    timer = setInterval(() => train(L.hands < 100000 ? 5000 : 25000), 60);
+  });
+  $('b100k').addEventListener('click', () => train(100000));
+  $('bReset').addEventListener('click', reset);
+  reset();
+
+  const chart2 = Course.lineChart($('chart2'), { xLabel: 'log₁₀ hands played', yLabel: 'reward per hand' });
+  $('bCompare').addEventListener('click', () => {
+    $('bCompare').disabled = true; $('bCompare').textContent = 'Running…';
+    setTimeout(() => {
+      const A = makeLearner(), B = makeLearner(), ha = [], hb = [];
+      for (let target = 1000; target <= 1e6 * 1.0001; target *= Math.pow(10, 0.1)) {
+        while (A.hands < target) { esEpisode(A); dealEpisode(B, 0.1); }
+        ha.push([Math.log10(A.hands), dealValue((j) => A.pi[j])]);
+        hb.push([Math.log10(B.hands), dealValue((j) => B.pi[j])]);
+      }
+      $('chart2').hidden = false;
+      chart2.draw([
+        { data: ha, color: Course.colors.green, label: 'exploring starts' },
+        { data: hb, color: Course.colors.blue, label: 'ε-greedy, from the deal' },
+      ], { hlines: [{ y: OPT_V, label: 'optimal', color: Course.colors.amber }] });
+      $('bCompare').disabled = false; $('bCompare').textContent = 'Run again';
+    }, 30);
+  });
+
+  Course.quiz([
+    {
+      q: 'Two actions, $\\varepsilon = 0.1$. What probability does an ε-greedy policy give the greedy action?',
+      answer: 1 - 0.1 + 0.1 / 2,
+      explain: '$1 - \\varepsilon + \\varepsilon/|\\mathcal{A}| = 0.9 + 0.05 = 0.95$. The random choice can also pick the greedy action.',
+    },
+    {
+      q: 'Four actions, $\\varepsilon = 0.2$. What probability does each non-greedy action get?',
+      answer: 0.2 / 4,
+      tol: 0.0001,
+      explain: '$\\varepsilon/|\\mathcal{A}| = 0.2/4 = 0.05$.',
+    },
+    {
+      q: '$Q(s, \\text{hit}) = 0.2$ after 4 returns. The 5th hand through $(s, \\text{hit})$ loses ($-1$). What is the new $Q(s, \\text{hit})$?',
+      answer: 0.2 + (-1 - 0.2) / 5,
+      tol: 0.0001,
+      explain: '$0.2 + \\tfrac15(-1 - 0.2) = 0.2 - 0.24 = -0.04$.',
+    },
+    {
+      q: 'Why does Monte Carlo control estimate $Q(s, a)$ rather than $V(s)$?',
+      choices: [
+        '$Q$ converges faster than $V$',
+        'Acting greedily on $V$ needs the model $p$ to look one step ahead; acting greedily on $Q$ does not',
+        'There are fewer state–action pairs than states',
+      ],
+      answer: 1,
+      explain: '$\\arg\\max_a Q(s, a)$ reads the answer straight from the table. With $V$ you would need $\\sum p\\,[r + \\gamma V(s\')]$ for each action.',
+    },
+  ]);
+</script>
+</body>
+</html>

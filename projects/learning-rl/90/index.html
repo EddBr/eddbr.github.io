@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>90. Reward hacking | Learning RL</title>
+<meta name="description" content="Lesson 2's corridor with a coin that respawns. The agent stops going for the gem and farms the coin forever, exactly as the reward says it should.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .world { flex-wrap: nowrap; }
+  .world .cell { flex-direction: column; }
+  .world .cell .arr { position: absolute; bottom: -1px; z-index: 1; font-size: 13px; font-weight: 700; color: var(--accent); }
+  .world .cell.gone { opacity: 0.35; }
+  .options { display: grid; gap: 8px; margin-top: 12px; }
+  .opt { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; flex-wrap: wrap; }
+  .opt .name { font-weight: 600; color: var(--heading); min-width: 9em; }
+  .opt .sum { flex: 1; color: var(--body); overflow-x: auto; }
+  .opt.best { border-color: var(--accent); background: var(--accent-soft); }
+  .opt.best .name::after { content: " ← chosen"; color: var(--accent); font-weight: 500; font-size: 0.85rem; }
+  .tablewrap { overflow-x: auto; }
+  td.pick { font-weight: 700; color: var(--accent); }
+  @media (max-width: 560px) {
+    .opt { flex-direction: column; align-items: flex-start; gap: 4px; }
+    .world .cell { width: 46px; height: 46px; }
+  }
+</style>
+</head>
+<body data-lesson="90">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Reward hacking</h1>
+  <p class="lede">An agent maximises the reward it is given, not the goal its designer had in mind. When the two differ, the agent finds the gap and exploits it. This is called reward hacking or specification gaming.</p>
+
+  <section class="card">
+    <p class="note">Lesson 2's corridor, with one change: the coin respawns as soon as the robot steps off it. The designer wants the robot to reach the gem. The coin was meant as a small hint.</p>
+    <div class="world" id="world"></div>
+    <label class="slider"><span>💰 Coin $c$</span><input id="iC" type="range" min="0" max="3" step="0.5" value="1"><output></output></label>
+    <label class="slider"><span>💎 Gem $g$</span><input id="iG" type="range" min="0" max="60" step="1" value="5"><output></output></label>
+    <label class="slider"><span>Discount $\gamma$</span><input id="iGam" type="range" min="0.5" max="0.99" step="0.01" value="0.9"><output></output></label>
+    <label class="muted"><input type="checkbox" id="cResp" checked> coin respawns</label>
+    <div class="options">
+      <div class="opt" id="optL"><span class="name">Farm the coin</span><span class="sum" id="sL"></span></div>
+      <div class="opt" id="optR"><span class="name">Go for the gem</span><span class="sum" id="sR"></span></div>
+    </div>
+    <p class="status" id="status"></p>
+    <div class="row">
+      <button id="bRun" class="primary">Run</button>
+      <button id="bReset" class="quiet">Reset robot</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="k">Steps</span><span class="v" id="sSteps">0</span></div>
+      <div class="stat"><span class="k">Return so far</span><span class="v" id="sRet">0</span></div>
+      <div class="stat"><span class="k">Coins collected</span><span class="v" id="sCoins">0</span></div>
+      <div class="stat"><span class="k">Gem reached (the real goal)</span><span class="v" id="sGem">no</span></div>
+    </div>
+    <p class="note">Green arrows: the optimal action in each cell, from value iteration (Lesson 33) on this reward. The robot follows them.</p>
+
+    <div class="sub">
+      <h2>A learner finds the same loop</h2>
+      <p class="note">Q-learning (Lesson 52) with $\alpha = 0.1$, $\varepsilon = 0.1$, 1000 episodes of at most 50 steps, starting in cell 1. It is never told about loops. It only sees rewards.</p>
+      <div class="row"><button id="bTrain">Train Q-learning</button><span class="muted" id="trainOut"></span></div>
+      <div class="tablewrap" id="qwrap" hidden>
+        <table class="data">
+          <thead><tr><th>cell</th><th>learned $Q(s,\leftarrow)$</th><th>learned $Q(s,\rightarrow)$</th><th>exact $q_*(s,\leftarrow)$</th><th>exact $q_*(s,\rightarrow)$</th></tr></thead>
+          <tbody id="qtab"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>The robot starts in cell 1, next to the coin. Stepping onto the coin pays $c$. Stepping back off pays 0, and the coin reappears. Repeating forever gives the return</p>
+    $$\begin{aligned} G_{\text{coin}} &= c + \gamma \cdot 0 + \gamma^2 c + \gamma^3 \cdot 0 + \dots \\ &= c \sum_{k=0}^{\infty} \gamma^{2k} = \frac{c}{1 - \gamma^2} \end{aligned}$$
+    <p>A geometric series in $\gamma^2$, because a coin arrives every second step. Walking to the gem takes 4 steps and pays $g$ on the last one:</p>
+    $$G_{\text{gem}} = \gamma^3 g$$
+    <p>The agent farms the coin whenever</p>
+    $$\frac{c}{1 - \gamma^2} > \gamma^3 g$$
+    <p>With $c = 1$ and $\gamma = 0.9$ the loop is worth $5.26$ and the gem $0.729\,g$, so any gem below about $7.2$ loses. As $\gamma \to 1$ the loop is worth unbounded reward and no finite gem can compete.</p>
+    <p>The agent is not broken. It has found the optimal policy for the reward it was given. The bug is in the reward: the designer's goal was "reach the gem", and the coin was a <b>proxy</b> that agreed with that goal only until the agent learned to exploit it.</p>
+    <p>A hint that cannot be farmed has a specific form. Ng, Harada and Russell (1999) showed that a <b>potential-based</b> shaping reward $F(s, s') = \gamma \Phi(s') - \Phi(s)$, for any function $\Phi$ of the state, never changes which policy is optimal. Along any trajectory it telescopes:</p>
+    $$\begin{aligned} &\sum_{t=0}^{T-1} \gamma^t \big(\gamma \Phi(S_{t+1}) - \Phi(S_t)\big) \\ &\quad = \gamma^T \Phi(S_T) - \Phi(S_0) \end{aligned}$$
+    <p>The total bonus depends only on where the trajectory starts and ends, so walking in a circle earns nothing. A respawning coin is not of this form: every lap pays $c$ again.</p>
+    <p>Real examples are collected in Krakovna et al.'s list. In one, a boat-racing agent in the game CoastRunners learned to circle a lagoon hitting the same respawning targets instead of finishing the race (OpenAI, 2016). Lesson 2's cleaning robot that dumps dirt to pick it up again is the same bug.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const fmt = (x) => Course.fmt(x, 2);
+  const N = 6, GEM = 5, START = 1;            // cells 0..5, coin at 0, gem at 5 (terminal)
+
+  const coin = Course.slider('#iC', (v) => v.toFixed(1), refresh);
+  const gem = Course.slider('#iG', String, refresh);
+  const gam = Course.slider('#iGam', (v) => v.toFixed(2), refresh);
+  $('cResp').addEventListener('change', refresh);
+
+  // State = position + 6 * (coin already taken). With respawning, "taken" is always 0.
+  // Actions: 0 = left, 1 = right. Returns [nextState, reward, done].
+  function step(s, a) {
+    const pos = s % N, taken = s >= N ? 1 : 0, resp = $('cResp').checked;
+    const np = Math.max(0, Math.min(N - 1, pos + (a ? 1 : -1)));
+    if (np === GEM) return [np, gem(), true];
+    let r = 0, nt = taken;
+    if (np === 0 && pos !== 0 && (resp || !taken)) { r = coin(); if (!resp) nt = 1; }
+    return [np + N * nt, r, false];
+  }
+
+  // Value iteration over the 12 states for q*.
+  function solve() {
+    const g = gam(), q = Array.from({ length: 2 * N }, () => [0, 0]);
+    for (let it = 0; it < 3000; it++) {
+      let delta = 0;
+      for (let s = 0; s < 2 * N; s++) {
+        if (s % N === GEM) continue;
+        for (let a = 0; a < 2; a++) {
+          const [s2, r, done] = step(s, a);
+          const v = r + (done ? 0 : g * Math.max(...q[s2]));
+          delta = Math.max(delta, Math.abs(v - q[s][a]));
+          q[s][a] = v;
+        }
+      }
+      if (delta < 1e-10) break;
+    }
+    return q;
+  }
+  const greedy = (qs) => (qs[1] > qs[0] + 1e-9 ? 1 : qs[0] > qs[1] + 1e-9 ? 0 : 1);
+
+  let q, s, steps, ret, coins, reached, timer = null;
+
+  function resetRobot() { stop(); s = START; steps = 0; ret = 0; coins = 0; reached = false; draw(); }
+
+  function refresh() {
+    q = solve();
+    const c = coin(), g = gem(), y = gam();
+    const resp = $('cResp').checked;
+    const Gc = resp ? c / (1 - y * y) : c + Math.pow(y, 5) * g;
+    const Gg = Math.pow(y, 3) * g;
+    if (resp) {
+      Course.tex($('sL'), `G = \\frac{c}{1-\\gamma^2} = \\frac{${fmt(c)}}{1 - ${fmt(y)}^2} = ${fmt(Gc)}`);
+    } else {
+      Course.tex($('sL'), `G = c + \\gamma^5 g = ${fmt(c)} + ${fmt(y)}^5 \\times ${g} = ${fmt(Gc)}`);
+    }
+    $('optL').querySelector('.name').textContent = resp ? 'Farm the coin' : 'Coin, then gem';
+    Course.tex($('sR'), `G = \\gamma^3 g = ${fmt(y)}^3 \\times ${g} = ${fmt(Gg)}`);
+    const firstLeft = greedy(q[START]) === 0;
+    $('optL').classList.toggle('best', firstLeft);
+    $('optR').classList.toggle('best', !firstLeft);
+    resetRobot();
+  }
+
+  function draw() {
+    const pos = s % N, taken = s >= N, resp = $('cResp').checked;
+    const cells = [];
+    for (let i = 0; i < N; i++) {
+      const st = i + (taken ? N : 0);
+      let icon = i === 0 ? '💰' : i === GEM ? '💎' : '';
+      let cls = 'cell';
+      if (i === 0 && (pos === 0 || (!resp && taken))) cls += ' gone';
+      if (i === pos && !reached) { icon = '🤖'; cls = 'cell here'; }
+      if (i === GEM && reached) { icon = '🤖'; cls = 'cell here'; }
+      const arr = i === GEM ? '' : greedy(q[st]) ? '→' : '←';
+      cells.push(`<div class="${cls}">${icon}<span class="arr">${arr}</span></div>`);
+    }
+    $('world').innerHTML = cells.join('');
+    $('sSteps').textContent = steps;
+    $('sRet').textContent = ret.toFixed(2);
+    $('sCoins').textContent = coins;
+    $('sGem').textContent = reached ? 'yes' : 'no';
+    $('sGem').className = 'v ' + (reached ? 'good' : steps > 12 ? 'bad' : '');
+    if (reached) $('status').textContent = `Reached the gem in ${steps} steps. Episode over.`;
+    else if (!steps) $('status').textContent = 'Press Run to watch the robot follow the optimal policy.';
+    else if (coins > 4) $('status').textContent = `${coins} coins and counting. The robot will never reach the gem.`;
+    else $('status').textContent = '';
+  }
+
+  function tick() {
+    if (reached) return stop();
+    const a = greedy(q[s]);
+    const [s2, r, done] = step(s, a);
+    ret += Math.pow(gam(), steps) * r;
+    if (r > 0 && !done) coins++;
+    steps++; s = s2;
+    if (done) reached = true;
+    draw();
+    if (reached || steps >= 200) stop();
+  }
+  function stop() { clearInterval(timer); timer = null; $('bRun').textContent = 'Run'; }
+  $('bRun').addEventListener('click', () => {
+    if (timer) return stop();
+    if (reached || steps >= 200) resetRobot();
+    $('bRun').textContent = 'Pause';
+    timer = setInterval(tick, 260);
+  });
+  $('bReset').addEventListener('click', resetRobot);
+
+  // Tabular Q-learning on the same corridor.
+  $('bTrain').addEventListener('click', () => {
+    const g = gam(), Q = Array.from({ length: 2 * N }, () => [0, 0]);
+    let gemEps = 0, lastGem = 0;
+    for (let ep = 0; ep < 1000; ep++) {
+      let st = START;
+      for (let t = 0; t < 50; t++) {
+        const a = Math.random() < 0.1 ? Course.randInt(2) : Course.argmax(Q[st]);
+        const [s2, r, done] = step(st, a);
+        const target = r + (done ? 0 : g * Math.max(...Q[s2]));
+        Q[st][a] += 0.1 * (target - Q[st][a]);
+        st = s2;
+        if (done) { gemEps++; if (ep >= 900) lastGem++; break; }
+      }
+    }
+    const resp = $('cResp').checked;
+    let html = '';
+    for (let p = 0; p < GEM; p++) {
+      const k = p, L = Q[k], E = q[k], gl = greedy(L);
+      html += `<tr><td>${p}</td><td class="${gl === 0 ? 'pick' : ''}">${L[0].toFixed(2)}</td><td class="${gl === 1 ? 'pick' : ''}">${L[1].toFixed(2)}</td><td>${E[0].toFixed(2)}</td><td>${E[1].toFixed(2)}</td></tr>`;
+    }
+    $('qtab').innerHTML = html;
+    $('qwrap').hidden = false;
+    $('trainOut').textContent = `Gem reached in ${lastGem} of the last 100 training episodes.` + (resp ? '' : ' (Rows show the states before the coin is taken.)');
+    $('bTrain').textContent = 'Train again';
+  });
+
+  refresh();
+
+  const y = 0.9;
+  Course.quiz([
+    {
+      q: 'Coin $c = 1$, $\\gamma = 0.9$, the coin respawns. What is the return from farming it forever, starting in cell 1?',
+      answer: 1 / (1 - y * y),
+      tol: 0.01,
+      hint: 'A coin every second step: $c(1 + \\gamma^2 + \\gamma^4 + \\dots)$.',
+      explain: '$1/(1 - 0.81) = 1/0.19 \\approx 5.26$.',
+    },
+    {
+      q: 'Gem $g = 5$, $\\gamma = 0.9$. What is the return from walking straight to the gem from cell 1?',
+      answer: Math.pow(y, 3) * 5,
+      tol: 0.01,
+      explain: 'Rewards $0, 0, 0, 5$, so $G = \\gamma^3 \\times 5 = 0.729 \\times 5 = 3.645$.',
+    },
+    {
+      q: 'With $c = 1$ and $\\gamma = 0.9$, how large must the gem be before the robot in cell 1 prefers it to the loop?',
+      answer: 1 / ((1 - y * y) * Math.pow(y, 3)),
+      tol: 0.05,
+      hint: 'Solve $\\gamma^3 g = c/(1-\\gamma^2)$ for $g$.',
+      explain: '$g = 5.263 / 0.729 \\approx 7.22$. Try it with the gem slider: 7 loses, 8 wins.',
+    },
+    {
+      q: 'Which change keeps a hint near the start but removes the incentive to loop, without changing the optimal policy for the true goal?',
+      choices: [
+        'Make the coin worth less, say 0.1',
+        'Replace it with a potential-based bonus $\\gamma\\Phi(s\') - \\Phi(s)$',
+        'Lower $\\gamma$ so the future matters less',
+      ],
+      answer: 1,
+      explain: 'A smaller coin still wins for $\\gamma$ close to 1, and lowering $\\gamma$ does not help (try $\\gamma = 0.5$). Potential-based shaping telescopes along any path, so laps earn nothing.',
+    },
+  ]);
+</script>
+</body>
+</html>

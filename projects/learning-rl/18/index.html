@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>18. Markov decision processes | Learning RL</title>
+<meta name="description" content="An icy gridworld where moves sometimes slip. Actions change the state, outcomes are uncertain, and one function p(s', r | s, a) describes it all.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  #world .gcell { background: #eff6ff; border-color: #dbeafe; flex-direction: column; }
+  #world .gcell.wall { background: #4b5563; border-color: #4b5563; }
+  #world .gcell.goal { background: var(--accent-soft); }
+  #world .gcell.pit { background: var(--red-soft); }
+  #world .gcell .emo { font-size: clamp(18px, 6vw, 30px); line-height: 1; }
+  #world .gcell .pr { position: absolute; bottom: 2px; right: 3px; font-size: clamp(10px, 2.6vw, 13px); font-weight: 700; color: var(--blue); }
+  #world .gcell .rw { position: absolute; top: 2px; left: 4px; font-size: clamp(9px, 2.4vw, 12px); color: var(--muted); }
+  #world .gcell.out { box-shadow: inset 0 0 0 3px rgba(42,122,226,0.55); }
+  #world .gcell.landed { box-shadow: inset 0 0 0 3px var(--accent); }
+  .pad { display: grid; grid-template-columns: repeat(3, 56px); grid-template-rows: repeat(2, 44px); gap: 6px; justify-content: center; margin: 10px 0; }
+  .pad button { padding: 0; font-size: 1.2rem; }
+  .pad .up { grid-column: 2; grid-row: 1; }
+  .pad .left { grid-column: 1; grid-row: 2; }
+  .pad .down { grid-column: 2; grid-row: 2; }
+  .pad .right { grid-column: 3; grid-row: 2; }
+  .tablewrap { overflow-x: auto; }
+  #dyn tr.hit td { background: var(--accent-soft); font-weight: 700; }
+  #dyn tfoot td { font-weight: 600; color: var(--heading); border-top: 2px solid var(--border); }
+  #ra { overflow-x: auto; min-height: 2.4em; }
+  #play:focus { outline: none; }
+</style>
+</head>
+<body data-lesson="18">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Markov decision processes</h1>
+  <p class="lede">A Markov decision process (MDP) is a Markov chain (Lesson 16) where an agent picks an action in each state, and the action changes where the chain goes next and what reward it pays. Outcomes can be random. One function, $p(s', r \mid s, a)$, describes the whole environment.</p>
+
+  <section class="card" id="play" tabindex="-1">
+    <p class="note">The floor is icy. A move goes where you meant with probability $1 - \text{slip}$ and slides to either side with probability $\text{slip}/2$ each. Moving into a wall or the edge leaves you where you are. Each move costs $-1$, landing on 🏁 pays $+10$ and landing in 🕳️ costs $-10$. Click any cell to put the robot there.</p>
+    <div id="world"></div>
+    <div class="pad" id="pad">
+      <button class="up" data-a="0" aria-label="Up">↑</button>
+      <button class="left" data-a="3" aria-label="Left">←</button>
+      <button class="down" data-a="2" aria-label="Down">↓</button>
+      <button class="right" data-a="1" aria-label="Right">→</button>
+    </div>
+    <label class="slider"><span>Slip</span><input id="iSlip" type="range" min="0" max="0.6" step="0.05" value="0.2"><output></output></label>
+    <p class="status" id="status">Click an arrow to move (or use the arrow keys). Hover over one first to preview where it can take you.</p>
+    <div class="tablewrap">
+      <table class="data" id="dyn"></table>
+    </div>
+    <div id="ra"></div>
+
+    <div class="sub">
+      <h2>Check the probabilities</h2>
+      <p class="note">From the robot's current cell, take the same action 1000 times (resetting after each) and count where it lands.</p>
+      <div class="row">
+        <button id="bTry">Try 1000 times</button>
+        <span class="muted" id="tryWhat"></span>
+      </div>
+      <div class="tablewrap"><table class="data" id="emp"></table></div>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>At each step $t$ the agent sees state $S_t$, picks action $A_t$, and the environment returns a reward $R_{t+1}$ and a next state $S_{t+1}$. The <b>dynamics</b> of the MDP are the probabilities</p>
+    $$\begin{aligned} &p(s', r \mid s, a) \\ &\quad = P(S_{t+1} = s',\ R_{t+1} = r \mid S_t = s,\ A_t = a) \end{aligned}$$
+    <p>for every state $s$, action $a$, next state $s'$ and reward $r$. This is the table in the interactive. It depends only on $s$ and $a$, never on earlier steps: the Markov property from Lesson 15, now with actions.</p>
+    <p>For each $s$ and $a$ the outcomes form a probability distribution:</p>
+    $$\sum_{s'} \sum_{r} p(s', r \mid s, a) = 1$$
+    <p>Two quantities used constantly later follow from $p$ by summing. The <b>state-transition probability</b> ignores the reward:</p>
+    $$p(s' \mid s, a) = \sum_r p(s', r \mid s, a)$$
+    <p>The <b>expected reward</b> for an action in a state averages it:</p>
+    $$\begin{aligned} r(s, a) &= \mathbb{E}[R_{t+1} \mid S_t = s, A_t = a] \\ &= \sum_{r} r \sum_{s'} p(s', r \mid s, a) \end{aligned}$$
+    <p>This is the "expected reward" line under the table.</p>
+    <p>An MDP is the states $\mathcal{S}$, the actions $\mathcal{A}$, the dynamics $p$, and a discount $\gamma$ (Lesson 4). With one state it is a bandit (Lessons 5 to 13). When the action does not affect the next state it is a contextual bandit (Lesson 14). The new thing here is that actions have consequences for the future: a move that costs $-1$ now can set up $+10$ later.</p>
+    <p>Notice a flaw in this world: nothing stops the robot sitting on 🏁 and bumping into the edge to collect $+10$ again and again. Lesson 19 fixes that with terminal states.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  // ------------------------------------------------------------ the icy world
+  const ROWS = 4, COLS = 5;
+  const WALLS = new Set(['1,1', '2,3']);
+  const GOAL = '0,4', PIT = '1,4', START = [3, 0];
+  const DIRS = [[-1, 0], [0, 1], [1, 0], [0, -1]];        // up, right, down, left
+  const ARROW = ['↑', '→', '↓', '←'], ANAME = ['up', 'right', 'down', 'left'];
+  const key = (r, c) => `${r},${c}`;
+  const name = (r, c) => `(${r},${c})`;
+  const reward = (r, c) => (key(r, c) === GOAL ? 10 : key(r, c) === PIT ? -10 : -1);
+
+  function moveTo(r, c, d) {
+    const nr = r + DIRS[d][0], nc = c + DIRS[d][1];
+    if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS || WALLS.has(key(nr, nc))) return [r, c];
+    return [nr, nc];
+  }
+  // p(s', r | s, a) as a list of {s', r, p}, merging outcomes that land in the same cell.
+  function dynamics(r, c, a, slip) {
+    const out = new Map();
+    const add = (d, p) => {
+      if (p <= 0) return;
+      const [nr, nc] = moveTo(r, c, d), k = key(nr, nc);
+      const prev = out.get(k);
+      if (prev) { prev.p += p; prev.how.push(ANAME[d]); }
+      else out.set(k, { r: nr, c: nc, rew: reward(nr, nc), p, how: [ANAME[d]] });
+    };
+    add(a, 1 - slip);
+    add((a + 1) % 4, slip / 2);
+    add((a + 3) % 4, slip / 2);
+    return [...out.values()];
+  }
+
+  let pos = START.slice(), preview = null, lastOut = null, landed = null, lastA = 0;
+  const slip = Course.slider('#iSlip', (v) => `${v.toFixed(2)} (${Math.round(100 * (1 - v))}% as meant)`, () => { showDyn(preview ?? lastA, null); });
+
+  const world = Course.grid($('world'), ROWS, COLS, (r, c, el) => {
+    const k = key(r, c);
+    if (WALLS.has(k)) { el.classList.add('wall'); return; }
+    if (k === GOAL) el.classList.add('goal');
+    if (k === PIT) el.classList.add('pit');
+    const here = r === pos[0] && c === pos[1];
+    const emo = here ? '🤖' : k === GOAL ? '🏁' : k === PIT ? '🕳️' : '';
+    el.innerHTML = `<span class="emo">${emo}</span>${k === GOAL ? '<span class="rw">+10</span>' : k === PIT ? '<span class="rw">−10</span>' : ''}`;
+    const o = lastOut && lastOut.find((x) => x.r === r && x.c === c);
+    if (o) { el.classList.add('out'); el.insertAdjacentHTML('beforeend', `<span class="pr">${Math.round(100 * o.p)}%</span>`); }
+    if (landed && landed[0] === r && landed[1] === c) el.classList.add('landed');
+  });
+  world.onClick((r, c) => {
+    if (WALLS.has(key(r, c))) return;
+    pos = [r, c]; landed = null;
+    showDyn(lastA, null);
+    $('status').textContent = `Robot placed at ${name(r, c)}. Hover or click an arrow.`;
+  });
+
+  function showDyn(a, hit) {
+    const from = hit ? hit.from : pos;
+    const outs = dynamics(from[0], from[1], a, slip());
+    lastOut = outs;
+    $('dyn').innerHTML = `<thead><tr><th>$s'$</th><th>how</th><th>$r$</th><th>$p(s', r \\mid s, a)$</th></tr></thead><tbody>` +
+      outs.map((o) => `<tr class="${hit && hit.r === o.r && hit.c === o.c ? 'hit' : ''}"><td>${name(o.r, o.c)}${o.r === from[0] && o.c === from[1] ? ' (stay)' : ''}</td><td>${o.how.join(' / ')}</td><td>${o.rew > 0 ? '+' : ''}${o.rew}</td><td>${o.p.toFixed(2)}</td></tr>`).join('') +
+      `</tbody><tfoot><tr><td colspan="3" style="text-align:right">sum</td><td>${outs.reduce((s, o) => s + o.p, 0).toFixed(2)}</td></tr></tfoot>`;
+    Course.renderMath($('dyn'));
+    const ra = outs.reduce((s, o) => s + o.p * o.rew, 0);
+    Course.tex($('ra'), `\\begin{aligned} r(${name(...from)}, \\text{${ANAME[a]}}) &= ${outs.map((o) => `${o.p.toFixed(2)} \\cdot (${o.rew})`).join(' + ')} \\\\ &= ${ra.toFixed(2)} \\end{aligned}`, true);
+    $('tryWhat').textContent = `action ${ARROW[lastA]} from ${name(...pos)}`;
+    world.update();
+  }
+
+  function act(a) {
+    lastA = a;
+    const from = pos.slice(), outs = dynamics(from[0], from[1], a, slip());
+    const o = outs[Course.sample(outs.map((x) => x.p))];
+    pos = [o.r, o.c]; landed = [o.r, o.c];
+    showDyn(a, { from, r: o.r, c: o.c });
+    const slipped = !o.how.includes(ANAME[a]);
+    $('status').innerHTML = `${name(...from)}, ${ARROW[a]} → ${name(o.r, o.c)}, reward ${o.rew}. ${slipped ? '<b class="bad">Slipped.</b>' : ''} Blue cells show where this action could have gone.`;
+  }
+
+  const pad = $('pad');
+  pad.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) act(+b.dataset.a); });
+  pad.addEventListener('pointerover', (e) => {
+    const b = e.target.closest('button');
+    if (!b || e.pointerType === 'touch') return;
+    preview = +b.dataset.a; landed = null;
+    showDyn(preview, null);
+    $('status').textContent = `Preview: ${ARROW[preview]} from ${name(...pos)}. Click to move.`;
+  });
+  pad.addEventListener('pointerleave', () => { preview = null; });
+  document.addEventListener('keydown', (e) => {
+    const m = { ArrowUp: 0, ArrowRight: 1, ArrowDown: 2, ArrowLeft: 3 }[e.key];
+    // Arrow keys drive the robot only after you click inside this card, so they still scroll the page otherwise.
+    if (m === undefined || !$('play').contains(document.activeElement) || e.target.tagName === 'INPUT') return;
+    e.preventDefault(); act(m);
+  });
+
+  $('bTry').addEventListener('click', () => {
+    const outs = dynamics(pos[0], pos[1], lastA, slip()), n = new Array(outs.length).fill(0);
+    for (let i = 0; i < 1000; i++) n[Course.sample(outs.map((x) => x.p))]++;
+    $('emp').innerHTML = `<thead><tr><th>lands in</th><th>count</th><th>share</th><th>$p(s', r \\mid s, a)$</th></tr></thead><tbody>` +
+      outs.map((o, i) => `<tr><td>${name(o.r, o.c)}</td><td>${n[i]}</td><td>${(n[i] / 1000).toFixed(3)}</td><td>${o.p.toFixed(2)}</td></tr>`).join('') + '</tbody>';
+    Course.renderMath($('emp'));
+  });
+
+  showDyn(0, null);
+  lastOut = null; world.update();
+
+  // ------------------------------------------------------------ quiz
+  // Check the quiz numbers against the world itself.
+  const r03 = dynamics(0, 3, 1, 0.2).reduce((s, o) => s + o.p * o.rew, 0);      // left of goal, move right
+  const r13 = dynamics(1, 3, 0, 0.2).reduce((s, o) => s + o.p * o.rew, 0);      // left of pit, move up
+  const stay20 = dynamics(2, 0, 0, 0.2).find((o) => o.r === 2 && o.c === 0).p; // left edge, move up
+  Course.quiz([
+    {
+      q: 'Slip is 0.2. The robot is at $(2,0)$, on the left edge, and moves up. What is the probability it stays where it is?',
+      answer: stay20,
+      hint: 'Which of the three possible directions runs into the edge?',
+      explain: 'Up (0.8) and right (0.1) are open. Sliding left (0.1) hits the edge, so it stays: $0.1$.',
+    },
+    {
+      q: 'Slip is 0.2. The robot is at $(0,3)$, just left of 🏁, and moves right. What is the expected reward $r(s, a)$?',
+      answer: r03,
+      hint: 'Right lands on 🏁. Sliding up hits the edge. Sliding down lands on $(1,3)$.',
+      explain: '$0.8 \\times 10 + 0.1 \\times (-1) + 0.1 \\times (-1) = 7.8$.',
+    },
+    {
+      q: 'Slip is 0.2. The robot is at $(1,3)$, just left of 🕳️, and moves up. What is $r(s, a)$?',
+      answer: r13,
+      explain: 'Up to $(0,3)$: $0.8 \\times (-1)$. Left to $(1,2)$: $0.1 \\times (-1)$. Right into 🕳️: $0.1 \\times (-10)$. Total $-0.8 - 0.1 - 1 = -1.9$.',
+    },
+    {
+      q: "What does $\\sum_{s'} \\sum_r p(s', r \\mid s, a) = 1$ say?",
+      choices: [
+        'Every action has expected reward 1',
+        'For any state and action, something always happens next: the outcomes form a probability distribution',
+        'The agent always reaches the goal eventually',
+      ],
+      answer: 1,
+      explain: 'For each fixed $s$ and $a$, the probabilities of all possible (next state, reward) pairs add up to 1. The "sum" row of the table shows it.',
+    },
+  ]);
+</script>
+</body>
+</html>

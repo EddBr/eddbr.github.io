@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>48. TD versus Monte Carlo | Learning RL</title>
+<meta name="description" content="Race TD(0) against constant-alpha Monte Carlo on the random walk, and see why: Monte Carlo targets are unbiased but noisy, TD targets are biased but calm.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 0.85rem; color: var(--body); margin: 6px 0; }
+  .legend label { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+  .legend i { display: inline-block; width: 16px; height: 3px; border-radius: 2px; }
+  .legend .grp { color: var(--muted); font-size: 0.8rem; min-width: 2.2em; }
+  .seg { display: inline-flex; flex-wrap: wrap; }
+  .seg button { border-radius: 0; padding: 0.35rem 0.8rem; }
+  .seg button:first-child { border-radius: 4px 0 0 4px; }
+  .seg button:last-child { border-radius: 0 4px 4px 0; }
+  .seg button + button { margin-left: -1px; }
+  .strip { position: relative; height: 64px; margin: 4px 8px 0 70px; border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
+  .strip .lbl { position: absolute; left: -70px; width: 64px; top: 50%; transform: translateY(-50%); font-size: 0.8rem; font-weight: 600; text-align: right; }
+  .strip .pt { position: absolute; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; opacity: 0.35; }
+  .strip .mean { position: absolute; top: 2px; bottom: 2px; width: 0; border-left: 2px solid currentColor; }
+  .strip .truev { position: absolute; top: 0; bottom: 0; width: 0; border-left: 2px dashed var(--amber); }
+  .ticks { position: relative; height: 16px; margin: 0 8px 0 70px; font-size: 0.7rem; color: var(--muted); }
+  .ticks span { position: absolute; transform: translateX(-50%); }
+  .tblwrap { overflow-x: auto; }
+</style>
+</head>
+<body data-lesson="48">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>TD versus Monte Carlo</h1>
+  <p class="lede">Both methods learn the random walk from Lesson 45. With the step sizes S&amp;B compare, every TD curve ends below every Monte Carlo curve. The reason is a trade: Monte Carlo's target is right on average but noisy, and TD's target is wrong at first but much calmer.</p>
+
+  <section class="card">
+    <h2>The race</h2>
+    <p class="note">RMS error between $V$ and the true values, averaged over the five states and over 100 runs, for constant-$\alpha$ Monte Carlo and TD(0). All estimates start at 0.5 (S&amp;B Example 6.2, right-hand graph). Tick lines on or off.</p>
+    <div class="legend" id="legend"></div>
+    <div class="row"><button id="bRace" class="primary">Run comparison</button><span class="muted" id="raceNote"></span></div>
+    <canvas class="chart" id="chart" style="height:280px"></canvas>
+
+    <div class="sub">
+      <h2>Where the difference comes from</h2>
+      <p class="note">Pick a state and what the current estimates are. Each dot is one target that state could receive: a Monte Carlo return $G_t$, or a TD target $R_{t+1} + V(S_{t+1})$. The solid line is the targets' mean; the dashed amber line is the true value.</p>
+      <div class="row">
+        <span class="muted">State:</span><span class="seg" id="segS"></span>
+      </div>
+      <div class="row">
+        <span class="muted">Estimates:</span><span class="seg"><button id="eInit" class="on">all 0.5</button><button id="eTrue">true values</button></span>
+        <button id="bDraw">Draw 200 targets</button>
+      </div>
+      <div class="strip" id="sMC" style="color:var(--muted)"><span class="lbl">MC</span></div>
+      <div class="strip" id="sTD" style="color:var(--accent)"><span class="lbl">TD</span></div>
+      <div class="ticks" id="ticks"></div>
+      <div class="tblwrap">
+        <table class="data" style="margin-top:8px">
+          <thead><tr><th></th><th>mean</th><th>bias</th><th>variance</th></tr></thead>
+          <tbody id="tbl"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>Write $T$ for a target and $v = v_\pi(s)$ for the true value. A target's error splits into a systematic part and a random part:</p>
+    $$\mathbb{E}\big[(T - v)^2\big] = \underbrace{\big(\mathbb{E}[T] - v\big)^2}_{\text{bias}^2} + \underbrace{\mathbb{E}\big[(T - \mathbb{E}[T])^2\big]}_{\text{variance}}$$
+    <p>A target can be off because it aims at the wrong place, or because it scatters.</p>
+    <p>The Monte Carlo target is unbiased, because $v_\pi(s)$ is defined as its mean:</p>
+    $$\mathbb{E}_\pi[G_t \mid S_t = s] = v_\pi(s)$$
+    <p>But $G_t$ depends on every random step to the end of the episode. In the random walk it is $0$ or $1$, so from C its variance is $\tfrac12 \cdot \tfrac12 = 0.25$.</p>
+    <p>The TD target is unbiased only once the estimates are right:</p>
+    $$\mathbb{E}_\pi\big[R_{t+1} + \gamma V(S_{t+1}) \mid S_t = s\big] - v_\pi(s) = \gamma\, \mathbb{E}_\pi\big[V(S_{t+1}) - v_\pi(S_{t+1}) \mid S_t = s\big]$$
+    <p>Its bias is the error in the next state's estimate. Its randomness comes from one step only. From C with true estimates the target is $\tfrac13$ or $\tfrac23$, with variance $(\tfrac16)^2 = \tfrac1{36} \approx 0.028$, nine times less than Monte Carlo.</p>
+    <p>As learning proceeds, TD's bias shrinks along with the estimates, while Monte Carlo's variance stays. That is why TD wins the race here. S&amp;B §6.2 notes that nobody has proved TD always converges faster than Monte Carlo; in practice it usually does on stochastic tasks like this one.</p>
+    <p>With a constant $\alpha$ neither method settles exactly. The estimates keep chasing noisy targets, so the error levels off higher for larger $\alpha$. For TD with large $\alpha$ the curve even rises slightly after its early dip (S&amp;B Exercise 6.5 asks why).</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const TRUE = [0, 1 / 6, 2 / 6, 3 / 6, 4 / 6, 5 / 6, 0];
+  const NAMES = ['', 'A', 'B', 'C', 'D', 'E', ''];
+
+  // One episode of the random walk from C: returns the list of states visited and the final reward.
+  function episode() {
+    const states = [];
+    let s = 3;
+    while (s > 0 && s < 6) { states.push(s); s += Math.random() < 0.5 ? -1 : 1; }
+    return { states, end: s, reward: s === 6 ? 1 : 0 };
+  }
+  const rms = (V) => Math.sqrt([1, 2, 3, 4, 5].reduce((a, k) => a + (V[k] - TRUE[k]) ** 2, 0) / 5);
+
+  function curve(method, a, runs = 100, eps = 100) {
+    const err = new Array(eps + 1).fill(0);
+    for (let r = 0; r < runs; r++) {
+      const V = [0, 0.5, 0.5, 0.5, 0.5, 0.5, 0];
+      err[0] += rms(V) / runs;
+      for (let e = 1; e <= eps; e++) {
+        const { states, end, reward } = episode();
+        if (method === 'td') {
+          for (let t = 0; t < states.length; t++) {
+            const s = states[t], s1 = t + 1 < states.length ? states[t + 1] : end;
+            const r1 = t + 1 < states.length ? 0 : reward;
+            V[s] += a * (r1 + V[s1] - V[s]);   // V[0] = V[6] = 0 (terminal)
+          }
+        } else {
+          // constant-alpha every-visit MC: gamma = 1, so every G_t equals the final reward
+          for (const s of states) V[s] += a * (reward - V[s]);
+        }
+        err[e] += rms(V) / runs;
+      }
+    }
+    return err;
+  }
+
+  const LINES = [
+    { m: 'td', a: 0.05, color: '#065f46' },
+    { m: 'td', a: 0.1, color: '#059669' },
+    { m: 'td', a: 0.15, color: '#34d399' },
+    { m: 'mc', a: 0.01, color: '#78350f' },
+    { m: 'mc', a: 0.02, color: '#b45309' },
+    { m: 'mc', a: 0.03, color: '#d97706' },
+    { m: 'mc', a: 0.04, color: '#fbbf24' },
+  ];
+  LINES.forEach((l) => { l.on = true; l.data = null; });
+  $('legend').innerHTML = ['td', 'mc'].map((m) => `<span class="grp">${m.toUpperCase()}</span>` +
+    LINES.map((l, i) => (l.m === m ? `<label><input type="checkbox" data-i="${i}" checked><i style="background:${l.color}"></i>α=${l.a}</label>` : '')).join('')).join('<span style="flex-basis:100%;height:0"></span>');
+  $('legend').addEventListener('change', (e) => { const i = e.target.dataset.i; if (i !== undefined) { LINES[i].on = e.target.checked; drawRace(); } });
+
+  const chart = Course.lineChart($('chart'), { xLabel: 'episodes', yLabel: 'RMS error', yMin: 0, yMax: 0.25, xMin: 0, xMax: 100 });
+  function drawRace() {
+    const ls = LINES.filter((l) => l.on && l.data).map((l) => ({ data: l.data, color: l.color, width: l.m === 'td' ? 2.2 : 1.8, dashed: l.m === 'mc' }));
+    chart.draw(ls.length ? ls : [{ data: [[0, NaN]] }]);
+  }
+  $('bRace').addEventListener('click', () => {
+    $('bRace').disabled = true; $('bRace').textContent = 'Running…';
+    setTimeout(() => {
+      const t0 = performance.now();
+      LINES.forEach((l) => { l.data = curve(l.m, l.a); });
+      drawRace();
+      const best = (m) => Math.min(...LINES.filter((l) => l.m === m).map((l) => l.data[100]));
+      $('raceNote').textContent = `After 100 episodes: best TD ${best('td').toFixed(3)}, best MC ${best('mc').toFixed(3)}.`;
+      $('bRace').disabled = false; $('bRace').textContent = 'Run again';
+    }, 30);
+  });
+  drawRace();
+
+  // ------------------------------------------------------------ target spread
+  let state = 3, est = 'init';
+  $('segS').innerHTML = [1, 2, 3, 4, 5].map((k) => `<button data-k="${k}" class="${k === state ? 'on' : ''}">${NAMES[k]}</button>`).join('');
+  $('segS').addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    state = +b.dataset.k;
+    [...$('segS').children].forEach((x) => x.classList.toggle('on', +x.dataset.k === state));
+    drawTargets();
+  });
+  $('eInit').addEventListener('click', () => { est = 'init'; $('eInit').className = 'on'; $('eTrue').className = ''; drawTargets(); });
+  $('eTrue').addEventListener('click', () => { est = 'true'; $('eTrue').className = 'on'; $('eInit').className = ''; drawTargets(); });
+  $('bDraw').addEventListener('click', drawTargets);
+  $('ticks').innerHTML = [0, 0.25, 0.5, 0.75, 1].map((x) => `<span style="left:${100 * x}%">${x}</span>`).join('');
+
+  // From state s: MC return = final reward of a walk started at s; TD target = R + V(next) after one step.
+  function walkFrom(s) { while (s > 0 && s < 6) s += Math.random() < 0.5 ? -1 : 1; return s === 6 ? 1 : 0; }
+  function drawTargets() {
+    const V = est === 'true' ? TRUE.slice() : [0, 0.5, 0.5, 0.5, 0.5, 0.5, 0];
+    const n = 200, mc = [], td = [];
+    for (let i = 0; i < n; i++) {
+      mc.push(walkFrom(state));
+      const s1 = state + (Math.random() < 0.5 ? -1 : 1);
+      td.push((s1 === 6 ? 1 : 0) + (s1 === 0 || s1 === 6 ? 0 : V[s1]));
+    }
+    const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
+    const vari = (xs) => { const m = mean(xs); return xs.reduce((a, b) => a + (b - m) ** 2, 0) / xs.length; };
+    const paint = (el, xs, color) => {
+      const lbl = el.querySelector('.lbl').outerHTML;
+      el.innerHTML = lbl + xs.map((x) => `<span class="pt" style="left:${100 * x}%;top:${10 + Math.random() * 80}%;background:${color}"></span>`).join('') +
+        `<span class="mean" style="left:${100 * mean(xs)}%"></span><span class="truev" style="left:${100 * TRUE[state]}%"></span>`;
+    };
+    paint($('sMC'), mc, '#6b7280');
+    paint($('sTD'), td, Course.colors.green);
+    const row = (name, xs) => `<tr><td>${name}</td><td>${mean(xs).toFixed(3)}</td><td>${(mean(xs) - TRUE[state]).toFixed(3)}</td><td>${vari(xs).toFixed(4)}</td></tr>`;
+    $('tbl').innerHTML = row('MC', mc) + row('TD', td) + `<tr><td class="muted">true $v_\\pi$</td><td>${TRUE[state].toFixed(3)}</td><td></td><td></td></tr>`;
+    Course.renderMath($('tbl'));
+  }
+  drawTargets();
+
+  // ------------------------------------------------------------ quiz
+  Course.quiz([
+    {
+      q: 'From state C, the Monte Carlo return is $1$ or $0$ with probability $\\tfrac12$ each. What is its variance?',
+      answer: 0.25,
+      tol: 0.0005,
+      explain: 'For a 0/1 outcome with probability $p$ the variance is $p(1-p) = 0.5 \\times 0.5 = 0.25$.',
+    },
+    {
+      q: 'From C with the estimates equal to the true values, the TD target is $\\tfrac13$ or $\\tfrac23$ with probability $\\tfrac12$ each. What is its variance?',
+      answer: 1 / 36,
+      tol: 0.0005,
+      explain: 'Each value is $\\tfrac16$ from the mean $\\tfrac12$, so the variance is $(\\tfrac16)^2 = \\tfrac1{36} \\approx 0.028$.',
+    },
+    {
+      q: 'All estimates are $0.5$. What is the bias of the TD target from state B, whose true value is $\\tfrac13$?',
+      answer: 0.5 - 1 / 3,
+      tol: 0.002,
+      hint: 'From B the walk reaches A or C, both estimated at 0.5.',
+      explain: 'The target is always $0 + 0.5$, so the bias is $0.5 - \\tfrac13 = \\tfrac16 \\approx 0.167$. Check it with the target spread above.',
+    },
+    {
+      q: 'Why does the TD curve with $\\alpha = 0.15$ level off around 0.07 instead of reaching zero?',
+      choices: [
+        'TD is biased forever',
+        'With a constant step size the estimates keep moving towards each new noisy target, so they jitter around the true values',
+        'The random walk has no true values',
+        'It needs more than 100 runs',
+      ],
+      answer: 1,
+      explain: 'A constant $\\alpha$ never averages the noise away completely. Smaller $\\alpha$ jitters less but learns more slowly.',
+    },
+  ]);
+</script>
+</body>
+</html>

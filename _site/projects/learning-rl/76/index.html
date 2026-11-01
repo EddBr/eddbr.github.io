@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>76. Advantage | Learning RL</title>
+<meta name="description" content="The advantage q(s,a) − v(s) answers one question: is this action better or worse than what the policy usually does here?">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .adv { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin: 10px 0 4px; }
+  .acell { border: 1px solid var(--border); border-radius: 6px; background: var(--soft); cursor: pointer; padding: 4px 2px 6px; text-align: center; user-select: none; }
+  .acell:hover { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .acell.sel { border-color: var(--accent); background: var(--accent-soft); }
+  .acell.goal { cursor: default; outline: none; display: flex; align-items: center; justify-content: center; font-size: 26px; }
+  .acell .nm { font-size: 0.75rem; color: var(--muted); }
+  .pair { position: relative; height: 110px; display: flex; gap: 4px; justify-content: center; margin: 2px 0; }
+  .pair .z { position: absolute; left: 0; right: 0; top: 50%; border-top: 1px solid #9ca3af; }
+  .pair .col { position: relative; width: 38%; }
+  .pair .f { position: absolute; left: 0; right: 0; border-radius: 2px; transition: all 0.15s ease; }
+  .pair .lab { font-size: 0.7rem; color: var(--muted); }
+  .acell .v { font-size: 0.72rem; color: var(--heading); font-variant-numeric: tabular-nums; }
+  .eq { min-height: 2.4em; text-align: center; margin: 6px 0; line-height: 2; }
+  table.data td:first-child, table.data th:first-child { text-align: left; white-space: nowrap; }
+</style>
+</head>
+<body data-lesson="76">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Advantage</h1>
+  <p class="lede">An action's value $q_\pi(s,a)$ mixes two things: how good the state is, and how good the action is within it. The <b>advantage</b> $q_\pi(s,a) - v_\pi(s)$ keeps only the second. It is the score a policy gradient should use: positive means better than the policy's usual behaviour here, negative means worse.</p>
+
+  <section class="card">
+    <h2>Better or worse than usual?</h2>
+    <p class="note">The slippery corridor from Lesson 75: $-1$ per step, 20% of moves slip, $\gamma = 1$. The policy moves right with probability $p$ in every cell. Bars are the exact advantages of ← and → in each cell. Click a cell to see the numbers.</p>
+    <label class="slider"><span>Policy $\pi(\rightarrow)$</span><input id="p" type="range" min="0.05" max="0.95" step="0.05" value="0.5"><output></output></label>
+    <div class="adv" id="adv"></div>
+    <div class="eq" id="eq1"></div>
+    <div class="eq" id="eq2"></div>
+    <div class="eq" id="eq3"></div>
+    <table class="data" id="tbl"></table>
+    <p class="note">The values $q$ and $v$ are large and negative everywhere, because every cell is several steps from the flag. The advantages are small, and they carry the only information the policy needs. Set $p = 0.95$: moving right is now what the policy usually does, so its advantage shrinks towards zero, while going left is sharply negative.</p>
+
+    <div class="sub">
+      <h2>Estimating it from one step</h2>
+      <p class="note">The agent never sees $q_\pi$. With a correct critic, the TD error $\delta = R + \hat v(S') - \hat v(s)$ after taking $a$ in $s$ is an unbiased estimate of the advantage. Uses the selected cell.</p>
+      <div class="row">
+        <label class="muted">Move <select id="act"><option value="1">→</option><option value="0">←</option></select></label>
+        <button id="b1" class="primary">Try once</button>
+        <button id="b100">Try 100 times</button>
+        <span class="spacer"></span>
+        <button id="bClr" class="quiet">Reset</button>
+      </div>
+      <p class="status" id="st"></p>
+      <canvas class="chart" id="est"></canvas>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>The <b>advantage function</b> of policy $\pi$ is</p>
+    $$A_\pi(s,a) = q_\pi(s,a) - v_\pi(s)$$
+    <p>It measures how much better it is to take $a$ in $s$ (and then follow $\pi$) than to just follow $\pi$ from $s$.</p>
+    <p><b>Average advantage is zero.</b> Since $v_\pi(s) = \sum_a \pi(a \mid s)\, q_\pi(s,a)$ (Lesson 23),</p>
+    $$\sum_a \pi(a \mid s)\, A_\pi(s,a) = \sum_a \pi(a \mid s)\, q_\pi(s,a) - v_\pi(s) \sum_a \pi(a \mid s) = v_\pi(s) - v_\pi(s) = 0$$
+    <p>Under the policy's own probabilities, the actions are on average exactly "as usual". So some must be above zero and some below, unless all are zero. The third line of numbers above checks this.</p>
+    <p><b>The policy gradient with advantages.</b> Taking $b(s) = v_\pi(s)$ in Lesson 74's baseline result gives</p>
+    $$\nabla J(\boldsymbol\theta) \propto \mathbb{E}_\pi\big[A_\pi(S_t, A_t)\, \nabla \ln \pi(A_t \mid S_t, \boldsymbol\theta)\big]$$
+    <p>Each action's log-probability moves in proportion to its advantage. The value of the state no longer enters.</p>
+    <p><b>Estimating it.</b> With $\hat v = v_\pi$, the TD error is an unbiased sample:</p>
+    $$\mathbb{E}\big[R_{t+1} + \gamma v_\pi(S_{t+1}) - v_\pi(S_t) \,\big|\, S_t = s, A_t = a\big] = q_\pi(s,a) - v_\pi(s) = A_\pi(s,a)$$
+    <p>The first term's expectation is $q_\pi(s,a)$ by the Bellman equation for $q_\pi$ (Lesson 26). In the corridor, $\delta$ takes one value if the move succeeds and another if it slips, and the running average settles on the bar's height. Lesson 77 plugs $\delta$ into the gradient; Lesson 78 builds better estimates from several steps.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const C = Course.colors;
+
+  // ------------------------------------------------------------ slippery corridor (Lessons 75–78)
+  const GOAL = 5, SLIP = 0.2;
+  const clamp = (x) => Math.max(0, Math.min(GOAL, x));
+  const outcomes = (s, a) => { const d = a ? 1 : -1; return [[clamp(s + d), 1 - SLIP], [clamp(s - d), SLIP]]; };
+  const stepEnv = (s, a) => clamp(s + (a ? 1 : -1) * (Math.random() < SLIP ? -1 : 1));
+  function evaluate(pR) {
+    const n = GOAL, M = Array.from({ length: n }, (_, i) => { const r = new Array(n + 1).fill(0); r[i] = 1; r[n] = -1; return r; });
+    for (let s = 0; s < n; s++) for (const a of [0, 1]) {
+      const pa = a ? pR[s] : 1 - pR[s];
+      for (const [s2, pp] of outcomes(s, a)) if (s2 !== GOAL) M[s][s2] -= pa * pp;
+    }
+    for (let i = 0; i < n; i++) {
+      let piv = i; for (let r = i + 1; r < n; r++) if (Math.abs(M[r][i]) > Math.abs(M[piv][i])) piv = r;
+      [M[i], M[piv]] = [M[piv], M[i]];
+      for (let r = 0; r < n; r++) if (r !== i) { const f = M[r][i] / M[i][i]; for (let c = i; c <= n; c++) M[r][c] -= f * M[i][c]; }
+    }
+    const v = M.map((r, i) => r[n] / r[i]); v.push(0); return v;
+  }
+  const qOf = (v, s, a) => outcomes(s, a).reduce((x, [s2, pp]) => x + pp * (-1 + v[s2]), 0);
+
+  let sel = 2, V, Qs;
+  const pSl = Course.slider('#p', (v) => v.toFixed(2), () => { compute(); draw(); clearEst(); });
+  function compute() {
+    V = evaluate(new Array(GOAL).fill(pSl()));
+    Qs = Array.from({ length: GOAL }, (_, s) => [qOf(V, s, 0), qOf(V, s, 1)]);
+  }
+  const f2 = (x) => (Math.abs(x) < 0.005 ? '0.00' : x.toFixed(2));
+
+  function draw() {
+    const p = pSl(), MAXA = 6;
+    const bar = (A) => {
+      const h = Math.min(50, (50 * Math.abs(A)) / MAXA);
+      return `<div class="f" style="background:${A >= 0 ? C.green : C.red};${A >= 0 ? `bottom:50%` : `top:50%`};height:${h}%"></div>`;
+    };
+    $('adv').innerHTML = Array.from({ length: GOAL }, (_, s) => {
+      const Al = Qs[s][0] - V[s], Ar = Qs[s][1] - V[s];
+      return `<div class="acell${s === sel ? ' sel' : ''}" data-s="${s}"><div class="nm">cell ${s}</div>
+        <div class="pair"><div class="z"></div><div class="col">${bar(Al)}</div><div class="col">${bar(Ar)}</div></div>
+        <div class="lab">← &nbsp; →</div><div class="v">${f2(Al)}<br>${f2(Ar)}</div></div>`;
+    }).join('') + '<div class="acell goal">🏁</div>';
+
+    const s = sel, [ql, qr] = Qs[s], o = outcomes(s, 1);
+    Course.tex($('eq1'), `q_\\pi(${s},\\rightarrow) = 0.8\\,(-1 + v_\\pi(${o[0][0]})) + 0.2\\,(-1 + v_\\pi(${o[1][0]})) = 0.8(${f2(-1 + V[o[0][0]])}) + 0.2(${f2(-1 + V[o[1][0]])}) = ${f2(qr)}`);
+    Course.tex($('eq2'), `v_\\pi(${s}) = ${p.toFixed(2)}(${f2(qr)}) + ${(1 - p).toFixed(2)}(${f2(ql)}) = ${f2(V[s])}, \\quad A(${s},\\rightarrow) = ${f2(qr)} - (${f2(V[s])}) = ${f2(qr - V[s])}`);
+    Course.tex($('eq3'), `\\textstyle\\sum_a \\pi(a)A(${s},a) = ${p.toFixed(2)}(${f2(qr - V[s])}) + ${(1 - p).toFixed(2)}(${f2(ql - V[s])}) = ${f2(p * (qr - V[s]) + (1 - p) * (ql - V[s]))}`);
+
+    const row = (name, fn) => `<tr><td>${name}</td>${Array.from({ length: GOAL }, (_, k) => `<td>${f2(fn(k))}</td>`).join('')}</tr>`;
+    $('tbl').innerHTML = `<thead><tr><th>cell</th>${Array.from({ length: GOAL }, (_, k) => `<th>${k}</th>`).join('')}</tr></thead><tbody>` +
+      row('v', (k) => V[k]) + row('q ←', (k) => Qs[k][0]) + row('q →', (k) => Qs[k][1]) + '</tbody>';
+  }
+  $('adv').addEventListener('click', (e) => {
+    const c = e.target.closest('.acell[data-s]');
+    if (!c) return;
+    sel = +c.dataset.s; draw(); clearEst();
+  });
+
+  // ------------------------------------------------------------ δ samples
+  const chart = Course.lineChart($('est'), { xLabel: 'tries', yLabel: 'average δ' });
+  let hist = [], sum = 0;
+  function clearEst() { hist = []; sum = 0; drawEst(); }
+  function tryN(n) {
+    const a = +$('act').value;
+    let last;
+    for (let i = 0; i < n; i++) { const s2 = stepEnv(sel, a); last = [s2, -1 + V[s2] - V[sel]]; sum += last[1]; hist.push([hist.length + 1, sum / (hist.length + 1)]); }
+    $('st').textContent = `Last try: landed in cell ${last[0]}, δ = −1 + (${f2(V[last[0]])}) − (${f2(V[sel])}) = ${f2(last[1])}. Average of ${hist.length}: ${f2(sum / hist.length)}.`;
+    drawEst();
+  }
+  function drawEst() {
+    const a = +$('act').value, A = Qs[sel][a] - V[sel];
+    if (!hist.length) $('st').textContent = `Cell ${sel}, move ${a ? '→' : '←'}: true advantage ${f2(A)}.`;
+    chart.draw(hist.length ? [{ data: hist, color: C.blue, label: 'running average of δ' }] : [{ data: [[0, A], [1, A]], color: 'rgba(0,0,0,0)' }],
+      { hlines: [{ y: A, label: `A(${sel}, ${a ? '→' : '←'}) = ${f2(A)}`, color: C.amber }] });
+  }
+  $('b1').addEventListener('click', () => tryN(1));
+  $('b100').addEventListener('click', () => tryN(100));
+  $('bClr').addEventListener('click', clearEst);
+  $('act').addEventListener('change', clearEst);
+
+  compute(); draw(); clearEst();
+
+  const qq = 0.8 * (-1 - 3.5) + 0.2 * (-1 - 8);
+  Course.quiz([
+    {
+      q: 'In some state, $q_\\pi(s,\\rightarrow) = -8$, $q_\\pi(s,\\leftarrow) = -14$ and $\\pi(\\rightarrow \\mid s) = 0.75$. What is $A_\\pi(s,\\rightarrow)$?',
+      answer: -8 - (0.75 * -8 + 0.25 * -14),
+      tol: 0.001,
+      hint: 'First find $v_\\pi(s) = \\sum_a \\pi(a \\mid s) q_\\pi(s,a)$.',
+      explain: '$v_\\pi(s) = 0.75(-8) + 0.25(-14) = -9.5$, so $A = -8 - (-9.5) = 1.5$.',
+    },
+    {
+      q: 'Same state. What is $A_\\pi(s,\\leftarrow)$?',
+      answer: -14 + 9.5,
+      tol: 0.001,
+      explain: '$-14 - (-9.5) = -4.5$. Check: $0.75(1.5) + 0.25(-4.5) = 0$.',
+    },
+    {
+      q: 'In the slippery corridor, $v_\\pi(2) = -8$, $v_\\pi(3) = -6$ and $v_\\pi(4) = -3.5$. Moving right from cell 3 succeeds with probability 0.8 and slips left otherwise. What is $A_\\pi(3,\\rightarrow)$?',
+      answer: qq + 6,
+      tol: 0.001,
+      hint: '$q_\\pi(3,\\rightarrow) = 0.8(-1 + v_\\pi(4)) + 0.2(-1 + v_\\pi(2))$.',
+      explain: '$q = 0.8(-4.5) + 0.2(-9) = -5.4$, so $A = -5.4 - (-6) = 0.6$.',
+    },
+    {
+      q: 'A policy gives both of its two actions in state $s$ a nonzero probability, and $A_\\pi(s, a_1) = 2$. Which must be true?',
+      choices: [
+        '$A_\\pi(s, a_2) = -2$',
+        '$A_\\pi(s, a_2) < 0$, with size depending on the probabilities',
+        '$A_\\pi(s, a_2)$ could be positive too',
+      ],
+      answer: 1,
+      explain: '$\\pi(a_1)(2) + \\pi(a_2) A(s, a_2) = 0$, so $A(s, a_2) = -2\\pi(a_1)/\\pi(a_2)$: negative, and equal to $-2$ only when both probabilities are $0.5$.',
+    },
+  ]);
+</script>
+</body>
+</html>

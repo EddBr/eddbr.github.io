@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>65. The deadly triad | Learning RL</title>
+<meta name="description" content="Function approximation, bootstrapping and off-policy training: any two are safe, all three can send the weights to infinity. Toggle them on Baird's counterexample.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .twostate { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 10px 0; flex-wrap: wrap; }
+  .node { width: 92px; height: 92px; border-radius: 50%; border: 2px solid var(--border); display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--soft); font-size: 0.85rem; color: var(--muted); }
+  .node b { font-size: 1.15rem; color: var(--heading); font-variant-numeric: tabular-nums; }
+  .node.hot { border-color: var(--accent); background: var(--accent-soft); }
+  .arrow { color: var(--muted); font-size: 0.85rem; text-align: center; }
+  #eq2 { overflow-x: auto; min-height: 2.6em; }
+  .toggles { display: flex; gap: 8px; flex-wrap: wrap; }
+  .toggles button { flex: 1 1 auto; padding: 0.4rem 0.6rem; font-size: 0.92rem; }
+  #baird { width: 100%; max-width: 460px; display: block; margin: 6px auto; }
+  #wts { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 0.85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+  #wts b { color: var(--heading); font-weight: 600; }
+  .verdict.bad { color: var(--red); font-weight: 600; }
+  .verdict.good { color: var(--accent); font-weight: 600; }
+  .tablewrap { overflow-x: auto; }
+</style>
+</head>
+<body data-lesson="65">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>The deadly triad</h1>
+  <p class="lede">Three ingredients that every large-scale value method wants: function approximation, bootstrapping, and off-policy learning. Any two together are safe. All three together can make the weights grow without limit, even when the true values are all zero.</p>
+
+  <section class="card">
+    <h2>Two states, one weight</h2>
+    <p class="note">S&amp;B §11.2. Both estimates share one weight $w$: the first state's is $w$, the second's is $2w$. The first leads to the second with reward 0. Only that transition gets updated, as can happen off-policy.</p>
+    <div class="twostate">
+      <div class="node hot" id="n1"><span>$\hat v = w$</span><b id="v1">1</b></div>
+      <div class="arrow">reward 0<br>→</div>
+      <div class="node" id="n2"><span>$\hat v = 2w$</span><b id="v2">2</b></div>
+      <div class="arrow">reward 0<br>→ end</div>
+    </div>
+    <label class="slider"><span>Discount $\gamma$</span><input id="iG" type="range" min="0" max="1" step="0.05" value="0.9"><output></output></label>
+    <label class="slider"><span>Step size $\alpha$</span><input id="iA" type="range" min="0.02" max="0.3" step="0.02" value="0.1"><output></output></label>
+    <div id="eq2"></div>
+    <canvas class="chart" id="wChart" style="height:180px"></canvas>
+    <div class="row">
+      <button id="bStep2">Update</button>
+      <button id="bRun2" class="primary">Run</button>
+      <button id="bBoth" class="quiet">Also update the second state</button>
+      <span class="spacer"></span>
+      <button id="bReset2" class="quiet">Reset</button>
+    </div>
+
+    <div class="sub">
+      <h2>Baird's counterexample</h2>
+      <p class="note">S&amp;B Example 11.1. Seven states, eight weights, every reward 0, $\gamma = 0.99$, so every true value is 0 and $\mathbf{w} = \mathbf{0}$ represents them exactly. The behaviour policy $b$ takes the dashed action (to one of the six top states) with probability $6/7$ and the solid action (to the bottom state) with probability $1/7$. The target policy $\pi$ always takes the solid action.</p>
+      <svg id="baird" viewBox="0 0 460 166" aria-label="Six upper states each valued 2 w_i plus w_8, all leading to a seventh state valued w_7 plus 2 w_8">
+        <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#374151"/></marker></defs>
+        <g id="tops"></g>
+        <ellipse cx="230" cy="140" rx="56" ry="22" fill="#f9fafb" stroke="#9ca3af"/>
+        <text x="230" y="145" text-anchor="middle" font-size="15" fill="#374151">w₇ + 2w₈</text>
+      </svg>
+      <p class="note">Arrows show the solid action. Toggle the three legs:</p>
+      <div class="toggles" id="toggles">
+        <button class="on" data-k="fa">Function approximation</button>
+        <button class="on" data-k="boot">Bootstrapping</button>
+        <button class="on" data-k="off">Off-policy</button>
+      </div>
+      <p class="note" id="setting"></p>
+      <canvas class="chart" id="bChart"></canvas>
+      <div id="wts"></div>
+      <div class="row">
+        <button id="bRunB" class="primary">Run 3,000 steps</button>
+        <button id="bAll">Run all 8 combinations</button>
+        <span class="spacer"></span>
+        <button id="bResetB" class="quiet">Reset</button>
+      </div>
+      <div class="tablewrap"><table class="data" id="allTable" hidden></table></div>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p><b>Two states.</b> Semi-gradient TD(0) at the first state, where $\nabla \hat v = 1$:</p>
+    $$w_{t+1} = w_t + \alpha\,\big[0 + \gamma \cdot 2w_t - w_t\big] \cdot 1 = \big(1 + \alpha(2\gamma - 1)\big)\, w_t .$$
+    <p>The factor is above 1 whenever $\gamma > 0.5$, so $w$ grows geometrically for any $\alpha > 0$. Raising $w$ to shrink the error at the first state raises the target $2\gamma w$ even more. If the second state is updated too (target 0, $\nabla \hat v = 2$), it multiplies $w$ by $1 - 4\alpha$, which pulls it back. On-policy, the second state is always visited after the first, so that correction always happens.</p>
+    <p><b>Baird.</b> Off-policy semi-gradient TD(0) weights each update by the importance-sampling ratio $\rho_t = \pi(A_t \mid S_t)/b(A_t \mid S_t)$ (Lesson 39):</p>
+    $$\mathbf{w}_{t+1} = \mathbf{w}_t + \alpha\,\rho_t\,\delta_t\,\mathbf{x}(S_t), \qquad \delta_t = R_{t+1} + \gamma\,\hat v(S_{t+1}, \mathbf{w}_t) - \hat v(S_t, \mathbf{w}_t).$$
+    <p>Here $\rho_t = 1/(1/7) = 7$ for the solid action and $0$ for the dashed one. With $\alpha = 0.01$ and $\mathbf{w} = (1,1,1,1,1,1,10,1)$ the weights diverge, and S&amp;B note the expected update diverges for any positive step size.</p>
+    <p><b>Why.</b> In expectation, linear semi-gradient TD is $\mathbf{w} \leftarrow \mathbf{w} + \alpha(\mathbf{b} - \mathbf{A}\mathbf{w})$ with</p>
+    $$\mathbf{A} = \mathbf{X}^\top \mathbf{D}\,(\mathbf{I} - \gamma \mathbf{P}_\pi)\,\mathbf{X},$$
+    <p>where the rows of $\mathbf{X}$ are the feature vectors, $\mathbf{D}$ is diagonal with the distribution of states being updated, and $\mathbf{P}_\pi$ holds the target policy's transition probabilities. The iteration is stable when $\mathbf{A}$ is positive definite. If $\mathbf{D}$ is the on-policy distribution of $\pi$, it is (S&amp;B §9.4). Off-policy, $\mathbf{D}$ comes from $b$ and the guarantee is gone.</p>
+    <p>Remove any one leg and the problem goes away. Tabular features make every state its own weight, so no update can drag another state's value. Monte Carlo targets do not depend on $\mathbf{w}$, so the update is true gradient descent. On-policy updates restore the positive-definite $\mathbf{A}$. In Baird's example the "on-policy" setting evaluates $b$ itself ($\rho = 1$), and "no bootstrapping" uses the return, which is 0 here for every trajectory.</p>
+    <p>S&amp;B §11.3 calls this combination the <b>deadly triad</b>. DQN (Lessons 66 to 69) has all three, and much of its design is about surviving them.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+
+  // ------------------------------------------------------------ two states
+  const gamma2 = Course.slider('#iG', (v) => v.toFixed(2), () => reset2());
+  const alpha2 = Course.slider('#iA', (v) => v.toFixed(2), () => reset2());
+  const wChart = Course.lineChart($('wChart'), { xLabel: 'update', yLabel: 'w' });
+  let w2, hist2, both = false, turn = 0, timer2 = null;
+
+  function reset2() {
+    stop2();
+    w2 = 1; hist2 = [1]; turn = 0;
+    Course.tex($('eq2'), `w = 1. \\text{ Press Update.}`, true);
+    show2();
+  }
+  function show2() {
+    $('v1').textContent = Course.fmt(w2, Math.abs(w2) < 100 ? 3 : 0);
+    $('v2').textContent = Course.fmt(2 * w2, Math.abs(w2) < 100 ? 3 : 0);
+    $('n1').classList.toggle('hot', turn === 0);
+    $('n2').classList.toggle('hot', both && turn === 1);
+    wChart.draw([{ data: hist2, color: Course.colors.green }], { hlines: [{ y: 0, color: '#9ca3af' }] });
+  }
+  function step2() {
+    const g = gamma2(), a = alpha2(), old = w2;
+    if (turn === 0) {
+      w2 = old + a * (g * 2 * old - old);
+      Course.tex($('eq2'), `\\begin{aligned}w &\\leftarrow ${old.toFixed(3)} + ${a}\\,[0 + ${g} \\cdot 2 \\cdot ${old.toFixed(3)} - ${old.toFixed(3)}] \\\\ &= ${w2.toFixed(3)}\\end{aligned}`, true);
+    } else {
+      w2 = old + a * (0 - 2 * old) * 2;
+      Course.tex($('eq2'), `\\begin{aligned}w &\\leftarrow ${old.toFixed(3)} + ${a}\\,[0 - 2 \\cdot ${old.toFixed(3)}] \\cdot 2 \\\\ &= ${w2.toFixed(3)} \\quad \\text{(second state)}\\end{aligned}`, true);
+    }
+    hist2.push(w2);
+    turn = both ? 1 - turn : 0;
+    show2();
+    if (Math.abs(w2) > 1e6) stop2();
+  }
+  function stop2() { clearInterval(timer2); timer2 = null; $('bRun2').textContent = 'Run'; }
+  $('bStep2').addEventListener('click', () => { stop2(); step2(); });
+  $('bRun2').addEventListener('click', () => {
+    if (timer2) return stop2();
+    $('bRun2').textContent = 'Pause';
+    timer2 = setInterval(() => { step2(); if (hist2.length > 200) stop2(); }, 60);
+  });
+  $('bBoth').addEventListener('click', () => {
+    both = !both;
+    $('bBoth').classList.toggle('on', both);
+    reset2();
+  });
+  $('bReset2').addEventListener('click', reset2);
+  reset2();
+
+  // ------------------------------------------------------------ Baird's counterexample (S&B Example 11.1)
+  const GAMMA = 0.99, ALPHA = 0.01, STEPS = 3000;
+  // the six top states in the diagram
+  $('tops').innerHTML = Array.from({ length: 6 }, (_, i) => {
+    const x = 40 + i * 76;
+    return `<ellipse cx="${x}" cy="30" rx="36" ry="20" fill="#f9fafb" stroke="#9ca3af"/>` +
+      `<text x="${x}" y="34" text-anchor="middle" font-size="15" fill="#374151">2w${'₁₂₃₄₅₆'[i]} + w₈</text>` +
+      `<line x1="${x}" y1="49" x2="${230 + (x - 230) * 0.25}" y2="119" stroke="#374151" stroke-width="1.5" marker-end="url(#ah)"/>`;
+  }).join('') ;
+
+  function features(fa) {
+    return Array.from({ length: 7 }, (_, s) => {
+      if (!fa) { const x = new Float64Array(7); x[s] = 1; return x; }
+      const x = new Float64Array(8);
+      if (s < 6) { x[s] = 2; x[7] = 1; } else { x[6] = 1; x[7] = 2; }
+      return x;
+    });
+  }
+  const dot = (a, b) => a.reduce((t, v, i) => t + v * b[i], 0);
+  const flags = { fa: true, boot: true, off: true };
+
+  function makeRun(f) {
+    const X = features(f.fa);
+    // Start from the same values in every setting: 3 at the top states, 12 at the bottom one.
+    const w = Float64Array.from(f.fa ? [1, 1, 1, 1, 1, 1, 10, 1] : [3, 3, 3, 3, 3, 3, 12]);
+    let s = Course.randInt(7), t = 0;
+    const rms = () => Math.sqrt(X.reduce((a, x) => a + dot(w, x) ** 2, 0) / 7);
+    const hist = [[0, Math.log10(rms())]];
+    function step() {
+      const solid = Math.random() < 1 / 7;
+      const s2 = solid ? 6 : Course.randInt(6);
+      const x = X[s];
+      let target, rho;
+      if (f.boot) { target = 0 + GAMMA * dot(w, X[s2]); rho = f.off ? (solid ? 7 : 0) : 1; }
+      else { target = 0; rho = 1; }                       // every return is 0
+      const d = target - dot(w, x);
+      for (let i = 0; i < w.length; i++) w[i] += ALPHA * rho * d * x[i];
+      s = s2; t++;
+      if (t % 10 === 0) hist.push([t, Math.log10(Math.max(1e-6, rms()))]);
+    }
+    return { w, step, hist, rms, get t() { return t; } };
+  }
+
+  const bChart = Course.lineChart($('bChart'), { xLabel: 'step', yLabel: 'log₁₀ RMS value', xMin: 0, xMax: STEPS, yMin: -2, yMax: 6 });
+  let run, timerB = null;
+  function describe() {
+    const on = Object.values(flags).filter(Boolean).length;
+    $('setting').innerHTML = (flags.fa ? 'Features as in the diagram. ' : 'Tabular: one weight per state. ') +
+      (flags.boot ? 'Target $R + \\gamma \\hat v(S\', \\mathbf{w})$. ' : 'Target: the return, which is always 0. ') +
+      (flags.off ? 'Evaluating $\\pi$ from $b$\'s actions with ratio $\\rho$. ' : 'Evaluating $b$ itself, $\\rho = 1$. ') +
+      (on === 3 ? '<b class="bad">All three legs of the triad.</b>' : `<b class="good">${on} of the three legs.</b>`);
+    Course.renderMath($('setting'));
+  }
+  function resetB() {
+    stopB();
+    run = makeRun({ ...flags });
+    describe();
+    showB();
+  }
+  function showB() {
+    bChart.draw([{ data: run.hist, color: flags.fa && flags.boot && flags.off ? Course.colors.red : Course.colors.green }],
+      { hlines: [{ y: Math.log10(Math.sqrt((6 * 9 + 144) / 7)), label: 'start', color: '#9ca3af' }] });
+    const n = run.w.length;
+    $('wts').innerHTML = `<span>step <b>${run.t}</b></span>` +
+      Array.from(run.w, (x, i) => `<span>w${'₁₂₃₄₅₆₇₈'[i]} <b>${Math.abs(x) >= 1e4 ? x.toExponential(1) : x.toFixed(1)}</b></span>`).join('');
+  }
+  function stopB() { clearInterval(timerB); timerB = null; $('bRunB').textContent = 'Run 3,000 steps'; }
+  $('bRunB').addEventListener('click', () => {
+    if (timerB) return stopB();
+    if (run.t >= STEPS) resetB();
+    $('bRunB').textContent = 'Pause';
+    timerB = setInterval(() => {
+      for (let k = 0; k < 40 && run.t < STEPS; k++) run.step();
+      showB();
+      if (run.t >= STEPS) stopB();
+    }, 30);
+  });
+  $('bResetB').addEventListener('click', resetB);
+  $('toggles').addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    flags[b.dataset.k] = !flags[b.dataset.k];
+    b.classList.toggle('on', flags[b.dataset.k]);
+    resetB();
+  });
+  $('bAll').addEventListener('click', () => {
+    const b = $('bAll');
+    b.disabled = true; b.textContent = 'Running…';
+    setTimeout(() => {
+      const rows = [];
+      for (const fa of [true, false]) for (const boot of [true, false]) for (const off of [true, false]) {
+        const r = makeRun({ fa, boot, off });
+        for (let i = 0; i < STEPS; i++) r.step();
+        const v = r.rms(), bad = v > 100;
+        const yes = (x) => (x ? '✓' : '·');
+        rows.push(`<tr><td>${yes(fa)}</td><td>${yes(boot)}</td><td>${yes(off)}</td><td>${v >= 1e4 ? v.toExponential(1) : v.toFixed(2)}</td><td class="verdict ${bad ? 'bad' : 'good'}">${bad ? 'diverges' : 'stays bounded'}</td></tr>`);
+      }
+      $('allTable').innerHTML = '<tr><th>approx.</th><th>bootstrap</th><th>off-policy</th><th>RMS at 3,000</th><th></th></tr>' + rows.join('');
+      $('allTable').hidden = false;
+      b.disabled = false; b.textContent = 'Run all 8 again';
+    }, 30);
+  });
+  resetB();
+
+  // ------------------------------------------------------------ quiz
+  Course.quiz([
+    {
+      q: 'Two-state example with $\\gamma = 0.9$, $\\alpha = 0.1$ and $w = 1$. What is $w$ after one update of the first state?',
+      answer: 1 + 0.1 * (2 * 0.9 - 1),
+      tol: 1e-6,
+      explain: '$1 + 0.1\\,(0 + 0.9 \\cdot 2 - 1) = 1 + 0.1 \\times 0.8 = 1.08$.',
+    },
+    {
+      q: 'In the two-state example, above what discount $\\gamma$ does $w$ grow when only the first state is updated?',
+      answer: 0.5,
+      tol: 1e-6,
+      hint: 'The factor is $1 + \\alpha(2\\gamma - 1)$.',
+      explain: 'The factor exceeds 1 when $2\\gamma - 1 > 0$, so for $\\gamma > 0.5$, whatever $\\alpha$ is.',
+    },
+    {
+      q: 'In Baird\'s example, $b$ takes the solid action with probability $1/7$ and $\\pi$ always takes it. What is $\\rho_t$ when the solid action is taken?',
+      answer: 7,
+      tol: 0,
+      explain: '$\\rho = \\pi(\\text{solid})/b(\\text{solid}) = 1/(1/7) = 7$. For the dashed action $\\rho = 0/(6/7) = 0$.',
+    },
+    {
+      q: 'Which single change stops Baird\'s weights diverging?',
+      choices: [
+        'Only a smaller step size',
+        'Any one of: tabular features, Monte Carlo targets, or on-policy updates',
+        'Only switching to on-policy updates',
+      ],
+      answer: 1,
+      explain: 'Run all 8 combinations: only the one with all three legs diverges. A smaller step size only slows it down.',
+    },
+  ]);
+</script>
+</body>
+</html>

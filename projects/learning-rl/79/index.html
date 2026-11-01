@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>79. Continuous actions | Learning RL</title>
+<meta name="description" content="When the action is a real number, the policy can be a Gaussian. Learn its mean and its spread by policy gradient, and watch the spread widen when far from the target and narrow when close.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  #field { width: 100%; height: 230px; display: block; cursor: pointer; touch-action: manipulation; border: 1px solid var(--border); border-radius: 6px; background: linear-gradient(#f8fafc, #fff); }
+  .eq { min-height: 2.4em; text-align: center; margin: 6px 0; line-height: 2; }
+</style>
+</head>
+<body data-lesson="79">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Continuous actions</h1>
+  <p class="lede">A value-based agent needs $\max_a Q(s,a)$, which is awkward when the action is a real number such as a force or an angle. A policy-gradient agent only needs to sample actions and compute $\nabla \ln \pi$. A Gaussian policy does both easily, and it learns its own amount of exploration through $\sigma$.</p>
+
+  <section class="card">
+    <h2>Aim a throw</h2>
+    <p class="note">The action $a$ is where the ball lands, in metres. The policy is $a \sim \mathcal{N}(\mu, \sigma^2)$: the curve is its density. The reward is $R = e^{-(a - x^*)^2 / 2}$: 1 for a throw into the bucket at $x^*$, falling off with distance. Click the ground to move the bucket.</p>
+    <canvas id="field" aria-label="Throwing field. Click to move the bucket."></canvas>
+    <label class="slider"><span>Mean $\mu$</span><input id="mu" type="range" min="0" max="10" step="0.05" value="3"><output></output></label>
+    <label class="slider"><span>Spread $\sigma$</span><input id="sg" type="range" min="0.1" max="4" step="0.05" value="1"><output></output></label>
+    <div class="row">
+      <button id="b1" class="primary">Throw</button>
+      <button id="b20">Throw 20</button>
+      <button id="bLearn">Learn</button>
+      <span class="spacer"></span>
+      <button id="bReset" class="quiet">Reset</button>
+    </div>
+    <div class="eq" id="eq1"></div>
+    <div class="eq" id="eq2"></div>
+    <div class="stats">
+      <div class="stat"><span class="k">Expected reward $J$</span><span class="v" id="sJ">–</span></div>
+      <div class="stat"><span class="k">Average of your throws</span><span class="v" id="sAvg">–</span></div>
+      <div class="stat"><span class="k">$\sigma$ should</span><span class="v" id="sDir">–</span></div>
+    </div>
+    <canvas class="chart" id="trace"></canvas>
+    <p class="note">"Learn" runs REINFORCE with a baseline, one throw per update, and moves the sliders itself. Start far from the bucket: $\sigma$ first grows, because a wider spread is the only way to land anywhere near it. Once $\mu$ arrives, $\sigma$ shrinks and the throws tighten. With the bucket under $\mu$, $J$ keeps rising as $\sigma$ falls, so $\sigma$ heads for 0; it is kept above 0.1, and learning stops after 1500 throws.</p>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>For a real-valued action, the policy is a probability <b>density</b>. S&amp;B §13.7 uses a normal distribution whose mean and standard deviation are functions of the state:</p>
+    $$\pi(a \mid s, \boldsymbol\theta) = \frac{1}{\sigma(s,\boldsymbol\theta)\sqrt{2\pi}} \exp\!\Big(-\frac{(a - \mu(s,\boldsymbol\theta))^2}{2\sigma(s,\boldsymbol\theta)^2}\Big)$$
+    <p>with $\mu(s,\boldsymbol\theta) = \boldsymbol\theta_\mu^\top \mathbf{x}_\mu(s)$ and $\sigma(s,\boldsymbol\theta) = \exp\big(\boldsymbol\theta_\sigma^\top \mathbf{x}_\sigma(s)\big)$. The exponential keeps $\sigma$ positive. A density can exceed 1; only its integral must equal 1. Here there is one state and $\mathbf{x} = 1$, so $\mu = \theta_\mu$ and $\sigma = e^{\theta_\sigma}$.</p>
+    <p>Taking the log, $\ln \pi = -\theta_\sigma - \tfrac12 \ln 2\pi - (a-\mu)^2 e^{-2\theta_\sigma}/2$. Differentiating:</p>
+    $$\frac{\partial \ln \pi}{\partial \theta_\mu} = \frac{a - \mu}{\sigma^2}, \qquad \frac{\partial \ln \pi}{\partial \theta_\sigma} = \frac{(a - \mu)^2}{\sigma^2} - 1$$
+    <p>A throw beyond $\mu$ points the mean gradient forwards. A throw more than one $\sigma$ from $\mu$ points the spread gradient towards wider; a closer throw points it towards narrower. Multiply by $R - b$ and these become the REINFORCE-with-baseline updates from Lesson 74, unchanged.</p>
+    <p><b>This task's $J$.</b> With $R = e^{-(a-x^*)^2/(2w^2)}$ ($w = 1$ here) and $a \sim \mathcal{N}(\mu, \sigma^2)$, a Gaussian integral gives</p>
+    $$J(\mu, \sigma) = \frac{w}{\sqrt{w^2 + \sigma^2}} \exp\!\Big(-\frac{(\mu - x^*)^2}{2(w^2 + \sigma^2)}\Big)$$
+    <p>Its derivative in $\sigma$ has the sign of $(\mu - x^*)^2 - (w^2 + \sigma^2)$. Far from the bucket, widening helps; close to it, narrowing helps. That is the "$\sigma$ should" readout, and the path the learner takes.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const C = Course.colors, XMAX = 10, W = 1, AM = 0.2, AS = 0.2, AB = 0.1, SMIN = 0.1;
+  const canvas = $('field'), ctx = canvas.getContext('2d');
+  let X = 7, throws = [], rewards = [], b = 0, learn = null, trace = [];
+
+  const set = (id, v) => { $(id).value = v; $(id).dispatchEvent(new Event('input')); };
+  let muV = 3, sgV = 1;     // full-precision copies; the sliders hold rounded values
+  Course.slider('#mu', (v) => v.toFixed(2), (v) => { if (!learn) muV = v; draw(); });
+  Course.slider('#sg', (v) => v.toFixed(2), (v) => { if (!learn) sgV = v; draw(); });
+
+  const reward = (a) => Math.exp(-((a - X) * (a - X)) / (2 * W * W));
+  const Jof = (m, s) => (W / Math.sqrt(W * W + s * s)) * Math.exp(-((m - X) * (m - X)) / (2 * (W * W + s * s)));
+
+  function draw() {
+    const dpr = window.devicePixelRatio || 1, Wd = canvas.clientWidth, H = canvas.clientHeight;
+    canvas.width = Wd * dpr; canvas.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, Wd, H);
+    const L = 30, R = 12, G = H - 30, PX = (x) => L + (x / XMAX) * (Wd - L - R);
+    // ground and ticks
+    ctx.strokeStyle = '#9ca3af'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, G); ctx.lineTo(Wd, G); ctx.stroke();
+    ctx.fillStyle = '#6b7280'; ctx.font = '11px -apple-system, sans-serif'; ctx.textAlign = 'center';
+    for (let x = 0; x <= XMAX; x += 1) ctx.fillText(x, PX(x), G + 16);
+    // reward shape under the bucket
+    ctx.fillStyle = 'rgba(217,119,6,0.12)';
+    ctx.beginPath(); ctx.moveTo(PX(0), G);
+    for (let x = 0; x <= XMAX; x += 0.05) ctx.lineTo(PX(x), G - 26 * reward(x));
+    ctx.lineTo(PX(XMAX), G); ctx.fill();
+    // bucket
+    ctx.fillStyle = C.amber; ctx.beginPath();
+    ctx.moveTo(PX(X) - 11, G - 20); ctx.lineTo(PX(X) + 11, G - 20); ctx.lineTo(PX(X) + 8, G - 1); ctx.lineTo(PX(X) - 8, G - 1); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.fillRect(PX(X) - 9, G - 18, 18, 3);
+    ctx.fillStyle = C.amber; ctx.font = '11px -apple-system, sans-serif'; ctx.fillText('x*', PX(X), G - 24);
+    ctx.font = '22px sans-serif'; ctx.fillText('🧍', PX(0) - 8, G - 2);
+    // policy density
+    const m = muV, s = sgV, peak = 1 / (s * Math.sqrt(2 * Math.PI)), top = 1 / (SMIN * Math.sqrt(2 * Math.PI));
+    const scale = (G - 40) / Math.min(top, Math.max(0.6, peak));
+    ctx.strokeStyle = C.green; ctx.lineWidth = 2.5; ctx.beginPath();
+    for (let x = 0; x <= XMAX; x += 0.02) {
+      const d = Math.exp(-((x - m) * (x - m)) / (2 * s * s)) / (s * Math.sqrt(2 * Math.PI));
+      const y = G - Math.min(G - 8, d * scale);
+      x === 0 ? ctx.moveTo(PX(x), y) : ctx.lineTo(PX(x), y);
+    }
+    ctx.stroke();
+    ctx.setLineDash([4, 4]); ctx.strokeStyle = C.green; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(PX(m), G); ctx.lineTo(PX(m), 8); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = C.green; ctx.font = '12px -apple-system, sans-serif'; ctx.fillText('μ', PX(m) + 8, 18);
+    // throws: the latest as an arc, earlier ones as dots
+    throws.slice(-30).forEach((a, i, arr) => {
+      const x = Math.max(0, Math.min(XMAX, a)), last = i === arr.length - 1;
+      ctx.fillStyle = last ? C.blue : 'rgba(42,122,226,0.35)';
+      ctx.beginPath(); ctx.arc(PX(x), G - 4, last ? 5 : 3.5, 0, 2 * Math.PI); ctx.fill();
+      if (last) {
+        ctx.strokeStyle = 'rgba(42,122,226,0.6)'; ctx.lineWidth = 1.5; ctx.setLineDash([3, 3]);
+        ctx.beginPath(); ctx.moveTo(PX(0), G - 20);
+        ctx.quadraticCurveTo((PX(0) + PX(x)) / 2, G - 20 - 0.6 * (PX(x) - PX(0)) * 0.5, PX(x), G - 4); ctx.stroke(); ctx.setLineDash([]);
+      }
+    });
+
+    const J = Jof(m, s), dir = (m - X) * (m - X) - (W * W + s * s);
+    $('sJ').textContent = J.toFixed(3);
+    $('sAvg').textContent = rewards.length ? (rewards.reduce((x, y) => x + y, 0) / rewards.length).toFixed(3) : '–';
+    $('sDir').textContent = Math.abs(dir) < 0.05 ? 'stay' : dir > 0 ? 'grow' : 'shrink';
+    drawTrace();
+  }
+
+  const chart = Course.lineChart($('trace'), { xLabel: 'throws while learning', yMin: 0, yMax: 10 });
+  function drawTrace() {
+    chart.draw(trace.length ? [
+      { data: trace.map((t, i) => [i, t[0]]), color: C.green, label: 'μ' },
+      { data: trace.map((t, i) => [i, t[1]]), color: C.purple, label: 'σ' },
+    ] : [{ data: [[0, muV], [1, muV]], color: 'rgba(0,0,0,0)' }], { hlines: [{ y: X, label: 'bucket x*', color: C.amber }] });
+  }
+
+  function throwOnce() {
+    const m = muV, s = sgV, a = m + s * Course.gauss(), R = reward(a);
+    throws.push(a); rewards.push(R);
+    const z = (a - m) / s;
+    Course.tex($('eq1'), `a = ${a.toFixed(2)},\\ R = e^{-(${a.toFixed(2)} - ${X.toFixed(1)})^2/2} = ${R.toFixed(3)}`);
+    Course.tex($('eq2'), `\\tfrac{\\partial \\ln \\pi}{\\partial \\theta_\\mu} = \\tfrac{${(a - m).toFixed(2)}}{${(s * s).toFixed(2)}} = ${((a - m) / (s * s)).toFixed(2)}, \\quad \\tfrac{\\partial \\ln \\pi}{\\partial \\theta_\\sigma} = ${(z * z).toFixed(2)} - 1 = ${(z * z - 1).toFixed(2)}`);
+    return { a, R, z };
+  }
+
+  // REINFORCE with a running-average baseline on this one-step task.
+  function learnStep() {
+    const { R, z } = throwOnce(), s = sgV, d = R - b;
+    b += AB * (R - b);
+    muV = Math.max(0, Math.min(XMAX, muV + AM * d * z / s));
+    sgV = Math.max(SMIN, Math.min(4, Math.exp(Math.log(s) + AS * d * (z * z - 1))));
+    trace.push([muV, sgV]);
+    set('mu', muV); set('sg', sgV);
+  }
+  function stop() { clearInterval(learn); learn = null; $('bLearn').textContent = 'Learn'; }
+  $('bLearn').addEventListener('click', () => {
+    if (learn) return stop();
+    if (trace.length >= 1500) { trace = []; b = 0; }
+    $('bLearn').textContent = 'Pause';
+    learn = setInterval(() => {
+      for (let i = 0; i < 3; i++) learnStep();
+      if (trace.length >= 1500) stop();
+    }, 40);
+  });
+  $('b1').addEventListener('click', () => { throwOnce(); draw(); });
+  $('b20').addEventListener('click', () => { for (let i = 0; i < 20; i++) throwOnce(); draw(); });
+  $('bReset').addEventListener('click', () => {
+    stop(); throws = []; rewards = []; b = 0; trace = [];
+    set('mu', 3); set('sg', 1); muV = 3; sgV = 1;
+    $('eq1').textContent = 'Press Throw, or Learn.'; $('eq2').textContent = '';
+    draw();
+  });
+  canvas.addEventListener('click', (e) => {
+    const r = canvas.getBoundingClientRect(), x = ((e.clientX - r.left - 30) / (r.width - 42)) * XMAX;
+    X = Math.round(Math.max(0.5, Math.min(XMAX - 0.5, x)) * 10) / 10;
+    rewards = []; draw();
+  });
+  new ResizeObserver(draw).observe(canvas);
+  $('eq1').textContent = 'Press Throw, or Learn.';
+  draw();
+
+  Course.quiz([
+    {
+      q: 'The policy has $\\mu = 4$ and $\\sigma = 2$. A throw lands at $a = 5$. What is $\\partial \\ln \\pi / \\partial \\theta_\\mu$?',
+      answer: (5 - 4) / 4,
+      tol: 0.001,
+      explain: '$(a - \\mu)/\\sigma^2 = 1/4 = 0.25$.',
+    },
+    {
+      q: 'Same throw. What is $\\partial \\ln \\pi / \\partial \\theta_\\sigma$?',
+      answer: 1 / 4 - 1,
+      tol: 0.001,
+      explain: '$(a - \\mu)^2/\\sigma^2 - 1 = 0.25 - 1 = -0.75$. The throw was within one $\\sigma$, so this sample points towards a narrower spread (if its reward beats the baseline).',
+    },
+    {
+      q: 'What is the policy density $\\pi(a)$ at $a = \\mu$ when $\\sigma = 0.25$?',
+      answer: 1 / (0.25 * Math.sqrt(2 * Math.PI)),
+      tol: 0.005,
+      explain: '$1/(0.25\\sqrt{2\\pi}) \\approx 1.596$. A density can be larger than 1.',
+    },
+    {
+      q: 'Here $w = 1$. The policy has $\\mu = 3$, $\\sigma = 1$ and the bucket is at $x^* = 7$. Does the true gradient push $\\sigma$ up or down?',
+      choices: ['Down: less noise is always better', 'Up: $(\\mu - x^*)^2 = 16$ exceeds $w^2 + \\sigma^2 = 2$', 'Neither: $\\sigma$ does not affect $J$'],
+      answer: 1,
+      explain: 'Far from the bucket almost every throw scores near 0. Spreading out makes some throws land close, which raises $J$.',
+    },
+  ]);
+</script>
+</body>
+</html>

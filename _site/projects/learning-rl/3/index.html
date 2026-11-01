@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3. Explore or exploit? | Learning RL</title>
+<meta name="description" content="Three restaurants, fifteen nights. Stick with a good one, or keep looking for a better one?">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .places { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 10px; }
+  .place {
+    display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 12px 6px;
+    border: 1px solid var(--border); border-radius: 8px; background: var(--soft); color: var(--heading);
+  }
+  .place:hover:not(:disabled) { background: var(--accent-soft); color: var(--heading); }
+  .place .emoji { font-size: 34px; line-height: 1.2; }
+  .place .q { font-size: 1.3rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .place .n { font-size: 0.8rem; color: var(--muted); font-weight: 400; }
+  .place .truth { font-size: 0.8rem; color: var(--accent); font-weight: 600; min-height: 1.2em; }
+  .place.last { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .dots { display: flex; gap: 5px; justify-content: center; flex-wrap: wrap; margin: 6px 0; }
+  .dot { width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--border); }
+  .dot.used { background: var(--accent); border-color: var(--accent); }
+</style>
+</head>
+<body data-lesson="3">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Explore or exploit?</h1>
+  <p class="lede">You have 15 nights in a new town with three restaurants. Each meal scores 0–10 at random around that restaurant's true quality. Score as many points as you can.</p>
+
+  <section class="card">
+    <div class="places" id="places"></div>
+    <div class="dots" id="dots"></div>
+    <p class="status" id="status"></p>
+    <div class="row center"><button id="bNew" class="quiet">New town</button></div>
+
+    <div class="sub">
+      <h2>Let an ε-greedy agent play</h2>
+      <label class="slider"><span>Explore rate ε</span><input id="iEps" type="range" min="0" max="1" step="0.05" value="0"><output></output></label>
+      <div class="row"><button id="bRobot">Watch it play</button><button id="bSweep" class="quiet">Compare every ε</button></div>
+      <p id="avg" class="note"></p>
+      <canvas class="chart" id="chart" hidden></canvas>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>The number on each restaurant is the <b>estimated value</b> of choosing it: the average score so far.</p>
+    $$Q(a) = \frac{\text{sum of scores from } a}{N(a)}$$
+    <p>$N(a)$ is how many times $a$ has been chosen. Few visits means a noisy estimate.</p>
+    <p>The <b>greedy</b> choice is the action with the highest estimate, written $\arg\max_a Q(a)$. An <b>ε-greedy</b> agent explores with probability $\varepsilon$ and is greedy otherwise:</p>
+    $$A = \begin{cases} \text{random action} & \text{with probability } \varepsilon \\ \arg\max_a Q(a) & \text{with probability } 1 - \varepsilon \end{cases}$$
+    <p>A random pick can also land on the greedy action. With $k$ actions, the greedy one is chosen with probability $1 - \varepsilon + \varepsilon / k$.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const NIGHTS = 15;
+  const EMOJI = ['🍕', '🍜', '🌮'];
+  const MEANS = [4, 5.5, 7];
+  let truth, total, count, nights, last, busy = false;
+
+  const meal = (a, tr) => Math.max(0, Math.min(10, Math.round(tr[a] + 2 * Course.gauss())));
+  const Q = (a, tot, cnt) => (cnt[a] ? tot[a] / cnt[a] : 0);
+  const eps = Course.slider('#iEps', (v) => v.toFixed(2));
+
+  function newTown() {
+    truth = Course.shuffle(MEANS);
+    total = [0, 0, 0]; count = [0, 0, 0]; nights = 0; last = -1;
+    $('status').textContent = 'Pick a restaurant for night 1.';
+    draw();
+  }
+
+  function draw() {
+    const over = nights >= NIGHTS;
+    $('places').innerHTML = '';
+    EMOJI.forEach((e, a) => {
+      const b = document.createElement('button');
+      b.className = 'place' + (a === last ? ' last' : '');
+      b.disabled = over || busy;
+      b.innerHTML = `<span class="emoji">${e}</span>
+        <span class="q">${count[a] ? Q(a, total, count).toFixed(1) : '?'}</span>
+        <span class="n">N = ${count[a]}</span>
+        <span class="truth">${over ? 'true ' + truth[a] : ''}</span>`;
+      b.addEventListener('click', () => visit(a));
+      $('places').appendChild(b);
+    });
+    $('dots').innerHTML = Array.from({ length: NIGHTS }, (_, i) => `<span class="dot${i < nights ? ' used' : ''}"></span>`).join('');
+    $('bNew').disabled = $('bRobot').disabled = $('bSweep').disabled = busy;
+  }
+
+  function visit(a, who = 'You') {
+    if (nights >= NIGHTS) return;
+    const r = meal(a, truth);
+    total[a] += r; count[a]++; nights++; last = a;
+    const sum = total.reduce((x, y) => x + y, 0);
+    $('status').textContent = nights >= NIGHTS
+      ? `${who} scored ${sum}. Always eating at the best place averages ${Math.max(...truth) * NIGHTS}.`
+      : `${EMOJI[a]} scored ${r}. Total ${sum}. Night ${nights + 1} of ${NIGHTS}.`;
+    draw();
+  }
+
+  function choose(e, tot, cnt) {
+    if (Math.random() < e) return Course.randInt(3);
+    return Course.argmax([0, 1, 2].map((a) => Q(a, tot, cnt)));
+  }
+
+  // Average total over many towns, so one lucky run doesn't mislead.
+  function averageScore(e, runs = 2000) {
+    let grand = 0;
+    for (let k = 0; k < runs; k++) {
+      const tr = Course.shuffle(MEANS), tot = [0, 0, 0], cnt = [0, 0, 0];
+      for (let n = 0; n < NIGHTS; n++) {
+        const a = choose(e, tot, cnt), r = meal(a, tr);
+        tot[a] += r; cnt[a]++; grand += r;
+      }
+    }
+    return grand / runs;
+  }
+
+  function robot() {
+    const e = eps();
+    newTown();
+    busy = true; draw();
+    const tick = setInterval(() => {
+      if (nights >= NIGHTS) {
+        clearInterval(tick); busy = false; draw();
+        $('avg').textContent = `Averaged over 2,000 towns, ε = ${e.toFixed(2)} scores ${averageScore(e).toFixed(1)}. Perfect knowledge scores ${MEANS[2] * NIGHTS}.`;
+        return;
+      }
+      visit(choose(e, total, count), 'The agent');
+    }, 200);
+  }
+
+  const chart = Course.lineChart($('chart'), { xLabel: 'ε', yLabel: 'average total', xMin: 0, xMax: 1 });
+  function sweep() {
+    const pts = [];
+    for (let e = 0; e <= 1.0001; e += 0.05) pts.push([+e.toFixed(2), averageScore(e)]);
+    const best = pts.reduce((a, b) => (b[1] > a[1] ? b : a));
+    $('chart').hidden = false;
+    chart.draw([{ data: pts, color: Course.colors.green, dots: true }], {
+      hlines: [{ y: MEANS[2] * NIGHTS, label: 'perfect knowledge' }],
+      vlines: [{ x: best[0], label: `best ε ≈ ${best[0]}` }],
+    });
+    $('avg').textContent = 'Too little exploring and the agent gets stuck. Too much and it wastes nights on places it already knows are worse.';
+  }
+
+  $('bNew').addEventListener('click', newTown);
+  $('bRobot').addEventListener('click', robot);
+  $('bSweep').addEventListener('click', sweep);
+  newTown();
+
+  Course.quiz([
+    {
+      q: '🍜 has scored 6, 8 and 7. What is its estimated value $Q$?',
+      answer: 7,
+      explain: '$(6 + 8 + 7)/3 = 7$.',
+    },
+    {
+      q: 'With $\\varepsilon = 0.1$ and 3 restaurants, what is the probability the agent picks the greedy restaurant?',
+      answer: 0.9 + 0.1 / 3,
+      tol: 0.005,
+      hint: 'It can pick the greedy one by exploiting, or by exploring and getting lucky.',
+      explain: '$1 - \\varepsilon + \\varepsilon/k = 0.9 + 0.1/3 \\approx 0.933$.',
+    },
+    {
+      q: 'Why does $\\varepsilon = 0$ often get stuck?',
+      choices: [
+        'It forgets old scores',
+        'Its first good-enough estimate is never challenged, because it never tries the others again',
+        'It explores too much',
+      ],
+      answer: 1,
+      explain: 'All estimates start at 0, so the first place with a positive score wins forever.',
+    },
+  ]);
+</script>
+</body>
+</html>

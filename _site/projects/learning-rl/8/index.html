@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>8. Optimistic initial values | Learning RL</title>
+<meta name="description" content="Start every estimate too high and even a purely greedy agent explores. Watch the disappointment drive it.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .qbars { position: relative; display: flex; align-items: stretch; gap: 6px; height: 220px; margin: 10px 0 4px; padding-left: 28px; }
+  .qcol { flex: 1; position: relative; border-radius: 3px; }
+  .qcol .fill { position: absolute; left: 0; right: 0; background: var(--accent); border-radius: 3px; transition: all 0.25s ease; }
+  .qcol.neg .fill { background: var(--red); }
+  .qcol.picked { background: var(--accent-soft); }
+  .qcol .star { position: absolute; left: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; border: 2px solid var(--amber); background: #fff; }
+  .zero { position: absolute; left: 28px; right: 0; border-top: 1px solid #9ca3af; }
+  .ylab { position: absolute; left: 0; width: 24px; text-align: right; font-size: 0.7rem; color: var(--muted); transform: translateY(-50%); }
+  .xlab { display: flex; gap: 6px; padding-left: 28px; font-size: 0.75rem; color: var(--muted); }
+  .xlab span { flex: 1; text-align: center; }
+  .xlab span.n { color: var(--heading); }
+</style>
+</head>
+<body data-lesson="8">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Optimistic initial values</h1>
+  <p class="lede">Start every estimate far too high. A purely greedy agent tries an arm, gets a disappointing reward, and its estimate drops below the untried arms. So it tries those next. Optimism makes even a greedy agent explore.</p>
+
+  <section class="card">
+    <label class="slider"><span>Initial $Q_1$</span><input id="iQ1" type="range" min="0" max="10" step="0.5" value="5"><output></output></label>
+    <div class="qbars" id="qbars"></div>
+    <div class="xlab" id="xlab"></div>
+    <p class="status" id="status"></p>
+    <div class="row">
+      <button id="bStep">Greedy step</button>
+      <button id="bRun" class="primary">Run</button>
+      <span class="spacer"></span>
+      <label class="muted"><input type="checkbox" id="cTrue"> show true values ○</label>
+      <button id="bReset" class="quiet">New bandit</button>
+    </div>
+    <p class="note">10-armed testbed from Lesson 5. Greedy, constant $\alpha = 0.1$. Bars are $Q(a)$, numbers below are pull counts.</p>
+
+    <div class="sub">
+      <h2>Optimistic greedy vs realistic ε-greedy</h2>
+      <p class="note">Average over 400 bandits of how often each agent picks the best arm (S&amp;B Figure 2.3).</p>
+      <div class="row"><button id="bCompare">Run comparison</button></div>
+      <canvas class="chart" id="chart" hidden></canvas>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>With constant step size $\alpha$, the update is $Q \leftarrow Q + \alpha(R - Q)$. Rewards in the testbed are mostly between $-3$ and $3$, so starting at $Q_1 = 5$ guarantees disappointment:</p>
+    $$Q_2 = 5 + 0.1\,(R - 5) = 4.5 + 0.1\,R$$
+    <p>The pulled arm drops to about 4.5 while the untried arms stay at 5, so greedy moves on. Every arm gets tried before the estimates settle.</p>
+    <p>From Lesson 7, after $n$ rewards the initial guess still carries weight $(1-\alpha)^n$. That weight is how long the optimism lasts:</p>
+    $$Q_{n+1} = (1-\alpha)^n Q_1 + \sum_{i=1}^{n} \alpha(1-\alpha)^{n-i} R_i$$
+    <p>Two limits. The exploration happens only at the start, so it cannot help if the true values change later. And the agent needs a rough idea of the reward scale to pick a high enough $Q_1$.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const K = 10, ALPHA = 0.1, YMIN = -3, YMAX = 10;
+  let B, Q, N, t, last, timer = null;
+
+  const q1 = Course.slider('#iQ1', (v) => v.toFixed(1), reset);
+  const Y = (y) => `${(100 * (YMAX - Math.max(YMIN, Math.min(YMAX, y)))) / (YMAX - YMIN)}%`;
+
+  function newBandit() { B = Course.bandit(K); reset(); }
+  function reset() {
+    stop();
+    Q = new Array(K).fill(q1()); N = new Array(K).fill(0); t = 0; last = -1;
+    $('status').textContent = `Every estimate starts at ${q1()}. Press "Greedy step".`;
+    draw();
+  }
+
+  function draw() {
+    const show = $('cTrue').checked;
+    let html = '';
+    for (let y = YMIN; y <= YMAX; y += (y < 0 ? 3 : 5)) html += `<span class="ylab" style="top:${Y(y)}">${y}</span>`;
+    html += `<div class="zero" style="top:${Y(0)}"></div>`;
+    html += Q.map((q, a) => {
+      const top = Y(Math.max(q, 0)), bottom = Y(Math.min(q, 0));
+      const star = show ? `<span class="star" style="top:${Y(B.q[a])}" title="q* = ${B.q[a].toFixed(2)}"></span>` : '';
+      return `<div class="qcol${q < 0 ? ' neg' : ''}${a === last ? ' picked' : ''}" title="Q = ${q.toFixed(2)}">
+        <div class="fill" style="top:${top};bottom:calc(100% - ${bottom})"></div>${star}</div>`;
+    }).join('');
+    $('qbars').innerHTML = html;
+    $('xlab').innerHTML = N.map((k, a) => `<span class="${a === last ? 'n' : ''}">${k}</span>`).join('');
+  }
+
+  function greedyStep() {
+    const a = Course.argmax(Q), r = B.pull(a), old = Q[a];
+    Q[a] += ALPHA * (r - Q[a]); N[a]++; t++; last = a;
+    const untried = N.filter((k) => k === 0).length;
+    $('status').innerHTML = `Step ${t}: arm ${a} paid ${r.toFixed(2)}. $Q$: ${old.toFixed(2)} → ${Q[a].toFixed(2)}. ` +
+      (untried ? `${untried} arm${untried > 1 ? 's' : ''} still untried.` : `Every arm tried. Best arm is ${B.best}, pulled ${N[B.best]} times.`);
+    Course.renderMath($('status'));
+    draw();
+  }
+
+  function stop() { clearInterval(timer); timer = null; $('bRun').textContent = 'Run'; }
+  $('bStep').addEventListener('click', greedyStep);
+  $('bRun').addEventListener('click', () => {
+    if (timer) return stop();
+    $('bRun').textContent = 'Pause';
+    timer = setInterval(greedyStep, 150);
+  });
+  $('bReset').addEventListener('click', newBandit);
+  $('cTrue').addEventListener('change', draw);
+
+  // % of runs choosing the optimal arm at each step, for one agent setting.
+  function optimalRate(q1v, eps, runs = 400, steps = 600) {
+    const hits = new Array(steps).fill(0);
+    for (let k = 0; k < runs; k++) {
+      const b = Course.bandit(K), q = new Array(K).fill(q1v);
+      for (let s = 0; s < steps; s++) {
+        const a = Math.random() < eps ? Course.randInt(K) : Course.argmax(q);
+        if (a === b.best) hits[s]++;
+        q[a] += ALPHA * (b.pull(a) - q[a]);
+      }
+    }
+    return hits.map((h) => (100 * h) / runs);
+  }
+  const chart = Course.lineChart($('chart'), { xLabel: 'step', yLabel: '% best arm', yMin: 0, yMax: 100 });
+  $('bCompare').addEventListener('click', () => {
+    $('bCompare').disabled = true; $('bCompare').textContent = 'Running…';
+    setTimeout(() => {
+      $('chart').hidden = false;
+      chart.draw([
+        { data: optimalRate(5, 0), color: Course.colors.green, label: 'greedy, Q₁ = 5' },
+        { data: optimalRate(0, 0.1), color: Course.colors.grey, label: 'ε = 0.1, Q₁ = 0' },
+      ]);
+      $('bCompare').disabled = false; $('bCompare').textContent = 'Run again';
+    }, 30);
+  });
+
+  newBandit();
+
+  Course.quiz([
+    {
+      q: '$Q_1 = 5$, $\\alpha = 0.1$, and the first reward is $0$. What is $Q_2$?',
+      answer: 4.5,
+      explain: '$5 + 0.1(0 - 5) = 4.5$.',
+    },
+    {
+      q: 'An arm starts at $Q_1 = 5$ and keeps paying exactly 0, with $\\alpha = 0.1$. After how many pulls is its estimate first below 1?',
+      answer: 16,
+      tol: 0,
+      hint: 'You need $5 \\times 0.9^n < 1$.',
+      explain: '$0.9^n < 0.2 \\Rightarrow n > \\ln 0.2 / \\ln 0.9 \\approx 15.3$, so 16 pulls.',
+    },
+    {
+      q: 'Why does the optimistic agent spike early in the comparison chart?',
+      choices: [
+        'It gets lucky on the first pull',
+        'After trying every arm once, the best arm is usually the least disappointing, so greedy returns to it',
+        'It uses a larger step size',
+      ],
+      answer: 1,
+      explain: 'Around step 11 every arm has been tried once and the best arm tends to have the highest estimate. It is then pulled and disappoints again, so the spike fades before settling.',
+    },
+    {
+      q: 'The true values change halfway through a long run. Does optimism help then?',
+      choices: ['Yes, it keeps exploring forever', 'No, its exploration happens only at the start'],
+      answer: 1,
+      explain: 'Once the initial optimism is gone, it is a greedy agent with no reason to look again.',
+    },
+  ]);
+</script>
+</body>
+</html>

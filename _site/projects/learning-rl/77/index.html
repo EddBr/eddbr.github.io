@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>77. One-step actor-critic | Learning RL</title>
+<meta name="description" content="After every single step, the critic computes the TD error and both the critic and the actor update. Watch a corridor agent learn its policy and its values together.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .corr { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; max-width: 480px; margin: 10px auto 4px; }
+  .cc { border: 1px solid var(--border); border-radius: 6px; background: var(--soft); text-align: center; padding: 4px 2px; position: relative; }
+  .cc.here { border-color: var(--accent); background: var(--accent-soft); }
+  .cc .bot { font-size: 22px; height: 28px; line-height: 28px; }
+  .cc .pm { height: 8px; border-radius: 3px; background: var(--blue); overflow: hidden; margin: 2px 4px; }
+  .cc .pm i { display: block; height: 100%; background: var(--accent); transition: width 0.15s ease; }
+  .cc .k { font-size: 0.68rem; color: var(--muted); }
+  .cc .vv { font-size: 0.78rem; font-weight: 600; font-variant-numeric: tabular-nums; border-radius: 3px; margin: 2px 3px 0; }
+  .eq { min-height: 2.2em; text-align: center; margin: 4px 0; line-height: 2; }
+  .algo { font-size: 0.92rem; background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; margin: 10px 0; overflow-x: auto; }
+  .algo p { margin: 3px 0; color: var(--heading) !important; }
+  .algo .in { padding-left: 1.2em; }
+  .algo .in2 { padding-left: 2.4em; }
+</style>
+</head>
+<body data-lesson="77">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>One-step actor-critic</h1>
+  <p class="lede">Put Lessons 75 and 76 together. After every step, the critic computes the TD error $\delta$, learns from it like TD(0), and hands the same $\delta$ to the actor as an estimate of the advantage. Nobody waits for the episode to end.</p>
+
+  <section class="card">
+    <h2>Learning the slippery corridor</h2>
+    <p class="note">Each cell shows the actor's $\pi(\rightarrow \mid s)$ (green share of the bar) and the critic's $\hat v(s)$. Both start from zero: a coin-flip policy and a critic that expects nothing. $-1$ per step, 20% slip, $\gamma = 1$.</p>
+    <div class="corr" id="corr"></div>
+    <label class="slider"><span>Actor $\alpha^{\boldsymbol\theta}$</span><input id="at" type="range" min="0.02" max="0.6" step="0.02" value="0.2"><output></output></label>
+    <label class="slider"><span>Critic $\alpha^{\mathbf w}$</span><input id="aw" type="range" min="0.02" max="0.6" step="0.02" value="0.2"><output></output></label>
+    <div class="row">
+      <button id="bStep" class="primary">Step</button>
+      <button id="bRun">Run</button>
+      <button id="b50">+50 episodes</button>
+      <span class="spacer"></span>
+      <button id="bReset" class="quiet">Reset</button>
+    </div>
+    <div class="eq" id="e1"></div>
+    <div class="eq" id="e2"></div>
+    <div class="eq" id="e3"></div>
+    <div class="stats">
+      <div class="stat"><span class="k">Episode</span><span class="v" id="sEp">1</span></div>
+      <div class="stat"><span class="k">Steps this episode</span><span class="v" id="sT">0</span></div>
+      <div class="stat"><span class="k">Best possible (mean steps)</span><span class="v" id="sOpt">–</span></div>
+    </div>
+    <canvas class="chart" id="steps"></canvas>
+    <p class="note">Early on the critic is wrong, so its verdicts are biased. Critic and actor improve together: as the bars turn green, $\hat v(0)$ heads towards $v_*(0)$, which is minus the best mean number of steps.</p>
+
+    <div class="sub">
+      <h2>Against REINFORCE with baseline</h2>
+      <p class="note">Steps per episode, averaged over 100 runs of 200 episodes. Both are tabular: a preference per cell and action, and a value per cell. Actor-critic: $\alpha^{\boldsymbol\theta} = \alpha^{\mathbf w} = 0.2$. REINFORCE with baseline: $\alpha^{\boldsymbol\theta} = 0.01$, $\alpha^{\mathbf w} = 0.1$, the best pair from a small search; larger actor steps made it unstable.</p>
+      <div class="row"><button id="bCompare">Run comparison</button></div>
+      <canvas class="chart" id="cmp" hidden></canvas>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>The actor is a policy $\pi(a \mid s, \boldsymbol\theta)$ and the critic a value estimate $\hat v(s, \mathbf w)$. Both update from the one-step TD error:</p>
+    $$\delta_t = R_{t+1} + \gamma\, \hat v(S_{t+1}, \mathbf w) - \hat v(S_t, \mathbf w)$$
+    <p>with $\hat v = 0$ at a terminal state. The critic does semi-gradient TD(0) (Lessons 45 and 62). The actor takes Lesson 76's advantage form of the policy gradient with $\delta_t$ standing in for $A_\pi(S_t, A_t)$ (S&amp;B eq. 13.12):</p>
+    $$\begin{aligned}
+      \mathbf w &\leftarrow \mathbf w + \alpha^{\mathbf w}\, \delta_t\, \nabla \hat v(S_t, \mathbf w) \\
+      \boldsymbol\theta &\leftarrow \boldsymbol\theta + \alpha^{\boldsymbol\theta}\, \gamma^t\, \delta_t\, \nabla \ln \pi(A_t \mid S_t, \boldsymbol\theta)
+    \end{aligned}$$
+    <p>The critic moves its estimate towards the one-step target. The actor makes the action just taken more likely if it beat the critic's expectation, less likely if not.</p>
+    <div class="algo">
+      <p><b>One-step actor-critic</b> (episodic, S&amp;B §13.5)</p>
+      <p>Loop for each episode:</p>
+      <p class="in">Initialise $S$ (first state); $I \leftarrow 1$</p>
+      <p class="in">Loop while $S$ is not terminal:</p>
+      <p class="in2">$A \sim \pi(\cdot \mid S, \boldsymbol\theta)$; take $A$, observe $S', R$</p>
+      <p class="in2">$\delta \leftarrow R + \gamma\, \hat v(S', \mathbf w) - \hat v(S, \mathbf w)$</p>
+      <p class="in2">$\mathbf w \leftarrow \mathbf w + \alpha^{\mathbf w}\, \delta\, \nabla \hat v(S, \mathbf w)$</p>
+      <p class="in2">$\boldsymbol\theta \leftarrow \boldsymbol\theta + \alpha^{\boldsymbol\theta}\, I\, \delta\, \nabla \ln \pi(A \mid S, \boldsymbol\theta)$</p>
+      <p class="in2">$I \leftarrow \gamma I$; $\ S \leftarrow S'$</p>
+    </div>
+    <p>$I$ holds $\gamma^t$. In the corridor $\gamma = 1$, so $I = 1$ throughout.</p>
+    <p><b>Tabular case.</b> With one value $\hat v(s)$ per cell, $\nabla \hat v(S)$ is 1 for cell $S$ and 0 elsewhere. With a softmax over preferences $h(s, b)$, eq. 13.9 gives $\partial \ln \pi(A \mid S) / \partial h(S, b) = \mathbb{1}_{b = A} - \pi(b \mid S)$. So each step changes</p>
+    $$\begin{aligned}
+      \hat v(S) &\leftarrow \hat v(S) + \alpha^{\mathbf w}\, \delta \\
+      h(S, A) &\leftarrow h(S, A) + \alpha^{\boldsymbol\theta}\, \delta\, \big(1 - \pi(A \mid S)\big) \\
+      h(S, b) &\leftarrow h(S, b) - \alpha^{\boldsymbol\theta}\, \delta\, \pi(b \mid S) \quad (b \ne A)
+    \end{aligned}$$
+    <p>These are the three lines printed under the corridor at every step.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const C = Course.colors;
+
+  // ------------------------------------------------------------ slippery corridor (Lessons 75–78)
+  const GOAL = 5, SLIP = 0.2;
+  const clamp = (x) => Math.max(0, Math.min(GOAL, x));
+  const outcomes = (s, a) => { const d = a ? 1 : -1; return [[clamp(s + d), 1 - SLIP], [clamp(s - d), SLIP]]; };
+  const stepEnv = (s, a) => clamp(s + (a ? 1 : -1) * (Math.random() < SLIP ? -1 : 1));
+  function evaluate(pR) {
+    const n = GOAL, M = Array.from({ length: n }, (_, i) => { const r = new Array(n + 1).fill(0); r[i] = 1; r[n] = -1; return r; });
+    for (let s = 0; s < n; s++) for (const a of [0, 1]) {
+      const pa = a ? pR[s] : 1 - pR[s];
+      for (const [s2, pp] of outcomes(s, a)) if (s2 !== GOAL) M[s][s2] -= pa * pp;
+    }
+    for (let i = 0; i < n; i++) {
+      let piv = i; for (let r = i + 1; r < n; r++) if (Math.abs(M[r][i]) > Math.abs(M[piv][i])) piv = r;
+      [M[i], M[piv]] = [M[piv], M[i]];
+      for (let r = 0; r < n; r++) if (r !== i) { const f = M[r][i] / M[i][i]; for (let c = i; c <= n; c++) M[r][c] -= f * M[i][c]; }
+    }
+    const v = M.map((r, i) => r[n] / r[i]); v.push(0); return v;
+  }
+  const VSTAR = evaluate(new Array(GOAL).fill(1));   // always right is optimal
+
+  // h[s] = [h(s,←), h(s,→)]
+  const piR = (h, s) => 1 / (1 + Math.exp(h[s][0] - h[s][1]));
+  const at = Course.slider('#at', (v) => v.toFixed(2));
+  const aw = Course.slider('#aw', (v) => v.toFixed(2));
+  let h, V, s, T, lengths, timer = null;
+
+  // One step of one-step actor-critic. Returns the details for display.
+  function acStep(h, V, s, aT, aW) {
+    const p = piR(h, s), a = Math.random() < p ? 1 : 0, s2 = stepEnv(s, a);
+    const v2 = s2 === GOAL ? 0 : V[s2], vOld = V[s];
+    const d = -1 + v2 - vOld;
+    V[s] += aW * d;
+    const pa = a ? p : 1 - p;
+    h[s][a] += aT * d * (1 - pa);
+    h[s][1 - a] -= aT * d * (1 - pa);       // π(other) = 1 − π(A) with two actions
+    return { a, s2, d, v2, vOld, pa };
+  }
+
+  function drawCorr() {
+    const vmax = Math.max(1, ...V.map(Math.abs));
+    $('corr').innerHTML = Array.from({ length: GOAL + 1 }, (_, i) => {
+      if (i === GOAL) return `<div class="cc${s === GOAL ? ' here' : ''}"><div class="bot">🏁</div><div class="k">flag</div><div class="vv">0</div></div>`;
+      const p = piR(h, i);
+      return `<div class="cc${i === s ? ' here' : ''}"><div class="bot">${i === s ? '🤖' : ''}</div>
+        <div class="pm"><i style="width:${100 * p}%"></i></div><div class="k">→ ${(100 * p).toFixed(0)}%</div>
+        <div class="vv" style="background:${Course.heat(V[i], vmax)}">${V[i].toFixed(1)}</div></div>`;
+    }).join('');
+  }
+  const chart = Course.lineChart($('steps'), { xLabel: 'episode', yLabel: 'steps', yMin: 0 });
+  function drawChart() {
+    $('sEp').textContent = lengths.length + 1;
+    $('sT').textContent = T;
+    const avg = lengths.map((_, i) => { const lo = Math.max(0, i - 9); let x = 0; for (let k = lo; k <= i; k++) x += lengths[k]; return [i + 1, x / (i - lo + 1)]; });
+    chart.draw(lengths.length ? [
+      { data: lengths.map((x, i) => [i + 1, x]), color: '#d1d5db', width: 1 },
+      { data: avg, color: C.green, label: 'average of last 10' },
+    ] : [{ data: [[0, 0], [1, 30]], color: 'rgba(0,0,0,0)' }], { hlines: [{ y: -VSTAR[0], label: 'best possible', color: C.amber }] });
+  }
+
+  function step(show = true) {
+    const s0 = s, r = acStep(h, V, s, at(), aw());
+    T++; s = r.s2;
+    if (show) {
+      Course.tex($('e1'), `\\delta = -1 + \\hat v(${r.s2}) - \\hat v(${s0}) = -1 + (${r.v2.toFixed(2)}) - (${r.vOld.toFixed(2)}) = ${r.d.toFixed(2)}`);
+      Course.tex($('e2'), `\\hat v(${s0}) \\leftarrow ${r.vOld.toFixed(2)} + ${aw().toFixed(2)}(${r.d.toFixed(2)}) = ${V[s0].toFixed(2)}`);
+      Course.tex($('e3'), `h(${s0}, ${r.a ? '\\rightarrow' : '\\leftarrow'}) \\mathrel{+}= ${at().toFixed(2)}(${r.d.toFixed(2)})(1 - ${r.pa.toFixed(2)}) = ${(at() * r.d * (1 - r.pa)) >= 0 ? '+' : ''}${(at() * r.d * (1 - r.pa)).toFixed(3)} \\Rightarrow \\pi(\\rightarrow \\mid ${s0}) = ${piR(h, s0).toFixed(2)}`);
+    }
+    if (s === GOAL) { lengths.push(T); s = 0; T = 0; }
+  }
+
+  function draw() { drawCorr(); drawChart(); }
+  function stop() { clearInterval(timer); timer = null; $('bRun').textContent = 'Run'; }
+  $('bStep').addEventListener('click', () => { step(); draw(); });
+  $('bRun').addEventListener('click', () => {
+    if (timer) return stop();
+    $('bRun').textContent = 'Pause';
+    timer = setInterval(() => { step(); draw(); }, 80);
+  });
+  $('b50').addEventListener('click', () => {
+    const target = lengths.length + 50;
+    let guard = 0;
+    while (lengths.length < target && guard++ < 200000) step(false);
+    ['e1', 'e2', 'e3'].forEach((id) => { $(id).textContent = ''; });
+    draw();
+  });
+  function reset() {
+    stop();
+    h = Array.from({ length: GOAL }, () => [0, 0]); V = new Array(GOAL).fill(0);
+    s = 0; T = 0; lengths = [];
+    $('e1').textContent = 'Press Step: the robot moves, then the critic and actor update.';
+    $('e2').textContent = ''; $('e3').textContent = '';
+    $('sOpt').textContent = (-VSTAR[0]).toFixed(2);
+    draw();
+  }
+  $('bReset').addEventListener('click', reset);
+  reset();
+
+  // ------------------------------------------------------------ comparison
+  function runAC(EPS) {
+    const hh = Array.from({ length: GOAL }, () => [0, 0]), VV = new Array(GOAL).fill(0), out = [];
+    for (let e = 0; e < EPS; e++) {
+      let st = 0, n = 0;
+      while (st !== GOAL && n < 1000) { st = acStep(hh, VV, st, 0.2, 0.2).s2; n++; }
+      out.push(n);
+    }
+    return out;
+  }
+  function runRFB(EPS, aT = 0.01, aW = 0.1) {
+    const hh = Array.from({ length: GOAL }, () => [0, 0]), VV = new Array(GOAL).fill(0), out = [];
+    for (let e = 0; e < EPS; e++) {
+      const S = [], A = []; let st = 0;
+      while (st !== GOAL && S.length < 1000) { const a = Math.random() < piR(hh, st) ? 1 : 0; S.push(st); A.push(a); st = stepEnv(st, a); }
+      const n = S.length; out.push(n);
+      for (let t = 0; t < n; t++) {
+        const d = -(n - t) - VV[S[t]];
+        VV[S[t]] += aW * d;
+        const p = piR(hh, S[t]), pa = A[t] ? p : 1 - p;
+        hh[S[t]][A[t]] += aT * d * (1 - pa); hh[S[t]][1 - A[t]] -= aT * d * (1 - pa);
+      }
+    }
+    return out;
+  }
+  const cmp = Course.lineChart($('cmp'), { xLabel: 'episode', yLabel: 'steps (average of 100 runs)', yMin: 0 });
+  $('bCompare').addEventListener('click', () => {
+    $('bCompare').disabled = true; $('bCompare').textContent = 'Running…';
+    setTimeout(() => {
+      const RUNS = 100, EPS = 200;
+      const avg = (f) => { const acc = new Array(EPS).fill(0); for (let r = 0; r < RUNS; r++) f(EPS).forEach((x, i) => { acc[i] += x / RUNS; }); return acc.map((x, i) => [i + 1, x]); };
+      $('cmp').hidden = false;
+      cmp.draw([
+        { data: avg(runRFB), color: C.grey, label: 'REINFORCE + baseline' },
+        { data: avg(runAC), color: C.green, label: 'one-step actor-critic' },
+      ], { hlines: [{ y: -VSTAR[0], label: 'best possible', color: C.amber }] });
+      $('bCompare').disabled = false; $('bCompare').textContent = 'Run again';
+    }, 30);
+  });
+
+  Course.quiz([
+    {
+      q: 'The critic has $\\hat v(S) = -6$ and $\\hat v(S\') = -4$. The reward is $-1$, $\\gamma = 1$ and $\\alpha^{\\mathbf w} = 0.2$. What is the new $\\hat v(S)$ (tabular)?',
+      answer: -6 + 0.2 * (-1 - 4 + 6),
+      tol: 0.001,
+      explain: '$\\delta = -1 + (-4) - (-6) = 1$, so $\\hat v(S) = -6 + 0.2 \\times 1 = -5.8$.',
+    },
+    {
+      q: 'Same step. The action taken had $\\pi(A \\mid S) = 0.4$ and $\\alpha^{\\boldsymbol\\theta} = 0.5$. By how much does the preference $h(S, A)$ change?',
+      answer: 0.5 * 1 * 0.6,
+      tol: 0.001,
+      explain: '$\\alpha^{\\boldsymbol\\theta}\\,\\delta\\,(1 - \\pi(A \\mid S)) = 0.5 \\times 1 \\times 0.6 = 0.3$.',
+    },
+    {
+      q: 'With $\\gamma = 0.9$, what is $I$ during the update at step $t = 3$ of an episode?',
+      answer: Math.pow(0.9, 3),
+      tol: 0.001,
+      explain: '$I$ starts at 1 and is multiplied by $\\gamma$ after each step: $0.9^3 = 0.729$.',
+    },
+    {
+      q: 'The robot steps onto the flag from cell 4. Which value does the critic use for $\\hat v(S\')$?',
+      choices: ['Its current estimate for cell 5', '0, because the episode has ended', 'The reward $-1$'],
+      answer: 1,
+      explain: 'No reward follows a terminal state, so its value is 0 by definition. This anchors every other estimate.',
+    },
+  ]);
+</script>
+</body>
+</html>

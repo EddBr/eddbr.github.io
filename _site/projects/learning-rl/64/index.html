@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>64. Neural networks as value functions | Learning RL</title>
+<meta name="description" content="A tiny neural network learns its own features. Pick or draw a value curve and watch a few tanh units bend themselves to fit it.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  #fit { width: 100%; height: 300px; display: block; margin: 8px 0; touch-action: none; }
+  #fit.draw { cursor: crosshair; }
+  .key { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.85rem; color: var(--muted); }
+  .key b { display: inline-block; width: 16px; vertical-align: middle; margin-right: 4px; }
+  .seg { display: inline-flex; flex-wrap: wrap; }
+  .seg button { border-radius: 0; margin-left: -1px; padding: 0.35rem 0.7rem; }
+  .seg button:first-child { border-radius: 4px 0 0 4px; margin-left: 0; }
+  .seg button:last-child { border-radius: 0 4px 4px 0; }
+  .net { width: 100%; max-width: 420px; height: auto; display: block; margin: 6px auto; }
+</style>
+</head>
+<body data-lesson="64">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Neural networks as value functions</h1>
+  <p class="lede">In Lessons 61 to 63 a person chose the features and only the weights were learned. A neural network learns the features too. Each hidden unit is a feature whose shape and position are trained along with the weights that combine them.</p>
+
+  <section class="card">
+    <div class="row">
+      <span class="muted">Target</span>
+      <span class="seg" id="targets"></span>
+    </div>
+    <canvas id="fit" aria-label="Target value curve, the network's estimate and each hidden unit's contribution"></canvas>
+    <div class="key">
+      <span><b style="border-top:3px solid var(--amber)"></b>target $v_\pi(s)$</span>
+      <span><b style="border-top:3px solid var(--accent)"></b>network $\hat v(s,\boldsymbol\theta)$</span>
+      <span><b style="border-top:2px dashed #9ca3af"></b>each unit's term $c_j h_j(s)$</span>
+    </div>
+    <label class="slider"><span>Hidden units $H$</span><input id="iH" type="range" min="1" max="24" step="1" value="6"><output></output></label>
+    <div class="stats">
+      <div class="stat"><span class="k">Training steps</span><span class="v" id="sSteps">0</span></div>
+      <div class="stat"><span class="k">Mean squared error</span><span class="v" id="sLoss">–</span></div>
+      <div class="stat"><span class="k">Parameters $3H + 1$</span><span class="v" id="sP">–</span></div>
+    </div>
+    <div class="row">
+      <button id="bRun" class="primary">Train</button>
+      <button id="bStep">Train 100 steps</button>
+      <span class="spacer"></span>
+      <button id="bInit" class="quiet">New random start</button>
+    </div>
+    <p class="status" id="status"></p>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>The network has one input $s$, one layer of $H$ hidden units and one output:</p>
+    $$h_j(s) = \tanh(a_j s + b_j), \qquad \hat v(s, \boldsymbol\theta) = \sum_{j=1}^{H} c_j\, h_j(s) + d.$$
+    <p>Each hidden unit is an S-shaped step whose steepness $a_j$ and position $b_j$ are learned. The output is a weighted sum of them, exactly like Lesson 61 but with features that move. $\boldsymbol\theta = (\mathbf{a}, \mathbf{b}, \mathbf{c}, d)$ holds all $3H + 1$ numbers.</p>
+    <p>Learning uses the same update as Lesson 62, with $\boldsymbol\theta$ in place of $\mathbf{w}$:</p>
+    $$\boldsymbol\theta \leftarrow \boldsymbol\theta + \alpha\,\big[U_t - \hat v(S_t, \boldsymbol\theta)\big]\,\nabla_{\boldsymbol\theta} \hat v(S_t, \boldsymbol\theta).$$
+    <p>The gradient comes from the chain rule, using $\tanh'(x) = 1 - \tanh^2(x)$. Computing it layer by layer, output first, is called <b>backpropagation</b>:</p>
+    $$\frac{\partial \hat v}{\partial d} = 1, \quad
+      \frac{\partial \hat v}{\partial c_j} = h_j, \quad
+      \frac{\partial \hat v}{\partial b_j} = c_j\,(1 - h_j^2), \quad
+      \frac{\partial \hat v}{\partial a_j} = c_j\,(1 - h_j^2)\, s.$$
+    <p>Unlike the linear case, $\overline{\text{VE}}$ is no longer a bowl. It can have many local minima, so "New random start" can end at different fits. Gradient Monte Carlo still converges to a local minimum. Semi-gradient TD has no such guarantee here (S&amp;B §9.7, §11.3).</p>
+    <p>With enough hidden units, a network like this can approximate any continuous function on an interval as closely as you like (Cybenko 1989; Hornik 1991). That says nothing about how much data or training it takes.</p>
+    <p class="note">To isolate the representation, this demo fits known targets at 101 states at once with Adam (Kingma &amp; Ba, 2015), a version of gradient descent that scales each parameter's step by a running average of its gradient's size. In RL the targets would be returns or TD targets arriving one at a time.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const M = 101;                                           // training states, s from -1 to 1
+  const S = Array.from({ length: M }, (_, i) => -1 + (2 * i) / (M - 1));
+
+  // ------------------------------------------------------------ targets
+  const TARGETS = {
+    walk: { name: 'Smooth', f: (s) => 0.92 * Math.tanh(1.9 * s) / Math.tanh(1.9) },
+    bumpy: { name: 'Bumpy', f: (s) => 0.55 * Math.sin(4.2 * s) + 0.35 * Math.exp(-((s - 0.55) ** 2) / 0.01) - 0.25 * s },
+    square: { name: 'Square (L63)', f: (s) => (s >= -0.4 && s < 0.4 ? 1 : 0) - 0.3 },
+    draw: { name: 'Draw your own', f: null },
+  };
+  let tkey = 'bumpy', target = S.map(TARGETS.bumpy.f);
+
+  // ------------------------------------------------------------ the network and Adam
+  const H = Course.slider('#iH', (v) => v, () => init());
+  let net, opt, steps, timer = null;
+
+  function init() {
+    const h = H();
+    // spread the units' steps across the interval so training starts somewhere sensible
+    net = {
+      a: Array.from({ length: h }, () => 2 + 3 * Math.random()).map((x) => (Math.random() < 0.5 ? -x : x)),
+      b: Array.from({ length: h }, () => 2.5 * (Math.random() * 2 - 1)),
+      c: Array.from({ length: h }, () => 0.3 * Course.gauss()),
+      d: 0,
+    };
+    const P = 3 * h + 1;
+    opt = { m: new Float64Array(P), v: new Float64Array(P), t: 0 };
+    steps = 0;
+    $('sP').textContent = P;
+    $('status').textContent = 'Press Train.';
+    draw();
+  }
+
+  function forward(s) {
+    const hs = net.a.map((a, j) => Math.tanh(a * s + net.b[j]));
+    return { hs, y: hs.reduce((t, h, j) => t + net.c[j] * h, net.d) };
+  }
+  function loss() { return S.reduce((t, s, i) => t + (forward(s).y - target[i]) ** 2, 0) / M; }
+
+  // One Adam step on the mean squared error over all M states (lr 0.02).
+  function trainStep() {
+    const h = net.a.length, g = new Float64Array(3 * h + 1);
+    S.forEach((s, i) => {
+      const { hs, y } = forward(s), e = (2 * (y - target[i])) / M;
+      for (let j = 0; j < h; j++) {
+        const back = e * net.c[j] * (1 - hs[j] * hs[j]);
+        g[j] += back * s;            // d/da_j
+        g[h + j] += back;            // d/db_j
+        g[2 * h + j] += e * hs[j];   // d/dc_j
+      }
+      g[3 * h] += e;                 // d/dd
+    });
+    opt.t++;
+    const lr = 0.02, b1 = 0.9, b2 = 0.999;
+    const get = (k) => (k < h ? net.a[k] : k < 2 * h ? net.b[k - h] : k < 3 * h ? net.c[k - 2 * h] : net.d);
+    const set = (k, x) => { if (k < h) net.a[k] = x; else if (k < 2 * h) net.b[k - h] = x; else if (k < 3 * h) net.c[k - 2 * h] = x; else net.d = x; };
+    for (let k = 0; k < g.length; k++) {
+      opt.m[k] = b1 * opt.m[k] + (1 - b1) * g[k];
+      opt.v[k] = b2 * opt.v[k] + (1 - b2) * g[k] * g[k];
+      const mh = opt.m[k] / (1 - b1 ** opt.t), vh = opt.v[k] / (1 - b2 ** opt.t);
+      set(k, get(k) - (lr * mh) / (Math.sqrt(vh) + 1e-8));
+    }
+    steps++;
+  }
+
+  // ------------------------------------------------------------ drawing
+  const canvas = $('fit'), ctx = canvas.getContext('2d');
+  const PAL = [Course.colors.blue, Course.colors.purple, Course.colors.red, '#0891b2', '#65a30d', '#db2777'];
+  const YM = 1.6;
+  let geom;
+  function draw() {
+    const dpr = window.devicePixelRatio || 1;
+    const W = canvas.clientWidth, Ht = canvas.clientHeight;
+    if (!W) return;
+    canvas.width = W * dpr; canvas.height = Ht * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, Ht);
+    const m = { l: 30, r: 8, t: 8, b: 26 };
+    const X = (s) => m.l + ((s + 1) / 2) * (W - m.l - m.r);
+    const Y = (v) => m.t + ((YM - v) / (2 * YM)) * (Ht - m.t - m.b);
+    geom = { m, W, Ht, X, Y };
+    ctx.font = '11px -apple-system, sans-serif'; ctx.fillStyle = '#6b7280';
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    [-1, 0, 1].forEach((v) => {
+      ctx.strokeStyle = v ? '#eef0f3' : '#9ca3af'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(m.l, Y(v)); ctx.lineTo(W - m.r, Y(v)); ctx.stroke();
+      ctx.fillText(v, m.l - 5, Y(v));
+    });
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.fillText('state s', (m.l + W) / 2, Ht - m.b + 6);
+    ctx.save(); ctx.beginPath(); ctx.rect(m.l, m.t, W - m.l - m.r, Ht - m.t - m.b); ctx.clip();
+    const curve = (f, color, width, dash = []) => {
+      ctx.strokeStyle = color; ctx.lineWidth = width; ctx.setLineDash(dash); ctx.beginPath();
+      for (let k = 0; k <= 300; k++) { const s = -1 + (2 * k) / 300; (k ? ctx.lineTo : ctx.moveTo).call(ctx, X(s), Y(f(s))); }
+      ctx.stroke(); ctx.setLineDash([]);
+    };
+    net.a.forEach((a, j) => curve((s) => net.c[j] * Math.tanh(a * s + net.b[j]), PAL[j % PAL.length] + '99', 1.3, [5, 4]));
+    ctx.strokeStyle = Course.colors.amber; ctx.lineWidth = 2.5; ctx.beginPath();
+    S.forEach((s, i) => (i ? ctx.lineTo : ctx.moveTo).call(ctx, X(s), Y(target[i])));
+    ctx.stroke();
+    curve((s) => forward(s).y, Course.colors.green, 3);
+    ctx.restore();
+    $('sSteps').textContent = steps;
+    $('sLoss').textContent = loss().toFixed(4);
+  }
+
+  // ------------------------------------------------------------ controls
+  function stop() { clearInterval(timer); timer = null; $('bRun').textContent = 'Train'; }
+  function burst(k) {
+    for (let i = 0; i < k; i++) trainStep();
+    $('status').textContent = `${steps} steps. ${net.a.length} unit${net.a.length > 1 ? 's' : ''}, ${3 * net.a.length + 1} parameters.`;
+    draw();
+  }
+  $('bRun').addEventListener('click', () => {
+    if (timer) return stop();
+    $('bRun').textContent = 'Pause';
+    timer = setInterval(() => burst(25), 30);
+  });
+  $('bStep').addEventListener('click', () => { stop(); burst(100); });
+  $('bInit').addEventListener('click', () => { stop(); init(); });
+
+  function chooseTarget(k) {
+    tkey = k;
+    if (TARGETS[k].f) target = S.map(TARGETS[k].f);
+    canvas.classList.toggle('draw', k === 'draw');
+    $('targets').innerHTML = Object.entries(TARGETS).map(([key, t]) => `<button class="${key === tkey ? 'on' : ''}" data-k="${key}">${t.name}</button>`).join('');
+    if (k === 'draw') $('status').textContent = 'Drag across the chart to draw a target, then train.';
+    draw();
+  }
+  $('targets').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) chooseTarget(b.dataset.k); });
+
+  // Drawing: set the target at the states under the pointer, filling gaps between moves.
+  let lastI = null;
+  function paint(e) {
+    const r = canvas.getBoundingClientRect(), { m, W, Ht } = geom;
+    const s = -1 + (2 * (e.clientX - r.left - m.l)) / (W - m.l - m.r);
+    const y = Math.max(-YM, Math.min(YM, YM - ((e.clientY - r.top - m.t) / (Ht - m.t - m.b)) * 2 * YM));
+    const i = Math.max(0, Math.min(M - 1, Math.round(((s + 1) / 2) * (M - 1))));
+    if (lastI === null) target[i] = y;
+    else {
+      const y0 = target[lastI], lo = Math.min(i, lastI), hi = Math.max(i, lastI);
+      for (let k = lo; k <= hi; k++) target[k] = hi === lo ? y : y0 + ((y - y0) * (k - lastI)) / (i - lastI);
+    }
+    lastI = i;
+    draw();
+  }
+  canvas.addEventListener('pointerdown', (e) => { if (tkey !== 'draw') return; canvas.setPointerCapture(e.pointerId); lastI = null; paint(e); });
+  canvas.addEventListener('pointermove', (e) => { if (tkey === 'draw' && e.buttons) paint(e); });
+  canvas.addEventListener('pointerup', () => { lastI = null; });
+
+  new ResizeObserver(() => net && draw()).observe(canvas);
+  init();
+  chooseTarget('bumpy');
+
+  // ------------------------------------------------------------ quiz
+  const h1 = Math.tanh(2 * 0.5), h2 = Math.tanh(1 * 0.5);
+  Course.quiz([
+    {
+      q: 'A network with $H = 2$ has $a = (2, 1)$, $b = (0, 0)$, $c = (1, -0.5)$ and $d = 0.1$. What is $\\hat v(0.5, \\boldsymbol\\theta)$?',
+      answer: h1 - 0.5 * h2 + 0.1,
+      tol: 0.002,
+      hint: '$h_1 = \\tanh(1)$ and $h_2 = \\tanh(0.5)$.',
+      explain: '$\\tanh(1) - 0.5\\tanh(0.5) + 0.1 = 0.7616 - 0.2311 + 0.1 = 0.6305$.',
+    },
+    {
+      q: 'Same network and state. What is $\\partial \\hat v / \\partial a_1$?',
+      answer: 1 * (1 - h1 * h1) * 0.5,
+      tol: 0.002,
+      explain: '$c_1 (1 - h_1^2)\\, s = 1 \\times (1 - 0.7616^2) \\times 0.5 = 0.42 \\times 0.5 = 0.210$.',
+    },
+    {
+      q: 'How many parameters does the network have with $H = 16$ hidden units?',
+      answer: 3 * 16 + 1,
+      tol: 0,
+      explain: '$16$ steepnesses, $16$ positions, $16$ output weights and one bias: $3 \\times 16 + 1 = 49$.',
+    },
+    {
+      q: 'Hold $\\mathbf{a}$ and $\\mathbf{b}$ fixed and train only $\\mathbf{c}$ and $d$. What kind of method is that?',
+      choices: [
+        'A linear method with fixed features $h_j(s)$, as in Lesson 61',
+        'Still a full neural network that learns its features',
+        'A tabular method',
+      ],
+      answer: 0,
+      explain: '$\\hat v$ is then linear in $(\\mathbf{c}, d)$ with features $h_j(s)$. Training $\\mathbf{a}$ and $\\mathbf{b}$ is what lets the network move its features.',
+    },
+  ]);
+</script>
+</body>
+</html>

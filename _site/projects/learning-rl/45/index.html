@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>45. TD(0) | Learning RL</title>
+<meta name="description" content="Update a value after every single step, using the next state's estimate as the target. Watch TD(0) learn the five-state random walk.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .walk { display: flex; gap: 6px; justify-content: center; margin: 10px 0 4px; }
+  .st {
+    width: 56px; height: 96px; border: 1px solid var(--border); border-radius: 6px; background: var(--soft);
+    position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+  }
+  .st .fill { position: absolute; left: 0; right: 0; bottom: 0; background: var(--accent-soft); transition: height 0.25s ease; }
+  .st .true { position: absolute; left: 4px; right: 4px; border-top: 2px dashed var(--amber); }
+  .st .nm { position: relative; font-weight: 600; color: var(--heading); margin-top: 4px; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .col .vv { font-size: 0.8rem; color: var(--heading); font-variant-numeric: tabular-nums; }
+  .st.term { width: 40px; background: #f3f4f6; justify-content: center; }
+  .st.term .nm { font-size: 0.8rem; color: var(--muted); margin: 0; }
+  .st.here { border-color: var(--accent); box-shadow: inset 0 0 0 2px var(--accent); }
+  .st.upd .fill { background: #6ee7b7; }
+  .st .dot { position: relative; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); margin-top: 6px; }
+  #eq { overflow-x: auto; min-height: 3em; }
+  @media (max-width: 560px) {
+    .walk { gap: 3px; }
+    .st { width: 46px; height: 88px; }
+    .st.term { width: 30px; }
+  }
+</style>
+</head>
+<body data-lesson="45">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>TD(0)</h1>
+  <p class="lede">Monte Carlo (Lesson 35) waits until the episode ends to learn anything. Temporal-difference learning updates after every step: it moves $V(S_t)$ towards the reward it just got plus its own estimate of the state it landed in. It learns a guess from a guess.</p>
+
+  <section class="card">
+    <p class="note">S&amp;B Example 6.2. Start in C, step left or right with equal chance. Exiting right pays $1$; every other step pays $0$. Green fill is $V(s)$, the dashed line is the true value.</p>
+    <div class="walk" id="walk"></div>
+    <div id="eq"></div>
+    <label class="slider"><span>Step size $\alpha$</span><input id="iA" type="range" min="0.01" max="0.5" step="0.01" value="0.1"><output></output></label>
+    <div class="row">
+      <button id="bStep" class="primary">Step</button>
+      <button id="bEp">Finish episode</button>
+      <button id="bRun">Run</button>
+      <button id="b100">+100 episodes</button>
+      <span class="spacer"></span>
+      <button id="bReset" class="quiet">Reset</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="k">Episodes</span><span class="v" id="sEp">0</span></div>
+      <div class="stat"><span class="k">Steps</span><span class="v" id="sSteps">0</span></div>
+      <div class="stat"><span class="k">RMS error</span><span class="v" id="sRms">–</span></div>
+    </div>
+    <canvas class="chart" id="chart"></canvas>
+    <p class="note">Estimates after 0, 1, 10 and 100 episodes, as in S&amp;B's figure for Example 6.2. Curves appear as the episode count passes each mark.</p>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>The value of a state is an expected return, and the return splits into one reward plus the rest (Lesson 25):</p>
+    $$v_\pi(s) = \mathbb{E}_\pi\big[G_t \mid S_t = s\big] = \mathbb{E}_\pi\big[R_{t+1} + \gamma\, v_\pi(S_{t+1}) \,\big|\, S_t = s\big]$$
+    <p>The value now is the expected reward plus the discounted value of wherever the agent goes next.</p>
+    <p>Monte Carlo samples the left-hand form, $G_t$. DP computes the right-hand form exactly with a model. TD(0) samples the right-hand form: one real step gives $R_{t+1}$ and $S_{t+1}$, and the unknown $v_\pi(S_{t+1})$ is replaced by the current estimate:</p>
+    $$V(S_t) \leftarrow V(S_t) + \alpha\big[\underbrace{R_{t+1} + \gamma V(S_{t+1})}_{\text{TD target}} - V(S_t)\big]$$
+    <p>Each step moves the estimate a fraction $\alpha$ of the way towards the TD target. A terminal state has value $0$.</p>
+    <p>For the random walk ($\gamma = 1$), each inner state's true value is the average of its neighbours, with $0$ beyond A and $1$ beyond E:</p>
+    $$v_\pi(k) = \tfrac12\, v_\pi(k-1) + \tfrac12\, v_\pi(k+1), \quad v_\pi(0) = 0,\; v_\pi(6) = 1 \;\Rightarrow\; v_\pi(k) = \tfrac{k}{6}$$
+    <p>So A to E are worth $\tfrac16, \tfrac26, \tfrac36, \tfrac46, \tfrac56$: the probability of exiting on the right.</p>
+    <p>For a fixed policy, tabular TD(0) converges to $v_\pi$ in the mean for a small enough constant $\alpha$, and with probability 1 if $\alpha$ decreases according to the usual stochastic approximation conditions ($\sum \alpha_n = \infty$, $\sum \alpha_n^2 &lt; \infty$; S&amp;B §6.2). With a constant $\alpha$ the estimates keep jittering around the true values, as the RMS error shows.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const NAMES = ['', 'A', 'B', 'C', 'D', 'E', ''];
+  const TRUE = [0, 1, 2, 3, 4, 5, 0].map((k, i) => (i === 0 || i === 6 ? 0 : k / 6));
+  const alpha = Course.slider('#iA', (v) => v.toFixed(2));
+  let V, s, episodes, steps, lastUpd, snaps, timer = null;
+
+  function reset() {
+    stop();
+    V = [0, 0.5, 0.5, 0.5, 0.5, 0.5, 0];
+    s = 3; episodes = 0; steps = 0; lastUpd = -1;
+    snaps = { 0: V.slice() };
+    Course.tex($('eq'), '\\text{All estimates start at } 0.5. \\text{ Press Step.}', true);
+    draw();
+  }
+
+  const rms = () => Math.sqrt([1, 2, 3, 4, 5].reduce((a, k) => a + (V[k] - TRUE[k]) ** 2, 0) / 5);
+
+  // One TD(0) step from the current state. Returns true if the episode ended.
+  function step(show = true) {
+    const s0 = s, s1 = s0 + (Math.random() < 0.5 ? -1 : 1);
+    const r = s1 === 6 ? 1 : 0;
+    const vNext = s1 === 0 || s1 === 6 ? 0 : V[s1];
+    const a = alpha(), old = V[s0];
+    V[s0] = old + a * (r + vNext - old);
+    steps++; lastUpd = s0;
+    if (show) {
+      const nm = s1 === 0 ? '\\text{left exit}' : s1 === 6 ? '\\text{right exit}' : `\\text{${NAMES[s1]}}`;
+      Course.tex($('eq'),
+        `\\text{${NAMES[s0]}} \\to ${nm}:\\; V(\\text{${NAMES[s0]}}) \\leftarrow ${old.toFixed(3)} + ${Course.fmt(a)}\\,[\\,${r} + ${vNext.toFixed(3)} - ${old.toFixed(3)}\\,] = ${V[s0].toFixed(3)}`, true);
+    }
+    if (s1 === 0 || s1 === 6) {
+      episodes++; s = 3;
+      if ([1, 10, 100].includes(episodes)) snaps[episodes] = V.slice();
+      return true;
+    }
+    s = s1;
+    return false;
+  }
+
+  function draw() {
+    $('walk').innerHTML = [0, 1, 2, 3, 4, 5, 6].map((k) => {
+      if (k === 0 || k === 6) return `<div class="col"><div class="st term"><span class="nm">${k ? '+1' : '0'}</span></div><span class="vv">&nbsp;</span></div>`;
+      return `<div class="col"><div class="st${k === s ? ' here' : ''}${k === lastUpd ? ' upd' : ''}">
+        <div class="fill" style="height:${100 * V[k]}%"></div>
+        <div class="true" style="bottom:${100 * TRUE[k]}%"></div>
+        <span class="nm">${NAMES[k]}</span>${k === s ? '<span class="dot"></span>' : ''}
+        </div><span class="vv">${V[k].toFixed(2)}</span></div>`;
+    }).join('');
+    $('sEp').textContent = episodes; $('sSteps').textContent = steps; $('sRms').textContent = rms().toFixed(3);
+    const xs = (v) => [1, 2, 3, 4, 5].map((k) => [k, v[k]]);
+    const cols = { 0: Course.colors.grey, 1: Course.colors.blue, 10: Course.colors.purple, 100: Course.colors.green };
+    const lines = [{ data: xs(TRUE), color: Course.colors.amber, dashed: true, label: 'true' }];
+    Object.keys(snaps).forEach((e) => lines.push({ data: xs(snaps[e]), color: cols[e], label: `${e}`, dots: true }));
+    chart.draw(lines);
+  }
+  const chart = Course.lineChart($('chart'), { xLabel: 'state (A = 1 … E = 5)', yLabel: 'V', yMin: 0, yMax: 1, xMin: 0.8, xMax: 5.2 });
+
+  function stop() { clearInterval(timer); timer = null; $('bRun').textContent = 'Run'; }
+  $('bStep').addEventListener('click', () => { step(); draw(); });
+  $('bEp').addEventListener('click', () => { while (!step()); draw(); });
+  $('bRun').addEventListener('click', () => {
+    if (timer) return stop();
+    $('bRun').textContent = 'Pause';
+    timer = setInterval(() => { step(); draw(); }, 90);
+  });
+  $('b100').addEventListener('click', () => {
+    if (s !== 3) while (!step(false));
+    for (let k = 0; k < 100; k++) while (!step(false));
+    Course.tex($('eq'), `\\text{Ran 100 more episodes.}`, true);
+    lastUpd = -1; draw();
+  });
+  $('bReset').addEventListener('click', reset);
+  reset();
+
+  // ------------------------------------------------------------ quiz
+  Course.quiz([
+    {
+      q: 'All estimates are $0.5$ and $\\alpha = 0.1$. The first episode ends by stepping left out of A. What is $V(\\text{A})$ afterwards?',
+      answer: 0.5 + 0.1 * (0 + 0 - 0.5),
+      tol: 0.0005,
+      explain: 'The last step gives $0.5 + 0.1\\,(0 + 0 - 0.5) = 0.45$. Every earlier step had target $0 + 0.5 = 0.5$, so nothing else changed.',
+    },
+    {
+      q: '$V(\\text{C}) = 0.5$ and $V(\\text{D}) = 0.6$. The walk steps from C to D. With $\\alpha = 0.1$ and $\\gamma = 1$, what is the new $V(\\text{C})$?',
+      answer: 0.5 + 0.1 * (0 + 0.6 - 0.5),
+      tol: 0.0005,
+      explain: '$0.5 + 0.1\\,(0 + 0.6 - 0.5) = 0.51$.',
+    },
+    {
+      q: 'What is the true value of state B?',
+      answer: 2 / 6,
+      tol: 0.005,
+      explain: '$v_\\pi(k) = k/6$, so $v_\\pi(\\text{B}) = 2/6 = 1/3$: the chance of exiting right from B.',
+    },
+    {
+      q: 'After the first episode, why has only one estimate changed?',
+      choices: [
+        'TD(0) only updates the last state of each episode',
+        'Every estimate was equal and every reward was 0 until the exit, so the TD target equalled the old value on every earlier step',
+        'The step size was too small to show the change',
+        'Only the start state is updated',
+      ],
+      answer: 1,
+      explain: 'Inside the walk the target is $0 + 0.5 = 0.5 = V(S_t)$, so the error is zero. Only the exit step has a different target (S&amp;B Exercise 6.3).',
+    },
+  ]);
+</script>
+</body>
+</html>

@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>12. Thompson sampling | Learning RL</title>
+<meta name="description" content="Each arm draws a guess from its belief curve and the highest guess gets played. Exploration comes from uncertainty, automatically.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .tablewrap { overflow-x: auto; }
+  #arms tr.picked td { background: var(--accent-soft); }
+  #arms td:first-child { font-weight: 700; }
+  .pbar { display: inline-block; height: 8px; border-radius: 2px; background: var(--accent); vertical-align: middle; margin-right: 6px; }
+</style>
+</head>
+<body data-lesson="12">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Thompson sampling</h1>
+  <p class="lede">Keep a belief curve for each arm, as in Lesson 11. On every step, draw one random guess from each curve and play the arm with the highest guess. Uncertain arms produce wild guesses and get tried. Arms known to be bad almost never win the draw.</p>
+
+  <section class="card">
+    <p class="note">Three machines pay 1 (win) or 0 (lose), each with a hidden win rate $\theta_a$. Every belief starts flat, $\text{Beta}(1, 1)$.</p>
+    <canvas class="chart" id="chart"></canvas>
+    <p class="status" id="status">Press "Sample and play". The dashed lines are this step's guesses $\tilde\theta_a$.</p>
+    <div class="tablewrap">
+      <table class="data" id="arms">
+        <thead><tr><th>arm</th><th>belief</th><th>guess $\tilde\theta_a$</th><th>pulls</th><th>chance picked</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="row">
+      <button id="bStep" class="primary">Sample and play</button>
+      <button id="bRun">Run</button>
+      <span class="spacer"></span>
+      <label class="muted"><input type="checkbox" id="cTrue"> show true θ</label>
+      <button id="bNew" class="quiet">New machines</button>
+    </div>
+    <p class="note">"Chance picked" is $P(\theta_a \text{ is the largest})$ under the current beliefs, estimated from 4000 draws. Thompson sampling plays each arm with exactly that probability.</p>
+
+    <div class="sub">
+      <h2>Thompson vs UCB vs ε-greedy</h2>
+      <p class="note">Regret (Lesson 10) on 200 bandits with 10 win-or-lose arms, each $\theta_a$ drawn uniformly from $[0, 1]$. UCB here uses the bonus $\sqrt{2 \ln t / N(a)}$, the standard choice for rewards in $[0, 1]$.</p>
+      <div class="row"><button id="bRace">Run comparison</button></div>
+      <canvas class="chart" id="chart2" hidden></canvas>
+      <p class="note" id="raceNote"></p>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>Each arm $a$ has belief $\text{Beta}(\alpha_a, \beta_a)$, starting at $\text{Beta}(1, 1)$. On step $t$:</p>
+    $$\tilde\theta_a \sim \text{Beta}(\alpha_a, \beta_a) \ \text{for each } a$$
+    $$A_t = \arg\max_a \tilde\theta_a$$
+    <p>Each arm draws a plausible win rate, and the arm with the best draw is played. Then the reward $R_t \in \{0, 1\}$ updates only that arm, by Lesson 11's counting rule:</p>
+    $$\begin{aligned} \alpha_{A_t} &\leftarrow \alpha_{A_t} + R_t \\ \beta_{A_t} &\leftarrow \beta_{A_t} + (1 - R_t) \end{aligned}$$
+    <p>A win adds to $\alpha$, a loss adds to $\beta$.</p>
+    <p>This is <b>probability matching</b>. The chance of playing an arm equals the current belief that it is the best one:</p>
+    $$\begin{aligned} &P(A_t = a \mid \text{history}) \\ &\quad = P\big(\theta_a = \max_b \theta_b \;\big|\; \text{history}\big) \end{aligned}$$
+    <p>Drawing one sample from each curve and taking the argmax is a single draw from exactly this distribution, with no need to compute it.</p>
+    <p>Compare UCB (Lesson 9). UCB acts on the most optimistic plausible value, deterministically. Thompson sampling acts on a random plausible value. Both explore an arm only while it might still be the best. Both have regret that grows like $\ln T$.</p>
+    <p>Lesson 10's Lai–Robbins term $2/\Delta_a$ is $\Delta_a / (\Delta_a^2/2)$, and $\Delta_a^2/2$ is the KL divergence (Lesson 81) between two unit-variance Gaussians. For win-or-lose arms the KL divergence $d$ between two coins takes its place:</p>
+    $$\liminf_{T \to \infty} \frac{\text{Regret}_T}{\ln T} \ge \sum_{a:\,\Delta_a > 0} \frac{\Delta_a}{d(\theta_a, \theta^\star)}$$
+    <p>Here $d(p, q) = p \ln \frac{p}{q} + (1-p) \ln \frac{1-p}{1-q}$ and $\theta^\star$ is the best arm's win rate. Thompson sampling with $\text{Beta}(1, 1)$ priors meets this bound exactly (Kaufmann, Korda &amp; Munos, 2012): no algorithm that does well on every bandit has a smaller constant in front of $\ln T$.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+
+  // ------------------------------------------------------------ Beta density (Lanczos log Γ)
+  const LG = [0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313,
+    -176.61503916999185, 12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
+  function lgamma(x) {
+    x -= 1;
+    let a = LG[0];
+    const t = x + 7.5;
+    for (let i = 1; i < 9; i++) a += LG[i] / (x + i);
+    return 0.5 * Math.log(2 * Math.PI) + (x + 0.5) * Math.log(t) - t + Math.log(a);
+  }
+  const lbeta = (a, b) => lgamma(a) + lgamma(b) - lgamma(a + b);
+  function betaPdf(x, a, b) {
+    const xc = Math.min(1 - 1e-12, Math.max(1e-12, x));
+    return Math.exp((a - 1) * Math.log(xc) + (b - 1) * Math.log(1 - xc) - lbeta(a, b));
+  }
+  const XS = Array.from({ length: 301 }, (_, i) => i / 300);
+
+  // ------------------------------------------------------------ the three machines
+  const NAMES = ['A', 'B', 'C'];
+  const COLS = [Course.colors.blue, Course.colors.amber, Course.colors.purple];
+  let theta, al, be, N, guess, last, t, timer = null;
+  const chart = Course.lineChart($('chart'), { xLabel: 'θ (win rate)', yLabel: 'density', xMin: 0, xMax: 1, yMin: 0 });
+
+  function newMachines() {
+    stop();
+    // Keep the rates apart enough to be interesting, but not obvious.
+    do { theta = NAMES.map(() => 0.15 + 0.7 * Math.random()); }
+    while (Math.max(...theta) - Math.min(...theta) < 0.2);
+    al = [1, 1, 1]; be = [1, 1, 1]; N = [0, 0, 0]; guess = null; last = -1; t = 0;
+    $('status').textContent = 'Press "Sample and play". The dashed lines are this step\'s guesses.';
+    draw();
+  }
+
+  function pBest(draws = 4000) {
+    const wins = [0, 0, 0];
+    for (let k = 0; k < draws; k++) {
+      const s = NAMES.map((_, a) => Course.beta(al[a], be[a]));
+      wins[s.indexOf(Math.max(...s))]++;
+    }
+    return wins.map((w) => w / draws);
+  }
+
+  function step() {
+    guess = NAMES.map((_, a) => Course.beta(al[a], be[a]));
+    const a = guess.indexOf(Math.max(...guess));
+    const r = Math.random() < theta[a] ? 1 : 0;
+    const before = `Beta(${al[a]}, ${be[a]})`;
+    al[a] += r; be[a] += 1 - r; N[a]++; last = a; t++;
+    $('status').textContent = `Step ${t}: ${NAMES[a]} had the highest guess (${guess[a].toFixed(2)}) and ${r ? 'won' : 'lost'}. ${before} → Beta(${al[a]}, ${be[a]}).`;
+    draw();
+  }
+
+  function draw() {
+    const lines = NAMES.map((nm, a) => ({ data: XS.map((x) => [x, betaPdf(x, al[a], be[a])]), color: COLS[a], label: nm }));
+    const top = Math.max(...lines.flatMap((l) => l.data.map((p) => p[1])));
+    const vlines = [];
+    if (guess) guess.forEach((g, a) => vlines.push({ x: g, color: COLS[a] }));
+    if ($('cTrue').checked) theta.forEach((th, a) => vlines.push({ x: th, color: COLS[a], label: `true ${NAMES[a]}` }));
+    chart.draw(lines, { vlines, hlines: [{ y: top * 1.18, color: 'rgba(0,0,0,0)' }] });
+    const pb = pBest();
+    $('arms').querySelector('tbody').innerHTML = NAMES.map((nm, a) => `<tr class="${a === last ? 'picked' : ''}">
+      <td style="color:${COLS[a]}">${nm}</td><td style="white-space:nowrap">Beta(${al[a]}, ${be[a]})</td><td>${guess ? guess[a].toFixed(2) : '–'}</td><td>${N[a]}</td>
+      <td style="text-align:left"><span class="pbar" style="width:${Math.round(60 * pb[a])}px"></span>${Math.round(100 * pb[a])}%</td></tr>`).join('');
+  }
+
+  function stop() { clearInterval(timer); timer = null; $('bRun').textContent = 'Run'; }
+  $('bStep').addEventListener('click', step);
+  $('bRun').addEventListener('click', () => {
+    if (timer) return stop();
+    $('bRun').textContent = 'Pause';
+    timer = setInterval(step, 200);
+  });
+  $('bNew').addEventListener('click', newMachines);
+  $('cTrue').addEventListener('change', draw);
+  newMachines();
+
+  // ------------------------------------------------------------ comparison
+  const K = 10, RUNS = 200, STEPS = 1000;
+  const AGENTS = [
+    { label: 'Thompson', color: Course.colors.green, kind: 'ts' },
+    { label: 'UCB', color: Course.colors.blue, kind: 'ucb' },
+    { label: 'ε = 0.1', color: Course.colors.grey, kind: 'eps' },
+  ];
+  function compare() {
+    const out = AGENTS.map(() => new Float64Array(STEPS));
+    for (let run = 0; run < RUNS; run++) {
+      const th = Array.from({ length: K }, Math.random), top = Math.max(...th);
+      AGENTS.forEach((ag, i) => {
+        const s = new Float64Array(K), n = new Float64Array(K);   // successes, pulls
+        let reg = 0;
+        for (let t = 1; t <= STEPS; t++) {
+          let a = 0;
+          if (ag.kind === 'ts') {
+            let bestV = -1;
+            for (let j = 0; j < K; j++) { const v = Course.beta(1 + s[j], 1 + n[j] - s[j]); if (v > bestV) { bestV = v; a = j; } }
+          } else if (ag.kind === 'ucb') {
+            a = n.indexOf(0);
+            if (a < 0) {
+              let bestV = -Infinity;
+              const lt = Math.log(t);
+              for (let j = 0; j < K; j++) { const v = s[j] / n[j] + Math.sqrt((2 * lt) / n[j]); if (v > bestV) { bestV = v; a = j; } }
+            }
+          } else {
+            a = Math.random() < 0.1 ? Course.randInt(K) : Course.argmax(Array.from(s, (x, j) => (n[j] ? x / n[j] : 0)));
+          }
+          if (Math.random() < th[a]) s[a]++;
+          n[a]++;
+          reg += top - th[a];
+          out[i][t - 1] += reg / RUNS;
+        }
+      });
+    }
+    return out;
+  }
+  const chart2 = Course.lineChart($('chart2'), { xLabel: 'step t', yLabel: 'regret', yMin: 0 });
+  $('bRace').addEventListener('click', () => {
+    $('bRace').disabled = true; $('bRace').textContent = 'Running…';
+    setTimeout(() => {
+      const c = compare();
+      $('chart2').hidden = false;
+      chart2.draw(AGENTS.map((ag, i) => ({ data: Array.from(c[i]), color: ag.color, label: ag.label })));
+      $('raceNote').textContent = `Regret after ${STEPS} steps: ${AGENTS.map((ag, i) => `${ag.label} ${c[i][STEPS - 1].toFixed(1)}`).join(', ')}. Thompson sampling is far ahead. This UCB bonus is cautious and keeps re-checking bad arms for a long time, so over short runs it can trail ε-greedy. In the long run its regret still grows like ln t while ε-greedy's grows linearly.`;
+      $('bRace').disabled = false; $('bRace').textContent = 'Run again';
+    }, 30);
+  });
+
+  // ------------------------------------------------------------ quiz
+  Course.quiz([
+    {
+      q: 'An arm starts at $\\text{Beta}(1, 1)$ and is played three times: win, win, lose. What is the mean of its new belief?',
+      answer: 3 / 5,
+      explain: 'Two wins and one loss give $\\text{Beta}(1 + 2,\\ 1 + 1) = \\text{Beta}(3, 2)$, with mean $3/5 = 0.6$.',
+    },
+    {
+      q: 'Arm A has belief $\\text{Beta}(2, 1)$, whose CDF is $P(\\theta_A \\le x) = x^2$. Arm B is known to win exactly half the time. With what probability does Thompson sampling play A?',
+      answer: 1 - 0.5 ** 2,
+      hint: 'A is played when its guess beats 0.5.',
+      explain: '$P(\\tilde\\theta_A > 0.5) = 1 - 0.5^2 = 0.75$.',
+    },
+    {
+      q: 'Now A is $\\text{Beta}(2, 1)$ with density $2x$, and B is $\\text{Beta}(1, 2)$ with CDF $2x - x^2$. What is the probability Thompson sampling plays A?',
+      answer: 5 / 6,
+      tol: 0.005,
+      hint: '$P(\\tilde\\theta_A > \\tilde\\theta_B) = \\int_0^1 p_A(x)\\,P(\\tilde\\theta_B < x)\\,dx$.',
+      explain: '$\\int_0^1 2x(2x - x^2)\\,dx = \\tfrac{4}{3} - \\tfrac{1}{2} = \\tfrac{5}{6} \\approx 0.833$.',
+    },
+    {
+      q: 'After many steps, why does Thompson sampling rarely play an arm it has learned is bad?',
+      choices: [
+        'It switches to greedy after a fixed number of steps',
+        'The bad arm\'s curve is narrow and sits low, so its guess almost never beats the best arm\'s',
+        'Bad arms are removed from the table',
+      ],
+      answer: 1,
+      explain: 'Many pulls make a curve narrow. A narrow curve far below another almost never produces the highest draw.',
+    },
+  ]);
+</script>
+</body>
+</html>

@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>44. The gambler's problem | Learning RL</title>
+<meta name="description" content="Value iteration on a coin-flipping bet. Sweep by sweep, the values settle and the optimal stakes form a strange spiky pattern.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .pbars { display: flex; align-items: flex-end; gap: 1px; height: 150px; margin: 8px 0 2px 34px; position: relative; cursor: pointer; touch-action: manipulation; }
+  .pbars .bar { border-radius: 1px 1px 0 0; transition: none; }
+  .pbars .bar.sel { background: var(--amber); }
+  .pyl { position: absolute; left: -34px; width: 28px; text-align: right; font-size: 0.7rem; color: var(--muted); transform: translateY(50%); }
+  .pxl { display: flex; justify-content: space-between; margin-left: 34px; font-size: 0.7rem; color: var(--muted); }
+  .qbars { display: flex; align-items: flex-end; gap: 1px; height: 110px; margin: 8px 0 2px; }
+  .qbars .bar { background: #cbd5e1; border-radius: 1px 1px 0 0; }
+  .qbars .bar.best { background: var(--accent); }
+  #insEq { overflow-x: auto; }
+  #simOut td:first-child { text-align: left; }
+</style>
+</head>
+<body data-lesson="44">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>The gambler's problem</h1>
+  <p class="lede">A gambler with $s$ pounds bets on coin flips until reaching £100 or going broke. Heads wins the amount staked; tails loses it. Value iteration (Lesson 33) finds the stakes that maximise the chance of reaching £100, and the answer looks nothing like a sensible betting plan.</p>
+
+  <section class="card">
+    <label class="slider"><span>Heads prob. $p_h$</span><input id="iP" type="range" min="0.05" max="0.95" step="0.05" value="0.4"><output></output></label>
+    <div class="row">
+      <button id="bSweep" class="primary">Sweep</button>
+      <button id="bRun">Run</button>
+      <span class="spacer"></span>
+      <button id="bReset" class="quiet">Reset</button>
+    </div>
+    <p class="status" id="status"></p>
+    <canvas class="chart" id="vchart"></canvas>
+    <p class="note">Value estimates $V(s)$ for capital $s = 1, \ldots, 99$ after sweeps 1, 2 and 3 and after the latest sweep (S&amp;B Figure 4.3, top). $V(s)$ is the probability of reaching £100.</p>
+    <h2 style="margin-top:14px">Greedy stake</h2>
+    <div class="pbars" id="pbars"></div>
+    <div class="pxl"><span>1</span><span>25</span><span>50</span><span>75</span><span>99</span></div>
+    <p class="note">The stake that maximises the backed-up value, for each capital (S&amp;B Figure 4.3, bottom). Several stakes often tie exactly; ties go to the smallest stake. Click a bar to inspect it.</p>
+
+    <div class="sub">
+      <h2>Inspect one capital</h2>
+      <label class="slider"><span>Capital $s$</span><input id="iS" type="range" min="1" max="99" step="1" value="40"><output></output></label>
+      <div class="qbars" id="qbars"></div>
+      <p class="note">Backed-up value $p_h V(s+a) + (1-p_h) V(s-a)$ for every stake $a$ from 1 (left) to $\min(s, 100-s)$ (right). Heights are rescaled so the worst stake is short and the best is tall. Green bars are the best, within $10^{-9}$.</p>
+      <div id="insEq"></div>
+    </div>
+
+    <div class="sub">
+      <h2>Bold, timid or optimal</h2>
+      <p class="note">Play 10,000 sessions from capital $s$ (the slider above) with three strategies: bet everything you can ("bold", $a = \min(s, 100-s)$), bet £1 every time ("timid"), or follow the greedy stakes.</p>
+      <div class="row"><button id="bSim">Simulate</button></div>
+      <table class="data" id="simTable" hidden>
+        <thead><tr><th>strategy</th><th>reached £100</th><th>exact value</th></tr></thead>
+        <tbody id="simOut"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>States are capital $s \in \{1, \ldots, 99\}$. Actions are stakes $a \in \{0, 1, \ldots, \min(s, 100 - s)\}$. The reward is $+1$ on reaching £100 and $0$ otherwise, with no discounting. So the value of a state is the probability of reaching £100 from it. Writing $V(0) = 0$ and $V(100) = 1$ for the two terminal outcomes, value iteration sweeps:</p>
+    $$V(s) \leftarrow \max_{a} \Big[\, p_h\, V(s + a) + (1 - p_h)\, V(s - a) \,\Big]$$
+    <p>Each capital takes the best stake's chance of winning, using the current estimates of where heads and tails lead.</p>
+    <p>For $p_h &lt; \tfrac12$ every bet loses money on average, so fewer bets are better. In that case bold play (always stake $\min(s, 100 - s)$) is known to be optimal (Dubins and Savage), which gives some exact values:</p>
+    $$\begin{aligned}
+      v_*(50) &= p_h \\
+      v_*(25) &= p_h\, v_*(50) = p_h^2 \\
+      v_*(75) &= p_h + (1 - p_h)\, v_*(50) = p_h(2 - p_h)
+    \end{aligned}$$
+    <p>From £50 one bet wins it all. From £25 two heads in a row are needed. From £75, stake £25: heads wins, tails drops to £50.</p>
+    <p>Betting £1 every time is the classic gambler's ruin. With $r = (1 - p_h)/p_h$ and $r \ne 1$:</p>
+    $$\Pr[\text{reach } 100 \mid s] = \frac{1 - r^{s}}{1 - r^{100}}$$
+    <p>For $p_h = 0.4$ and $s = 50$ that is about $1.6 \times 10^{-9}$, against $0.4$ for one bold bet. For $p_h &gt; \tfrac12$ the picture flips: each bet gains on average, small stakes let that average take hold, and the greedy stake is £1 everywhere.</p>
+    <p>The spiky policy is one of many optimal policies. Several stakes give exactly the same value, which is why S&amp;B's Exercise 4.8 asks why the policy looks so odd.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const N = 100, TIE = 1e-9, THETA = 1e-10;
+  let V, sweeps, snaps, delta, timer = null;
+
+  const ph = Course.slider('#iP', (v) => v.toFixed(2), reset);
+  const sCap = Course.slider('#iS', (v) => `£${v}`, () => { inspect(); drawPolicy(); });
+  const vchart = Course.lineChart($('vchart'), { xLabel: 'capital s', yLabel: 'V(s)', yMin: 0, yMax: 1, xMin: 1, xMax: 99 });
+
+  const stakes = (s) => Math.min(s, N - s);
+  const backup = (s, a) => ph() * V[s + a] + (1 - ph()) * V[s - a];
+  function greedy(s) {
+    let best = -1, ba = 0;
+    for (let a = 1; a <= stakes(s); a++) { const v = backup(s, a); if (v > best + TIE) { best = v; ba = a; } }
+    return ba;
+  }
+
+  function reset() {
+    stop();
+    V = new Array(N + 1).fill(0); V[N] = 1;
+    sweeps = 0; snaps = []; delta = Infinity;
+    $('status').textContent = 'All estimates start at 0. Press "Sweep".';
+    draw();
+  }
+
+  // One in-place sweep over s = 1..99 (S&B's value iteration, §4.4).
+  function sweep() {
+    let d = 0;
+    for (let s = 1; s < N; s++) {
+      let best = 0;
+      for (let a = 0; a <= stakes(s); a++) best = Math.max(best, backup(s, a));
+      d = Math.max(d, Math.abs(best - V[s]));
+      V[s] = best;
+    }
+    sweeps++; delta = d;
+    if (sweeps <= 3) snaps.push(V.slice());
+    $('status').textContent = delta < THETA
+      ? `Converged after ${sweeps} sweeps (largest change below 10⁻¹⁰).`
+      : `Sweep ${sweeps}: largest change ${delta.toExponential(2)}.`;
+  }
+
+  const cols = [Course.colors.blue, Course.colors.purple, Course.colors.amber];
+  function draw() {
+    const xs = (arr) => arr.slice(1, N).map((v, i) => [i + 1, v]);
+    const lines = snaps.map((v, k) => ({ data: xs(v), color: cols[k], label: `sweep ${k + 1}`, width: 1.5 }));
+    if (sweeps > 3) lines.push({ data: xs(V), color: Course.colors.green, label: `sweep ${sweeps}`, width: 2 });
+    if (!lines.length) lines.push({ data: xs(V), color: Course.colors.grey });
+    vchart.draw(lines);
+    drawPolicy();
+    inspect();
+  }
+
+  function drawPolicy() {
+    const pol = [];
+    for (let s = 1; s < N; s++) pol.push(sweeps ? greedy(s) : 0);
+    const sel = sCap();
+    let html = [0, 25, 50].map((y) => `<span class="pyl" style="bottom:${(100 * y) / 50}%">${y}</span>`).join('');
+    html += pol.map((a, i) => `<div class="bar${i + 1 === sel ? ' sel' : ''}" data-s="${i + 1}" style="height:${(100 * a) / 50}%" title="s = ${i + 1}, stake ${a}"></div>`).join('');
+    $('pbars').innerHTML = html;
+  }
+  $('pbars').addEventListener('click', (e) => {
+    const r = $('pbars').getBoundingClientRect();
+    const s = Math.max(1, Math.min(99, Math.round(1 + ((e.clientX - r.left) / r.width) * 98)));
+    $('iS').value = s; $('iS').dispatchEvent(new Event('input'));
+  });
+
+  function inspect() {
+    const s = sCap(), A = stakes(s);
+    const vals = [];
+    for (let a = 1; a <= A; a++) vals.push(backup(s, a));
+    const top = Math.max(...vals), lo = Math.min(...vals), span = Math.max(top - lo, 1e-12);
+    $('qbars').innerHTML = vals.map((v, i) => `<div class="bar${top - v <= TIE && sweeps ? ' best' : ''}" style="height:${top > 0 ? 8 + (92 * (v - lo)) / span : 0}%" title="stake ${i + 1}: ${v.toFixed(4)}"></div>`).join('');
+    const a = sweeps ? greedy(s) : 1, p = ph();
+    Course.tex($('insEq'),
+      `a = ${a}:\\quad ${p.toFixed(2)}\\,V(${s + a}) + ${(1 - p).toFixed(2)}\\,V(${s - a}) = ${p.toFixed(2)} \\times ${V[s + a].toFixed(4)} + ${(1 - p).toFixed(2)} \\times ${V[s - a].toFixed(4)} = ${backup(s, a).toFixed(4)}`, true);
+  }
+
+  function stop() { clearInterval(timer); timer = null; $('bRun').textContent = 'Run'; }
+  $('bSweep').addEventListener('click', () => { if (delta >= THETA) { sweep(); draw(); } });
+  $('bRun').addEventListener('click', () => {
+    if (timer) return stop();
+    $('bRun').textContent = 'Pause';
+    timer = setInterval(() => {
+      for (let k = 0; k < (sweeps < 10 ? 1 : 25) && delta >= THETA; k++) sweep();
+      draw();
+      if (delta < THETA) stop();
+    }, 120);
+  });
+  $('bReset').addEventListener('click', reset);
+
+  // ------------------------------------------------------------ bold vs timid
+  function session(s0, rule) {
+    let s = s0, p = ph();
+    for (let k = 0; k < 1e6 && s > 0 && s < N; k++) {
+      const a = Math.max(1, rule(s));
+      s += Math.random() < p ? a : -a;
+    }
+    return s >= N;
+  }
+  // Exact value of always staking min(s, 100 - s): iterate its Bellman equation to a fixed point.
+  function boldValue() {
+    const b = new Array(N + 1).fill(0); b[N] = 1;
+    for (let it = 0; it < 5000; it++) {
+      let d = 0;
+      for (let s = 1; s < N; s++) {
+        const a = stakes(s), v = ph() * b[s + a] + (1 - ph()) * b[s - a];
+        d = Math.max(d, Math.abs(v - b[s])); b[s] = v;
+      }
+      if (d < 1e-13) break;
+    }
+    return b;
+  }
+  $('bSim').addEventListener('click', () => {
+    $('bSim').disabled = true; $('bSim').textContent = 'Running…';
+    setTimeout(() => {
+      if (delta >= THETA) { while (delta >= THETA) sweep(); draw(); }
+      const s0 = sCap(), runs = 10000;
+      const p = ph(), r = (1 - p) / p;
+      const timidTheory = Math.abs(r - 1) < 1e-12 ? s0 / N : (1 - Math.pow(r, s0)) / (1 - Math.pow(r, N));
+      const rows = [
+        ['Bold', (s) => stakes(s), boldValue()[s0]],
+        ['Timid (£1)', () => 1, timidTheory],
+        ['Greedy stakes', (s) => greedy(s), V[s0]],
+      ].map(([name, rule, theory]) => {
+        let w = 0;
+        for (let i = 0; i < runs; i++) if (session(s0, rule)) w++;
+        const th = theory === null ? '' : theory < 1e-4 ? theory.toExponential(1) : theory.toFixed(3);
+        return `<tr><td>${name}</td><td>${((100 * w) / runs).toFixed(1)}%</td><td>${th}</td></tr>`;
+      });
+      $('simOut').innerHTML = rows.join('');
+      $('simTable').hidden = false;
+      $('bSim').disabled = false; $('bSim').textContent = 'Simulate again';
+    }, 30);
+  });
+
+  reset();
+
+  // ------------------------------------------------------------ quiz
+  const p4 = 0.4;
+  Course.quiz([
+    {
+      q: 'With $p_h = 0.4$, what is $v_*(25)$, the best chance of reaching £100 from £25?',
+      answer: p4 * p4,
+      tol: 0.0005,
+      hint: 'Stake £25 to reach £50, then stake £50.',
+      explain: 'Two heads in a row: $0.4^2 = 0.16$. Check it with "Inspect one capital" after the values converge.',
+    },
+    {
+      q: 'With $p_h = 0.4$, what is $v_*(75)$?',
+      answer: p4 + (1 - p4) * p4,
+      tol: 0.0005,
+      hint: 'Stake £25. Heads wins; tails leaves you on £50.',
+      explain: '$0.4 + 0.6 \\times 0.4 = 0.64$.',
+    },
+    {
+      q: 'With a fair coin ($p_h = 0.5$), what is $v_*(30)$?',
+      answer: 0.3,
+      tol: 0.0005,
+      hint: 'With a fair coin your expected capital never changes, whatever you stake.',
+      explain: 'Expected final capital equals £30 for any strategy, and it ends at £0 or £100, so $100\\,\\Pr[\\text{win}] = 30$. Every stake ties.',
+    },
+    {
+      q: 'With $p_h = 0.55$ the greedy stake is £1 at every capital. Why?',
+      choices: [
+        'Value iteration has not converged yet',
+        'Each bet gains on average, and many small bets make going broke on an unlucky streak unlikely',
+        'Large bets are not allowed when $p_h > 0.5$',
+        'All stakes tie, and ties go to the smallest',
+      ],
+      answer: 1,
+      explain: 'With favourable odds, small stakes let the positive average win out over many flips, while a big stake risks everything on one flip.',
+    },
+  ]);
+</script>
+</body>
+</html>

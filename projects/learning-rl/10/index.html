@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>10. Regret | Learning RL</title>
+<meta name="description" content="Score a bandit algorithm by how much reward it gives up compared with always pulling the best arm. Greedy and ε-greedy lose linearly, UCB logarithmically.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .arms { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 6px 0 10px; }
+  .arm {
+    display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 4px;
+    border: 1px solid var(--border); border-radius: 8px; background: var(--soft); color: var(--heading);
+  }
+  .arm:hover:not(:disabled) { background: var(--accent-soft); color: var(--heading); }
+  .arm .name { font-size: 1.3rem; font-weight: 700; }
+  .arm .q { font-size: 1rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .arm .n { font-size: 0.78rem; color: var(--muted); font-weight: 400; }
+  .arm .truth { font-size: 0.78rem; color: var(--amber); font-weight: 600; min-height: 1.2em; }
+  .arm.last { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .stack { display: flex; height: 26px; border-radius: 4px; overflow: hidden; background: var(--soft); border: 1px solid var(--border); margin: 8px 0 4px; }
+  .stack > div { height: 100%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 0.75rem; font-weight: 600; transition: width 0.3s ease; overflow: hidden; }
+  #board { margin-top: 10px; }
+  #board .total td { font-weight: 700; color: var(--heading); border-top: 2px solid var(--border); }
+  .tablewrap { overflow-x: auto; }
+</style>
+</head>
+<body data-lesson="10">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Regret</h1>
+  <p class="lede">Regret is the reward an agent gives up by not pulling the best arm every time. It turns "explores well" into a number you can plot, and it separates the bandit algorithms from Lessons 5 to 9 by how fast that number grows.</p>
+
+  <section class="card">
+    <h2>Count your own regret</h2>
+    <p class="note">Four arms from the testbed of Lesson 5. Pull them 20 times or more, trying to earn as much as you can. Then reveal the scorecard.</p>
+    <div class="arms" id="arms"></div>
+    <p class="status" id="status">Click an arm to pull it.</p>
+    <div class="row">
+      <button id="bShow" class="primary" disabled>Show my regret</button>
+      <span class="spacer"></span>
+      <button id="bNew" class="quiet">New bandit</button>
+    </div>
+    <div id="card" hidden>
+      <div class="stack" id="stack"></div>
+      <div class="tablewrap">
+        <table class="data" id="board">
+          <thead><tr><th>arm</th><th>$q_*(a)$</th><th>gap $\Delta_a$</th><th>pulls $N(a)$</th><th>$\Delta_a N(a)$</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="note" id="cardNote"></p>
+    </div>
+
+    <div class="sub">
+      <h2>The race</h2>
+      <p class="note">Greedy, ε-greedy and UCB (Lesson 9) on 300 testbed bandits with 10 arms, all with sample-average estimates starting at 0. The curve is expected regret: the sum of the gaps of the arms actually pulled, averaged over bandits.</p>
+      <div class="row">
+        <button id="bRace">Run race</button>
+        <span class="spacer"></span>
+        <button id="bLin" class="on" disabled>time $t$</button>
+        <button id="bLog" disabled>log time $\ln t$</button>
+      </div>
+      <canvas class="chart" id="chart" hidden></canvas>
+      <canvas class="chart" id="chartLog" hidden></canvas>
+      <p class="note" id="raceNote"></p>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>Let $a^\star$ be the best arm. The <b>gap</b> of arm $a$ is how much worse it is on average:</p>
+    $$\Delta_a = q_*(a^\star) - q_*(a) \ge 0$$
+    <p>An oracle that always pulls $a^\star$ earns $T\,q_*(a^\star)$ in expectation over $T$ steps. The <b>regret</b> is the shortfall:</p>
+    $$\text{Regret}_T = T\,q_*(a^\star) - \mathbb{E}\Big[\sum_{t=1}^{T} q_*(A_t)\Big]$$
+    <p>It uses $q_*(A_t)$, not the noisy reward $R_t$, so good or bad luck on a pull does not count. Only the choice does.</p>
+    <p>Let $N_T(a)$ be how often arm $a$ is pulled in $T$ steps. Grouping the sum by arm, $\sum_t q_*(A_t) = \sum_a N_T(a)\,q_*(a)$, and $T = \sum_a N_T(a)$. So</p>
+    $$\begin{aligned}
+      \text{Regret}_T &= \sum_a \mathbb{E}[N_T(a)]\,q_*(a^\star) - \sum_a \mathbb{E}[N_T(a)]\,q_*(a) \\
+      &= \sum_a \Delta_a\, \mathbb{E}[N_T(a)]
+    \end{aligned}$$
+    <p>Regret is "how often you pulled each bad arm, times how bad it is". That is the table in the interactive.</p>
+    <p><b>ε-greedy is linear.</b> On every step it explores with probability $\varepsilon$ and picks one of the $k$ arms uniformly, so $\mathbb{E}[N_T(a)] \ge \varepsilon T / k$ for every arm. Then</p>
+    $$\text{Regret}_T \ge \frac{\varepsilon}{k}\Big(\sum_a \Delta_a\Big)\, T$$
+    <p>It keeps paying for exploration at the same rate forever. <b>Greedy</b> is also linear: with some probability it locks onto a wrong arm and never leaves.</p>
+    <p><b>UCB is logarithmic.</b> A bad arm's bonus $c\sqrt{\ln t / N_t(a)}$ only beats the gap $\Delta_a$ while $N_t(a)$ is below roughly $c^2 \ln t / \Delta_a^2$. So each bad arm is pulled about $\ln T / \Delta_a^2$ times (up to a constant), and the regret grows like $\ln T$.</p>
+    <p>No algorithm can do better than logarithmic. Lai and Robbins (1985) showed that for any algorithm that does well on every bandit, with unit-variance Gaussian rewards,</p>
+    $$\liminf_{T \to \infty} \frac{\text{Regret}_T}{\ln T} \ge \sum_{a:\,\Delta_a > 0} \frac{2}{\Delta_a}$$
+    <p>Arms that are nearly as good as the best are the hardest: telling them apart takes many pulls.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const NAMES = ['A', 'B', 'C', 'D'];
+  const ARMCOL = [Course.colors.blue, Course.colors.amber, Course.colors.purple, Course.colors.red];
+  let B, sum, N, last, shown;
+
+  // ------------------------------------------------------------ part 1: your regret
+  function newBandit() {
+    B = Course.bandit(4);
+    sum = [0, 0, 0, 0]; N = [0, 0, 0, 0]; last = -1; shown = false;
+    $('card').hidden = true;
+    $('status').textContent = 'Click an arm to pull it.';
+    drawArms();
+  }
+
+  function drawArms() {
+    const t = N.reduce((a, b) => a + b, 0);
+    $('arms').innerHTML = NAMES.map((nm, a) => `
+      <button class="arm${a === last ? ' last' : ''}" data-a="${a}">
+        <span class="name">${nm}</span>
+        <span class="q">${N[a] ? (sum[a] / N[a]).toFixed(2) : '–'}</span>
+        <span class="n">${N[a]} pull${N[a] === 1 ? '' : 's'}</span>
+        <span class="truth">${shown ? `q* = ${B.q[a].toFixed(2)}` : ''}</span>
+      </button>`).join('');
+    $('bShow').disabled = t < 20;
+    $('bShow').textContent = t < 20 ? `Show my regret (${20 - t} more pulls)` : 'Show my regret';
+    if (shown) board();
+  }
+
+  $('arms').addEventListener('click', (e) => {
+    const b = e.target.closest('.arm');
+    if (!b) return;
+    const a = +b.dataset.a, r = B.pull(a);
+    sum[a] += r; N[a]++; last = a;
+    $('status').textContent = `Arm ${NAMES[a]} paid ${r.toFixed(2)}.`;
+    drawArms();
+  });
+
+  function board() {
+    const best = B.q[B.best], T = N.reduce((a, b) => a + b, 0);
+    const gaps = B.q.map((q) => best - q);
+    const parts = gaps.map((g, a) => g * N[a]);
+    const total = parts.reduce((a, b) => a + b, 0);
+    const rows = NAMES.map((nm, a) => `<tr><td style="color:${ARMCOL[a]};font-weight:700">${nm}${a === B.best ? ' ★' : ''}</td><td>${B.q[a].toFixed(2)}</td><td>${gaps[a].toFixed(2)}</td><td>${N[a]}</td><td>${parts[a].toFixed(2)}</td></tr>`).join('');
+    $('board').querySelector('tbody').innerHTML = rows + `<tr class="total"><td colspan="4" style="text-align:right">Regret after ${T} pulls</td><td>${total.toFixed(2)}</td></tr>`;
+    $('stack').innerHTML = total > 0
+      ? parts.map((p, a) => p > 0 ? `<div style="width:${(100 * p) / total}%;background:${ARMCOL[a]}">${(100 * p) / total > 12 ? NAMES[a] : ''}</div>` : '').join('')
+      : '<div style="width:100%;background:var(--accent)">zero regret</div>';
+    const yours = N.reduce((s, n, a) => s + n * B.q[a], 0);
+    $('cardNote').innerHTML = `An oracle pulling ${NAMES[B.best]} every time expects ${T} × ${best.toFixed(2)} = ${(T * best).toFixed(2)}. Your choices expect ${yours.toFixed(2)}. The difference is your regret. Each coloured block is one arm's share, $\\Delta_a N(a)$. Keep pulling and watch which blocks grow.`;
+    Course.renderMath($('cardNote'));
+  }
+
+  $('bShow').addEventListener('click', () => {
+    shown = true; $('card').hidden = false;
+    drawArms();
+  });
+  $('bNew').addEventListener('click', newBandit);
+  newBandit();
+
+  // ------------------------------------------------------------ part 2: the race
+  const K = 10, RUNS = 300, STEPS = 1000;
+  const AGENTS = [
+    { label: 'greedy', color: Course.colors.grey, kind: 'eps', eps: 0 },
+    { label: 'ε = 0.1', color: Course.colors.amber, kind: 'eps', eps: 0.1 },
+    { label: 'ε = 0.01', color: Course.colors.purple, kind: 'eps', eps: 0.01 },
+    { label: 'UCB, c = 2', color: Course.colors.blue, kind: 'ucb' },
+  ];
+  let curves = null, logX = false;
+
+  function race() {
+    const out = AGENTS.map(() => new Float64Array(STEPS));
+    for (let run = 0; run < RUNS; run++) {
+      const b = Course.bandit(K), top = b.q[b.best];
+      AGENTS.forEach((ag, i) => {
+        const q = new Float64Array(K), n = new Float64Array(K);
+        let reg = 0;
+        for (let s = 1; s <= STEPS; s++) {
+          let a;
+          if (ag.kind === 'ucb') {
+            a = n.indexOf(0);
+            if (a < 0) {
+              let bestV = -Infinity;
+              const ls = Math.log(s);
+              for (let j = 0; j < K; j++) { const v = q[j] + 2 * Math.sqrt(ls / n[j]); if (v > bestV) { bestV = v; a = j; } }
+            }
+          } else {
+            a = Math.random() < ag.eps ? Course.randInt(K) : Course.argmax(Array.from(q));
+          }
+          const r = b.pull(a);
+          n[a]++; q[a] += (r - q[a]) / n[a];
+          reg += top - b.q[a];
+          out[i][s - 1] += reg / RUNS;
+        }
+      });
+    }
+    return out;
+  }
+
+  const chartLin = Course.lineChart($('chart'), { xLabel: 'step t', yLabel: 'regret', yMin: 0 });
+  const chartLog = Course.lineChart($('chartLog'), { xLabel: 'ln t', yLabel: 'regret', yMin: 0 });
+  function drawRace() {
+    if (!curves) return;
+    const pts = (c) => Array.from(c, (y, i) => [logX ? Math.log(i + 1) : i + 1, y]);
+    $('chart').hidden = logX; $('chartLog').hidden = !logX;
+    (logX ? chartLog : chartLin).draw(AGENTS.map((ag, i) => ({ data: pts(curves[i]), color: ag.color, label: ag.label })));
+    const end = curves.map((c) => c[STEPS - 1]);
+    $('raceNote').innerHTML = logX
+      ? 'Against $\\ln t$, regret that grows like $\\ln t$ is a straight line. UCB is by far the flattest, though in 1000 steps it has not fully settled into that shape. The other curves shoot upwards: linear in $t$ means exponential in $\\ln t$.'
+      : `Regret after ${STEPS} steps: ${AGENTS.map((ag, i) => `${ag.label} ${end[i].toFixed(0)}`).join(', ')}. Straight lines mean the agent never stops paying. UCB bends over.`;
+    Course.renderMath($('raceNote'));
+  }
+
+  $('bRace').addEventListener('click', () => {
+    $('bRace').disabled = true; $('bRace').textContent = 'Running…';
+    setTimeout(() => {
+      curves = race();
+      $('bLin').disabled = false; $('bLog').disabled = false;
+      drawRace();
+      $('bRace').disabled = false; $('bRace').textContent = 'Run again';
+    }, 30);
+  });
+  function setAxis(lg) {
+    logX = lg;
+    $('bLin').classList.toggle('on', !lg); $('bLog').classList.toggle('on', lg);
+    drawRace();
+  }
+  $('bLin').addEventListener('click', () => setAxis(false));
+  $('bLog').addEventListener('click', () => setAxis(true));
+
+  // ------------------------------------------------------------ quiz
+  const gapsSum = 12;
+  Course.quiz([
+    {
+      q: 'Arms A, B, C have $q_* = 1.0,\\ 0.6,\\ 0.2$. In 10 pulls an agent chose A 5 times, B 3 times and C twice. What is its regret?',
+      answer: 3 * 0.4 + 2 * 0.8,
+      hint: 'Gaps first: $\\Delta_B = 0.4$, $\\Delta_C = 0.8$.',
+      explain: '$\\Delta_B N(B) + \\Delta_C N(C) = 0.4 \\times 3 + 0.8 \\times 2 = 2.8$.',
+    },
+    {
+      q: `ε-greedy with $\\varepsilon = 0.1$ runs on a 10-armed bandit whose gaps add up to $\\sum_a \\Delta_a = ${gapsSum}$. From exploration alone, what is the least regret it can have after $T = 1000$ steps?`,
+      answer: (0.1 / 10) * gapsSum * 1000,
+      explain: '$\\frac{\\varepsilon}{k}\\big(\\sum_a \\Delta_a\\big) T = \\frac{0.1}{10} \\times 12 \\times 1000 = 120$.',
+    },
+    {
+      q: 'Two arms with unit-variance Gaussian rewards and gap $\\Delta = 0.5$. By the Lai–Robbins bound, roughly how much regret must any good algorithm have after $T = 10\\,000$ steps?',
+      answer: (2 / 0.5) * Math.log(10000),
+      tol: 0.2,
+      hint: 'The bound is $\\frac{2}{\\Delta}\\ln T$ for one bad arm. $\\ln 10\\,000 \\approx 9.21$.',
+      explain: '$\\frac{2}{0.5} \\ln 10\\,000 = 4 \\times 9.21 \\approx 36.8$.',
+    },
+    {
+      q: 'In the race, which agent\'s regret curve bends over instead of growing in a straight line?',
+      choices: ['Greedy', 'ε-greedy with ε = 0.1', 'UCB'],
+      answer: 2,
+      explain: 'UCB pulls each bad arm about $\\ln T/\\Delta_a^2$ times, so its regret grows like $\\ln T$. The others pay a fixed cost per step.',
+    },
+  ]);
+</script>
+</body>
+</html>

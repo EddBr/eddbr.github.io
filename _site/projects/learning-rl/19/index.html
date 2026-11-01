@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>19. Episodes and terminal states | Learning RL</title>
+<meta name="description" content="Make the goal and the pit terminal. Episodes end, the return stops adding up, and one formula covers both episodic and continuing tasks.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  #world .gcell { background: #eff6ff; border-color: #dbeafe; }
+  #world .gcell.wall { background: #4b5563; border-color: #4b5563; }
+  #world .gcell.goal { background: var(--accent-soft); }
+  #world .gcell.pit { background: var(--red-soft); }
+  #world .gcell.term { border: 2px solid var(--heading); }
+  #world .gcell .emo { font-size: clamp(18px, 6vw, 30px); line-height: 1; }
+  #world .gcell .arr { position: absolute; top: 1px; right: 4px; font-size: clamp(10px, 2.8vw, 14px); color: var(--purple); font-weight: 700; }
+  #world .gcell .trail { position: absolute; inset: 0; background: rgba(5,150,105,0.12); }
+  .seg { display: inline-flex; border: 1px solid var(--accent); border-radius: 4px; overflow: hidden; }
+  .seg button { border: 0; border-radius: 0; padding: 0.35rem 0.7rem; }
+  .pad { display: grid; grid-template-columns: repeat(3, 56px); grid-template-rows: repeat(2, 44px); gap: 6px; justify-content: center; margin: 10px 0; }
+  .pad button { padding: 0; font-size: 1.2rem; }
+  .pad .up { grid-column: 2; grid-row: 1; }
+  .pad .left { grid-column: 1; grid-row: 2; }
+  .pad .down { grid-column: 2; grid-row: 2; }
+  .pad .right { grid-column: 3; grid-row: 2; }
+  .logwrap { max-height: 230px; overflow-y: auto; margin-top: 8px; }
+  #log tr.ghost td { color: #b6bcc6; font-style: italic; }
+  #log tr.end td { background: var(--accent-soft); font-weight: 700; }
+  #G { overflow-x: auto; min-height: 2.6em; }
+  .bars { height: 110px; }
+  .bar.pitb { background: var(--red); }
+  #play:focus { outline: none; }
+</style>
+</head>
+<body data-lesson="19">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Episodes and terminal states</h1>
+  <p class="lede">Many tasks end: a game is won or lost, a maze is escaped. Each run from start to end is an <b>episode</b>, and the state where it ends is <b>terminal</b>. Once there, nothing more happens and the return stops adding up.</p>
+
+  <section class="card" id="play" tabindex="-1">
+    <p class="note">Lesson 18's icy world (slip 0.2, $-1$ per move, $+10$ for 🏁, $-10$ for 🕳️). Now 🏁 and 🕳️ can end the episode.</p>
+    <div class="row center">
+      <span class="muted">Who acts</span>
+      <span class="seg" id="who"><button data-w="you" class="on">You</button><button data-w="route">Route</button><button data-w="random">Random</button></span>
+    </div>
+    <div id="world"></div>
+    <div class="pad" id="pad">
+      <button class="up" data-a="0" aria-label="Up">↑</button>
+      <button class="left" data-a="3" aria-label="Left">←</button>
+      <button class="down" data-a="2" aria-label="Down">↓</button>
+      <button class="right" data-a="1" aria-label="Right">→</button>
+    </div>
+    <div class="row" id="agentRow" hidden>
+      <button id="bStep" class="primary">Step</button>
+      <button id="bRun">Run</button>
+    </div>
+    <label class="slider"><span>Discount γ</span><input id="iG" type="range" min="0" max="1" step="0.01" value="0.9"><output></output></label>
+    <div class="row">
+      <label class="muted"><input type="checkbox" id="cTerm" checked> 🏁 and 🕳️ are terminal</label>
+      <span class="spacer"></span>
+      <button id="bNew" class="quiet">New episode</button>
+    </div>
+    <p class="status" id="status"></p>
+    <div id="G"></div>
+    <div class="logwrap">
+      <table class="data">
+        <thead><tr><th>$t$</th><th>$S_t$</th><th>$A_t$</th><th>$R_{t+1}$</th><th>$\gamma^t R_{t+1}$</th><th>sum so far</th></tr></thead>
+        <tbody id="log"></tbody>
+      </table>
+    </div>
+
+    <div class="sub">
+      <h2>1000 episodes</h2>
+      <p class="note">Terminal states on, current γ. How long do episodes last, and what return do they get?</p>
+      <div class="row"><button id="bMany">Run 1000 episodes</button></div>
+      <div id="manyOut" hidden>
+        <div class="stats">
+          <div class="stat"><span class="k">Average length $T$</span><span class="v" id="mT"></span></div>
+          <div class="stat"><span class="k">Average return $G_0$</span><span class="v" id="mG"></span></div>
+          <div class="stat"><span class="k">End at 🏁 / 🕳️</span><span class="v" id="mEnd"></span></div>
+        </div>
+        <div class="bars" id="hist"></div>
+        <div class="axis" id="histAx"></div>
+        <p class="note" style="text-align:center">Episode lengths (green ended at 🏁, red at 🕳️)</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>In an <b>episodic</b> task each episode ends at some time $T$, when the agent enters a terminal state. The return from step $t$ adds the rewards up to the end, discounted by $\gamma$ (Lesson 4):</p>
+    $$\begin{aligned} G_t &= R_{t+1} + \gamma R_{t+2} + \dots + \gamma^{T-t-1} R_T \\ &= \sum_{k=t+1}^{T} \gamma^{k-t-1} R_k \end{aligned}$$
+    <p>$T$ is random: it depends on the slips and on the actions. It can differ from episode to episode.</p>
+    <p>Splitting off the first reward gives the recursion every later lesson is built on:</p>
+    $$G_t = R_{t+1} + \gamma\, G_{t+1}, \qquad G_T = 0$$
+    <p>The return now is the next reward plus the discounted return from the next step. At the end there is nothing left to collect.</p>
+    <p><b>One formula for both kinds of task.</b> Treat the terminal state as <b>absorbing</b>: it moves only to itself, with reward 0. Then every episode goes on forever, and the extra rewards add nothing (the grey rows in the log). So episodic and continuing tasks share one definition (S&amp;B §3.4):</p>
+    $$G_t = \sum_{k=t+1}^{\infty} \gamma^{k-t-1} R_k$$
+    <p>This allows $\gamma = 1$ when episodes always end, or $T = \infty$ when $\gamma &lt; 1$, but not both. With rewards bounded by $R_{\max}$ and $\gamma &lt; 1$ the sum is at most $R_{\max}/(1-\gamma)$. With $\gamma = 1$ and no end, it can grow without limit.</p>
+    <p>Untick "terminal" and put the robot on 🏁 with the route policy: it bumps into the edge and collects $+10$ again and again, which is Lesson 18's flaw. Its return is finite only because $\gamma &lt; 1$. Set $\gamma = 1$ and it grows without bound.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  // ------------------------------------------------------------ the icy world (as in Lesson 18)
+  const ROWS = 4, COLS = 5, SLIP = 0.2;
+  const WALLS = new Set(['1,1', '2,3']);
+  const GOAL = '0,4', PIT = '1,4', START = [3, 0];
+  const DIRS = [[-1, 0], [0, 1], [1, 0], [0, -1]];
+  const ARROW = ['↑', '→', '↓', '←'];
+  const key = (r, c) => `${r},${c}`;
+  const name = (p) => `(${p[0]},${p[1]})`;
+  const reward = (r, c) => (key(r, c) === GOAL ? 10 : key(r, c) === PIT ? -10 : -1);
+  function moveTo(r, c, d) {
+    const nr = r + DIRS[d][0], nc = c + DIRS[d][1];
+    if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS || WALLS.has(key(nr, nc))) return [r, c];
+    return [nr, nc];
+  }
+  function envStep(p, a) {
+    const u = Math.random();
+    const d = u < 1 - SLIP ? a : u < 1 - SLIP / 2 ? (a + 1) % 4 : (a + 3) % 4;
+    const n = moveTo(p[0], p[1], d);
+    return { next: n, r: reward(...n), slipped: d !== a };
+  }
+  // A sensible fixed route: up the left side, then along the top row. On 🏁 it presses up (into the edge).
+  const ROUTE = {
+    '3,0': 0, '3,1': 3, '3,2': 3, '3,3': 3, '3,4': 3,
+    '2,0': 0, '2,1': 3, '2,2': 0, '2,4': 2,
+    '1,0': 0, '1,2': 0, '1,3': 0,
+    '0,0': 1, '0,1': 1, '0,2': 1, '0,3': 1,
+    '0,4': 0, '1,4': 3,
+  };
+  const policy = (who, p) => (who === 'route' ? ROUTE[key(...p)] : Course.randInt(4));
+  const isTerminal = (p) => $('cTerm').checked && (key(...p) === GOAL || key(...p) === PIT);
+
+  // ------------------------------------------------------------ one episode, step by step
+  let who = 'you', pos, t, G, done, visited, timer = null;
+  const gam = Course.slider('#iG', (v) => v.toFixed(2), () => { recompute(); });
+  let rewards = [], rows = [];
+
+  const world = Course.grid($('world'), ROWS, COLS, (r, c, el) => {
+    const k = key(r, c);
+    if (WALLS.has(k)) { el.classList.add('wall'); return; }
+    if (k === GOAL) el.classList.add('goal');
+    if (k === PIT) el.classList.add('pit');
+    if ((k === GOAL || k === PIT) && $('cTerm').checked) el.classList.add('term');
+    const here = pos && r === pos[0] && c === pos[1];
+    const emo = here ? '🤖' : k === GOAL ? '🏁' : k === PIT ? '🕳️' : '';
+    const trail = visited && visited.has(k) && !here ? '<span class="trail"></span>' : '';
+    const arr = who === 'route' && ROUTE[k] !== undefined && !((k === GOAL || k === PIT) && $('cTerm').checked) ? `<span class="arr">${ARROW[ROUTE[k]]}</span>` : '';
+    el.innerHTML = `${trail}<span class="emo" style="position:relative">${emo}</span>${arr}`;
+  });
+  world.onClick((r, c) => {
+    if (WALLS.has(key(r, c))) return;
+    newEpisode([r, c]);
+    $('status').textContent = `Episode starts at ${name([r, c])}.`;
+  });
+
+  function newEpisode(start = START) {
+    stop();
+    pos = start.slice(); t = 0; done = false; rewards = []; rows = [];
+    visited = new Set([key(...pos)]);
+    if (isTerminal(pos)) done = true;
+    $('status').textContent = who === 'you' ? 'Drive the robot with the arrows (or arrow keys).' : 'Press Step or Run.';
+    recompute();
+  }
+
+  function step(a) {
+    if (done) return;
+    if (t >= 200) { done = true; stop(); $('status').textContent = 'Stopped after 200 steps: with no terminal state this could go on forever.'; recompute(); return; }
+    const from = pos.slice(), out = envStep(pos, a);
+    rows.push({ t, s: from, a, r: out.r, slipped: out.slipped });
+    rewards.push(out.r);
+    pos = out.next; t++;
+    visited.add(key(...pos));
+    if (isTerminal(pos)) {
+      done = true; stop();
+      $('status').innerHTML = `<b>${key(...pos) === GOAL ? 'Reached 🏁' : 'Fell into 🕳️'}.</b> The episode is over: $T = ${t}$.`;
+      Course.renderMath($('status'));
+    } else {
+      $('status').textContent = `${name(from)} ${ARROW[a]} → ${name(pos)}${out.slipped ? ' (slipped)' : ''}, reward ${out.r}.`;
+    }
+    recompute();
+  }
+
+  function recompute() {
+    const g = gam();
+    let sum = 0, html = '';
+    rows.forEach((row, i) => {
+      const term = Math.pow(g, i) * row.r;
+      sum += term;
+      const last = done && i === rows.length - 1 && isTerminal(pos);
+      html = `<tr class="${last ? 'end' : ''}"><td>${row.t}</td><td>${name(row.s)}</td><td>${ARROW[row.a]}${row.slipped ? '*' : ''}</td><td>${row.r}</td><td>${term.toFixed(3)}</td><td>${sum.toFixed(3)}</td></tr>` + html;
+    });
+    if (done && isTerminal(pos)) {
+      html = `<tr class="ghost"><td>${t + 1}, …</td><td>terminal</td><td>–</td><td>0</td><td>0</td><td>${sum.toFixed(3)}</td></tr>` +
+        `<tr class="ghost"><td>${t}</td><td>terminal</td><td>–</td><td>0</td><td>0</td><td>${sum.toFixed(3)}</td></tr>` + html;
+    }
+    $('log').innerHTML = html;
+    G = sum;
+    if (!rows.length) Course.tex($('G'), 'G_0 = 0 \\quad \\text{(no rewards yet)}', true);
+    else {
+      const shown = rewards.slice(0, 4).map((r, i) => (i === 0 ? `${r}` : `${g.toFixed(2)}${i > 1 ? `^{${i}}` : ''}(${r})`)).join(' + ');
+      Course.tex($('G'), `G_0 = ${shown}${rewards.length > 4 ? ' + \\dots' : ''} = ${sum.toFixed(3)}`, true);
+    }
+    world.update();
+  }
+
+  function stop() { clearInterval(timer); timer = null; $('bRun').textContent = 'Run'; }
+  $('pad').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b && who === 'you') step(+b.dataset.a); });
+  document.addEventListener('keydown', (e) => {
+    const m = { ArrowUp: 0, ArrowRight: 1, ArrowDown: 2, ArrowLeft: 3 }[e.key];
+    // Arrow keys drive the robot only after you click inside this card, so they still scroll the page otherwise.
+    if (m === undefined || !$('play').contains(document.activeElement) || who !== 'you' || e.target.tagName === 'INPUT') return;
+    e.preventDefault(); step(m);
+  });
+  $('bStep').addEventListener('click', () => step(policy(who, pos)));
+  $('bRun').addEventListener('click', () => {
+    if (timer) return stop();
+    if (done) newEpisode();
+    $('bRun').textContent = 'Pause';
+    timer = setInterval(() => step(policy(who, pos)), 160);
+  });
+  $('who').addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    who = b.dataset.w;
+    [...$('who').children].forEach((x) => x.classList.toggle('on', x === b));
+    $('pad').hidden = who !== 'you'; $('agentRow').hidden = who === 'you';
+    newEpisode();
+  });
+  $('cTerm').addEventListener('change', () => newEpisode());
+  $('bNew').addEventListener('click', () => newEpisode());
+  newEpisode();
+
+  // ------------------------------------------------------------ many episodes
+  $('bMany').addEventListener('click', () => {
+    const pol = who === 'you' ? 'route' : who, g = gam();
+    let sumT = 0, sumG = 0, goal = 0;
+    const lens = [];
+    for (let e = 0; e < 1000; e++) {
+      let p = START.slice(), T = 0, Gs = 0, disc = 1;
+      while (!(key(...p) === GOAL || key(...p) === PIT) && T < 10000) {
+        const out = envStep(p, policy(pol, p));
+        Gs += disc * out.r; disc *= g; p = out.next; T++;
+      }
+      const atGoal = key(...p) === GOAL;
+      goal += atGoal; sumT += T; sumG += Gs; lens.push([T, atGoal]);
+    }
+    $('manyOut').hidden = false;
+    $('mT').textContent = (sumT / 1000).toFixed(1);
+    $('mG').textContent = (sumG / 1000).toFixed(2);
+    $('mEnd').textContent = `${(goal / 10).toFixed(0)}% / ${(100 - goal / 10).toFixed(0)}%`;
+    // Histogram of lengths in 12 bins.
+    const maxT = Math.max(...lens.map((l) => l[0])), bins = 12, w = Math.max(1, Math.ceil((maxT + 1) / bins));
+    const gb = new Array(bins).fill(0), pb = new Array(bins).fill(0);
+    lens.forEach(([T, ok]) => { const b = Math.min(bins - 1, Math.floor(T / w)); ok ? gb[b]++ : pb[b]++; });
+    const top = Math.max(...gb.map((x, i) => x + pb[i]));
+    $('hist').innerHTML = gb.map((x, i) => `<div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%;gap:0"><div class="bar pitb" style="flex:none;height:${(100 * pb[i]) / top}%"></div><div class="bar" style="flex:none;border-radius:0;height:${(100 * x) / top}%"></div></div>`).join('');
+    $('histAx').innerHTML = gb.map((_, i) => `<span>${i * w}</span>`).join('');
+    $('bMany').textContent = `Run 1000 episodes (${pol === 'route' ? 'route' : 'random'} policy)`;
+  });
+
+  // ------------------------------------------------------------ quiz
+  const rs = [-1, -1, -1, 10];
+  const ret = (g) => rs.reduce((s, r, k) => s + Math.pow(g, k) * r, 0);
+  Course.quiz([
+    {
+      q: 'An episode gives rewards $-1, -1, -1, +10$ and then ends. With $\\gamma = 0.9$, what is $G_0$?',
+      answer: ret(0.9),
+      tol: 0.005,
+      explain: '$-1 - 0.9 - 0.81 + 0.729 \\times 10 = -2.71 + 7.29 = 4.58$.',
+    },
+    {
+      q: 'Same episode with $\\gamma = 1$. What is $G_0$?',
+      answer: ret(1),
+      tol: 0,
+      explain: '$-1 - 1 - 1 + 10 = 7$. With $\\gamma = 1$ the return is just the sum, which is fine because the episode ends.',
+    },
+    {
+      q: '$\\gamma = 0.9$, $R_{t+1} = -1$ and $G_{t+1} = 5$. What is $G_t$?',
+      answer: -1 + 0.9 * 5,
+      explain: '$G_t = R_{t+1} + \\gamma G_{t+1} = -1 + 0.9 \\times 5 = 3.5$.',
+    },
+    {
+      q: 'Why can\'t a task have both $T = \\infty$ and $\\gamma = 1$?',
+      choices: [
+        'Terminal states need $\\gamma < 1$',
+        'The return could be an infinite sum that never settles, so it would not be a well-defined number',
+        'Rewards must be negative',
+      ],
+      answer: 1,
+      explain: 'With $\\gamma = 1$ and no end, $+10$ forever sums to infinity. Either the episode ends, or $\\gamma < 1$ keeps the sum below $R_{\\max}/(1-\\gamma)$.',
+    },
+  ]);
+</script>
+</body>
+</html>

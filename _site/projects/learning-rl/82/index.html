@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>82. The probability ratio | Learning RL</title>
+<meta name="description" content="Score a new policy using data from the old one: weight each sample by how much more likely the new policy makes it. Drag the new policy and watch the estimate.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .dist { display: flex; gap: 10px; height: 150px; touch-action: none; cursor: ns-resize; user-select: none; border-bottom: 1px solid #9ca3af; margin-top: 8px; }
+  .dist .col { flex: 1; position: relative; background: var(--soft); border-radius: 3px 3px 0 0; }
+  .dist .fill { position: absolute; left: 0; right: 0; bottom: 0; background: var(--accent); border-radius: 3px 3px 0 0; }
+  .dist .old { position: absolute; left: -3px; right: -3px; border-top: 3px dashed #6b7280; }
+  .dist .lab { position: absolute; left: 0; right: 0; top: 2px; text-align: center; font-size: 0.75rem; color: var(--heading); font-variant-numeric: tabular-nums; }
+  .xs { display: flex; gap: 10px; font-size: 0.8rem; color: var(--muted); }
+  .xs span { flex: 1; text-align: center; }
+  .key { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.85rem; color: var(--muted); margin: 6px 0; }
+  .key .kn::before { content: ""; display: inline-block; width: 12px; height: 12px; background: var(--accent); vertical-align: -1px; margin-right: 5px; border-radius: 2px; }
+  .key .ko::before { content: ""; display: inline-block; width: 16px; border-top: 3px dashed #6b7280; vertical-align: middle; margin-right: 5px; }
+  .tablewrap { overflow-x: auto; }
+  #strip { width: 100%; height: 90px; display: block; margin: 6px 0; }
+</style>
+</head>
+<body data-lesson="82">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>The probability ratio</h1>
+  <p class="lede">Data costs time to collect. PPO collects a batch with the old policy, then reuses it to score many candidate new policies. Each sample is weighted by the probability ratio $r = \pi_{\text{new}} / \pi_{\text{old}}$: how much more often the new policy would take that action.</p>
+
+  <section class="card">
+    <h2>Score a new policy with old data</h2>
+    <p class="note">A 4-armed bandit with true values $q = (1, 0.5, 0, -0.5)$. The old policy is fixed. Drag the green bars to set the new policy; the others rescale to keep the sum at 1.</p>
+    <div class="key"><span class="kn">$\pi_{\text{new}}$ (drag)</span><span class="ko">$\pi_{\text{old}}$</span></div>
+    <div class="dist" id="dn"></div>
+    <div class="xs"><span>$a = 1$</span><span>$a = 2$</span><span>$a = 3$</span><span>$a = 4$</span></div>
+    <div class="tablewrap">
+      <table class="data" style="margin-top:10px">
+        <thead><tr><th>$a$</th><th>$\pi_{\text{old}}$</th><th>$\pi_{\text{new}}$</th><th>$r(a)$</th><th>$A(a)$</th><th>$\pi_{\text{old}}\, r\, A$</th></tr></thead>
+        <tbody id="tab"></tbody>
+      </table>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="k">Surrogate $\mathbb{E}_{\text{old}}[rA]$</span><span class="v" id="sL">–</span></div>
+      <div class="stat"><span class="k">True gain $J_{\text{new}} - J_{\text{old}}$</span><span class="v" id="sG">–</span></div>
+      <div class="stat"><span class="k">$D_{\mathrm{KL}}(\pi_{\text{old}} \,\|\, \pi_{\text{new}})$</span><span class="v" id="sKL">–</span></div>
+    </div>
+    <div class="row">
+      <button id="bReset" class="quiet">New = old</button>
+      <button id="bGood">Small good step</button>
+      <button id="bBig">Bet on action 1</button>
+    </div>
+
+    <div class="sub">
+      <h2>Estimate it from 20 samples</h2>
+      <p class="note">In practice the surrogate is an average over a batch drawn from $\pi_{\text{old}}$. Each dot is one 20-sample estimate. The amber line is the true gain.</p>
+      <canvas id="strip"></canvas>
+      <div class="row">
+        <button id="bEst">Estimate ×10</button>
+        <span class="spacer"></span>
+        <span class="muted" id="sSE"></span>
+      </div>
+      <p class="status" id="status"></p>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>For a sample $(s_t, a_t)$ collected by $\pi_{\theta_{\text{old}}}$, the <b>probability ratio</b> is</p>
+    $$r_t(\theta) = \frac{\pi_\theta(a_t \mid s_t)}{\pi_{\theta_{\text{old}}}(a_t \mid s_t)}, \qquad r_t(\theta_{\text{old}}) = 1$$
+    <p>$r_t &gt; 1$ means the new policy takes that action more often than the old one did; $r_t &lt; 1$ means less often.</p>
+    <p><b>Importance sampling</b> (Lesson 39) turns an average under the new policy into one under the old:</p>
+    $$\begin{aligned} \mathbb{E}_{a \sim \pi_{\text{old}}}\big[r(a)\,A(a)\big] &= \sum_a \pi_{\text{old}}(a)\,\frac{\pi_{\text{new}}(a)}{\pi_{\text{old}}(a)}\,A(a) \\ &= \mathbb{E}_{a \sim \pi_{\text{new}}}\big[A(a)\big] \end{aligned}$$
+    <p>So old data can score the new policy's average advantage. PPO's starting point is this <b>surrogate objective</b> (Schulman et al. 2017, eq. 6), with $\hat A_t$ the advantage estimate from Lesson 78:</p>
+    $$L^{\text{CPI}}(\theta) = \hat{\mathbb{E}}_t\big[r_t(\theta)\,\hat A_t\big]$$
+    <p>$\hat{\mathbb{E}}_t$ is an average over the batch. "CPI" stands for conservative policy iteration (Kakade and Langford, 2002).</p>
+    <p><b>Its gradient at the old policy is the policy gradient.</b> Since $\nabla_\theta\, r_t = \nabla_\theta \pi_\theta / \pi_{\theta_{\text{old}}}$,</p>
+    $$\begin{aligned} \nabla_\theta L^{\text{CPI}}\big|_{\theta = \theta_{\text{old}}} &= \hat{\mathbb{E}}_t\!\left[\frac{\nabla_\theta \pi_\theta(a_t \mid s_t)}{\pi_\theta(a_t \mid s_t)}\,\hat A_t\right] \\ &= \hat{\mathbb{E}}_t\big[\nabla_\theta \log \pi_\theta(a_t \mid s_t)\,\hat A_t\big] \end{aligned}$$
+    <p>One gradient step on $L^{\text{CPI}}$ is an ordinary actor-critic step. The difference is that $L^{\text{CPI}}$ can be optimised for several steps on the same batch.</p>
+    <p><b>When the surrogate is exact.</b> In a bandit there is one state and $A(a) = q(a) - J_{\text{old}}$, so</p>
+    $$\sum_a \pi_{\text{new}}(a)\big(q(a) - J_{\text{old}}\big) = J_{\text{new}} - J_{\text{old}}$$
+    <p>That is why the two numbers above always agree. In an MDP the new policy also visits different states, which the surrogate ignores. TRPO's Theorem 1 (Schulman et al. 2015) bounds the error. With discount $\gamma$, $\rho_{\text{old}}$ the discounted state visit counts of the old policy and $\varepsilon_A = \max_{s,a}|A_{\text{old}}(s,a)|$,</p>
+    $$\begin{aligned} J(\pi_{\text{new}}) \ \ge\ J(\pi_{\text{old}}) &+ \sum_s \rho_{\text{old}}(s) \sum_a \pi_{\text{new}}(a \mid s)\,A_{\text{old}}(s,a) \\ &- \frac{4\varepsilon_A\gamma}{(1-\gamma)^2}\,\max_s D_{\mathrm{KL}}\big(\pi_{\text{old}}(\cdot \mid s)\,\|\,\pi_{\text{new}}(\cdot \mid s)\big) \end{aligned}$$
+    <p>Improve the surrogate while keeping the KL small, and the true return is guaranteed to improve.</p>
+    <p><b>The estimate gets noisy far from the old policy.</b> The second moment of each term is</p>
+    $$\mathbb{E}_{a \sim \pi_{\text{old}}}\big[(r A)^2\big] = \sum_a \frac{\pi_{\text{new}}(a)^2}{\pi_{\text{old}}(a)}\,A(a)^2$$
+    <p>Putting much more weight on an action the old policy rarely took makes $\pi_{\text{new}}^2 / \pi_{\text{old}}$ large, and the dots spread out. Either reason says the same thing: trust the surrogate only near $r = 1$.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const K = 4, Q = [1, 0.5, 0, -0.5], OLD = [0.1, 0.3, 0.4, 0.2], N = 20;
+  const Jold = OLD.reduce((s, p, a) => s + p * Q[a], 0);
+  const A = Q.map((q) => q - Jold);
+  let pn = [0.14, 0.33, 0.37, 0.16], ests = [];
+
+  $('dn').innerHTML = OLD.map((p) => `<div class="col"><div class="fill"></div><div class="old" style="bottom:${100 * p}%"></div><span class="lab"></span></div>`).join('');
+
+  // Drag sets pi_new(a) directly; the other actions share the rest in proportion.
+  function setProb(i, v) {
+    v = Math.max(0.01, Math.min(0.97, v));
+    const rest = pn.reduce((s, p, a) => (a === i ? s : s + p), 0);
+    pn = pn.map((p, a) => (a === i ? v : rest > 0 ? (p / rest) * (1 - v) : (1 - v) / (K - 1)));
+    pn = pn.map((p) => Math.max(p, 0.003));
+    const s = pn.reduce((x, y) => x + y, 0);
+    pn = pn.map((p) => p / s);
+  }
+  const el = $('dn');
+  const onDrag = (e) => {
+    const r = el.getBoundingClientRect();
+    const i = Math.max(0, Math.min(K - 1, Math.floor(((e.clientX - r.left) / r.width) * K)));
+    setProb(i, (r.bottom - e.clientY) / r.height);
+    ests = [];
+    draw();
+  };
+  el.addEventListener('pointerdown', (e) => { el.setPointerCapture(e.pointerId); onDrag(e); });
+  el.addEventListener('pointermove', (e) => { if (el.hasPointerCapture(e.pointerId)) onDrag(e); });
+
+  const stats = () => {
+    const r = pn.map((p, a) => p / OLD[a]);
+    const L = OLD.reduce((s, p, a) => s + p * r[a] * A[a], 0);
+    const m2 = OLD.reduce((s, p, a) => s + p * (r[a] * A[a]) ** 2, 0);
+    return { r, L, se: Math.sqrt((m2 - L * L) / N) };
+  };
+
+  function draw() {
+    const { r, L, se } = stats();
+    [...el.children].forEach((col, a) => {
+      col.querySelector('.fill').style.height = `${100 * pn[a]}%`;
+      col.querySelector('.lab').textContent = pn[a].toFixed(2);
+    });
+    $('tab').innerHTML = pn.map((p, a) =>
+      `<tr><td>${a + 1}</td><td>${OLD[a].toFixed(2)}</td><td>${p.toFixed(2)}</td><td><b>${r[a].toFixed(2)}</b></td><td>${A[a].toFixed(2)}</td><td>${(OLD[a] * r[a] * A[a]).toFixed(3)}</td></tr>`).join('');
+    const gain = pn.reduce((s, p, a) => s + p * Q[a], 0) - Jold;
+    $('sL').textContent = L.toFixed(3);
+    $('sG').textContent = gain.toFixed(3);
+    $('sKL').textContent = OLD.reduce((s, p, a) => s + p * Math.log(p / pn[a]), 0).toFixed(3);
+    $('sSE').textContent = `standard error ${se.toFixed(3)}`;
+    drawStrip(gain);
+  }
+
+  const canvas = $('strip'), ctx = canvas.getContext('2d');
+  function drawStrip(truth) {
+    const dpr = window.devicePixelRatio || 1, W = canvas.clientWidth, H = canvas.clientHeight;
+    canvas.width = W * dpr; canvas.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    const lo = -1, hi = 2, X = (x) => 10 + ((Math.max(lo, Math.min(hi, x)) - lo) / (hi - lo)) * (W - 20);
+    ctx.strokeStyle = '#9ca3af'; ctx.beginPath(); ctx.moveTo(10, H - 24); ctx.lineTo(W - 10, H - 24); ctx.stroke();
+    ctx.fillStyle = '#6b7280'; ctx.font = '11px -apple-system, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    for (let x = lo; x <= hi; x += 0.5) { ctx.fillRect(X(x), H - 26, 1, 5); ctx.fillText(x, X(x), H - 18); }
+    ctx.strokeStyle = Course.colors.amber; ctx.lineWidth = 2; ctx.setLineDash([4, 3]);
+    ctx.beginPath(); ctx.moveTo(X(truth), 4); ctx.lineTo(X(truth), H - 24); ctx.stroke(); ctx.setLineDash([]); ctx.lineWidth = 1;
+    ctx.fillStyle = 'rgba(42,122,226,0.55)';
+    ests.forEach((e) => { ctx.beginPath(); ctx.arc(X(e.v), 10 + e.j * (H - 42), 3.5, 0, 2 * Math.PI); ctx.fill(); });
+  }
+  new ResizeObserver(() => draw()).observe(canvas);
+
+  $('bEst').addEventListener('click', () => {
+    const { r } = stats();
+    for (let k = 0; k < 10; k++) {
+      let s = 0;
+      for (let i = 0; i < N; i++) { const a = Course.sample(OLD); s += r[a] * A[a]; }
+      ests.push({ v: s / N, j: Math.random() });
+    }
+    const vs = ests.map((e) => e.v), m = vs.reduce((a, b) => a + b, 0) / vs.length;
+    const sd = Math.sqrt(vs.reduce((a, b) => a + (b - m) ** 2, 0) / Math.max(1, vs.length - 1));
+    $('status').textContent = `${ests.length} estimates: mean ${m.toFixed(3)}, spread (sd) ${sd.toFixed(3)}.`;
+    draw();
+  });
+  const preset = (p) => { pn = p.slice(); ests = []; $('status').textContent = ''; draw(); };
+  $('bReset').addEventListener('click', () => preset(OLD));
+  $('bGood').addEventListener('click', () => preset([0.14, 0.33, 0.37, 0.16]));
+  $('bBig').addEventListener('click', () => preset([0.85, 0.07, 0.05, 0.03]));
+  draw();
+
+  Course.quiz([
+    {
+      q: 'The old policy took action $a$ with probability $0.2$. The new policy gives it $0.3$. What is $r(a)$?',
+      answer: 1.5,
+      explain: '$0.3 / 0.2 = 1.5$: the new policy takes $a$ 50% more often.',
+    },
+    {
+      q: 'A batch has three samples with $(r_t, \\hat A_t) = (1.5, 2),\\ (0.8, -1),\\ (1.0, 0.5)$. What is $L^{\\text{CPI}}$?',
+      answer: (1.5 * 2 + 0.8 * -1 + 1.0 * 0.5) / 3,
+      tol: 0.005,
+      explain: '$(3 - 0.8 + 0.5)/3 = 0.9$.',
+    },
+    {
+      q: 'A 2-armed bandit has $q = (1, 0)$. $\\pi_{\\text{old}} = (0.5, 0.5)$ and $\\pi_{\\text{new}} = (0.7, 0.3)$. What is $\\mathbb{E}_{\\text{old}}[r A]$?',
+      answer: 0.5 * (0.7 / 0.5) * 0.5 + 0.5 * (0.3 / 0.5) * -0.5,
+      tol: 0.001,
+      hint: '$J_{\\text{old}} = 0.5$, so $A = (0.5, -0.5)$.',
+      explain: '$0.7 \\times 0.5 + 0.3 \\times (-0.5) = 0.2$, which equals $J_{\\text{new}} - J_{\\text{old}} = 0.7 - 0.5$.',
+    },
+    {
+      q: 'At $\\theta = \\theta_{\\text{old}}$, what is $\\nabla_\\theta r_t(\\theta)$?',
+      choices: ['$0$', '$\\nabla_\\theta \\log \\pi_\\theta(a_t \\mid s_t)$', '$1$', '$\\hat A_t$'],
+      answer: 1,
+      explain: '$\\nabla \\pi_\\theta / \\pi_{\\theta_{\\text{old}}}$ with $\\pi_\\theta = \\pi_{\\theta_{\\text{old}}}$ is $\\nabla \\pi_\\theta / \\pi_\\theta = \\nabla \\log \\pi_\\theta$.',
+    },
+  ]);
+</script>
+</body>
+</html>

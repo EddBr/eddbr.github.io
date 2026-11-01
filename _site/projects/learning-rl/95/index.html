@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>95. Tree search | Learning RL</title>
+<meta name="description" content="Monte Carlo tree search on Lesson 42's tic-tac-toe. Watch each simulation select, expand, roll out and back up, and see the visit counts settle on the right move.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .boards { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 20px; align-items: start; }
+  .boards h3 { font-size: 0.85rem; color: var(--muted); font-weight: 500; margin: 0 0 4px; text-align: center; }
+  #board { max-width: 270px !important; margin: 4px auto; }
+  #board .gcell { font-size: 44px; font-weight: 600; flex-direction: column; }
+  #mini { max-width: 180px !important; margin: 4px auto; }
+  #mini .gcell { font-size: 15px; font-weight: 600; }
+  .gcell.x { color: var(--accent); }
+  .gcell.o { color: var(--blue); }
+  .gcell.win { background: var(--accent-soft); }
+  .gcell.lose { background: var(--red-soft); }
+  .gcell .n { font-size: 15px; font-weight: 700; color: var(--heading); line-height: 1.1; }
+  .gcell .q { font-size: 11px; font-weight: 500; color: var(--muted); }
+  .gcell.best { box-shadow: inset 0 0 0 3px var(--accent); }
+  #mini .gcell.dim { color: #cbd5e1; }
+  #mini .gcell.sel { background: #ede9fe; color: var(--purple); }
+  #mini .gcell.exp { background: var(--accent-soft); color: var(--accent); }
+  #mini .gcell.ro { background: #f3f4f6; color: var(--muted); }
+  .key { display: flex; gap: 10px; flex-wrap: wrap; font-size: 0.8rem; color: var(--muted); justify-content: center; }
+  .key b { display: inline-block; width: 12px; height: 10px; vertical-align: middle; margin-right: 3px; border-radius: 2px; }
+  .maths li { color: var(--body); margin: 4px 0; }
+  #last { font-size: 0.9rem; min-height: 4.2em; }
+  @media (max-width: 560px) {
+    .boards { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+    #board .gcell { font-size: 36px; }
+  }
+</style>
+</head>
+<body data-lesson="95">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Tree search</h1>
+  <p class="lede">Lesson 42's agent needed thousands of games to fill a value table. Monte Carlo tree search (MCTS) needs no training at all. Before each move it plays out many imagined games from the current board, grows a tree of the positions it visits, and steers new simulations towards moves that have done well. Planning, done at decision time.</p>
+
+  <section class="card">
+    <p class="note">You are <b style="color:var(--blue)">O</b>. MCTS is <b style="color:var(--accent)">X</b>. On X's turn, run simulations and watch the numbers on the board: visits $N$ for each move (large) and X's average result through that move, $Q$, with a win scoring 100% and a draw 50% (small). Then let X play its most visited move.</p>
+    <div class="boards">
+      <div>
+        <h3>The game</h3>
+        <div id="board"></div>
+        <p class="status" id="status"></p>
+      </div>
+      <div>
+        <h3>The last simulation</h3>
+        <div id="mini"></div>
+        <div class="key"><span><b style="background:#ede9fe"></b>select</span><span><b style="background:#d1fae5"></b>expand</span><span><b style="background:#e5e7eb"></b>roll out</span></div>
+      </div>
+    </div>
+    <p id="last" class="note"></p>
+    <div class="row">
+      <button id="b1">+1 simulation</button>
+      <button id="b10">+10</button>
+      <button id="b100">+100</button>
+      <button id="bMove" class="primary">Play X's move</button>
+    </div>
+    <label class="slider"><span>Exploration $c$</span><input id="iC" type="range" min="0" max="3" step="0.1" value="1.4"><output></output></label>
+    <div class="row">
+      <button id="bNew" class="quiet">New game</button>
+      <button id="bPuzzle" class="quiet">Puzzle: X must block</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="k">Simulations this move</span><span class="v" id="sN">0</span></div>
+      <div class="stat"><span class="k">Nodes in the tree</span><span class="v" id="sT">1</span></div>
+      <div class="stat"><span class="k">Most visited move</span><span class="v" id="sBest">–</span></div>
+    </div>
+    <p class="note">The puzzle: O threatens the right column. Only one move avoids losing. With 10 simulations MCTS finds it about half the time. By 50 it almost always does. Try $c = 0$ too: with no exploration term, a move that loses its first rollout may never be tried again.</p>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>Each node of the tree is a board $s$ with a visit count $N(s)$. Each edge, a move $a$ from $s$, stores $N(s, a)$ and $W(s, a)$, the total result of simulations through it (1 for a win, $\tfrac12$ for a draw, 0 for a loss, for the player making the move). Its average is $Q(s, a) = W(s, a)/N(s, a)$. One simulation has four phases:</p>
+    <ol>
+      <li><b>Select.</b> From the root, repeatedly take the move $\arg\max_a \big[ Q(s, a) + c \sqrt{\ln N(s) / N(s, a)} \big]$.</li>
+      <li><b>Expand.</b> At the first move not yet in the tree, add one new node.</li>
+      <li><b>Simulate.</b> Play random moves to the end of the game.</li>
+      <li><b>Back up.</b> Add 1 to $N$ and the result to $W$ on every edge of the path.</li>
+    </ol>
+    <p>Step 1 is UCB from Lesson 9 applied at every node (the UCT rule, Kocsis &amp; Szepesvári, 2006): $Q$ exploits, the square-root term explores moves tried rarely. Each player picks the move best for itself, so the tree approximates minimax search. As the number of simulations grows, UCT's choice at the root converges to the minimax move.</p>
+    <p>After the simulations, MCTS plays the move with the most visits. Visits are a steadier signal than $Q$, which can be high for a move tried only a few times.</p>
+    <p>MCTS is a rollout algorithm with memory (S&amp;B §8.10–8.11). Values exist only for the current search: the tree is thrown away after the move (or its relevant subtree kept). Nothing is learned between games. Lesson 96 adds learning.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const LINES = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
+  const X = 1, O = 2;
+  // 0 = game on, 1 = X won, 2 = O won, 3 = draw
+  function result(b) {
+    for (const [p, q, r] of LINES) if (b[p] && b[p] === b[q] && b[p] === b[r]) return b[p];
+    return b.includes(0) ? 0 : 3;
+  }
+  const winLine = (b) => LINES.find(([p, q, r]) => b[p] && b[p] === b[q] && b[p] === b[r]);
+  const empties = (b) => b.map((v, i) => (v ? -1 : i)).filter((i) => i >= 0);
+  // Score of a finished game for player p.
+  const score = (res, p) => (res === 3 ? 0.5 : res === p ? 1 : 0);
+
+  // ------------------------------------------------------------ MCTS (UCT)
+  // node: { b, toMove, N, kids: Map(move -> node), untried: [moves], W, n } where the edge into
+  // a node stores n (visits) and W (total score for the player who made that move).
+  const cS = Course.slider('#iC', (v) => v.toFixed(1));
+  function makeNode(b, toMove) {
+    return { b, toMove, N: 0, kids: new Map(), untried: result(b) ? [] : Course.shuffle(empties(b)), W: 0, n: 0 };
+  }
+  let root, last = null;
+
+  function simulate() {
+    const c = cS();
+    let node = root;
+    const path = [node], sel = [];
+    // 1. select
+    while (!node.untried.length && node.kids.size) {
+      let best = -Infinity, pick = [];
+      for (const [m, k] of node.kids) {
+        const u = k.W / k.n + c * Math.sqrt(Math.log(node.N) / k.n);
+        if (u > best + 1e-12) { best = u; pick = [[m, k]]; } else if (Math.abs(u - best) <= 1e-12) pick.push([m, k]);
+      }
+      const [m, k] = Course.choice(pick);
+      sel.push(m); node = k; path.push(node);
+    }
+    // 2. expand
+    let exp = null;
+    if (node.untried.length) {
+      const m = node.untried.pop(), b = node.b.slice();
+      b[m] = node.toMove;
+      const kid = makeNode(b, 3 - node.toMove);
+      node.kids.set(m, kid);
+      exp = m; node = kid; path.push(node);
+    }
+    // 3. simulate with random moves
+    const b = node.b.slice(), ro = [];
+    let p = node.toMove, res = result(b);
+    while (!res) { const m = Course.choice(empties(b)); b[m] = p; ro.push(m); p = 3 - p; res = result(b); }
+    // 4. back up: each edge scores the result for the player who moved into it
+    for (let i = 0; i < path.length; i++) {
+      const nd = path[i];
+      nd.N++;
+      if (i > 0) { nd.n++; nd.W += score(res, path[i - 1].toMove); }
+    }
+    last = { sel, exp, ro, res, first: root.toMove };
+  }
+  const treeSize = (n) => 1 + [...n.kids.values()].reduce((s, k) => s + treeSize(k), 0);
+  const bestMove = () => {
+    let best = -1, bm = null;
+    for (const [m, k] of root.kids) if (k.n > best) { best = k.n; bm = m; }
+    return bm;
+  };
+
+  // ------------------------------------------------------------ game
+  let board = new Array(9).fill(0), over = false;
+  const g = Course.grid($('board'), 3, 3, (r, c, cell) => {
+    const i = r * 3 + c, v = board[i];
+    if (v) {
+      cell.textContent = v === X ? 'X' : 'O';
+      cell.classList.add(v === X ? 'x' : 'o');
+      const wl = winLine(board);
+      if (wl && wl.includes(i)) cell.classList.add(board[i] === X ? 'win' : 'lose');
+      return;
+    }
+    const k = root && root.toMove === X && !over ? root.kids.get(i) : null;
+    if (k) {
+      cell.innerHTML = `<span class="n">${k.n}</span><span class="q">${Math.round((100 * k.W) / k.n)}%</span>`;
+      cell.style.background = Course.heat(k.W / k.n - 0.5, 0.5);
+      if (i === bestMove()) cell.classList.add('best');
+    } else cell.textContent = '';
+  });
+  g.onClick((r, c) => human(r * 3 + c));
+
+  const mini = Course.grid($('mini'), 3, 3, (r, c, cell) => {
+    const i = r * 3 + c;
+    if (!last) { cell.textContent = board[i] ? (board[i] === X ? 'X' : 'O') : ''; if (board[i]) cell.classList.add('dim'); return; }
+    if (board[i]) { cell.textContent = board[i] === X ? 'X' : 'O'; cell.classList.add('dim'); return; }
+    const order = [...last.sel, ...(last.exp !== null ? [last.exp] : []), ...last.ro];
+    const k = order.indexOf(i);
+    if (k < 0) { cell.textContent = ''; return; }
+    const who = (k % 2 === 0) === (last.first === X) ? 'X' : 'O';
+    cell.textContent = `${k + 1}${who}`;
+    cell.classList.add(k < last.sel.length ? 'sel' : (last.exp !== null && k === last.sel.length) ? 'exp' : 'ro');
+  });
+
+  function describe() {
+    if (!last) { $('last').textContent = ''; return; }
+    const nm = (m) => `square ${m + 1}`;
+    const res = last.res === 3 ? 'a draw (½ to both)' : last.res === X ? 'an X win (1 to X\'s moves, 0 to O\'s)' : 'an O win (1 to O\'s moves, 0 to X\'s)';
+    $('last').innerHTML =
+      `<b>Select:</b> ${last.sel.length ? last.sel.map(nm).join(' → ') : 'nothing yet, the root still has untried moves'}. ` +
+      `<b>Expand:</b> ${last.exp !== null ? nm(last.exp) : 'none (game over in the tree)'}. ` +
+      `<b>Roll out:</b> ${last.ro.length} random move${last.ro.length === 1 ? '' : 's'}, ending in ${res}. ` +
+      `<b>Back up:</b> along ${last.sel.length + (last.exp !== null ? 1 : 0)} edge${last.sel.length + (last.exp !== null ? 1 : 0) === 1 ? '' : 's'}.`;
+  }
+
+  function refresh() {
+    g.update(); mini.update(); describe();
+    $('sN').textContent = root ? root.N : 0;
+    $('sT').textContent = root ? treeSize(root) : 0;
+    const bm = root && root.toMove === X && !over ? bestMove() : null;
+    $('sBest').textContent = bm === null ? '–' : `square ${bm + 1}`;
+    const xTurn = !over && root.toMove === X;
+    ['b1', 'b10', 'b100', 'bMove'].forEach((id) => { $(id).disabled = !xTurn; });
+    if (over) {
+      const r = result(board);
+      $('status').textContent = r === 3 ? 'Draw.' : r === X ? 'X wins.' : 'O wins. Well played.';
+    } else $('status').textContent = xTurn ? 'X to move: run simulations.' : 'Your move: click a square.';
+  }
+
+  function startTurn(toMove) {
+    over = !!result(board);
+    root = makeNode(board.slice(), toMove);
+    last = null;
+    refresh();
+  }
+  function human(i) {
+    if (over || root.toMove !== O || board[i]) return;
+    board[i] = O;
+    startTurn(X);
+  }
+  function run(n) { for (let k = 0; k < n; k++) simulate(); refresh(); }
+  $('b1').addEventListener('click', () => run(1));
+  $('b10').addEventListener('click', () => run(10));
+  $('b100').addEventListener('click', () => run(100));
+  $('bMove').addEventListener('click', () => {
+    if (over || root.toMove !== X) return;
+    if (root.N < 200) run(200 - root.N);
+    const m = bestMove();
+    board[m] = X;
+    startTurn(O);
+  });
+  function newGame() { board = new Array(9).fill(0); startTurn(X); }
+  $('bNew').addEventListener('click', newGame);
+  $('bPuzzle').addEventListener('click', () => {
+    board = [X, 0, O, 0, X, 0, 0, 0, O];
+    startTurn(X);
+  });
+  newGame();
+
+  const uct = 0.6 + 1.4 * Math.sqrt(Math.log(100) / 10);
+  Course.quiz([
+    {
+      q: 'A node has $N(s) = 100$. One move has $N(s, a) = 10$ and $Q(s, a) = 0.6$. With $c = 1.4$, what is its UCT score?',
+      answer: uct,
+      tol: 0.01,
+      hint: '$\\ln 100 \\approx 4.605$.',
+      explain: '$0.6 + 1.4\\sqrt{4.605/10} = 0.6 + 1.4 \\times 0.679 \\approx 1.55$.',
+    },
+    {
+      q: 'An edge for one of O\'s moves has $N = 4$, $W = 1$. The next simulation through it ends in a draw. What is its new $Q$?',
+      answer: 1.5 / 5,
+      explain: '$N = 5$, $W = 1 + \\tfrac12 = 1.5$, so $Q = 1.5/5 = 0.3$.',
+    },
+    {
+      q: 'Each simulation adds one node. Starting from an empty tree (just the root), how many nodes are there after 100 simulations, if none of them ended inside the tree?',
+      answer: 101,
+      tol: 0,
+      explain: 'The root plus one expanded node per simulation. Check with the "Nodes in the tree" counter early in a game.',
+    },
+    {
+      q: 'After searching, why does MCTS play the most visited move rather than the one with the highest $Q$?',
+      choices: [
+        'Visits are cheaper to store',
+        'A move tried only a few times can have a high $Q$ by luck; UCT keeps visiting moves that stay good, so visits are more reliable',
+        'The highest-$Q$ move is always the most visited',
+      ],
+      answer: 1,
+      explain: 'Selection concentrates visits on moves whose $Q$ holds up under repeated testing. A lucky move with $N = 2$ is not evidence.',
+    },
+  ]);
+</script>
+</body>
+</html>

@@ -1,4 +1,227 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.4.1">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2026-10-15T23:10:54+01:00</updated><id>/feed.xml</id><title type="html">Eddie’s Blog</title><subtitle>Product Engineer at Tano.ai | AI/ML and safety engineering</subtitle><entry><title type="html">Silicon Valley Fellowship</title><link href="/personal/blog/2026/10/02/svf-application.html" rel="alternate" type="text/html" title="Silicon Valley Fellowship" /><published>2026-10-02T00:00:00+01:00</published><updated>2026-10-02T00:00:00+01:00</updated><id>/personal/blog/2026/10/02/svf-application</id><content type="html" xml:base="/personal/blog/2026/10/02/svf-application.html"><![CDATA[<p>I receive messages asking about the Silicon Valley Fellowship. I want to give each email it’s due effort, but I can be busy. I’m writing this blog to give all the information I can.</p>
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.4.1">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2026-11-01T22:43:31+00:00</updated><id>/feed.xml</id><title type="html">Eddie’s Blog</title><subtitle>Product Engineer at Tano.ai | AI/ML and safety engineering</subtitle><entry><title type="html">David Silver RL Lecture 3</title><link href="/rl/david/silver/2026/11/01/lecture-3-david-silver.html" rel="alternate" type="text/html" title="David Silver RL Lecture 3" /><published>2026-11-01T00:00:00+00:00</published><updated>2026-11-01T00:00:00+00:00</updated><id>/rl/david/silver/2026/11/01/lecture-3-david-silver</id><content type="html" xml:base="/rl/david/silver/2026/11/01/lecture-3-david-silver.html"><![CDATA[<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" />
+
+<script defer="" src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+
+<script defer="" src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,
+	      {delimiters: [
+	      {left: '$$', right: '$$', display: true},
+	      {left: '$', right: '$', display: false},
+	      {left: '\\(', right: '\\)', display: false},
+	      {left: '\\[', right: '\\]', display: true}
+	      ]});"></script>
+
+<h1 id="planning-by-dynamic-programming">Planning by Dynamic Programming</h1>
+<h3 id="dynamic">“Dynamic”</h3>
+<p>Sequential/temporal component</p>
+<h3 id="programming">“Programming”</h3>
+<p>Optimising a “program” / policy</p>
+
+<h2 id="properties-of-dp">Properties of DP</h2>
+<p>Dynamic programming is a general solution method for problems with 2 properties:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Property</th>
+      <th>Presence in RL</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Optimal substructure (optimal solution can be decomposed into subproblems)</td>
+      <td>Bellman equation gives recursive decomposition</td>
+    </tr>
+    <tr>
+      <td>Overlapping subproblems which recur many times - solutions can be cached and reused</td>
+      <td>Value function is the subproblem that can be cached</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="dp-assumptions">DP Assumptions</h2>
+<p>Assumes full knowledge of the MDP
+Used for planning in an MDP</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Prediction</th>
+      <th>Control</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Input:</strong> <br />1. $\text{MDP}\braket{\mathcal{S},\mathcal{A},\mathcal{P},\mathcal{R},\gamma}$ or MRP $\text{MDP}\braket{\mathcal{S},\mathcal{A},\mathcal{P}^\pi,\mathcal{R}^\pi,\gamma}$<br />2. Policy $\pi$</td>
+      <td><strong>Input:</strong> <br />1. $\text{MDP}\braket{\mathcal{S},\mathcal{A},\mathcal{P},\mathcal{R},\gamma}$</td>
+    </tr>
+    <tr>
+      <td><strong>Output:</strong> <br />1. Value function $v_\pi$<br /></td>
+      <td><strong>Output:</strong><br />1. Optimal value function $v_<em>$<br />2. Optimal policy $\pi_</em>$</td>
+    </tr>
+  </tbody>
+</table>
+
+<h1 id="policy-evaluation">Policy Evaluation</h1>
+<h3 id="problem">Problem</h3>
+<p>Evaluate a given policy $\pi$</p>
+<h3 id="solution">Solution</h3>
+<p>Iterative application of Bellman expectation backup</p>
+
+<p>$v_1\to v_2\to…\to v_\pi$
+Using synchronous backups
+	At each iteration $k+1$
+	For all states $s\in S$
+	Update $v_{k+1}(s)$ from $v_k(s’)$
+	where $s’$ is a successor state of $s$</p>
+
+<p>$v_{k+1}=\sum_{a\in A}\pi(a\vert s)(\mathcal{R}^a_s+\gamma\sum_{s’ \in S}\mathcal{P}^a_{ss’}v_k(s’))$
+$v^{k+1}=\mathcal{R}^\pi+\gamma\mathcal{P}^\pi v^k$</p>
+<h1 id="policy-iteration">Policy Iteration</h1>
+<ol>
+  <li>Evaluate the policy $\pi$ in $v_\pi=\mathbb{E}[\mathcal{R}<em>{t+1}+\gamma\mathcal{R}</em>{t+2}+…\vert S_t=s]$</li>
+  <li>Improve the policy by acting greedily with respect to $v_\pi$ -&gt; $\pi’=\text{greedy}(v_\pi)$</li>
+</ol>
+
+<p>Policy iteration always converges to $\pi^*$</p>
+
+<p>Policy evaluation (Estimate $v_\pi$) $\rightleftarrows$ Policy improvement (Generate $\pi’\ge\pi$)</p>
+
+<h2 id="policy-improvement-theorem">Policy Improvement Theorem</h2>
+<p>Imagine we start with a deterministic policy $a=\pi(s)$</p>
+
+<p>We can <em>improve</em> the policy by acting greedily
+$\pi ‘(s)=\arg\max_{a\in A}q_\pi(s,a)$
+This improves the value from any state $s$ over one step:
+$q_\pi(s,\pi’(s))=\max_{a\in A}q_\pi(s,a)\ge q_\pi(s,\pi(s))=v_\pi(s)$</p>
+
+<p>$q_\pi$(s,a) - Value gained if we use policy $\pi$ from state $s$ and taking action $a$</p>
+
+<p>$q_\pi(s,\pi’(s))=\mathbb{E}<em>{\pi’}[R</em>{t+1}+\gamma v_\pi(S_{t+1})\vert S_t=s]$
+$\le \mathbb{E}<em>{\pi’}[R</em>{t+1}+\gamma R_{t+2}+…\vert S_t=s]=v_{\pi’}(S)$</p>
+
+<p>If improvements stop
+$q_\pi(s,\pi’(s))=\max_{a\in A}q_\pi(s,a)=q_\pi(s,\pi(s))=v_\pi(s)$
+Then the Bellman optimality equation has been satisfied
+$v_\pi(s)=\max_{a\in A}q_\pi(s,a)$
+$v_\pi(s)=v_*(s)$ $\forall s\in S$</p>
+
+<p>If policy improvement stops -&gt; Bellman optimality equation satisfied -&gt; Found an optimal policy</p>
+
+<p><strong>Policy iteration solves MDPs</strong>
+$v_\pi(s)=\max_{a\in A}q_\pi(s,a)$
+$v_\pi(s)=v_*(s)$ for all $s\in S$</p>
+<h2 id="modified-policy-iteration">Modified Policy Iteration</h2>
+<p>Early stopping
+$\epsilon$-convergence of value function (when value function only changing by $\epsilon$)
+Or stop evaluating policy after $k$ iterations</p>
+<h1 id="value-iteration">Value iteration</h1>
+<h2 id="principle-of-optimality-theorem">Principle of Optimality Theorem</h2>
+<p>Policy $\pi(a\vert s)$ achieves optimal value $v_\pi(s)=v_<em>(s)$ from state $s$ iff:
+For any state $s’$ reachable from $s$, $\pi$ achieves the optimal value from state $s’$, $v_\pi(s’)=v_</em>(s’)$</p>
+<h2 id="value-iteration-algorithm">Value Iteration Algorithm</h2>
+<p>If we know the solution to subproblems $v_*(s’)$</p>
+
+<p>Then solution $v_<em>(s)$ can be found by one-step lookahead
+$v_</em>(s)\leftarrow\max_{a\in A}R^a_s+\gamma\sum_{s’in S}P^a_{ss’}v_*(s’)$</p>
+
+<p>Value iteration applies these updates again and again</p>
+<h3 id="intuition">Intuition</h3>
+<p>Start at the end of the problem and work back
+Still works with loopy, stochastic MDPs</p>
+<h4 id="problem-1">Problem</h4>
+<p>Find optimal policy $\pi$</p>
+<h4 id="solution-1">Solution</h4>
+<p>Iterative application of Bellman optimality backup
+$v_1\to v_2\to …\to v_*$
+Using synchronous backups</p>
+<ul>
+  <li>At each iteration $k+1$</li>
+  <li>For all states $s\in S$</li>
+  <li>Update $v_{k+1}(s)$ from $v_k(s’)$</li>
+</ul>
+
+<p>Unlike policy iteration, there is no explicit policy
+Intermediate value functions may not achievable by any policy</p>
+
+<p>This is modified policy iteration with $k=1$ 
+![[Pasted image 20261101211533.png]]
+The curve below the first open circle means $\max$</p>
+
+<p>Each state performs a lookahead and finds a new value $v_{k+1}(s)\leftarrow s$</p>
+
+<p>$v_{k+1}(s)=\max_{a\in A}(R^a_s+\gamma\sum_{s’\in S}P^a_{ss’}v_k(s’))$
+$v_{k+1}=\max_{a\in A}(R^a+\gamma P^av_k)$</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Problem</th>
+      <th>Bellman Equation</th>
+      <th>Algorithm</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Prediction</td>
+      <td>Bellman Expectation Equation</td>
+      <td>Iterative Policy Evaluation</td>
+    </tr>
+    <tr>
+      <td>Control</td>
+      <td>Bellman Expectation Equation + Greedy Policy Improvement</td>
+      <td>Policy Iteration</td>
+    </tr>
+    <tr>
+      <td>Control</td>
+      <td>Bellman Optimality Equation</td>
+      <td>Value Iteration</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Algorithms are based on state-value function $v_\pi(s)$ or $v_*(s)$
+Complexity $O(mn^2)$ per iteration for $m$ actions and $n$ states</p>
+
+<p>Could apply $q$ updates -&gt; $O(m^2n^2)$</p>
+<h1 id="dynamic-programming-extensions">Dynamic Programming Extensions</h1>
+<h2 id="asynchronous-dp">Asynchronous DP</h2>
+<p>$v_{\text{new}(s)}\leftarrow\max_{a\in A}(R^a_s+\gamma\sum_{s’\in S}P^a_{ss’}v_{\text{old}}(s’))$
+$v_{\text{old}}\leftarrow v_{\text{new}}$
+Instead do $v(s)\leftarrow\max_{a\in A}(R^a_s+\gamma\sum_{s’\in S}P^a_{ss’}v(s’))$</p>
+<h2 id="prioritised-sweeping">Prioritised Sweeping</h2>
+<p>Use magnitude of Bellman error to guide state selection.
+$\vert \max_{a\in A}(R^a_s+\gamma\sum_{s’\in S}P^a_{ss’}v(s’))-v(s)\vert $</p>
+<ul>
+  <li>Backup the state with the largest Bellman error</li>
+  <li>Update Bellman error of affected states after each backup</li>
+  <li>Requires knowledge of reverse dynamics (predecessor states)</li>
+  <li>Can be implemented efficiently by maintaining a priority queue
+    <h2 id="real-time-dynamic-programming">Real-time Dynamic Programming</h2>
+  </li>
+  <li>Idea: only states that are relevant to agent</li>
+  <li>Use agent’s experience to guide the selection of states</li>
+  <li>After each time-step $S_t,A_t,R_{t+1}$</li>
+  <li>Backup the state $S_t$
+$v(S_t)\leftarrow\max_{a\in A}(R^a_{S_t}+\gamma\sum_{s’\in S}P^a_{S_ts’}v(s’))$
+    <h2 id="dp-curse-of-dimensionality">DP Curse of Dimensionality</h2>
+    <p>For each backup, every successor state and actions is stored
+Number of states $n=\vert S\vert $ grows exponentially with number of variables
+Can be too expensive for even one backup with $10^{170}$ states</p>
+    <h3 id="solution---sample">SOLUTION -&gt; Sample</h3>
+    <ol>
+      <li>Sample one action according to policy</li>
+      <li>Sample transition according to dynamics</li>
+      <li>Backup based off 1 sample, rather than branching factor</li>
+    </ol>
+  </li>
+</ul>
+
+<p><strong>Advantages:</strong></p>
+<ol>
+  <li>Model-free - no advance knowledge required: Rather than someone having to tell us dynamics, we sample to find out</li>
+  <li>Breaks curse of dimensionality</li>
+  <li>Costs of backups is consistent</li>
+</ol>]]></content><author><name></name></author><category term="rl" /><category term="david" /><category term="silver" /><summary type="html"><![CDATA[Planning by Dynamic Programming “Dynamic” Sequential/temporal component “Programming” Optimising a “program” / policy]]></summary></entry><entry><title type="html">Silicon Valley Fellowship</title><link href="/personal/blog/2026/10/02/svf-application.html" rel="alternate" type="text/html" title="Silicon Valley Fellowship" /><published>2026-10-02T00:00:00+01:00</published><updated>2026-10-02T00:00:00+01:00</updated><id>/personal/blog/2026/10/02/svf-application</id><content type="html" xml:base="/personal/blog/2026/10/02/svf-application.html"><![CDATA[<p>I receive messages asking about the Silicon Valley Fellowship. I want to give each email it’s due effort, but I can be busy. I’m writing this blog to give all the information I can.</p>
 <h1 id="what-was-the-application-process-like">What was the application process like?</h1>
 <p>My application was super quick. I filled out the form and then had a 10/15 minute interview.</p>
 <h1 id="what-are-they-looking-for">What are they looking for?</h1>
@@ -71,14 +294,48 @@ Agent’s job is to maximise cumulative reward</p>
   </li>
 </ol>
 
-<p>| Situation                     | +ve Reward                     | -ve Reward                  |
-| —————————– | —————————— | ————————— |
-| Helicopter manouevres         | Following desired trajectory   | Crashing                    |
-| Backgammon                    | Winning                        | Losing                      |
-| Managing investment portfolio | Increasing $/£ in bank account | Losing money                |
-| Control a power station       | Producing power                | Exceeding safety thresholds |
-| Humanoid walk                 | Forward motion                 | Falling over                |
-| Atari games                   | Increasing score               | Decreasing score            |</p>
+<table>
+  <thead>
+    <tr>
+      <th>Situation</th>
+      <th>+ve Reward</th>
+      <th>-ve Reward</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Helicopter manouevres</td>
+      <td>Following desired trajectory</td>
+      <td>Crashing</td>
+    </tr>
+    <tr>
+      <td>Backgammon</td>
+      <td>Winning</td>
+      <td>Losing</td>
+    </tr>
+    <tr>
+      <td>Managing investment portfolio</td>
+      <td>Increasing $/£ in bank account</td>
+      <td>Losing money</td>
+    </tr>
+    <tr>
+      <td>Control a power station</td>
+      <td>Producing power</td>
+      <td>Exceeding safety thresholds</td>
+    </tr>
+    <tr>
+      <td>Humanoid walk</td>
+      <td>Forward motion</td>
+      <td>Falling over</td>
+    </tr>
+    <tr>
+      <td>Atari games</td>
+      <td>Increasing score</td>
+      <td>Decreasing score</td>
+    </tr>
+  </tbody>
+</table>
+
 <h2 id="sequential-decision-making">Sequential Decision Making</h2>
 <p><strong>Goal:</strong> Select actions to maximise total future reward</p>
 <ul>
@@ -98,9 +355,21 @@ Agent’s job is to maximise cumulative reward</p>
   </li>
 </ul>
 
-<p>| Agent                                                                                        | Environment                                                                            |
-| ——————————————————————————————– | ————————————————————————————– |
-| 1. Executes action $A_t$<br />2. Receives observation $O_t$<br />3. Receives scalar reward $R_t$ | 1. Receives action $A_t$<br />2. Emits observation $O_t$<br />3. Emits scalar reward $R_t$ |</p>
+<table>
+  <thead>
+    <tr>
+      <th>Agent</th>
+      <th>Environment</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1. Executes action $A_t$<br />2. Receives observation $O_t$<br />3. Receives scalar reward $R_t$</td>
+      <td>1. Receives action $A_t$<br />2. Emits observation $O_t$<br />3. Emits scalar reward $R_t$</td>
+    </tr>
+  </tbody>
+</table>
+
 <h2 id="history-and-state">History and State</h2>
 <h3 id="history">History</h3>
 <p>Sequence of observations, actions, rewards
@@ -124,15 +393,7 @@ Any function of history $S^a_t=f(H_t)$</p>
 <h2 id="information-state--markov-state">Information State / Markov State</h2>
 <p>Contains all useful information from the history</p>
 
-<table>
-  <tbody>
-    <tr>
-      <td>A state $S_t$ is Markov iff $\mathbb{P}[S_{t+1}</td>
-      <td>S_t]=\mathbb{P}[S_{t+1}</td>
-      <td>S_1,…,S_t]$</td>
-    </tr>
-  </tbody>
-</table>
+<p>A state $S_t$ is Markov iff $\mathbb{P}[S_{t+1}\vert S_t]=\mathbb{P}[S_{t+1}\vert S_1,…,S_t]$</p>
 
 <p>All of history is Markov (not very useful but true)</p>
 <h2 id="fully-observable-environments">Fully Observable Environments</h2>
@@ -162,21 +423,21 @@ Agent must construct it’s own state $S_t^a$:</p>
   <li>Value function $V$ - how good each state/action</li>
   <li>Model - agent’s representation of environment
     <h2 id="1-policy">1. Policy</h2>
-    <p>Map from state to action $a=\pi(s)$ or stochastically $\pi(a|s)=\mathbb{P}[A=a|S=s]$</p>
+    <p>Map from state to action $a=\pi(s)$ or stochastically $\pi(a\vert s)=\mathbb{P}[A=a\vert S=s]$</p>
   </li>
 </ol>
 
 <h2 id="2-value-function">2. Value Function</h2>
 <p>Value function is a prediction of future reward
 Used to evaluate the goodness/badness of states
-$V_\pi(s)=\mathbb{E}<em>\pi[R_t+\gamma R</em>{t+1}+\gamma^2 R_{t+2}+…|S_t=s]$</p>
+$V_\pi(s)=\mathbb{E}<em>\pi[R_t+\gamma R</em>{t+1}+\gamma^2 R_{t+2}+…\vert S_t=s]$</p>
 <h2 id="3-model">3. Model</h2>
 <p>Predicts what environment will do next
 Transitions: $\mathcal{P}$ predicts next state (i.e. dynamics)
 Rewards: $\mathcal{R}$ predicts next (immediate) reward</p>
 
-<p>$\mathcal{P}^a_{ss’}=\mathbb{P}[S’=s’|S=s,A=a]$
-$\mathcal{R}^a_{s}=\mathbb{P}[R|S=s,A=a]$</p>
+<p>$\mathcal{P}^a_{ss’}=\mathbb{P}[S’=s’\vert S=s,A=a]$
+$\mathcal{R}^a_{s}=\mathbb{P}[R\vert S=s,A=a]$</p>
 <h2 id="categorising-agents">Categorising Agents</h2>
 
 <table>
@@ -201,11 +462,26 @@ $\mathcal{R}^a_{s}=\mathbb{P}[R|S=s,A=a]$</p>
   </tbody>
 </table>
 
-<p>| Model free                   | Model Based                  |
-| —————————- | —————————- |
-| Policy and/or value function | Policy and/or value function |
-| No model                     | Model                        |
-![[Pasted image 20260809154439.png]]</p>
+<table>
+  <thead>
+    <tr>
+      <th>Model free</th>
+      <th>Model Based</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Policy and/or value function</td>
+      <td>Policy and/or value function</td>
+    </tr>
+    <tr>
+      <td>No model</td>
+      <td>Model</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>![[Pasted image 20260809154439.png]]</p>
 <h1 id="problems-within-rl">Problems within RL</h1>
 <h2 id="reinforcement-learning">Reinforcement Learning</h2>
 <ul>
@@ -232,12 +508,38 @@ Agent should discover a good policy from its experience of the environment, with
 Exploitation exploits known information to maximise reward</p>
 <h3 id="examples-2">Examples</h3>
 
-<p>| Example                      | Exploitation                    | Exploration             |
-| —————————- | ——————————- | ———————– |
-| Restaurant                   | Go to your favourite restaurant | Try a new restaurant    |
-| Online Banner Advertisements | Show must successful advert     | Show a different advert |
-| Oil drilling                 | Drill at best known location    | Drill at a new location |
-| Game playing                 | Play best move                  | Play different strategy |</p>
+<table>
+  <thead>
+    <tr>
+      <th>Example</th>
+      <th>Exploitation</th>
+      <th>Exploration</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Restaurant</td>
+      <td>Go to your favourite restaurant</td>
+      <td>Try a new restaurant</td>
+    </tr>
+    <tr>
+      <td>Online Banner Advertisements</td>
+      <td>Show must successful advert</td>
+      <td>Show a different advert</td>
+    </tr>
+    <tr>
+      <td>Oil drilling</td>
+      <td>Drill at best known location</td>
+      <td>Drill at a new location</td>
+    </tr>
+    <tr>
+      <td>Game playing</td>
+      <td>Play best move</td>
+      <td>Play different strategy</td>
+    </tr>
+  </tbody>
+</table>
+
 <h2 id="prediction-and-control">Prediction and Control</h2>
 <p>Prediction - evaluate the future given my policy
 Control - optimise the future (find the best policy)</p>]]></content><author><name></name></author><category term="rl" /><category term="david" /><category term="silver" /><summary type="html"><![CDATA[Difference between RL and other machine learning There is no supervisor - instead a reward signal Feedback is delayed Time is important (sequential, non i.i.d.) Agent’s actions affect the subsequent data it receives Examples of RL Fly stunt helicopter Defeat world champion at Backgammon Managing investment portfolio Control power station! - Sequence of controls in power station Make humanoid robot walk Play many different Atari games The RL Problem Reward $R_t$ - scalar feedback Indicates how well agent is doing at step $t$ Agent’s job is to maximise cumulative reward Reward Hypothesis All goals can be described by the maximisation of the expected cumulative reward $\mathbb{E}(G_t)$ -RL is based off this hypothesis Examples of Reward]]></summary></entry><entry><title type="html">David Silver RL Lecture 2</title><link href="/rl/david/silver/2026/08/10/lecture-2-david-silver.html" rel="alternate" type="text/html" title="David Silver RL Lecture 2" /><published>2026-08-10T00:00:00+01:00</published><updated>2026-08-10T00:00:00+01:00</updated><id>/rl/david/silver/2026/08/10/lecture-2-david-silver</id><content type="html" xml:base="/rl/david/silver/2026/08/10/lecture-2-david-silver.html"><![CDATA[<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" />
@@ -260,7 +562,7 @@ Assumption: Environment is fully observable</p>
 
 <p>Almost all RL problems can be formalised as MDPs</p>
 <h2 id="state-transition-matrix">State Transition Matrix</h2>
-<p>$\mathcal{P}<em>{ss’}=\mathbb{P}[S</em>{t+1}=s’|S_t=s]$
+<p>$\mathcal{P}<em>{ss’}=\mathbb{P}[S</em>{t+1}=s’\vert S_t=s]$
 State transition matrix $\mathcal{P}$ defines transition probabilities from all states $s$ to successor states $s’$</p>
 
 <p>$\mathcal{P}=\begin{bmatrix} \mathcal{P}<em>{11} &amp; … &amp; \mathcal{P}</em>{1n} \\vdots  \ \mathcal{P}<em>{n1} &amp; &amp; \mathcal{P}</em>{nn}\end{bmatrix}$
@@ -274,7 +576,7 @@ $\sum$row = 1</p>
 <p>Where</p>
 <ul>
   <li>$\mathcal{S}$ is a finite set of states</li>
-  <li>$\mathcal{P}$ is a state transition probability matrix $\mathcal{P}=\mathbb{P}[S_{t+1}=s’|S_t=s]$
+  <li>$\mathcal{P}$ is a state transition probability matrix $\mathcal{P}=\mathbb{P}[S_{t+1}=s’\vert S_t=s]$
     <h1 id="markov-reward-processes">Markov Reward Processes</h1>
     <p>Markov reward process is a Markov chain with values</p>
   </li>
@@ -284,26 +586,8 @@ $\sum$row = 1</p>
 
 <ul>
   <li>$\mathcal{S}$ is a finite state of states</li>
-  <li>
-    <table>
-      <tbody>
-        <tr>
-          <td>$\mathcal{P}$ is a state transition probability matrix $=\mathbb{P}[S_{t+1}=s’</td>
-          <td>S_t=s]$</td>
-        </tr>
-      </tbody>
-    </table>
-  </li>
-  <li>
-    <table>
-      <tbody>
-        <tr>
-          <td>$\mathcal{R}$ is a reward function $R_s=\mathbb{E}[R_{t+1}</td>
-          <td>S_t=s]$</td>
-        </tr>
-      </tbody>
-    </table>
-  </li>
+  <li>$\mathcal{P}$ is a state transition probability matrix $=\mathbb{P}[S_{t+1}=s’\vert S_t=s]$</li>
+  <li>$\mathcal{R}$ is a reward function $R_s=\mathbb{E}[R_{t+1}\vert S_t=s]$</li>
   <li>$\gamma$ is the discount factor $\in[0,1]$</li>
 </ul>
 
@@ -321,17 +605,17 @@ $\sum$row = 1</p>
 
 <h2 id="value-function">Value Function</h2>
 <p>Value function $V(s)$ gives long-term value of state $s$
-$V(s)=\mathbb{E}[G_t|S_t=s]$</p>
+$V(s)=\mathbb{E}[G_t\vert S_t=s]$</p>
 <h2 id="bellman-equation">Bellman Equation</h2>
 <p>Value function has 2 components:</p>
 <ol>
   <li>Immediate reward $R_{t+1}$</li>
   <li>Discounted value of successor state $\gamma V(S_{t+1})$
-$V(s)=\mathbb{E}[G_t|S_t=s]$
-$V(s)=\mathbb{E}[R_{t+1}+\gamma R_{t+2}+…|S_t=s]$
-$V(s)=\mathbb{E}[R_{t+1}+(\gamma R_{t+2}+…)|S_t=s]$
-$V(s)=\mathbb{E}[R_{t+1}+\gamma G_{t+1}|S_t=s]$
-$V(s)=\mathbb{E}[R_{t+1}+\gamma V(S_{t+1})|S_t=s]$</li>
+$V(s)=\mathbb{E}[G_t\vert S_t=s]$
+$V(s)=\mathbb{E}[R_{t+1}+\gamma R_{t+2}+…\vert S_t=s]$
+$V(s)=\mathbb{E}[R_{t+1}+(\gamma R_{t+2}+…)\vert S_t=s]$
+$V(s)=\mathbb{E}[R_{t+1}+\gamma G_{t+1}\vert S_t=s]$
+$V(s)=\mathbb{E}[R_{t+1}+\gamma V(S_{t+1})\vert S_t=s]$</li>
 </ol>
 
 <p>$V(s)=\mathcal{R}<em>s+\gamma\sum</em>{s’\in \mathcal{S}}\mathcal{P}_{ss’}v(s’)$</p>
@@ -349,11 +633,11 @@ Computational complexity of inverting matrix is $O(n^3)$ for $n$ states</p>
 
 <p>$\braket{\mathcal{S},\mathcal{A},\mathcal{P},\mathcal{R},\gamma}$
 $\mathcal{A}$ is a set of actions
-$\mathcal{P}^a_{ss’}=\mathbb{P}[S_{t+1}=s’|S_t=s,A_t=a]$
-$\mathcal{R}=\mathbb{E}[R_{t+1}|S_t=s,A_t=a]$</p>
+$\mathcal{P}^a_{ss’}=\mathbb{P}[S_{t+1}=s’\vert S_t=s,A_t=a]$
+$\mathcal{R}=\mathbb{E}[R_{t+1}\vert S_t=s,A_t=a]$</p>
 <h2 id="policy">Policy</h2>
 <p>Distribution over actions given states
-$\pi(a|s)=\mathbb{P}[A=a|S_t=s]$
+$\pi(a\vert s)=\mathbb{P}[A=a\vert S_t=s]$
 $\pi$ depends on current state, not history
 -&gt; $\pi$ is time independent</p>
 
@@ -361,8 +645,8 @@ $\pi$ depends on current state, not history
 State and reward sequence $S_1,R_1,S_2,…$ is a Markov reward process $\braket{\mathcal{S},\mathcal{P}^\pi,\mathcal{R}^\pi,\gamma}$</p>
 
 <p>We update the transition and reward matrices by averaging according to the action taken
-$\mathcal{P}^\pi_{s,s’}=\sum_{a\in A}\pi(a|s)\mathcal{P}^a_{s,s’}$
-$\mathcal{R}^\pi_{s,s’}=\sum_{a\in A}\pi(a|s)\mathcal{R}^a_{s,s’}$</p>
+$\mathcal{P}^\pi_{s,s’}=\sum_{a\in A}\pi(a\vert s)\mathcal{P}^a_{s,s’}$
+$\mathcal{R}^\pi_{s,s’}=\sum_{a\in A}\pi(a\vert s)\mathcal{R}^a_{s,s’}$</p>
 
 <p>e.g. If there are 2 actions ($a_1,a_2$) that can be taken, each with probability 0.5:
 $\mathcal{P}^\pi_{s,s’}=0.5\mathcal{P}^{a_1}<em>{s,s’}+0.5\mathcal{P}^{a_2}</em>{s,s’}$
@@ -372,18 +656,18 @@ $\mathcal{R}^\pi_{s,s’}=0.5\mathcal{R}^{a_1}<em>{s,s’}+0.5\mathcal{R}^{a_2}<
 <p>Expectation is dependent on the policy, thus we must use $V_\pi$ (subscript $\pi$)</p>
 
 <h3 id="state-value-function-v_pi">State Value Function $v_\pi$</h3>
-<p>$v_\pi=\mathbb{E}<em>\pi[G_t|S_t=s]$
-$v</em>\pi=\mathbb{E}<em>\pi[R</em>{t+1}+\gamma v_\pi(S_{t+1})|S_t=s]$</p>
+<p>$v_\pi=\mathbb{E}<em>\pi[G_t\vert S_t=s]$
+$v</em>\pi=\mathbb{E}<em>\pi[R</em>{t+1}+\gamma v_\pi(S_{t+1})\vert S_t=s]$</p>
 <h3 id="action-value-function-q_pi">Action-value function $q_\pi$</h3>
-<p>$q_\pi(s,a)=\mathbb{E}[G_t|S_t=s,A_t=a]$
-$q_\pi(s,a)=\mathbb{E}[R_{t+1}+\gamma q_\pi(S_{t+1},A_{t+1}|S_t=s,A_t=a]$</p>
+<p>$q_\pi(s,a)=\mathbb{E}[G_t\vert S_t=s,A_t=a]$
+$q_\pi(s,a)=\mathbb{E}[R_{t+1}+\gamma q_\pi(S_{t+1},A_{t+1}\vert S_t=s,A_t=a]$</p>
 <h2 id="relating-v_pi-and-q_pi">Relating $v_\pi$ and $q_\pi$</h2>
-<p>$v_\pi=\sum_{a\in A}\pi(a|s)q_\pi(a|s)$
+<p>$v_\pi=\sum_{a\in A}\pi(a\vert s)q_\pi(a\vert s)$
 $q_\pi=\mathcal{R}^a_s+\gamma\sum_{s’\in S}\mathcal{P}^a_{ss’}v_\pi(s’)$ (reward is received after action)</p>
 <h2 id="recursive-bellman-equation">Recursive Bellman Equation</h2>
-<p>$v_\pi(s)=\sum_{a\in A}\pi(a|s)(\mathcal{R}^a_s+\gamma\sum_{s’\in\mathcal{S}}\mathcal{P}^a_{ss’}v_\pi(s’))$</p>
+<p>$v_\pi(s)=\sum_{a\in A}\pi(a\vert s)(\mathcal{R}^a_s+\gamma\sum_{s’\in\mathcal{S}}\mathcal{P}^a_{ss’}v_\pi(s’))$</p>
 
-<p>$q_\pi(s)=\mathcal{R}^a_s+\gamma\sum_{s’\in S}\mathcal{P}^a_{ss’}\sum_{a’\in A}\pi(a’|s’)q_\pi(s’,a’)$</p>
+<p>$q_\pi(s)=\mathcal{R}^a_s+\gamma\sum_{s’\in S}\mathcal{P}^a_{ss’}\sum_{a’\in A}\pi(a’\vert s’)q_\pi(s’,a’)$</p>
 <h2 id="optimal-value-function">Optimal Value Function</h2>
 <p>Maximum value function over all policies
 $v_<em>(s)\max_\pi v_\pi(s)$
@@ -392,7 +676,7 @@ $q_</em>(s,a)=\max_\pi q_\pi(s,a)$</p>
 <p>Define a partial ordering over policies
 $\pi\ge\pi’$ if $v_\pi(s)\ge v_{\pi’}(s),\forall s$</p>
 <h2 id="finding-optimal-policy">Finding Optimal Policy</h2>
-<p>$\pi_<em>(a|s)$ if $a=\arg\max_{a\in\mathcal{A}}q_</em>(s,a)$</p>
+<p>$\pi_<em>(a\vert s)$ if $a=\arg\max_{a\in\mathcal{A}}q_</em>(s,a)$</p>
 
 <p>$v_<em>(s)=\max_a q_</em>(s,a)$
 $q_<em>(s,a)=\mathcal{R}^a_S+\gamma\sum_{s’\in S}\mathcal{P}^a_{ss’}v_</em>(s’)$ - this includes the terms from the environment, which is out of our control</p>
@@ -532,9 +816,9 @@ Which allows for when $T=\infty$ or $\gamma=1$ (but not both)</p>
 
 <p>Independent of its history</p>
 
-<p>$Pr(R_{t+1}=r,S_{t+1}=s’|S_0,A_0,R_1,…S_{t-1},A_{t-1},S_t,A_t)$
+<p>$Pr(R_{t+1}=r,S_{t+1}=s’\vert S_0,A_0,R_1,…S_{t-1},A_{t-1},S_t,A_t)$
 If the state signal has the Markov property, this can be written as:
-$p(s’,r|s,a)=Pr(R_{t+1}=r,S_{t+1}=s’|S_t,A_t)$ for all $r,s’,S_t,A_t$</p>
+$p(s’,r\vert s,a)=Pr(R_{t+1}=r,S_{t+1}=s’\vert S_t,A_t)$ for all $r,s’,S_t,A_t$</p>
 
 <p>Markov state provides equivalent predictions to full histories</p>
 <h1 id="markov-decisions-processes-mdp">Markov Decisions Processes (MDP)</h1>
@@ -542,11 +826,11 @@ $p(s’,r|s,a)=Pr(R_{t+1}=r,S_{t+1}=s’|S_t,A_t)$ for all $r,s’,S_t,A_t$</p>
 
 <p>MDP enables the computation of other environmental quantities:</p>
 <h2 id="expected-reward">Expected reward</h2>
-<p>$r(s,a)=\mathbb{E}[R_{t+1}|S_t=s,A_t=a]=\sum_{r\in \mathcal{R}}r\sum_{s’\in\mathcal{S}}p(s’,r|s,a)$</p>
+<p>$r(s,a)=\mathbb{E}[R_{t+1}\vert S_t=s,A_t=a]=\sum_{r\in \mathcal{R}}r\sum_{s’\in\mathcal{S}}p(s’,r\vert s,a)$</p>
 <h2 id="state-transition-probabilities">State Transition Probabilities</h2>
-<p>$p(s’|s,a)=Pr(S_{t+1}=s’|S_t=s,A_t=a)=\sum_{r\in\mathcal{R}}p(s’,r|s,a)$</p>
+<p>$p(s’\vert s,a)=Pr(S_{t+1}=s’\vert S_t=s,A_t=a)=\sum_{r\in\mathcal{R}}p(s’,r\vert s,a)$</p>
 <h3 id="expected-rewards-to-state-action-next-state-triples">Expected Rewards to state-action-next-state triples</h3>
-<p>$r(s,a,s’)=\mathbb{E}[R_{t+1}|S_t=s,A_t=a,S_{t+1}=s’]=\cfrac{\sum_{r\in \mathcal{R}}r\times p(s’,r|s,a)}{p(s’|s,a)}$
+<p>$r(s,a,s’)=\mathbb{E}[R_{t+1}\vert S_t=s,A_t=a,S_{t+1}=s’]=\cfrac{\sum_{r\in \mathcal{R}}r\times p(s’,r\vert s,a)}{p(s’\vert s,a)}$
 ![[Pasted image 20250930040238.png]]</p>
 
 <h2 id="policy-vs-value">Policy Vs Value</h2>
@@ -554,22 +838,22 @@ $p(s’,r|s,a)=Pr(R_{t+1}=r,S_{t+1}=s’|S_t,A_t)$ for all $r,s’,S_t,A_t$</p>
 Value: Expected return when following policy $\pi$ from state $S$</p>
 
 <h2 id="valueexpected-return">Value/Expected return</h2>
-<p>$v_\pi(s)=\mathbb{E}<em>\pi[G_t|S_t=s]=\mathbb{E}</em>\pi[\sum^\infty_{k=0}\gamma^kR_{t+k+1}|S_t=s]$
+<p>$v_\pi(s)=\mathbb{E}<em>\pi[G_t\vert S_t=s]=\mathbb{E}</em>\pi[\sum^\infty_{k=0}\gamma^kR_{t+k+1}\vert S_t=s]$
 where $\mathbb{E}_\pi$ denotes expected value of a random variable given that the agent follows policy $\pi$</p>
 <h2 id="important-note">Important Note</h2>
 <p>Value of terminal state, if any, is always 0</p>
 
 <h1 id="action-value-function-for-policy-pi">Action-Value Function for policy $\pi$</h1>
-<p>Value of taking an action $q_\pi(s,a)=\mathbb{E}<em>\pi[G_t|S_t=s,A_t=a]=\mathbb{E}</em>\pi[\sum^\infty_{k=0}\gamma^kR_{t+k+1}|S_t=s,A_t=a]$</p>
+<p>Value of taking an action $q_\pi(s,a)=\mathbb{E}<em>\pi[G_t\vert S_t=s,A_t=a]=\mathbb{E}</em>\pi[\sum^\infty_{k=0}\gamma^kR_{t+k+1}\vert S_t=s,A_t=a]$</p>
 
 <p>$v_\pi$ and $q_\pi$ can be estimated from experience</p>
 
 <h2 id="making-v_pi-recursive">Making $v_\pi$ Recursive</h2>
-<p>$v_\pi(s)=\mathbb{E}<em>\pi[G_t|S_t=s]$
-$=\mathbb{E}</em>\pi[\sum^\infty_{k=0}\gamma^kR_{t+k+1}|S_t=s]$
-$=\mathbb{E}<em>\pi[R</em>{t+1}+\sum^\infty_{k=0}\gamma^kR_{t+k+2}|S_t=s]$
-$=\underset{a}\sum\pi(a,s)\underset{s’}\sum\underset{r}\sum p(s’,r|s,a)[r+\gamma\mathbb{E}<em>\pi[\sum^\infty</em>{k=0}\gamma^kR_{t+k+2}|S_{t+1}=s’]]$ since $\mathbb{E}<em>\pi()=\sum\text{Value}\times p(\text{Value})$ for all actions, states and rewards
-$=\underset{a}\sum\pi(a|s)\underset{s’,r}p(s’,r|s,a)[r+\gamma v</em>\pi(s’)]$ - #vpibellmanequation Bellman equation for $v_\pi$</p>
+<p>$v_\pi(s)=\mathbb{E}<em>\pi[G_t\vert S_t=s]$
+$=\mathbb{E}</em>\pi[\sum^\infty_{k=0}\gamma^kR_{t+k+1}\vert S_t=s]$
+$=\mathbb{E}<em>\pi[R</em>{t+1}+\sum^\infty_{k=0}\gamma^kR_{t+k+2}\vert S_t=s]$
+$=\underset{a}\sum\pi(a,s)\underset{s’}\sum\underset{r}\sum p(s’,r\vert s,a)[r+\gamma\mathbb{E}<em>\pi[\sum^\infty</em>{k=0}\gamma^kR_{t+k+2}\vert S_{t+1}=s’]]$ since $\mathbb{E}<em>\pi()=\sum\text{Value}\times p(\text{Value})$ for all actions, states and rewards
+$=\underset{a}\sum\pi(a\vert s)\underset{s’,r}p(s’,r\vert s,a)[r+\gamma v</em>\pi(s’)]$ - #vpibellmanequation Bellman equation for $v_\pi$</p>
 <h1 id="optimal-value-functions">Optimal Value Functions</h1>
 <h2 id="better-policies">Better Policies</h2>
 <p>A policy $\pi$ is better than or equal to another policy if its expected return $\ge$ $\pi’$ s expected return for all states $s$
@@ -586,18 +870,18 @@ $v_</em>(s)=\underset{\pi}\max v_\pi(s)$ for all $s\in \mathcal{S}$</p>
 <p><strong>Bellman optimality equation</strong></p>
 
 <p>$v_<em>(s)=\underset{a\in\mathcal{A}(s)}\max q_\pi(s,a)$
-$=\underset{a}\max\mathbb{E}_{\pi</em>}[G_t|S_t=s,A_t=a]$
-$=\underset{a}\max\mathbb{E}<em>{\pi*}[\sum^\infty</em>{k=0} \gamma^kR_{t+k+1}|S_t=s,A_t=a]$
-$=\underset{a}\max\mathbb{E}<em>{\pi*}[R</em>{t+1}+\gamma\sum^\infty_{k=0} \gamma^kR_{t+k+2}|S_t=s,A_t=a]$
-$=\underset{a}\max\mathbb{E}[R_{t+1}+\gamma v_<em>(S_{t+1}|S_t=s,A_t=a)]$ #vstarbellmanequation
-$=\underset{a\in\mathcal{A(s)}}\max{\underset{s’,r}\sum} p(s’,r|s,a)[r+\gamma v_</em>(s’)]$ #vstarbellmanequation</p>
+$=\underset{a}\max\mathbb{E}_{\pi</em>}[G_t\vert S_t=s,A_t=a]$
+$=\underset{a}\max\mathbb{E}<em>{\pi*}[\sum^\infty</em>{k=0} \gamma^kR_{t+k+1}\vert S_t=s,A_t=a]$
+$=\underset{a}\max\mathbb{E}<em>{\pi*}[R</em>{t+1}+\gamma\sum^\infty_{k=0} \gamma^kR_{t+k+2}\vert S_t=s,A_t=a]$
+$=\underset{a}\max\mathbb{E}[R_{t+1}+\gamma v_<em>(S_{t+1}\vert S_t=s,A_t=a)]$ #vstarbellmanequation
+$=\underset{a\in\mathcal{A(s)}}\max{\underset{s’,r}\sum} p(s’,r\vert s,a)[r+\gamma v_</em>(s’)]$ #vstarbellmanequation</p>
 <h3 id="optimal-action-value-function-q_">Optimal Action-Value Function $q_*$</h3>
 <p>$q_<em>(s,a)=\underset{\pi}\max q_\pi(s,a)$ for all $s\in\mathcal{S}$ and $a\in\mathcal{A}(s)$
-$q_</em>(s,a)=\mathbb{E}[R_{t+1}+\gamma v_*(S_{t+1})|S_t=s, A_t=a]$</p>
+$q_</em>(s,a)=\mathbb{E}[R_{t+1}+\gamma v_*(S_{t+1})\vert S_t=s, A_t=a]$</p>
 
 <p><strong>Bellman optimality equation</strong>
-$q_<em>(s,a)=\mathbb{E}[R_{t+1}+\gamma\underset{a’}\max q_</em>(S_{t+1},a’)|S_t=s,A_t=a]$
-$=\underset{s’,r}\sum p(s’,r|s,a)[r+\gamma \underset{a’}\max q_*(s’,a’)]$ #qstarbellmanequation</p>
+$q_<em>(s,a)=\mathbb{E}[R_{t+1}+\gamma\underset{a’}\max q_</em>(S_{t+1},a’)\vert S_t=s,A_t=a]$
+$=\underset{s’,r}\sum p(s’,r\vert s,a)[r+\gamma \underset{a’}\max q_*(s’,a’)]$ #qstarbellmanequation</p>
 
 <h2 id="bellman-optimality-equations">Bellman Optimality equations</h2>
 <p>$N$ Bellman equations for $N$ states</p>
@@ -674,30 +958,22 @@ Makrov state is when a given state can accurately predict all future states and 
 <strong>Exercise 3.7</strong></p>
 
 <p><strong>Exercise 3.8</strong>
-$\underset{s’,r}\sum p(s’,r|s,a)[r+\underset{a’}\sum \pi(a’|s’)\gamma q_\pi(s’,a’)]$
+$\underset{s’,r}\sum p(s’,r\vert s,a)[r+\underset{a’}\sum \pi(a’\vert s’)\gamma q_\pi(s’,a’)]$
 <strong>Exercise 3.9</strong>
-$v_\pi(s)=\underset{a}\sum\pi(a|s)\underset{s’,r}p(s’,r|s,a)[r+\gamma v_\pi(s’)]$
+$v_\pi(s)=\underset{a}\sum\pi(a\vert s)\underset{s’,r}p(s’,r\vert s,a)[r+\gamma v_\pi(s’)]$
 Assuming each state has probability 1/4 and using $\gamma=0.9$:
 $\frac 1 4 (0.9\times2.3+0.9\times-0.4+0.9\times0.4+0.9\times0.7)$
 $=0.675\approx 0.7 \square$ 
 <strong>Exercise 3.10</strong>
 The signs are important. If all rewards were positive, it is possible that a strong enough positive association could be built with the wrong outcome if enforced over time.</p>
 
-<table>
-  <tbody>
-    <tr>
-      <td>$v_\pi(s)=\underset{a}\sum\pi(a</td>
-      <td>s)\underset{s’,r}p(s’,r</td>
-      <td>s,a)[r+\gamma v_\pi(s’)]$ - Bellman Equation</td>
-    </tr>
-  </tbody>
-</table>
+<p>$v_\pi(s)=\underset{a}\sum\pi(a\vert s)\underset{s’,r}p(s’,r\vert s,a)[r+\gamma v_\pi(s’)]$ - Bellman Equation</p>
 
-<p>$v’<em>\pi(s)=\underset{a}\sum\pi(a|s)\underset{s’,r}p(s’,r|s,a)[r+c+\gamma v’</em>\pi(s’)]$
-$v’<em>\pi(s)=\underset{a}\sum\pi(a|s)\underset{s’,r}p(s’,r|s,a)[r+c+\gamma [v</em>\pi(s’)+v_c]]$
-$=[\underset{a}\sum\pi(a|s)\underset{s’,r}p(s’,r|s,a)][r+c+\gamma [v_\pi(s’)+v_c]]$
-$=[c+\gamma v_c]+\underset{a}\sum\pi(a|s)\underset{s’,r}p(s’,r|s,a)[r+\gamma v_\pi(s’)]$
-$=v_\pi(s)+\underset{a}\sum\pi(a|s)\underset{s’,r}p(s’,r|s,a)[c+\gamma v_c]$
+<p>$v’<em>\pi(s)=\underset{a}\sum\pi(a\vert s)\underset{s’,r}p(s’,r\vert s,a)[r+c+\gamma v’</em>\pi(s’)]$
+$v’<em>\pi(s)=\underset{a}\sum\pi(a\vert s)\underset{s’,r}p(s’,r\vert s,a)[r+c+\gamma [v</em>\pi(s’)+v_c]]$
+$=[\underset{a}\sum\pi(a\vert s)\underset{s’,r}p(s’,r\vert s,a)][r+c+\gamma [v_\pi(s’)+v_c]]$
+$=[c+\gamma v_c]+\underset{a}\sum\pi(a\vert s)\underset{s’,r}p(s’,r\vert s,a)[r+\gamma v_\pi(s’)]$
+$=v_\pi(s)+\underset{a}\sum\pi(a\vert s)\underset{s’,r}p(s’,r\vert s,a)[c+\gamma v_c]$
 $=v_\pi(s)+c+\gamma v_c$ since $c$ and $\gamma v_c$ are constants that do not change over $a,s’,r$
 And we know $v’<em>\pi(s)=v</em>\pi(s)+v_c$ 
 $\therefore v_\pi(s)+c+\gamma v_c=v_\pi(s)+v_c$
@@ -709,9 +985,9 @@ $\to v_c=\frac c {(1-\gamma)}$</p>
 Longer routes are now more incentivised. If $c$ is large enough, there is a greater incentive to do the longest route possible if $c$ is greater than rewards pre-existing</p>
 
 <p><strong>Exercise 3.12</strong>
-$v_\pi(s)=\pi(a|S_t=s)$
-$\mathbb{E}<em>\pi(q</em>\pi(s,a|S_t=s,a=a_3)$
-$\pi(a|s)q_\pi(s,a)$
+$v_\pi(s)=\pi(a\vert S_t=s)$
+$\mathbb{E}<em>\pi(q</em>\pi(s,a\vert S_t=s,a=a_3)$
+$\pi(a\vert s)q_\pi(s,a)$
 <strong>Exercise 3.13</strong>
 I’m sorry, I have so many other assignments to do. Think these are quite self explanatory (I was too lazy)
 <strong>Exercise 3.14</strong>
@@ -721,21 +997,4 @@ I’m sorry, I have so many other assignments to do. Think these are quite self 
 <strong>Exercise 3.18</strong>
 <strong>Exercise 3.19</strong>
 <strong>Exercise 3.20</strong>
-<strong>Exercise 3.21</strong></p>]]></content><author><name></name></author><category term="rl" /><category term="textbook" /><summary type="html"><![CDATA[Tension between applicability and mathematical tractability - tradeoff Agent Learner and decision maker Environment Things agent interacts with]]></summary></entry><entry><title type="html">LLMs in the World</title><link href="/llm/communication/2025/09/12/llms-in-the-world.html" rel="alternate" type="text/html" title="LLMs in the World" /><published>2025-09-12T00:00:00+01:00</published><updated>2025-09-12T00:00:00+01:00</updated><id>/llm/communication/2025/09/12/llms-in-the-world</id><content type="html" xml:base="/llm/communication/2025/09/12/llms-in-the-world.html"><![CDATA[<p>LLMs are becoming the new social media. The problems we are and will encounter, the benefits and the impact on human social function. Much the same way as people now incorporate videos, photos, and Wikipedia pages as verification of their own thoughts, or enhancements to the conversation being engaged in, LLMs will take a new step. Emotions will be more effectively conveyed and we will begin to question how we ever operated without them. People will use it as a sounding board for their ideas as well as a tool to more effectively communicate themselves. Communication is a 2 way street:
-In 1 direction you have the communicator
-In the other you have the listener
-And this switches.</p>
-
-<p>However, there is a contextual disconnect between the idea that the listener is hearing and what the communicator is trying to convey. What seems obvious or what may cause an emotional reaction or what emotion is evoked depends on the person. To some, shouting may indicate importance, to others it means loss of control and thus insignificant. Same words in the same tone, but different interpretations. This is miscommunication.</p>
-
-<p>LLMs offer a novel way to think outside of one’s own sphere without criticism, there are subtle ways to make a person think anew.</p>
-
-<p>The issue is that current LLMs mirror the listener and encourage an echo chamber of one’s own thoughts. This is BAD. No good will come of this. People will get trapped further down their own personalised rabbit holes and narratives.</p>
-
-<p>“I think this person is saying this because they’re always just in a bad mood.” -&gt; Should lead to a question or nudge such as, “Why do you think they’re in a bad mood?”
-But instead will likely lead to “That sounds tough, they are always such a downer.”
-I hope the trajectory changes because this technology really could offer a chance for new human-insights. Communication education impacts people’s lives and can have positive change. Companies are profit-motivated, how do we make this design decision profitable?</p>
-
-<p>I think I’m obsessed with getting the most effective outcome from a situation and good communication is a really good method to do so. Everyone can have more from these situations.</p>
-
-<p>I suppose this is where the cheating at life thing comes in, but I don’t think it can work. It doesn’t fix the problems LLMs engender, merely exacerbates and expands their sycophantic reach.</p>]]></content><author><name></name></author><category term="LLM" /><category term="communication" /><summary type="html"><![CDATA[LLMs are becoming the new social media. The problems we are and will encounter, the benefits and the impact on human social function. Much the same way as people now incorporate videos, photos, and Wikipedia pages as verification of their own thoughts, or enhancements to the conversation being engaged in, LLMs will take a new step. Emotions will be more effectively conveyed and we will begin to question how we ever operated without them. People will use it as a sounding board for their ideas as well as a tool to more effectively communicate themselves. Communication is a 2 way street: In 1 direction you have the communicator In the other you have the listener And this switches.]]></summary></entry></feed>
+<strong>Exercise 3.21</strong></p>]]></content><author><name></name></author><category term="rl" /><category term="textbook" /><summary type="html"><![CDATA[Tension between applicability and mathematical tractability - tradeoff Agent Learner and decision maker Environment Things agent interacts with]]></summary></entry></feed>

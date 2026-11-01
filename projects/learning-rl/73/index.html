@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>73. REINFORCE | Learning RL</title>
+<meta name="description" content="Play an episode, then push up the log-probability of every action in proportion to the return that followed it. The first complete policy-gradient algorithm, learning the short corridor.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .cell.sw { background: #fef3c7; border-color: #fcd34d; }
+  .cell .tag { position: absolute; top: 1px; font-size: 10px; color: var(--muted); }
+  .pmeter { display: flex; height: 26px; border-radius: 5px; overflow: hidden; margin: 10px 0 2px; font-size: 0.8rem; font-weight: 600; color: #fff; }
+  .pmeter div { display: flex; align-items: center; justify-content: center; transition: width 0.15s ease; white-space: nowrap; overflow: hidden; }
+  .pmeter .r { background: var(--accent); }
+  .pmeter .l { background: var(--blue); }
+  .eq { min-height: 2.4em; text-align: center; margin: 6px 0; line-height: 2; }
+  .algo { font-size: 0.92rem; background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; margin: 10px 0; overflow-x: auto; }
+  .algo p { margin: 3px 0; color: var(--heading) !important; }
+  .algo .in { padding-left: 1.2em; }
+  .algo .in2 { padding-left: 2.4em; }
+</style>
+</head>
+<body data-lesson="73">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>REINFORCE</h1>
+  <p class="lede">Lessons 71 and 72 give the gradient as an average of $q_\pi(S_t, A_t)\,\nabla \ln \pi(A_t \mid S_t)$. REINFORCE replaces the unknown $q_\pi$ with the return that actually followed. Play a whole episode, then nudge every action taken by its log-probability gradient, scaled by its return.</p>
+
+  <section class="card">
+    <h2>Learning the short corridor</h2>
+    <p class="note">Lesson 70's corridor: $-1$ per step, actions swapped in the yellow state. The policy starts at $\pi(\text{right}) \approx 0.05$, far from the best $0.59$.</p>
+    <div class="world" id="world"></div>
+    <div class="pmeter"><div class="r" id="mR"></div><div class="l" id="mL"></div></div>
+    <label class="slider"><span>Step size $\alpha$</span><input id="al" type="range" min="-16" max="-10" step="1" value="-13"><output></output></label>
+    <div class="row">
+      <button id="bEp" class="primary">Play 1 episode</button>
+      <button id="bRun">Run</button>
+      <span class="spacer"></span>
+      <button id="bReset" class="quiet">Reset</button>
+    </div>
+    <div class="eq" id="upd"></div>
+    <div class="stats">
+      <div class="stat"><span class="k">Episodes</span><span class="v" id="sE">0</span></div>
+      <div class="stat"><span class="k">Last return</span><span class="v" id="sG">–</span></div>
+      <div class="stat"><span class="k">$\pi(\text{right})$</span><span class="v" id="sP">–</span></div>
+      <div class="stat"><span class="k">Exact $J$</span><span class="v" id="sJ">–</span></div>
+    </div>
+    <canvas class="chart" id="ret"></canvas>
+    <p class="note">Grey: return of each episode. Green: average of the last 20. Amber: the best possible, $v_*(S) \approx -11.66$. Episodes longer than 1000 steps are cut off.</p>
+
+    <div class="sub">
+      <h2>Step size matters</h2>
+      <p class="note">Return per episode, averaged over 50 runs of 1000 episodes and smoothed over 10 episodes, for three step sizes (S&amp;B Figure 13.1). The largest step size sometimes throws a run into a policy that almost never finishes, and those runs drag its average down. The smallest is safe but slow.</p>
+      <div class="row"><button id="bCompare">Run comparison</button></div>
+      <canvas class="chart" id="cmp" hidden></canvas>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>Start from the policy gradient theorem (Lesson 71) and apply the log trick (Lesson 72) to the sum over actions:</p>
+    $$\begin{aligned}
+      \nabla J(\boldsymbol\theta) &\propto \mathbb{E}_\pi\Big[\sum_a \pi(a \mid S_t, \boldsymbol\theta)\, q_\pi(S_t, a)\, \frac{\nabla \pi(a \mid S_t, \boldsymbol\theta)}{\pi(a \mid S_t, \boldsymbol\theta)}\Big] \\
+      &= \mathbb{E}_\pi\big[q_\pi(S_t, A_t)\, \nabla \ln \pi(A_t \mid S_t, \boldsymbol\theta)\big] \\
+      &= \mathbb{E}_\pi\big[G_t\, \nabla \ln \pi(A_t \mid S_t, \boldsymbol\theta)\big]
+    \end{aligned}$$
+    <p>The second line replaces the weighted sum over $a$ by the sampled action $A_t \sim \pi$. The third uses $\mathbb{E}_\pi[G_t \mid S_t, A_t] = q_\pi(S_t, A_t)$. Everything inside the last expectation is observed, so each time step gives a sample. The REINFORCE update (S&amp;B eq. 13.8) is</p>
+    $$\boldsymbol\theta_{t+1} = \boldsymbol\theta_t + \alpha\, G_t\, \nabla \ln \pi(A_t \mid S_t, \boldsymbol\theta_t)$$
+    <p>An action followed by a high return has its probability raised, in proportion to the return. $G_t$ uses only the rewards after time $t$: an action cannot be credited for rewards that came before it.</p>
+    <div class="algo">
+      <p><b>REINFORCE</b> (episodic, S&amp;B §13.3)</p>
+      <p>Loop for each episode:</p>
+      <p class="in">Generate $S_0, A_0, R_1, \dots, S_{T-1}, A_{T-1}, R_T$ following $\pi(\cdot \mid \cdot, \boldsymbol\theta)$</p>
+      <p class="in">Loop for each step $t = 0, 1, \dots, T-1$:</p>
+      <p class="in2">$G \leftarrow \sum_{k=t+1}^{T} \gamma^{k-t-1} R_k$</p>
+      <p class="in2">$\boldsymbol\theta \leftarrow \boldsymbol\theta + \alpha\, \gamma^t\, G\, \nabla \ln \pi(A_t \mid S_t, \boldsymbol\theta)$</p>
+    </div>
+    <p>The corridor has $\gamma = 1$, so $G_t = -(T - t)$ and $\gamma^t = 1$. With the features from Lesson 70 and $p = \pi(\text{right})$, eq. 13.9 gives</p>
+    $$\nabla \ln \pi(\text{right}) = \begin{pmatrix} 1 - p \\ -(1 - p) \end{pmatrix}, \qquad \nabla \ln \pi(\text{left}) = \begin{pmatrix} -p \\ p \end{pmatrix}$$
+    <p>Every return here is negative, so every action taken gets pushed down. Actions in short episodes get pushed down less, and on average the push equals $\nabla J$. That averaging needs many episodes, which is why REINFORCE is slow and needs a small $\alpha$. Too large and one long unlucky episode knocks the policy far off course.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const GOAL = 3, CAP = 1000, C = Course.colors, VSTAR = -2 * Math.SQRT2 / (3 * Math.SQRT2 - 4);
+  const J = (p) => (-2 * (2 - p)) / (p * (1 - p));
+  const sup = (v) => String(v).replace('-', '⁻').replace(/\d/g, (c) => '⁰¹²³⁴⁵⁶⁷⁸⁹'[+c]);
+  const alpha = Course.slider('#al', (v) => `2${sup(v)}`);
+  const A = () => Math.pow(2, alpha());
+  const pr = (t) => 1 / (1 + Math.exp(-(t[0] - t[1])));
+  const move = (s, right) => { if (s === 1) right = !right; return right ? s + 1 : Math.max(0, s - 1); };
+
+  let th, returns, pos, timer = null, anim = null;
+
+  function drawWorld() {
+    $('world').innerHTML = [0, 1, 2, 3].map((i) =>
+      `<div class="cell${i === 1 ? ' sw' : ''}${i === pos ? ' here' : ''}">${i === 1 ? '<span class="tag">⇄</span>' : ''}${i === pos ? '🤖' : i === GOAL ? '🏁' : ''}<small>${i === 0 ? 'S' : ''}</small></div>`).join('');
+  }
+  const chart = Course.lineChart($('ret'), { xLabel: 'episode', yLabel: 'return', yMin: -100, yMax: 0 });
+  function draw() {
+    const p = pr(th);
+    $('mR').style.width = `${100 * p}%`; $('mL').style.width = `${100 * (1 - p)}%`;
+    $('mR').textContent = p > 0.12 ? `right ${(100 * p).toFixed(0)}%` : '';
+    $('mL').textContent = p < 0.88 ? `left ${(100 * (1 - p)).toFixed(0)}%` : '';
+    $('sE').textContent = returns.length;
+    $('sG').textContent = returns.length ? returns[returns.length - 1] : '–';
+    $('sP').textContent = p.toFixed(3);
+    $('sJ').textContent = J(p).toFixed(1);
+    const avg = returns.map((_, i) => { const lo = Math.max(0, i - 19); let s = 0; for (let k = lo; k <= i; k++) s += returns[k]; return s / (i - lo + 1); });
+    chart.draw(returns.length ? [
+      { data: returns, color: '#d1d5db', width: 1 },
+      { data: avg, color: C.green, label: 'average of last 20' },
+    ] : [{ data: [0, 0], color: 'rgba(0,0,0,0)' }], { hlines: [{ y: VSTAR, label: 'v* ≈ −11.66', color: C.amber }] });
+    drawWorld();
+  }
+
+  // One episode under the current θ. Returns the states and actions.
+  function generate(t) {
+    const S = [], Acts = []; let s = 0;
+    const p = pr(t);
+    while (s !== GOAL && S.length < CAP) { const a = Math.random() < p; S.push(s); Acts.push(a); s = move(s, a); }
+    return { S, Acts };
+  }
+  // REINFORCE update, step by step as in the pseudocode (θ changes within the loop).
+  function learn(t, Acts, a) {
+    const T = Acts.length;
+    for (let k = 0; k < T; k++) {
+      const G = -(T - k), p = pr(t);
+      const g = Acts[k] ? [1 - p, -(1 - p)] : [-p, p];
+      t[0] += a * G * g[0]; t[1] += a * G * g[1];
+    }
+  }
+
+  function finish(ep) {
+    const p0 = pr(th), T = ep.Acts.length, a0 = ep.Acts[0];
+    const g0 = a0 ? 1 - p0 : -p0;
+    learn(th, ep.Acts, A());
+    returns.push(-T);
+    Course.tex($('upd'), `T = ${T}:\\ \\ t = 0 \\text{ chose ${a0 ? 'right' : 'left'}},\\ \\theta_1 \\mathrel{+}= \\alpha\\,G_0\\,(${g0.toFixed(3)}) = 2^{${alpha()}}(${-T})(${g0.toFixed(3)}) = ${(A() * -T * g0).toFixed(4)}.\\ \\ \\pi(\\text{right}) \\to ${pr(th).toFixed(3)}`);
+  }
+
+  function stopAnim() { clearInterval(anim); anim = null; $('bEp').textContent = 'Play 1 episode'; }
+  let cur = null;
+  $('bEp').addEventListener('click', () => {
+    if (anim) { stopAnim(); finish(cur); pos = 0; draw(); return; }   // skip to the end
+    stopRun();
+    const ep = cur = generate(th);
+    let k = 0;
+    $('bEp').textContent = 'Skip';
+    anim = setInterval(() => {
+      if (k >= ep.Acts.length) { stopAnim(); finish(ep); pos = 0; draw(); return; }
+      pos = move(ep.S[k], ep.Acts[k]); k++;
+      Course.tex($('upd'), `t = ${k - 1}:\\ A_t = \\text{${ep.Acts[k - 1] ? 'right' : 'left'}},\\ \\text{return so far } ${-k}`);
+      drawWorld();
+    }, 50);
+  });
+
+  function stopRun() { clearInterval(timer); timer = null; $('bRun').textContent = 'Run'; }
+  $('bRun').addEventListener('click', () => {
+    if (timer) return stopRun();
+    stopAnim();
+    $('bRun').textContent = 'Pause';
+    timer = setInterval(() => {
+      for (let i = 0; i < 10; i++) finish(generate(th));
+      draw();
+      if (returns.length >= 3000) stopRun();
+    }, 30);
+  });
+
+  function reset() {
+    stopRun(); stopAnim();
+    th = [-1.47, 1.47]; returns = []; pos = 0;
+    $('upd').textContent = 'Play an episode. The update happens when it ends.';
+    draw();
+  }
+  $('bReset').addEventListener('click', reset);
+  reset();
+
+  // ------------------------------------------------------------ Figure 13.1
+  const cmp = Course.lineChart($('cmp'), { xLabel: 'episode', yLabel: 'return (average of 50 runs)', yMin: -90, yMax: -10 });
+  $('bCompare').addEventListener('click', () => {
+    $('bCompare').disabled = true; $('bCompare').textContent = 'Running…';
+    setTimeout(() => {
+      const RUNS = 50, EPS = 1000;
+      const series = [[-12, C.purple], [-13, C.green], [-14, C.blue]].map(([e, color]) => {
+        const acc = new Float64Array(EPS);
+        for (let r = 0; r < RUNS; r++) {
+          const t = [-1.47, 1.47];
+          for (let k = 0; k < EPS; k++) { const ep = generate(t); acc[k] += -ep.Acts.length / RUNS; learn(t, ep.Acts, Math.pow(2, e)); }
+        }
+        const sm = Array.from(acc, (_, i) => { const lo = Math.max(0, i - 9); let s = 0; for (let k = lo; k <= i; k++) s += acc[k]; return [i + 1, s / (i - lo + 1)]; });
+        return { data: sm, color, label: `α = 2${sup(e)}` };
+      });
+      $('cmp').hidden = false;
+      cmp.draw(series, { hlines: [{ y: VSTAR, label: 'v*', color: C.amber }] });
+      $('bCompare').disabled = false; $('bCompare').textContent = 'Run again';
+    }, 30);
+  });
+
+  Course.quiz([
+    {
+      q: 'In the corridor ($-1$ per step, $\\gamma = 1$), an episode lasts $T = 5$ steps. What is $G_2$, the return from step 2?',
+      answer: -3,
+      tol: 0,
+      explain: 'Steps 2, 3 and 4 remain, each worth $-1$: $G_2 = -(5 - 2) = -3$.',
+    },
+    {
+      q: 'At step $t$ the agent chose right with $p = \\pi(\\text{right}) = 0.25$, and $G_t = -4$. With $\\alpha = 0.1$, how much does $\\theta_1$ change?',
+      answer: 0.1 * -4 * 0.75,
+      tol: 0.001,
+      hint: 'The first component of $\\nabla \\ln \\pi(\\text{right})$ is $1 - p$.',
+      explain: '$0.1 \\times (-4) \\times (1 - 0.25) = -0.3$.',
+    },
+    {
+      q: 'With $\\gamma = 0.9$, $\\alpha = 0.1$, $G_2 = 4$ and $\\nabla \\ln \\pi(A_2 \\mid S_2) = 0.5$ (one parameter), how big is the update at $t = 2$ in the pseudocode?',
+      answer: 0.1 * 0.81 * 4 * 0.5,
+      tol: 0.001,
+      explain: '$\\alpha\\,\\gamma^t\\,G\\,\\nabla\\ln\\pi = 0.1 \\times 0.81 \\times 4 \\times 0.5 = 0.162$.',
+    },
+    {
+      q: 'Every return in the corridor is negative, so every action taken is pushed down. How does REINFORCE still improve?',
+      choices: [
+        'It doesn\'t: it needs positive rewards',
+        'Actions in shorter episodes are pushed down less, and since probabilities sum to 1, on average the push follows $\\nabla J$',
+        'The step size flips sign when returns are negative',
+      ],
+      answer: 1,
+      explain: 'Only relative sizes matter in expectation. The cost is noise: each update is mostly "push down", which Lesson 74 fixes with a baseline.',
+    },
+  ]);
+</script>
+</body>
+</html>

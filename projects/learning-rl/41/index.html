@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>41. Review quiz | Learning RL</title>
+<meta name="description" content="An endless drill of fresh calculations from lessons 1 to 39, then ten review questions that each point back to the lesson that answers them.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .topics { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 12px; }
+  .topics button { font-size: 0.85rem; padding: 4px 11px; border-radius: 999px; }
+  .topics button .sc { font-size: 0.75rem; opacity: 0.8; margin-left: 4px; font-variant-numeric: tabular-nums; }
+  #prob { min-height: 3em; color: var(--heading); }
+  #prob .src { display: block; font-size: 0.8rem; color: var(--accent); font-weight: 600; margin-bottom: 4px; }
+  #work { overflow-x: auto; }
+  #ans { width: 9em; }
+  .streak { font-variant-numeric: tabular-nums; }
+  #fb.ok { color: #047857; }
+  #fb.no { color: var(--red); }
+</style>
+</head>
+<body data-lesson="41">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Review quiz</h1>
+  <p class="lede">Six calculations come up again and again in RL. The drill gives fresh numbers each time, so you can practise until each one feels routine. The ten questions at the bottom cover the rest of lessons 1 to 39.</p>
+
+  <section class="card">
+    <h2>Drill</h2>
+    <p class="note">Pick a topic, or leave "Any" on. Fractions and arithmetic like <code>2+0.9*3</code> are accepted.</p>
+    <div class="topics" id="topics"></div>
+    <div id="prob"></div>
+    <div class="row">
+      <input id="ans" type="text" inputmode="decimal" autocomplete="off" placeholder="Your answer" aria-label="Your answer">
+      <button id="bCheck" class="primary">Check</button>
+      <button id="bShow" class="quiet">Show working</button>
+      <span class="spacer"></span>
+      <button id="bNew">New question</button>
+    </div>
+    <p id="fb"></p>
+    <div id="work"></div>
+    <div class="stats">
+      <div class="stat"><span class="k">Correct</span><span class="v" id="sRight">0</span></div>
+      <div class="stat"><span class="k">Attempted</span><span class="v" id="sTried">0</span></div>
+      <div class="stat"><span class="k">Streak</span><span class="v streak" id="sStreak">0</span></div>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>The six drill formulas, with the lesson that derives each one.</p>
+    $$G_t = \sum_{k=0}^{T-t-1} \gamma^k R_{t+k+1}$$
+    <p>Return (Lesson 4): later rewards count for less, by a factor $\gamma$ per step.</p>
+    $$Q_{n+1} = Q_n + \alpha\,[R_n - Q_n]$$
+    <p>Incremental update (Lessons 6–7): move a fraction $\alpha$ of the way from the old estimate to the new reward.</p>
+    $$A_t = \arg\max_a \Big[Q_t(a) + c\sqrt{\frac{\ln t}{N_t(a)}}\,\Big]$$
+    <p>UCB (Lesson 9): add a bonus that is large for arms tried rarely, relative to the total number of steps $t$.</p>
+    $$v_\pi(s) = \sum_a \pi(a \mid s)\, q_\pi(s, a)$$
+    <p>State value from action values (Lesson 23): average the action values with the policy's probabilities.</p>
+    $$v_\pi(s) = \sum_a \pi(a \mid s) \sum_{s', r} p(s', r \mid s, a)\big[r + \gamma\, v_\pi(s')\big]$$
+    <p>Bellman expectation (Lesson 26): average reward now plus discounted value next, over everything that can happen.</p>
+    $$\rho_{t:T-1} = \prod_{k=t}^{T-1} \frac{\pi(A_k \mid S_k)}{b(A_k \mid S_k)}$$
+    <p>Importance sampling ratio (Lesson 39): how much more (or less) likely the target policy $\pi$ was than the behaviour policy $b$ to take the actions that were taken. The environment's probabilities cancel.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const R = Course.randInt;
+  const pickOf = (xs) => xs[R(xs.length)];
+  const f = (x, dp = 3) => Course.fmt(+x.toFixed(dp), dp);
+  const round = (x, dp = 4) => +x.toFixed(dp);
+
+  // Each generator returns { src, q (HTML with $tex$), answer, tol, work (TeX) }.
+  const GEN = {
+    ret: () => {
+      const g = pickOf([0.5, 0.8, 0.9]);
+      const rs = Array.from({ length: 4 }, () => R(6));
+      const ans = rs.reduce((s, r, k) => s + Math.pow(g, k) * r, 0);
+      return {
+        src: 'Return · Lesson 4',
+        q: `Rewards $R_1, \\ldots, R_4$ are ${rs.join(', ')} and the episode then ends. With $\\gamma = ${g}$, what is $G_0$?`,
+        answer: ans, tol: 0.01,
+        work: `G_0 = ${rs.map((r, k) => (k === 0 ? `${r}` : `${g}^{${k}} \\times ${r}`)).join(' + ')} = ${f(ans)}`,
+      };
+    },
+    inc: () => {
+      const Q = R(11), Rn = R(11), useN = R(2) === 0;
+      const n = 2 + R(9), a = pickOf([0.1, 0.2, 0.25, 0.5]);
+      const step = useN ? 1 / n : a;
+      const ans = Q + step * (Rn - Q);
+      return {
+        src: 'Incremental update · Lessons 6–7',
+        q: useN
+          ? `A sample average stands at $Q_{${n}} = ${Q}$ after ${n - 1} rewards. The next reward is $R_{${n}} = ${Rn}$. What is $Q_{${n + 1}}$?`
+          : `$Q = ${Q}$, the new reward is $R = ${Rn}$ and $\\alpha = ${a}$. What is the updated $Q$?`,
+        answer: ans, tol: 0.01,
+        work: useN
+          ? `Q_{${n + 1}} = ${Q} + \\tfrac{1}{${n}}(${Rn} - ${Q}) = ${f(ans)}`
+          : `Q \\leftarrow ${Q} + ${a}\\,(${Rn} - ${Q}) = ${f(ans)}`,
+      };
+    },
+    ucb: () => {
+      const Q = round(R(30) / 10, 1), c = pickOf([1, 2]), t = pickOf([50, 100, 200, 500]), N = pickOf([4, 5, 10, 20, 25]);
+      const ans = Q + c * Math.sqrt(Math.log(t) / N);
+      return {
+        src: 'UCB · Lesson 9',
+        q: `An arm has $Q_t(a) = ${Q}$ after $N_t(a) = ${N}$ pulls, at step $t = ${t}$. With $c = ${c}$, what is its UCB score?`,
+        answer: ans, tol: 0.01,
+        work: `${Q} + ${c}\\sqrt{\\tfrac{\\ln ${t}}{${N}}} = ${Q} + ${c} \\times ${f(Math.sqrt(Math.log(t) / N))} = ${f(ans)}`,
+      };
+    },
+    qv: () => {
+      const p = pickOf([0.2, 0.25, 0.4, 0.5, 0.6, 0.75, 0.8]);
+      const q1 = R(11), q2 = R(11);
+      const ans = p * q1 + (1 - p) * q2;
+      return {
+        src: 'Values from action values · Lesson 23',
+        q: `In state $s$, $\\pi(\\text{left} \\mid s) = ${p}$ and $\\pi(\\text{right} \\mid s) = ${round(1 - p, 2)}$. $q_\\pi(s, \\text{left}) = ${q1}$ and $q_\\pi(s, \\text{right}) = ${q2}$. What is $v_\\pi(s)$?`,
+        answer: ans, tol: 0.01,
+        work: `v_\\pi(s) = ${p} \\times ${q1} + ${round(1 - p, 2)} \\times ${q2} = ${f(ans)}`,
+      };
+    },
+    bell: () => {
+      const g = pickOf([0.5, 0.8, 0.9]), p = pickOf([0.5, 0.25, 0.75]);
+      const r1 = R(4), r2 = R(4), v1 = R(11), v2 = R(11);
+      const ans = p * (r1 + g * v1) + (1 - p) * (r2 + g * v2);
+      return {
+        src: 'Bellman backup · Lesson 26',
+        q: `From $s$, the policy takes $a_1$ with probability $${p}$ (reward $${r1}$, next state value $${v1}$) and $a_2$ otherwise (reward $${r2}$, next state value $${v2}$). Transitions are deterministic and $\\gamma = ${g}$. What is $v_\\pi(s)$?`,
+        answer: ans, tol: 0.01,
+        work: `${p}\\,(${r1} + ${g} \\times ${v1}) + ${round(1 - p, 2)}\\,(${r2} + ${g} \\times ${v2}) = ${f(ans)}`,
+      };
+    },
+    rho: () => {
+      const T = 2 + R(2);
+      const steps = Array.from({ length: T }, () => pickOf([[1, 0.5], [0.5, 0.25], [0.9, 0.5], [0.2, 0.4], [1, 0.25], [0.5, 0.5]]));
+      const ans = steps.reduce((s, [p, b]) => (s * p) / b, 1);
+      return {
+        src: 'Importance sampling · Lesson 39',
+        q: `An episode has ${T} actions. Their probabilities under the target policy are $${steps.map((s) => s[0]).join(', ')}$ and under the behaviour policy $${steps.map((s) => s[1]).join(', ')}$. What is $\\rho_{0:${T - 1}}$?`,
+        answer: ans, tol: 0.01,
+        work: `\\rho = ${steps.map(([p, b]) => `\\tfrac{${p}}{${b}}`).join(' \\times ')} = ${f(ans)}`,
+      };
+    },
+  };
+  const TOPICS = [['any', 'Any'], ['ret', 'Return'], ['inc', 'Update'], ['ucb', 'UCB'], ['qv', 'v from q'], ['bell', 'Bellman'], ['rho', 'Ratio']];
+  const score = Object.fromEntries(TOPICS.map(([k]) => [k, [0, 0]]));
+  let topic = 'any', cur = null, curKey = null, answered = false, right = 0, tried = 0, streak = 0;
+
+  function drawTopics() {
+    $('topics').innerHTML = TOPICS.map(([k, name]) => {
+      const [r, t] = score[k];
+      return `<button class="${k === topic ? 'on' : 'quiet'}" data-k="${k}">${name}${k !== 'any' && t ? `<span class="sc">${r}/${t}</span>` : ''}</button>`;
+    }).join('');
+  }
+  $('topics').addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    topic = b.dataset.k; drawTopics(); next();
+  });
+
+  function next() {
+    curKey = topic === 'any' ? pickOf(Object.keys(GEN)) : topic;
+    cur = GEN[curKey]();
+    answered = false;
+    $('prob').innerHTML = `<span class="src">${cur.src}</span>${cur.q}`;
+    Course.renderMath($('prob'));
+    $('ans').value = ''; $('fb').textContent = ''; $('fb').className = ''; $('work').innerHTML = '';
+  }
+
+  function parse(s) {
+    s = String(s).trim().replace(/×/g, '*').replace(/−/g, '-').replace(/\^/g, '**');
+    if (!s || !/^[\d\s.+\-*/()e]+$/i.test(s)) return NaN;
+    try { return Function(`"use strict"; return (${s});`)(); } catch { return NaN; }
+  }
+  function showWork() { Course.tex($('work'), cur.work, true); }
+
+  function check() {
+    const v = parse($('ans').value);
+    if (isNaN(v)) { $('fb').className = 'no'; $('fb').textContent = 'Enter a number.'; return; }
+    const ok = Math.abs(v - cur.answer) <= cur.tol;
+    if (!answered) {
+      answered = true; tried++; score[curKey][1]++;
+      if (ok) { right++; streak++; score[curKey][0]++; } else streak = 0;
+      drawTopics();
+    }
+    $('fb').className = ok ? 'ok' : 'no';
+    $('fb').textContent = ok ? '✓ Correct.' : `Not quite. The answer is ${f(cur.answer)}.`;
+    showWork();
+    $('sRight').textContent = right; $('sTried').textContent = tried; $('sStreak').textContent = streak;
+  }
+  $('bCheck').addEventListener('click', check);
+  $('ans').addEventListener('keydown', (e) => { if (e.key === 'Enter') check(); });
+  $('bShow').addEventListener('click', () => { if (!answered) { answered = true; tried++; score[curKey][1]++; streak = 0; drawTopics(); $('sTried').textContent = tried; $('sStreak').textContent = 0; } showWork(); });
+  $('bNew').addEventListener('click', next);
+  drawTopics();
+  next();
+
+  // ------------------------------------------------------------ the ten review questions
+  const g9 = 0.9;
+  Course.quiz([
+    {
+      q: '(Lesson 4) Rewards are $1, 0, 0, 10$ and then the episode ends. With $\\gamma = 0.9$, what is $G_0$?',
+      answer: 1 + Math.pow(g9, 3) * 10,
+      tol: 0.005,
+      explain: '$1 + 0.9^3 \\times 10 = 1 + 7.29 = 8.29$.',
+    },
+    {
+      q: '(Lesson 4) A reward of $1$ arrives every step forever. With $\\gamma = 0.95$, what is the return?',
+      answer: 1 / (1 - 0.95),
+      hint: 'A geometric series: $1 + \\gamma + \\gamma^2 + \\cdots$.',
+      explain: '$\\sum_k 0.95^k = 1/(1 - 0.95) = 20$.',
+    },
+    {
+      q: '(Lesson 7) With constant $\\alpha = 0.2$, how much weight does $Q_{n+1}$ give to $R_{n-2}$, the third most recent reward?',
+      answer: 0.2 * Math.pow(0.8, 2),
+      tol: 0.001,
+      hint: 'Reward $R_i$ gets weight $\\alpha(1-\\alpha)^{n-i}$.',
+      explain: '$\\alpha(1-\\alpha)^{2} = 0.2 \\times 0.64 = 0.128$.',
+    },
+    {
+      q: '(Lesson 9) $Q_t(a) = 1$, $N_t(a) = 25$, $t = 100$ and $c = 2$. What is the UCB score?',
+      answer: 1 + 2 * Math.sqrt(Math.log(100) / 25),
+      tol: 0.005,
+      explain: '$1 + 2\\sqrt{\\ln 100 / 25} = 1 + 2 \\times 0.429 = 1.858$.',
+    },
+    {
+      q: '(Lessons 11–12) An arm starts with a Beta(1, 1) belief and then pays out 7 times in 10 pulls. What is the mean of the updated belief?',
+      answer: 8 / 12,
+      tol: 0.005,
+      hint: 'Each success adds 1 to the first parameter, each failure 1 to the second.',
+      explain: 'The belief becomes Beta(8, 4), with mean $8/(8+4) = 0.667$.',
+    },
+    {
+      q: '(Lesson 17) A two-state chain moves A → B with probability 0.2 and B → A with probability 0.6. What fraction of the time does it spend in A in the long run?',
+      answer: 0.6 / (0.2 + 0.6),
+      tol: 0.005,
+      hint: 'In balance, the flow A → B equals the flow B → A.',
+      explain: '$0.2\\,\\mu_A = 0.6\\,\\mu_B$ and $\\mu_A + \\mu_B = 1$ give $\\mu_A = 0.6/0.8 = 0.75$.',
+    },
+    {
+      q: '(Lessons 26–28) Two states alternate forever: $s_1 \\to s_2$ pays $1$, $s_2 \\to s_1$ pays $0$. With $\\gamma = 0.5$, what is $v(s_1)$?',
+      answer: 4 / 3,
+      tol: 0.005,
+      hint: 'Write one Bellman equation per state and substitute.',
+      explain: '$v_1 = 1 + 0.5\\,v_2$ and $v_2 = 0.5\\,v_1$, so $v_1 = 1 + 0.25\\,v_1$ and $v_1 = 4/3$.',
+    },
+    {
+      q: '(Lesson 36) One episode visits A, B, A, paying $1$, $2$, $3$ after each, then ends ($\\gamma = 1$). What is the every-visit Monte Carlo estimate of $V(A)$ from this episode?',
+      answer: (6 + 3) / 2,
+      hint: 'A is visited twice. Average the returns that follow each visit.',
+      explain: 'Returns after the two visits are $1 + 2 + 3 = 6$ and $3$. Their average is $4.5$. First-visit would give $6$.',
+    },
+    {
+      q: '(Lesson 39) A three-step episode has $\\pi$-probabilities $1, 1, 1$ and $b$-probabilities $0.5, 0.5, 0.5$ for the actions taken. Its return is $3$. What is this episode\'s ordinary importance-sampling estimate?',
+      answer: 3 * Math.pow(2, 3),
+      explain: '$\\rho = (1/0.5)^3 = 8$, so the estimate is $8 \\times 3 = 24$.',
+    },
+    {
+      q: '(Lessons 34, 38) Why does Monte Carlo control need exploring starts or an $\\varepsilon$-soft policy?',
+      choices: [
+        'Returns are too noisy without them',
+        'A greedy policy stops taking some actions, so their values are never estimated and never corrected',
+        'Without them the values would not be discounted',
+        'They make each episode shorter',
+      ],
+      answer: 1,
+      explain: 'Policy improvement compares $Q(s, a)$ across actions. An action that is never taken keeps a stale estimate, and the policy cannot discover it is better.',
+    },
+  ]);
+</script>
+</body>
+</html>

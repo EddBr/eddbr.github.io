@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>50. Review: halfway | Learning RL</title>
+<meta name="description" content="Halfway point. Bandits, Monte Carlo, TD and dynamic programming are one update rule with different targets. Compare them on one random walk, then revisit any of the first 49 lessons.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .walk { display: flex; gap: 6px; justify-content: center; margin: 12px 0 6px; }
+  .walk .cell { width: 54px; height: 70px; flex-direction: column; font-size: 1rem; font-weight: 600; color: var(--heading); overflow: hidden; }
+  .walk .cell.end { width: 40px; background: #fff; color: var(--muted); font-weight: 500; font-size: 0.85rem; }
+  .walk .cell .vfill { position: absolute; left: 0; right: 0; bottom: 0; background: var(--accent-soft); transition: height 0.3s ease; }
+  .walk .cell .vtrue { position: absolute; left: 0; right: 0; height: 0; border-top: 2px dashed var(--amber); }
+  .walk .cell span { position: relative; }
+  .walk .cell .vnum { font-size: 0.75rem; font-weight: 500; color: var(--body); }
+  .walk .cell.sel { border-color: var(--accent); box-shadow: inset 0 0 0 2px var(--accent); }
+  .ep { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; justify-content: center; margin: 6px 0; }
+  .ep button { padding: 2px 8px; min-width: 2.2em; font-size: 0.9rem; }
+  .ep .r { font-size: 0.75rem; color: var(--muted); }
+  .targets { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; align-items: center; margin: 8px 0; }
+  .targets .lab { font-size: 0.85rem; font-weight: 600; color: var(--heading); }
+  .targets .lab small { display: block; font-weight: 400; color: var(--muted); }
+  .targets .eq { overflow-x: auto; overflow-y: hidden; min-width: 0; padding: 2px 0; }
+  .key { display: flex; gap: 16px; flex-wrap: wrap; font-size: 0.85rem; color: var(--muted); justify-content: center; }
+  .key b { display: inline-block; width: 16px; height: 10px; vertical-align: middle; margin-right: 4px; }
+  .units { display: grid; gap: 8px; margin: 8px 0; }
+  .urow { display: grid; grid-template-columns: 9.5em 1fr; gap: 8px; align-items: center; }
+  .urow .uname { font-size: 0.8rem; color: var(--muted); line-height: 1.2; }
+  .chips { display: flex; gap: 4px; flex-wrap: wrap; }
+  .chips button { padding: 3px 0; width: 2.4em; font-size: 0.85rem; color: var(--heading); border-color: var(--border); }
+  .chips button.done { background: var(--accent-soft); border-color: var(--accent); color: #047857; }
+  .chips button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+  #detail { min-height: 7.5em; border-top: 1px solid var(--border); padding-top: 10px; margin-top: 10px; }
+  #detail h3 { margin: 0 0 4px; font-size: 1rem; color: var(--heading); }
+  #dEq { overflow-x: auto; overflow-y: hidden; }
+  @media (max-width: 560px) {
+    .walk { gap: 3px; }
+    .walk .cell { width: 44px; height: 64px; }
+    .walk .cell.end { width: 30px; font-size: 0.75rem; }
+    .urow { grid-template-columns: 1fr; gap: 2px; }
+    .targets { grid-template-columns: 1fr; }
+    .targets .lab { margin-top: 6px; }
+  }
+</style>
+</head>
+<body data-lesson="50">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Review: halfway</h1>
+  <p class="lede">Almost every method so far is the same update with a different target: move an estimate a step towards something better. The methods differ only in what that target is. This page puts three of them side by side on one problem, then maps the first 49 lessons.</p>
+
+  <section class="card">
+    <h2>One update, three targets</h2>
+    <p class="note">The 5-state random walk from Lesson 45. Each step goes left or right with probability ½. Leaving on the right pays $+1$, leaving on the left pays $0$, and $\gamma = 1$. Click a step of the episode to see each method's target for that state.</p>
+    <div class="walk" id="walk"></div>
+    <div class="key">
+      <span><b style="background:var(--accent-soft)"></b>estimate $V(s)$</span>
+      <span><b style="border-top:2px dashed var(--amber);height:0"></b>true $v_\pi(s)$</span>
+    </div>
+    <div class="ep" id="ep"></div>
+    <div class="targets" id="targets">
+      <div class="lab">Monte Carlo<small>Lesson 35</small></div><div class="eq" id="tMC"></div>
+      <div class="lab">TD(0)<small>Lesson 45</small></div><div class="eq" id="tTD"></div>
+      <div class="lab">DP<small>Lesson 30</small></div><div class="eq" id="tDP"></div>
+    </div>
+    <p class="status" id="status"></p>
+    <label class="slider"><span>Step size $\alpha$</span><input id="iA" type="range" min="0.02" max="0.5" step="0.02" value="0.1"><output></output></label>
+    <div class="row">
+      <button id="bMC">Learn: MC</button>
+      <button id="bTD">Learn: TD(0)</button>
+      <button id="bDP">DP sweep</button>
+      <span class="spacer"></span>
+      <button id="bNew" class="quiet">New episode</button>
+      <button id="bReset" class="quiet">Reset values</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="k">RMS error of $V$</span><span class="v" id="sErr">–</span></div>
+      <div class="stat"><span class="k">Episodes used</span><span class="v" id="sEps">0</span></div>
+      <div class="stat"><span class="k">DP sweeps</span><span class="v" id="sSw">0</span></div>
+    </div>
+    <p class="note">"Learn" applies that method's updates to every step of the episode, then draws a fresh episode. DP needs no episode: it uses the transition probabilities, which the other two never see.</p>
+  </section>
+
+  <section class="card">
+    <h2>The first 49 lessons</h2>
+    <p class="note">Click a lesson for its key idea. Green ones you have completed.</p>
+    <div class="units" id="units"></div>
+    <div id="detail"></div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>Lesson 6 introduced the shape that every method since has used:</p>
+    $$\text{New} \leftarrow \text{Old} + \alpha\,\big[\text{Target} - \text{Old}\big]$$
+    <p>The step size $\alpha$ sets how far to move. The target is the method's best guess at the right answer, and it is all that changes from method to method:</p>
+    $$\begin{aligned}
+      \text{Bandit (L7):}\quad & Q(A_t) \leftarrow Q(A_t) + \alpha\,[\,R_t - Q(A_t)\,] \\
+      \text{MC (L35):}\quad & V(S_t) \leftarrow V(S_t) + \alpha\,[\,G_t - V(S_t)\,] \\
+      \text{TD(0) (L45):}\quad & V(S_t) \leftarrow V(S_t) + \alpha\,[\,R_{t+1} + \gamma V(S_{t+1}) - V(S_t)\,] \\
+      \text{DP (L30):}\quad & V(s) \leftarrow \textstyle\sum_a \pi(a \mid s) \sum_{s', r} p(s', r \mid s, a)\,[\,r + \gamma V(s')\,]
+    \end{aligned}$$
+    <p>DP is the case $\alpha = 1$: it replaces the old value with the target outright, because its target is an exact expectation rather than a noisy sample.</p>
+    <p>Why these targets are sensible: by definition and by the Bellman equation (Lesson 26),</p>
+    $$v_\pi(s) = \mathbb{E}_\pi[\,G_t \mid S_t = s\,] = \mathbb{E}_\pi[\,R_{t+1} + \gamma\, v_\pi(S_{t+1}) \mid S_t = s\,]$$
+    <p>The Monte Carlo target $G_t$ has the right mean, but it adds up every random step to the end of the episode, so it is noisy. The TD target replaces everything after one step with the current guess $V(S_{t+1})$: less noise, but biased while $V$ is wrong. DP takes the expectation over $s'$ and $r$ exactly, so it has no sampling noise, but it needs the model $p(s', r \mid s, a)$.</p>
+    <p>Two questions sort every method so far. Does the target <b>bootstrap</b> (use a current estimate)? TD and DP do, Monte Carlo does not. Does it <b>sample</b> one next state, or average over all of them? MC and TD sample, DP averages. The rest of the course adds a third question: what to do when the table of values is too big to store.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const NAMES = ['A', 'B', 'C', 'D', 'E'];
+  const TRUE = [1, 2, 3, 4, 5].map((k) => k / 6);
+  const LEFT = -1, RIGHT = 5;          // terminal "states" off each end
+  let V, ep, sel, eps = 0, sweeps = 0;
+  const alpha = Course.slider('#iA', (v) => v.toFixed(2), () => showTargets());
+
+  // One episode from C: a list of steps { s, r, s2 } with s2 = LEFT/RIGHT at the end.
+  function newEpisode() {
+    ep = [];
+    let s = 2;
+    while (s !== LEFT && s !== RIGHT) {
+      const s2 = Math.random() < 0.5 ? s - 1 : s + 1;
+      ep.push({ s, r: s2 === RIGHT ? 1 : 0, s2 });
+      s = s2;
+    }
+    sel = 0;
+  }
+  const Vof = (s) => (s === LEFT || s === RIGHT ? 0 : V[s]);
+  const G = (t) => ep.slice(t).reduce((a, x) => a + x.r, 0);   // gamma = 1
+  const dpTarget = (s) => 0.5 * ((s - 1 === RIGHT ? 1 : 0) + Vof(s - 1)) + 0.5 * ((s + 1 === RIGHT ? 1 : 0) + Vof(s + 1));
+  const nm = (s) => (s === LEFT || s === RIGHT ? '\\text{end}' : `\\text{${NAMES[s]}}`);
+  const f = (x) => Course.fmt(Math.round(x * 1000) / 1000, 2);
+
+  function drawWalk() {
+    const s = ep[sel]?.s;
+    $('walk').innerHTML = `<div class="cell end">0 ◀</div>` + V.map((v, i) =>
+      `<div class="cell${i === s ? ' sel' : ''}"><div class="vfill" style="height:${Math.max(0, Math.min(1, v)) * 100}%"></div>` +
+      `<div class="vtrue" style="bottom:${TRUE[i] * 100}%"></div><span>${NAMES[i]}</span><span class="vnum">${v.toFixed(2)}</span></div>`).join('') +
+      `<div class="cell end">▶ +1</div>`;
+  }
+
+  function drawEpisode() {
+    $('ep').innerHTML = ep.map((x, t) =>
+      `<button class="${t === sel ? 'on' : 'quiet'}" data-t="${t}" title="t = ${t}">${NAMES[x.s]}</button><span class="r">${x.r ? '+1' : '0'}→</span>`).join('') +
+      `<span class="r">${ep[ep.length - 1].s2 === RIGHT ? 'exit right' : 'exit left'}</span>`;
+  }
+
+  function showTargets() {
+    const x = ep[sel], s = x.s, a = alpha(), v = V[s];
+    const rest = ep.slice(sel).map((y) => y.r);
+    const mc = G(sel), td = x.r + Vof(x.s2), dp = dpTarget(s);
+    const shown = rest.length > 6 ? `${rest.slice(0, 3).join(' + ')} + \\dots + ${rest[rest.length - 1]}` : rest.join(' + ');
+    Course.tex($('tMC'), `G_{${sel}} = ${shown} = ${mc}`);
+    Course.tex($('tTD'), `R_{${sel + 1}} + V(${nm(x.s2)}) = ${x.r} + ${f(Vof(x.s2))} = ${f(td)}`);
+    const l = s - 1, r = s + 1;
+    Course.tex($('tDP'), `\\tfrac12[${l === RIGHT ? 1 : 0} + V(${nm(l)})] + \\tfrac12[${r === RIGHT ? 1 : 0} + V(${nm(r)})] = ${f(dp)}`);
+    $('status').innerHTML = `$S_{${sel}} = \\text{${NAMES[s]}}$, $V = ${f(v)}$, true $v_\\pi = ${f(TRUE[s])}$. ` +
+      `With $\\alpha = ${a.toFixed(2)}$: MC moves it to ${f(v + a * (mc - v))}, TD to ${f(v + a * (td - v))}. DP sets it to ${f(dp)}.`;
+    Course.renderMath($('status'));
+    drawWalk();
+  }
+
+  function stats() {
+    const rms = Math.sqrt(V.reduce((a, v, i) => a + (v - TRUE[i]) ** 2, 0) / 5);
+    $('sErr').textContent = rms.toFixed(3);
+    $('sEps').textContent = eps;
+    $('sSw').textContent = sweeps;
+  }
+  function render() { drawEpisode(); showTargets(); stats(); }
+
+  $('ep').addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    sel = +b.dataset.t; drawEpisode(); showTargets();
+  });
+
+  // Every-visit MC: each state's target is the return that followed it.
+  $('bMC').addEventListener('click', () => {
+    const a = alpha(), Gs = ep.map((_, t) => G(t));
+    ep.forEach((x, t) => { V[x.s] += a * (Gs[t] - V[x.s]); });
+    eps++; newEpisode(); render();
+  });
+  // TD(0), online: each update uses the values as they are at that moment.
+  $('bTD').addEventListener('click', () => {
+    const a = alpha();
+    ep.forEach((x) => { V[x.s] += a * (x.r + Vof(x.s2) - V[x.s]); });
+    eps++; newEpisode(); render();
+  });
+  // Synchronous iterative policy evaluation (Lesson 30).
+  $('bDP').addEventListener('click', () => {
+    V = V.map((_, s) => dpTarget(s));
+    sweeps++; render();
+  });
+  $('bNew').addEventListener('click', () => { newEpisode(); render(); });
+  $('bReset').addEventListener('click', () => { V = [0.5, 0.5, 0.5, 0.5, 0.5]; eps = 0; sweeps = 0; newEpisode(); render(); });
+  V = [0.5, 0.5, 0.5, 0.5, 0.5];
+  newEpisode(); render();
+
+  // ------------------------------------------------------------ map of lessons 1–49
+  const IDEAS = {
+    1: ['The agent acts; the environment returns a new state and a reward.', 'S_0, A_0, R_1, S_1, A_1, R_2, \\dots'],
+    2: ['The goal is to maximise the total reward, so the reward must encode what you want.', 'G = R_1 + R_2 + \\dots + R_T'],
+    3: ['Exploit the best-looking option, or explore one that might be better.', 'Q(a) = \\text{total reward from } a \\,/\\, N(a)'],
+    4: ['Rewards further away count for less.', 'G_t = \\textstyle\\sum_{k=0}^{\\infty} \\gamma^k R_{t+k+1}'],
+    5: ['One state, k actions, each with an unknown mean reward.', 'q_*(a) = \\mathbb{E}[R_t \\mid A_t = a]'],
+    6: ['A running average needs only the estimate and a count.', 'Q_{n+1} = Q_n + \\tfrac{1}{n}(R_n - Q_n)'],
+    7: ['A constant step size tracks a target that moves.', 'Q_{n+1} = Q_n + \\alpha(R_n - Q_n)'],
+    8: ['Start estimates too high and even greedy explores.', 'Q_1(a) \\gg q_*(a)'],
+    9: ['Explore where uncertain: add a bonus that shrinks with visits.', 'A_t = \\arg\\max_a \\big[Q_t(a) + c\\sqrt{\\ln t / N_t(a)}\\big]'],
+    10: ['Regret counts what was lost by not always pulling the best arm.', '\\text{Regret}_T = T \\max_a q_*(a) - \\textstyle\\sum_{t=1}^{T} q_*(A_t)'],
+    11: ['Keep a whole distribution over an unknown probability, not one number.', '\\text{Beta}(1 + \\text{heads},\\ 1 + \\text{tails})'],
+    12: ['Sample a guess from each belief and play the best guess.', 'A_t = \\arg\\max_a \\tilde\\theta_a,\\ \\ \\tilde\\theta_a \\sim \\text{posterior}'],
+    13: ['Learn preferences and turn them into probabilities.', '\\pi_t(a) = e^{H_t(a)} / \\textstyle\\sum_b e^{H_t(b)}'],
+    14: ['The best action depends on a context the agent can see.', 'Q(x, a)'],
+    15: ['The present state carries everything the past can tell you about the future.', '\\Pr(S_{t+1} \\mid S_t) = \\Pr(S_{t+1} \\mid S_0, \\dots, S_t)'],
+    16: ['States hop according to fixed transition probabilities.', 'P_{ss\'} = \\Pr(S_{t+1} = s\' \\mid S_t = s)'],
+    17: ['In the long run the share of time in each state settles down.', '\\mu = \\mu P'],
+    18: ['Actions change the transition probabilities.', 'p(s\', r \\mid s, a)'],
+    19: ['Episodes end in a terminal state, after which no reward is added.', 'G_t = \\textstyle\\sum_{k=t+1}^{T} \\gamma^{k-t-1} R_k'],
+    20: ['A policy gives the probability of each action in each state.', '\\pi(a \\mid s)'],
+    21: ['The value of a state is its expected return under a policy.', 'v_\\pi(s) = \\mathbb{E}_\\pi[G_t \\mid S_t = s]'],
+    22: ['The value of taking an action in a state, then following the policy.', 'q_\\pi(s, a) = \\mathbb{E}_\\pi[G_t \\mid S_t = s, A_t = a]'],
+    23: ['A state value is the policy-weighted average of its action values.', 'v_\\pi(s) = \\textstyle\\sum_a \\pi(a \\mid s)\\, q_\\pi(s, a)'],
+    24: ['Acting greedily with respect to the optimal values is optimal.', '\\pi_*(s) = \\arg\\max_a q_*(s, a)'],
+    25: ['The return is the next reward plus the discounted return after it.', 'G_t = R_{t+1} + \\gamma G_{t+1}'],
+    26: ['Values satisfy a one-step consistency condition.', 'v_\\pi(s) = \\textstyle\\sum_a \\pi(a \\mid s) \\sum_{s\',r} p(s\',r \\mid s,a)[r + \\gamma v_\\pi(s\')]'],
+    27: ['For a small MDP the Bellman equations are linear and can be solved by hand.', 'v = r + \\gamma P v'],
+    28: ['The same system in matrix form, solved in one line.', 'v = (I - \\gamma P_\\pi)^{-1} r_\\pi'],
+    29: ['Optimal values replace the average over actions with a max.', 'v_*(s) = \\max_a \\textstyle\\sum_{s\',r} p(s\',r \\mid s,a)[r + \\gamma v_*(s\')]'],
+    30: ['Apply the Bellman equation as an update until values stop changing.', 'v_{k+1}(s) = \\textstyle\\sum_a \\pi \\sum_{s\',r} p\\,[r + \\gamma v_k(s\')]'],
+    31: ['Acting greedily on a policy\'s values gives a policy at least as good.', '\\pi\'(s) = \\arg\\max_a q_\\pi(s, a)'],
+    32: ['Evaluate, improve, repeat until the policy stops changing.', '\\pi_0 \\to v_{\\pi_0} \\to \\pi_1 \\to v_{\\pi_1} \\to \\dots \\to \\pi_*'],
+    33: ['Fold one sweep of evaluation and the improvement into one update.', 'v_{k+1}(s) = \\max_a \\textstyle\\sum_{s\',r} p\\,[r + \\gamma v_k(s\')]'],
+    34: ['Any interleaving of evaluation and improvement heads to the optimum.', 'v \\to v_\\pi,\\quad \\pi \\to \\text{greedy}(v)'],
+    35: ['Without a model, average the returns actually observed.', 'V(s) \\approx \\text{average of } G_t \\text{ after visits to } s'],
+    36: ['Count only the first visit to a state per episode, or every visit.', 'V(s) = \\text{mean of first-visit (or all) returns}'],
+    37: ['Monte Carlo estimates the value of blackjack hands by playing them.', 'V(\\text{sum}, \\text{dealer card}, \\text{usable ace})'],
+    38: ['Estimate action values from returns and act greedily on them.', '\\pi(s) = \\arg\\max_a Q(s, a)'],
+    39: ['Reweight returns from one policy to evaluate another.', '\\rho_{t:T-1} = \\textstyle\\prod_{k=t}^{T-1} \\pi(A_k \\mid S_k) / b(A_k \\mid S_k)'],
+    40: ['A map of how the first 39 lessons connect.', '\\text{bandits} \\to \\text{MDPs} \\to \\text{DP} \\to \\text{MC}'],
+    41: ['Questions answered with earlier interactives.', '\\text{Lessons 1–39}'],
+    42: ['A table of board values plays tic-tac-toe.', 'V(s) \\leftarrow V(s) + \\alpha[V(s\') - V(s)]'],
+    43: ['The same table improves by playing itself.', 'V(s) \\leftarrow V(s) + \\alpha[V(s\') - V(s)]'],
+    44: ['Value iteration on a gambler betting towards a target.', 'v_*(s) = \\max_a \\big[p_h v_*(s + a) + (1 - p_h) v_*(s - a)\\big]'],
+    45: ['Update a state\'s value after one step, using the next state\'s value.', 'V(S_t) \\leftarrow V(S_t) + \\alpha[R_{t+1} + \\gamma V(S_{t+1}) - V(S_t)]'],
+    46: ['The TD error measures surprise.', '\\delta_t = R_{t+1} + \\gamma V(S_{t+1}) - V(S_t)'],
+    47: ['Revise a prediction as soon as new information arrives, before the outcome.', '\\text{learn a guess from a guess}'],
+    48: ['TD has more bias, Monte Carlo more variance. TD usually learns faster.', '\\text{bias vs variance}'],
+    49: ['On a fixed batch, TD finds the values of the most likely Markov model.', '\\text{certainty equivalence}'],
+  };
+  let pick = 0;
+  function drawUnits() {
+    const done = Course.loadDone();
+    $('units').innerHTML = Course.units.filter((u) => u.n <= 10).map((u) => {
+      const ls = Course.lessons.filter((l) => l.unit === u.n && l.n < 50);
+      return `<div class="urow"><span class="uname">${u.n}. ${u.title}</span><span class="chips">` +
+        ls.map((l) => `<button class="${l.n === pick ? 'on' : done.has(l.n) ? 'done' : 'quiet'}" data-n="${l.n}" title="${l.title}">${l.n}</button>`).join('') +
+        '</span></div>';
+    }).join('');
+  }
+  function showLesson(n) {
+    pick = n;
+    const l = Course.lessons.find((x) => x.n === n);
+    const [idea, eq] = IDEAS[n];
+    $('detail').innerHTML = `<h3>Lesson ${n}. ${l.title}</h3><p>${idea}</p><div id="dEq"></div><p><a href="${Course.root}${n}/">Open lesson ${n} →</a></p>`;
+    Course.tex($('dEq'), eq, true);
+    drawUnits();
+  }
+  $('units').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) showLesson(+b.dataset.n); });
+  showLesson(45);
+
+  Course.quiz([
+    {
+      q: 'An episode goes C → D → E → exit right. All values are $0.5$, $\\gamma = 1$, $\\alpha = 0.1$. What is the Monte Carlo update\'s new $V(\\text{C})$?',
+      answer: 0.5 + 0.1 * (1 - 0.5),
+      explain: 'The return from C is $0 + 0 + 1 = 1$, so $0.5 + 0.1(1 - 0.5) = 0.55$.',
+    },
+    {
+      q: 'Same episode and values. What is the TD(0) target for C at its first step?',
+      answer: 0 + 0.5,
+      explain: '$R_1 + V(\\text{D}) = 0 + 0.5 = 0.5$. It equals $V(\\text{C})$, so TD(0) leaves C unchanged on this step.',
+    },
+    {
+      q: '$V(\\text{A}) = 0.2$ and $V(\\text{C}) = 0.6$. What is the DP target for B?',
+      answer: 0.5 * (0 + 0.2) + 0.5 * (0 + 0.6),
+      explain: '$\\tfrac12(0 + 0.2) + \\tfrac12(0 + 0.6) = 0.4$.',
+    },
+    {
+      q: 'Which methods <i>bootstrap</i>: update an estimate from another estimate?',
+      choices: ['Monte Carlo and TD(0)', 'TD(0) and DP', 'Only DP', 'All three'],
+      answer: 1,
+      explain: 'TD(0) uses $V(S_{t+1})$ and DP uses $V(s\')$. Monte Carlo waits for the actual return.',
+    },
+  ]);
+</script>
+</body>
+</html>

@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>David Silver RL Lecture 3 | Eddie’s Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="David Silver RL Lecture 3" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Planning by Dynamic Programming “Dynamic” Sequential/temporal component “Programming” Optimising a “program” / policy" />
+<meta property="og:description" content="Planning by Dynamic Programming “Dynamic” Sequential/temporal component “Programming” Optimising a “program” / policy" />
+<link rel="canonical" href="/rl/david/silver/2026/11/01/lecture-3-david-silver.html" />
+<meta property="og:url" content="/rl/david/silver/2026/11/01/lecture-3-david-silver.html" />
+<meta property="og:site_name" content="Eddie’s Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-11-01T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="David Silver RL Lecture 3" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2026-11-01T00:00:00+00:00","datePublished":"2026-11-01T00:00:00+00:00","description":"Planning by Dynamic Programming “Dynamic” Sequential/temporal component “Programming” Optimising a “program” / policy","headline":"David Silver RL Lecture 3","mainEntityOfPage":{"@type":"WebPage","@id":"/rl/david/silver/2026/11/01/lecture-3-david-silver.html"},"url":"/rl/david/silver/2026/11/01/lecture-3-david-silver.html"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="/feed.xml" title="Eddie&apos;s Blog" /></head>
+<body><header class="site-header" role="banner">
+
+  <div class="wrapper"><a class="site-title" rel="author" href="/">Eddie&#39;s Blog</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/about/">About</a><a class="page-link" href="/writing/">Writing</a><a class="page-link" href="/projects/">Projects</a><a class="page-link" href="/playground/">Playground</a></div>
+      </nav></div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">David Silver RL Lecture 3</h1>
+    <p class="post-meta">
+      <time class="dt-published" datetime="2026-11-01T00:00:00+00:00" itemprop="datePublished">Nov 1, 2026
+      </time></p>
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" />
+
+<script defer="" src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+
+<script defer="" src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,
+	      {delimiters: [
+	      {left: '$$', right: '$$', display: true},
+	      {left: '$', right: '$', display: false},
+	      {left: '\\(', right: '\\)', display: false},
+	      {left: '\\[', right: '\\]', display: true}
+	      ]});"></script>
+
+<h1 id="planning-by-dynamic-programming">Planning by Dynamic Programming</h1>
+<h3 id="dynamic">“Dynamic”</h3>
+<p>Sequential/temporal component</p>
+<h3 id="programming">“Programming”</h3>
+<p>Optimising a “program” / policy</p>
+
+<h2 id="properties-of-dp">Properties of DP</h2>
+<p>Dynamic programming is a general solution method for problems with 2 properties:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Property</th>
+      <th>Presence in RL</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Optimal substructure (optimal solution can be decomposed into subproblems)</td>
+      <td>Bellman equation gives recursive decomposition</td>
+    </tr>
+    <tr>
+      <td>Overlapping subproblems which recur many times - solutions can be cached and reused</td>
+      <td>Value function is the subproblem that can be cached</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="dp-assumptions">DP Assumptions</h2>
+<p>Assumes full knowledge of the MDP
+Used for planning in an MDP</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Prediction</th>
+      <th>Control</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Input:</strong> <br />1. $\text{MDP}\braket{\mathcal{S},\mathcal{A},\mathcal{P},\mathcal{R},\gamma}$ or MRP $\text{MDP}\braket{\mathcal{S},\mathcal{A},\mathcal{P}^\pi,\mathcal{R}^\pi,\gamma}$<br />2. Policy $\pi$</td>
+      <td><strong>Input:</strong> <br />1. $\text{MDP}\braket{\mathcal{S},\mathcal{A},\mathcal{P},\mathcal{R},\gamma}$</td>
+    </tr>
+    <tr>
+      <td><strong>Output:</strong> <br />1. Value function $v_\pi$<br /></td>
+      <td><strong>Output:</strong><br />1. Optimal value function $v_<em>$<br />2. Optimal policy $\pi_</em>$</td>
+    </tr>
+  </tbody>
+</table>
+
+<h1 id="policy-evaluation">Policy Evaluation</h1>
+<h3 id="problem">Problem</h3>
+<p>Evaluate a given policy $\pi$</p>
+<h3 id="solution">Solution</h3>
+<p>Iterative application of Bellman expectation backup</p>
+
+<p>$v_1\to v_2\to…\to v_\pi$
+Using synchronous backups
+	At each iteration $k+1$
+	For all states $s\in S$
+	Update $v_{k+1}(s)$ from $v_k(s’)$
+	where $s’$ is a successor state of $s$</p>
+
+<p>$v_{k+1}=\sum_{a\in A}\pi(a\vert s)(\mathcal{R}^a_s+\gamma\sum_{s’ \in S}\mathcal{P}^a_{ss’}v_k(s’))$
+$v^{k+1}=\mathcal{R}^\pi+\gamma\mathcal{P}^\pi v^k$</p>
+<h1 id="policy-iteration">Policy Iteration</h1>
+<ol>
+  <li>Evaluate the policy $\pi$ in $v_\pi=\mathbb{E}[\mathcal{R}<em>{t+1}+\gamma\mathcal{R}</em>{t+2}+…\vert S_t=s]$</li>
+  <li>Improve the policy by acting greedily with respect to $v_\pi$ -&gt; $\pi’=\text{greedy}(v_\pi)$</li>
+</ol>
+
+<p>Policy iteration always converges to $\pi^*$</p>
+
+<p>Policy evaluation (Estimate $v_\pi$) $\rightleftarrows$ Policy improvement (Generate $\pi’\ge\pi$)</p>
+
+<h2 id="policy-improvement-theorem">Policy Improvement Theorem</h2>
+<p>Imagine we start with a deterministic policy $a=\pi(s)$</p>
+
+<p>We can <em>improve</em> the policy by acting greedily
+$\pi ‘(s)=\arg\max_{a\in A}q_\pi(s,a)$
+This improves the value from any state $s$ over one step:
+$q_\pi(s,\pi’(s))=\max_{a\in A}q_\pi(s,a)\ge q_\pi(s,\pi(s))=v_\pi(s)$</p>
+
+<p>$q_\pi$(s,a) - Value gained if we use policy $\pi$ from state $s$ and taking action $a$</p>
+
+<p>$q_\pi(s,\pi’(s))=\mathbb{E}<em>{\pi’}[R</em>{t+1}+\gamma v_\pi(S_{t+1})\vert S_t=s]$
+$\le \mathbb{E}<em>{\pi’}[R</em>{t+1}+\gamma R_{t+2}+…\vert S_t=s]=v_{\pi’}(S)$</p>
+
+<p>If improvements stop
+$q_\pi(s,\pi’(s))=\max_{a\in A}q_\pi(s,a)=q_\pi(s,\pi(s))=v_\pi(s)$
+Then the Bellman optimality equation has been satisfied
+$v_\pi(s)=\max_{a\in A}q_\pi(s,a)$
+$v_\pi(s)=v_*(s)$ $\forall s\in S$</p>
+
+<p>If policy improvement stops -&gt; Bellman optimality equation satisfied -&gt; Found an optimal policy</p>
+
+<p><strong>Policy iteration solves MDPs</strong>
+$v_\pi(s)=\max_{a\in A}q_\pi(s,a)$
+$v_\pi(s)=v_*(s)$ for all $s\in S$</p>
+<h2 id="modified-policy-iteration">Modified Policy Iteration</h2>
+<p>Early stopping
+$\epsilon$-convergence of value function (when value function only changing by $\epsilon$)
+Or stop evaluating policy after $k$ iterations</p>
+<h1 id="value-iteration">Value iteration</h1>
+<h2 id="principle-of-optimality-theorem">Principle of Optimality Theorem</h2>
+<p>Policy $\pi(a\vert s)$ achieves optimal value $v_\pi(s)=v_<em>(s)$ from state $s$ iff:
+For any state $s’$ reachable from $s$, $\pi$ achieves the optimal value from state $s’$, $v_\pi(s’)=v_</em>(s’)$</p>
+<h2 id="value-iteration-algorithm">Value Iteration Algorithm</h2>
+<p>If we know the solution to subproblems $v_*(s’)$</p>
+
+<p>Then solution $v_<em>(s)$ can be found by one-step lookahead
+$v_</em>(s)\leftarrow\max_{a\in A}R^a_s+\gamma\sum_{s’in S}P^a_{ss’}v_*(s’)$</p>
+
+<p>Value iteration applies these updates again and again</p>
+<h3 id="intuition">Intuition</h3>
+<p>Start at the end of the problem and work back
+Still works with loopy, stochastic MDPs</p>
+<h4 id="problem-1">Problem</h4>
+<p>Find optimal policy $\pi$</p>
+<h4 id="solution-1">Solution</h4>
+<p>Iterative application of Bellman optimality backup
+$v_1\to v_2\to …\to v_*$
+Using synchronous backups</p>
+<ul>
+  <li>At each iteration $k+1$</li>
+  <li>For all states $s\in S$</li>
+  <li>Update $v_{k+1}(s)$ from $v_k(s’)$</li>
+</ul>
+
+<p>Unlike policy iteration, there is no explicit policy
+Intermediate value functions may not achievable by any policy</p>
+
+<p>This is modified policy iteration with $k=1$ 
+![[Pasted image 20261101211533.png]]
+The curve below the first open circle means $\max$</p>
+
+<p>Each state performs a lookahead and finds a new value $v_{k+1}(s)\leftarrow s$</p>
+
+<p>$v_{k+1}(s)=\max_{a\in A}(R^a_s+\gamma\sum_{s’\in S}P^a_{ss’}v_k(s’))$
+$v_{k+1}=\max_{a\in A}(R^a+\gamma P^av_k)$</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Problem</th>
+      <th>Bellman Equation</th>
+      <th>Algorithm</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Prediction</td>
+      <td>Bellman Expectation Equation</td>
+      <td>Iterative Policy Evaluation</td>
+    </tr>
+    <tr>
+      <td>Control</td>
+      <td>Bellman Expectation Equation + Greedy Policy Improvement</td>
+      <td>Policy Iteration</td>
+    </tr>
+    <tr>
+      <td>Control</td>
+      <td>Bellman Optimality Equation</td>
+      <td>Value Iteration</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Algorithms are based on state-value function $v_\pi(s)$ or $v_*(s)$
+Complexity $O(mn^2)$ per iteration for $m$ actions and $n$ states</p>
+
+<p>Could apply $q$ updates -&gt; $O(m^2n^2)$</p>
+<h1 id="dynamic-programming-extensions">Dynamic Programming Extensions</h1>
+<h2 id="asynchronous-dp">Asynchronous DP</h2>
+<p>$v_{\text{new}(s)}\leftarrow\max_{a\in A}(R^a_s+\gamma\sum_{s’\in S}P^a_{ss’}v_{\text{old}}(s’))$
+$v_{\text{old}}\leftarrow v_{\text{new}}$
+Instead do $v(s)\leftarrow\max_{a\in A}(R^a_s+\gamma\sum_{s’\in S}P^a_{ss’}v(s’))$</p>
+<h2 id="prioritised-sweeping">Prioritised Sweeping</h2>
+<p>Use magnitude of Bellman error to guide state selection.
+$\vert \max_{a\in A}(R^a_s+\gamma\sum_{s’\in S}P^a_{ss’}v(s’))-v(s)\vert $</p>
+<ul>
+  <li>Backup the state with the largest Bellman error</li>
+  <li>Update Bellman error of affected states after each backup</li>
+  <li>Requires knowledge of reverse dynamics (predecessor states)</li>
+  <li>Can be implemented efficiently by maintaining a priority queue
+    <h2 id="real-time-dynamic-programming">Real-time Dynamic Programming</h2>
+  </li>
+  <li>Idea: only states that are relevant to agent</li>
+  <li>Use agent’s experience to guide the selection of states</li>
+  <li>After each time-step $S_t,A_t,R_{t+1}$</li>
+  <li>Backup the state $S_t$
+$v(S_t)\leftarrow\max_{a\in A}(R^a_{S_t}+\gamma\sum_{s’\in S}P^a_{S_ts’}v(s’))$
+    <h2 id="dp-curse-of-dimensionality">DP Curse of Dimensionality</h2>
+    <p>For each backup, every successor state and actions is stored
+Number of states $n=\vert S\vert $ grows exponentially with number of variables
+Can be too expensive for even one backup with $10^{170}$ states</p>
+    <h3 id="solution---sample">SOLUTION -&gt; Sample</h3>
+    <ol>
+      <li>Sample one action according to policy</li>
+      <li>Sample transition according to dynamics</li>
+      <li>Backup based off 1 sample, rather than branching factor</li>
+    </ol>
+  </li>
+</ul>
+
+<p><strong>Advantages:</strong></p>
+<ol>
+  <li>Model-free - no advance knowledge required: Rather than someone having to tell us dynamics, we sample to find out</li>
+  <li>Breaks curse of dimensionality</li>
+  <li>Costs of backups is consistent</li>
+</ol>
+
+  </div><a class="u-url" href="/rl/david/silver/2026/11/01/lecture-3-david-silver.html" hidden></a>
+</article>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">Eddie&#39;s Blog</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li class="p-name">Eddie&#39;s Blog</li></ul>
+      </div>
+
+      <div class="footer-col footer-col-2"><ul class="social-media-list"><li><a href="https://github.com/eddbr"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#github"></use></svg> <span class="username">eddbr</span></a></li><li><a href="https://www.linkedin.com/in/eddiebrown-"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#linkedin"></use></svg> <span class="username">eddiebrown-</span></a></li></ul>
+</div>
+
+      <div class="footer-col footer-col-3">
+        <p>Product Engineer at Tano.ai | AI/ML and safety engineering</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>

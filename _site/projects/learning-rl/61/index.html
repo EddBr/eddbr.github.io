@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>61. Linear value functions | Learning RL</title>
+<meta name="description" content="Replace a table of 1,000 values with a handful of weights on features. Drag the weights and watch the value curve bend.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  #plot { width: 100%; height: 280px; display: block; margin: 8px 0; cursor: crosshair; touch-action: none; }
+  .key { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.85rem; color: var(--muted); }
+  .key b { display: inline-block; width: 16px; vertical-align: middle; margin-right: 4px; }
+  .seg { display: inline-flex; flex-wrap: wrap; }
+  .seg button { border-radius: 0; margin-left: -1px; padding: 0.35rem 0.7rem; }
+  .seg button:first-child { border-radius: 4px 0 0 4px; margin-left: 0; }
+  .seg button:last-child { border-radius: 0 4px 4px 0; }
+  #weights label.slider > span { min-width: 7.2em; white-space: nowrap; }
+  #weights label.slider > span i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; }
+  #dotEq { overflow-x: auto; min-height: 2.6em; }
+</style>
+</head>
+<body data-lesson="61">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Linear value functions</h1>
+  <p class="lede">Describe each state by a few numbers, its <b>features</b>, and estimate its value as a weighted sum of them. A thousand table entries become four or five weights, and moving one weight reshapes the whole curve at once.</p>
+
+  <section class="card">
+    <div class="row">
+      <span class="muted">Features</span>
+      <span class="seg" id="sets"></span>
+    </div>
+    <canvas id="plot" aria-label="True value, linear estimate and feature contributions across the 1000 states. Click to pick a state."></canvas>
+    <div class="key">
+      <span><b style="border-top:3px solid var(--amber)"></b>true $v_\pi(s)$</span>
+      <span><b style="border-top:3px solid var(--accent)"></b>estimate $\hat v(s,\mathbf{w})$</span>
+      <span><b style="border-top:2px dashed #9ca3af"></b>each $w_i x_i(s)$</span>
+      <span><b style="height:8px;background:#e5e7eb"></b>$\mu(s)$, where time is spent</span>
+    </div>
+    <div id="weights"></div>
+    <div id="dotEq"></div>
+    <div class="stats">
+      <div class="stat"><span class="k">Value error $\overline{\text{VE}}$</span><span class="v" id="sVE">–</span></div>
+      <div class="stat"><span class="k">Best possible</span><span class="v" id="sBest">–</span></div>
+      <div class="stat"><span class="k">Weights vs table</span><span class="v" id="sCount">–</span></div>
+    </div>
+    <div class="row">
+      <button id="bFit" class="primary">Best fit</button>
+      <button id="bZero" class="quiet">Zero weights</button>
+    </div>
+    <p class="note">Drag the weight sliders to match the amber curve. Click the chart to pick the state used in the sum (terms with $x_i(s) = 0$ are left out).</p>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>Each state $s$ gets a <b>feature vector</b> $\mathbf{x}(s) = (x_1(s), \dots, x_d(s))^\top$. A linear method estimates</p>
+    $$\hat v(s, \mathbf{w}) = \mathbf{w}^\top \mathbf{x}(s) = \sum_{i=1}^{d} w_i\, x_i(s).$$
+    <p>The estimate is a weighted sum of features. The dashed curves are the terms $w_i x_i(s)$, and the green curve is their sum.</p>
+    <p>The gradient with respect to the weights is just the feature vector:</p>
+    $$\nabla_{\mathbf{w}}\, \hat v(s, \mathbf{w}) = \mathbf{x}(s).$$
+    <p>Raising $w_i$ by one raises the estimate of every state by $x_i(s)$. Lesson 62 uses this to learn $\mathbf{w}$.</p>
+    <p>With fewer weights than states, no $\mathbf{w}$ fits every state, so the fit must trade states off. S&amp;B §9.2 weights each state's squared error by $\mu(s)$, the fraction of time spent there under $\pi$:</p>
+    $$\overline{\text{VE}}(\mathbf{w}) = \sum_{s} \mu(s)\,\big[v_\pi(s) - \hat v(s, \mathbf{w})\big]^2.$$
+    <p>Errors in rarely visited states, like the ends of the walk, count for little. Here $\mu$ comes from the expected number of visits $\eta(s) = h(s) + \sum_{\bar s} \eta(\bar s)\, p(s \mid \bar s)$, where $h$ is the start distribution, normalised so $\mu(s) = \eta(s) / \sum_{s'} \eta(s')$.</p>
+    <p>$\overline{\text{VE}}$ is quadratic in $\mathbf{w}$, so its minimum is where the gradient is zero:</p>
+    $$\sum_s \mu(s)\,\big[v_\pi(s) - \mathbf{w}^\top \mathbf{x}(s)\big]\,\mathbf{x}(s) = \mathbf{0}
+      \;\Longleftrightarrow\;
+      \Big(\sum_s \mu(s)\,\mathbf{x}(s)\mathbf{x}(s)^\top\Big)\mathbf{w} = \sum_s \mu(s)\, v_\pi(s)\, \mathbf{x}(s).$$
+    <p>That is a $d \times d$ linear system, which "Best fit" solves. For state aggregation, $\mathbf{x}(s)$ is 1 for the state's group and 0 elsewhere, and the system splits into one equation per group $g$:</p>
+    $$w_g = \frac{\sum_{s \in g} \mu(s)\, v_\pi(s)}{\sum_{s \in g} \mu(s)}.$$
+    <p>Each group's best weight is the $\mu$-weighted average of the true values inside it.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const N = 1000, K = 100;
+
+  // ------------------------------------------------------------ the 1000-state walk (S&B Example 9.1)
+  // Jacobi sweeps with prefix sums, so each sweep is O(N).
+  function sweepSolve(update) {
+    let v = new Float64Array(N + 1), nv = new Float64Array(N + 1);
+    const P = new Float64Array(N + 1);
+    for (let it = 0; it < 3000; it++) {
+      for (let s = 1; s <= N; s++) P[s] = P[s - 1] + v[s];
+      let d = 0;
+      for (let s = 1; s <= N; s++) {
+        const lo = Math.max(1, s - K), hi = Math.min(N, s + K);
+        nv[s] = update(s, P[hi] - P[lo - 1] - v[s], lo, hi);
+        d = Math.max(d, Math.abs(nv[s] - v[s]));
+      }
+      [v, nv] = [nv, v];
+      if (d < 1e-9) break;
+    }
+    return v;
+  }
+  // v_pi: jumps off the left end pay -1, off the right end +1.
+  const vTrue = sweepSolve((s, inside, lo, hi) => (inside - (K - (s - lo)) + (K - (hi - s))) / (2 * K));
+  // eta: expected visits per episode, starting in state 500.
+  const eta = sweepSolve((s, inside) => (s === 500 ? 1 : 0) + inside / (2 * K));
+  const etaSum = eta.reduce((a, b) => a + b, 0);
+  const mu = Float64Array.from(eta, (e) => e / etaSum);
+
+  // ------------------------------------------------------------ feature sets
+  const z = (s) => (s - 500.5) / 499.5;                      // state scaled to [-1, 1]
+  const SETS = {
+    groups: {
+      name: '5 groups', range: 1.2, labels: ['1–200', '201–400', '401–600', '601–800', '801–1000'].map((r) => `$w_{\\text{${r}}}$`),
+      tex: ['x_1', 'x_2', 'x_3', 'x_4', 'x_5'],
+      x: (s) => [0, 1, 2, 3, 4].map((g) => (Math.floor((s - 1) / 200) === g ? 1 : 0)),
+    },
+    poly: {
+      name: 'Polynomial', range: 2, labels: ['$w_1$ · 1', '$w_2$ · z', '$w_3$ · z²', '$w_4$ · z³'],
+      tex: ['1', 'z', 'z^2', 'z^3'],
+      x: (s) => { const u = z(s); return [1, u, u * u, u * u * u]; },
+    },
+    bumps: {
+      name: 'Bumps', range: 2, labels: [100, 300, 500, 700, 900].map((c) => `$w$ at ${c}`),
+      tex: ['x_1', 'x_2', 'x_3', 'x_4', 'x_5'],
+      x: (s) => [100, 300, 500, 700, 900].map((c) => Math.exp(-((s - c) ** 2) / (2 * 120 ** 2))),
+    },
+  };
+  const PAL = [Course.colors.blue, Course.colors.purple, Course.colors.red, '#0891b2', '#65a30d'];
+  let set = 'groups', w = [], X = [], pick = 250, bestVE = 0;
+
+  const fmtVE = (e) => (e >= 0.001 ? e.toFixed(4) : e.toExponential(1).replace('e-', ' × 10⁻').replace(/⁻(\d)$/, (m, d) => '⁻' + '⁰¹²³⁴⁵⁶⁷⁸⁹'[d]));
+  const vhat = (s) => w.reduce((t, wi, i) => t + wi * X[s][i], 0);
+  function VE() { let e = 0; for (let s = 1; s <= N; s++) e += mu[s] * (vTrue[s] - vhat(s)) ** 2; return e; }
+
+  // Normal equations (sum mu x x^T) w = sum mu v x, by Gaussian elimination.
+  function bestFit() {
+    const d = X[1].length;
+    const A = Array.from({ length: d }, () => new Array(d + 1).fill(0));
+    for (let s = 1; s <= N; s++) {
+      const x = X[s];
+      for (let i = 0; i < d; i++) {
+        for (let j = 0; j < d; j++) A[i][j] += mu[s] * x[i] * x[j];
+        A[i][d] += mu[s] * vTrue[s] * x[i];
+      }
+    }
+    for (let c = 0; c < d; c++) {
+      let p = c;
+      for (let r = c + 1; r < d; r++) if (Math.abs(A[r][c]) > Math.abs(A[p][c])) p = r;
+      [A[c], A[p]] = [A[p], A[c]];
+      for (let r = 0; r < d; r++) {
+        if (r === c) continue;
+        const f = A[r][c] / A[c][c];
+        for (let k = c; k <= d; k++) A[r][k] -= f * A[c][k];
+      }
+    }
+    return A.map((row, i) => row[d] / row[i]);
+  }
+
+  function choose(name) {
+    set = name;
+    const F = SETS[set];
+    X = [null];
+    for (let s = 1; s <= N; s++) X.push(F.x(s));
+    w = new Array(X[1].length).fill(0);
+    const saved = w;
+    const best = bestFit();
+    w = best; bestVE = VE(); w = saved;
+    $('sets').innerHTML = Object.entries(SETS).map(([k, v]) => `<button class="${k === set ? 'on' : ''}" data-k="${k}">${v.name}</button>`).join('');
+    $('weights').innerHTML = F.labels.map((lab, i) =>
+      `<label class="slider"><span><i style="background:${PAL[i]}"></i>${lab}</span><input type="range" min="${-F.range}" max="${F.range}" step="0.01" value="0" data-i="${i}"><output></output></label>`).join('');
+    Course.renderMath($('weights'));
+    $('weights').querySelectorAll('input').forEach((inp) => {
+      Course.slider(inp, (v) => v.toFixed(2), (v) => { w[+inp.dataset.i] = v; draw(); });
+    });
+    $('sBest').textContent = fmtVE(bestVE);
+    $('sCount').textContent = `${w.length} vs ${N}`;
+    draw();
+  }
+
+  function setWeights(nw) {
+    const F = SETS[set];
+    w = nw.map((x) => Math.max(-F.range, Math.min(F.range, x)));
+    $('weights').querySelectorAll('input').forEach((inp, i) => {
+      inp.value = w[i];
+      inp.parentElement.querySelector('output').textContent = w[i].toFixed(2);
+    });
+    draw();
+  }
+
+  // ------------------------------------------------------------ drawing
+  const canvas = $('plot'), ctx = canvas.getContext('2d');
+  const YMAX = 1.3;
+  let geom = null;
+  function draw() {
+    const dpr = window.devicePixelRatio || 1;
+    const W = canvas.clientWidth, H = canvas.clientHeight;
+    if (!W) return;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    const m = { l: 34, r: 8, t: 8, b: 30 };
+    const Xp = (s) => m.l + ((s - 1) / (N - 1)) * (W - m.l - m.r);
+    const Y = (v) => m.t + ((YMAX - v) / (2 * YMAX)) * (H - m.t - m.b);
+    geom = { m, W };
+    ctx.font = '11px -apple-system, sans-serif';
+
+    // mu as a shaded band along the bottom
+    const muMax = Math.max(...mu.filter((_, s) => s !== 500));   // state 500 has a spike: every episode starts there
+    ctx.fillStyle = 'rgba(156,163,175,0.25)';
+    ctx.beginPath(); ctx.moveTo(Xp(1), H - m.b);
+    for (let s = 1; s <= N; s += 2) ctx.lineTo(Xp(s), H - m.b - (mu[s] / muMax) * 70);
+    ctx.lineTo(Xp(N), H - m.b); ctx.closePath(); ctx.fill();
+
+    ctx.fillStyle = '#6b7280'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    [-1, -0.5, 0, 0.5, 1].forEach((v) => {
+      ctx.strokeStyle = v === 0 ? '#9ca3af' : '#eef0f3'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(m.l, Y(v)); ctx.lineTo(W - m.r, Y(v)); ctx.stroke();
+      ctx.fillText(v, m.l - 6, Y(v));
+    });
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    [1, 250, 500, 750, 1000].forEach((s) => ctx.fillText(s, Math.min(W - m.r - 12, Math.max(m.l + 4, Xp(s))), H - m.b + 6));
+    ctx.fillText('state s', (m.l + W) / 2, H - 13);
+
+    ctx.save(); ctx.beginPath(); ctx.rect(m.l, m.t, W - m.l - m.r, H - m.t - m.b); ctx.clip();
+    const line = (f, color, width, dash = []) => {
+      ctx.strokeStyle = color; ctx.lineWidth = width; ctx.setLineDash(dash); ctx.beginPath();
+      for (let s = 1; s <= N; s += 3) (s === 1 ? ctx.moveTo : ctx.lineTo).call(ctx, Xp(s), Y(f(s)));
+      ctx.lineTo(Xp(N), Y(f(N))); ctx.stroke(); ctx.setLineDash([]);
+    };
+    w.forEach((wi, i) => line((s) => wi * X[s][i], PAL[i], 1.5, [5, 4]));
+    line((s) => vTrue[s], Course.colors.amber, 2.5);
+    line(vhat, Course.colors.green, 3);
+    // picked state
+    ctx.strokeStyle = '#374151'; ctx.lineWidth = 1; ctx.setLineDash([2, 3]);
+    ctx.beginPath(); ctx.moveTo(Xp(pick), m.t); ctx.lineTo(Xp(pick), H - m.b); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = Course.colors.green; ctx.beginPath(); ctx.arc(Xp(pick), Y(vhat(pick)), 4.5, 0, 2 * Math.PI); ctx.fill();
+    ctx.restore();
+
+    const ve = VE();
+    $('sVE').textContent = fmtVE(ve);
+    $('sVE').className = 'v' + (ve < bestVE * 1.05 + 1e-4 ? ' good' : '');
+    const F = SETS[set], x = X[pick];
+    const par = (v) => (v < 0 ? `(${v.toFixed(2)})` : v.toFixed(2));
+    const terms = w.map((wi, i) => (Math.abs(x[i]) < 0.005 ? null : `${par(wi)}\\cdot${par(x[i])}`)).filter(Boolean).join(' + ');
+    Course.tex($('dotEq'), `\\begin{aligned}\\hat v(${pick}, \\mathbf{w}) &= ${terms} \\\\ &= ${vhat(pick).toFixed(3)} \\\\ v_\\pi(${pick}) &= ${vTrue[pick].toFixed(3)}\\end{aligned}`, true);
+  }
+
+  function pickAt(e) {
+    if (!geom) return;
+    const r = canvas.getBoundingClientRect();
+    const f = (e.clientX - r.left - geom.m.l) / (r.width - geom.m.l - geom.m.r);
+    pick = Math.max(1, Math.min(N, Math.round(1 + f * (N - 1))));
+    draw();
+  }
+  canvas.addEventListener('pointerdown', (e) => { canvas.setPointerCapture(e.pointerId); pickAt(e); });
+  canvas.addEventListener('pointermove', (e) => { if (e.buttons) pickAt(e); });
+
+  $('sets').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) choose(b.dataset.k); });
+  $('bFit').addEventListener('click', () => setWeights(bestFit()));
+  $('bZero').addEventListener('click', () => setWeights(w.map(() => 0)));
+  new ResizeObserver(draw).observe(canvas);
+  choose('groups');
+
+  // ------------------------------------------------------------ quiz
+  const qw = [0.5, -1, 2], qx = [1, 0.3, 0.1];
+  Course.quiz([
+    {
+      q: '$\\mathbf{w} = (0.5, -1, 2)$ and $\\mathbf{x}(s) = (1, 0.3, 0.1)$. What is $\\hat v(s, \\mathbf{w})$?',
+      answer: qw.reduce((t, wi, i) => t + wi * qx[i], 0),
+      tol: 1e-6,
+      explain: '$0.5 \\cdot 1 - 1 \\cdot 0.3 + 2 \\cdot 0.1 = 0.5 - 0.3 + 0.2 = 0.4$.',
+    },
+    {
+      q: 'Polynomial features $\\mathbf{x}(s) = (1, z, z^2, z^3)$ at a state with $z = 0.5$. If $w_3$ goes up by 1, by how much does $\\hat v(s, \\mathbf{w})$ go up?',
+      answer: 0.25,
+      tol: 1e-6,
+      hint: 'The gradient of $\\hat v$ with respect to $\\mathbf{w}$ is $\\mathbf{x}(s)$.',
+      explain: '$\\partial \\hat v / \\partial w_3 = x_3(s) = z^2 = 0.25$.',
+    },
+    {
+      q: 'Two states with $\\mu = (0.75, 0.25)$, true values $(1, -1)$ and estimates $(0.6, 0)$. What is $\\overline{\\text{VE}}$?',
+      answer: 0.75 * 0.4 ** 2 + 0.25 * 1 ** 2,
+      tol: 1e-6,
+      explain: '$0.75 \\times 0.4^2 + 0.25 \\times 1^2 = 0.12 + 0.25 = 0.37$.',
+    },
+    {
+      q: 'With state aggregation, what weight minimises $\\overline{\\text{VE}}$ for a group?',
+      choices: [
+        'The true value at the centre of the group',
+        'The $\\mu$-weighted average of $v_\\pi$ over the states in the group',
+        'The largest true value in the group',
+      ],
+      answer: 1,
+      explain: 'Setting $\\partial \\overline{\\text{VE}} / \\partial w_g = 0$ gives $w_g = \\sum_{s \\in g} \\mu(s) v_\\pi(s) / \\sum_{s \\in g} \\mu(s)$.',
+    },
+  ]);
+</script>
+</body>
+</html>

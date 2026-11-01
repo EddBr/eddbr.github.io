@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>75. Actors and critics | Learning RL</title>
+<meta name="description" content="One part of the agent acts, another scores each move the moment it happens. The critic's TD error replaces the wait for the full return.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .roles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 6px 0 10px; }
+  .role { border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; font-size: 0.88rem; color: var(--body); background: var(--soft); }
+  .role b { display: block; color: var(--heading); }
+  .cell .val { position: absolute; bottom: -18px; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .world { margin-bottom: 26px; }
+  .verdict { text-align: center; min-height: 2.6em; margin: 6px 0; line-height: 1.8; }
+  .logwrap { max-height: 230px; overflow-y: auto; margin-top: 8px; }
+  td.wait { color: var(--muted); font-style: italic; }
+  td.pos { color: #047857; font-weight: 600; }
+  td.neg { color: var(--red); font-weight: 600; }
+  #hist { width: 100%; height: 220px; display: block; margin: 8px 0; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.8rem; color: var(--muted); justify-content: center; }
+  .legend > span::before { content: ""; display: inline-block; width: 12px; height: 10px; vertical-align: middle; margin-right: 5px; background: rgba(156,163,175,0.6); }
+  .legend > .td::before { background: rgba(5,150,105,0.65); }
+  @media (max-width: 560px) { .roles { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body data-lesson="75">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Actors and critics</h1>
+  <p class="lede">REINFORCE judges an action by the return that followed it, so it must wait for the episode to end, and that return carries the noise of every later step. An actor-critic agent splits in two: the <b>actor</b> is the policy, and the <b>critic</b> is a value function that scores each move as soon as it happens, using the TD error from Lesson 46.</p>
+
+  <section class="card">
+    <h2>You act, the critic scores</h2>
+    <div class="roles">
+      <div class="role"><b>🎭 Actor: $\pi(a \mid s, \boldsymbol\theta)$</b>Picks the moves. Here that is you, or the actor's usual habit.</div>
+      <div class="role"><b>🧐 Critic: $\hat v(s, \mathbf w)$</b>Knows how well the usual habit does from each cell (numbers under the cells). Scores each move with $\delta$.</div>
+    </div>
+    <p class="note">Lesson 1's corridor with a slippery floor: each move goes the wrong way with probability 0.2. Reward $-1$ per step, $\gamma = 1$, the flag ends the episode. The critic is perfect: $\hat v = v_\pi$ for the habit below.</p>
+    <label class="slider"><span>Habit $\pi(\rightarrow)$</span><input id="p" type="range" min="0.3" max="0.95" step="0.05" value="0.6"><output></output></label>
+    <div class="world" id="world"></div>
+    <div class="row center">
+      <button id="bL">← Left</button>
+      <button id="bR">Right →</button>
+      <button id="bA" class="primary">Actor's move</button>
+      <button id="bNew" class="quiet">New episode</button>
+    </div>
+    <div class="verdict" id="verdict"></div>
+    <div class="logwrap">
+      <table class="data">
+        <thead><tr><th>$t$</th><th>$S_t$</th><th>$A_t$</th><th>$S_{t+1}$</th><th>critic: $\delta_t$</th><th>Monte Carlo: $G_t - \hat v(S_t)$</th></tr></thead>
+        <tbody id="log"></tbody>
+      </table>
+    </div>
+    <p class="note" id="sum">The critic's column fills in at once. The Monte Carlo column has to wait for the flag.</p>
+
+    <div class="sub">
+      <h2>Two scores for the same move</h2>
+      <p class="note">Take one move from one cell, then follow the habit to the flag. Repeat 2000 times and compare the spread of the two scores.</p>
+      <div class="row">
+        <label class="muted">Cell <select id="sCell"><option>0</option><option>1</option><option selected>2</option><option>3</option><option>4</option></select></label>
+        <label class="muted">Move <select id="sAct"><option value="1">→</option><option value="0">←</option></select></label>
+        <button id="bHist">Sample 2000</button>
+      </div>
+      <canvas id="hist"></canvas>
+      <div class="legend"><span>$G_t - \hat v(S_t)$</span><span class="td">$\delta_t$</span></div>
+      <div class="stats" id="hstats"></div>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>REINFORCE with baseline (Lesson 74) scores action $A_t$ with $G_t - \hat v(S_t, \mathbf w)$. An actor-critic replaces the full return $G_t$ with the one-step return $R_{t+1} + \gamma \hat v(S_{t+1}, \mathbf w)$. The score becomes the <b>TD error</b>:</p>
+    $$\delta_t = R_{t+1} + \gamma\, \hat v(S_{t+1}, \mathbf w) - \hat v(S_t, \mathbf w)$$
+    <p>Positive means the move went better than the critic expected from $S_t$. Negative means worse. It is known one step after the move. Here $\hat v(\text{flag}) = 0$.</p>
+    <p>Using $\hat v$ inside the target is <b>bootstrapping</b> (Lesson 45). S&amp;B §13.5 reserves the name "critic" for a value function used this way. In REINFORCE with baseline, $\hat v$ only shifts the score, so it is a baseline, not a critic.</p>
+    <p><b>The scores add up.</b> With $\gamma = 1$, the critic's scores from $t$ to the end telescope to the Monte Carlo score:</p>
+    $$\begin{aligned}
+      \sum_{k=t}^{T-1} \delta_k &= \sum_{k=t}^{T-1} \big(R_{k+1} + \hat v(S_{k+1}) - \hat v(S_k)\big) \\
+      &= G_t + \hat v(S_T) - \hat v(S_t) = G_t - \hat v(S_t)
+    \end{aligned}$$
+    <p>The $\hat v$ terms cancel in pairs and $\hat v(S_T) = 0$ at the flag. The table checks this when an episode ends. With $\gamma &lt; 1$ the same holds with weights $\gamma^{k-t}$.</p>
+    <p><b>Same mean, less noise.</b> If the critic is exact, $\hat v = v_\pi$, then</p>
+    $$\mathbb{E}_\pi[\delta_t \mid S_t = s, A_t = a] = \mathbb{E}\big[R_{t+1} + \gamma v_\pi(S_{t+1}) \mid s, a\big] - v_\pi(s) = q_\pi(s,a) - v_\pi(s)$$
+    <p>and $\mathbb{E}_\pi[G_t - v_\pi(S_t) \mid s, a]$ is the same quantity. But $\delta_t$ depends on one random transition, while $G_t$ depends on every later action and slip. The histogram shows the difference. The price: a wrong critic makes $\delta_t$ biased, whereas $G_t$ never is.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const C = Course.colors;
+
+  // ------------------------------------------------------------ slippery corridor (Lessons 75–78)
+  const GOAL = 5, SLIP = 0.2;
+  const clamp = (x) => Math.max(0, Math.min(GOAL, x));
+  const outcomes = (s, a) => { const d = a ? 1 : -1; return [[clamp(s + d), 1 - SLIP], [clamp(s - d), SLIP]]; };
+  const stepEnv = (s, a) => clamp(s + (a ? 1 : -1) * (Math.random() < SLIP ? -1 : 1));
+  // v_π for π(→|s) = pR[s]: solve v(s) = Σ_a π(a|s) Σ_s' p(s'|s,a)(−1 + v(s')), v(flag) = 0.
+  function evaluate(pR) {
+    const n = GOAL, M = Array.from({ length: n }, (_, i) => { const r = new Array(n + 1).fill(0); r[i] = 1; r[n] = -1; return r; });
+    for (let s = 0; s < n; s++) for (const a of [0, 1]) {
+      const pa = a ? pR[s] : 1 - pR[s];
+      for (const [s2, pp] of outcomes(s, a)) if (s2 !== GOAL) M[s][s2] -= pa * pp;
+    }
+    for (let i = 0; i < n; i++) {
+      let piv = i; for (let r = i + 1; r < n; r++) if (Math.abs(M[r][i]) > Math.abs(M[piv][i])) piv = r;
+      [M[i], M[piv]] = [M[piv], M[i]];
+      for (let r = 0; r < n; r++) if (r !== i) { const f = M[r][i] / M[i][i]; for (let c = i; c <= n; c++) M[r][c] -= f * M[i][c]; }
+    }
+    const v = M.map((r, i) => r[n] / r[i]); v.push(0); return v;
+  }
+
+  const pSl = Course.slider('#p', (v) => v.toFixed(2), () => { V = evaluate(new Array(GOAL).fill(pSl())); newEpisode(); });
+  let V = evaluate(new Array(GOAL).fill(pSl()));
+  let s, t, rows, done;
+
+  function drawWorld() {
+    $('world').innerHTML = Array.from({ length: GOAL + 1 }, (_, i) =>
+      `<div class="cell${i === s ? ' here' : ''}">${i === s ? '🤖' : i === GOAL ? '🏁' : ''}<small>${i}</small><span class="val">${i === GOAL ? '0' : V[i].toFixed(1)}</span></div>`).join('');
+    $('bL').disabled = $('bR').disabled = $('bA').disabled = done;
+  }
+  function drawLog() {
+    $('log').innerHTML = rows.map((r) => {
+      const mc = r.mc === null ? '<td class="wait">waiting…</td>' : `<td class="${r.mc >= 0 ? 'pos' : 'neg'}">${r.mc.toFixed(2)}</td>`;
+      return `<tr><td>${r.t}</td><td>${r.s}</td><td>${r.a ? '→' : '←'}</td><td>${r.s2}${r.s2 !== r.s + (r.a ? 1 : -1) && r.s2 !== r.s ? ' (slip)' : r.s2 === r.s ? ' (wall)' : ''}</td><td class="${r.d >= 0 ? 'pos' : 'neg'}">${r.d.toFixed(2)}</td>${mc}</tr>`;
+    }).join('');
+    $('log').closest('.logwrap').scrollTop = 1e9;
+  }
+
+  function act(a) {
+    if (done) return;
+    const s2 = stepEnv(s, a), R = -1, d = R + V[s2] - V[s];
+    rows.push({ t, s, a, s2, d, mc: null });
+    Course.tex($('verdict'), `\\delta_{${t}} = R + \\hat v(${s2}) - \\hat v(${s}) = -1 + (${V[s2].toFixed(2)}) - (${V[s].toFixed(2)}) = ${d.toFixed(2)} \\quad \\text{${d >= 0 ? 'better than usual' : 'worse than usual'}}`);
+    s = s2; t++;
+    if (s === GOAL) {
+      done = true;
+      const T = rows.length;
+      rows.forEach((r, k) => { r.mc = -(T - k) - V[r.s]; });
+      const sumD = rows.reduce((x, r) => x + r.d, 0);
+      $('sum').innerHTML = `Flag reached in ${T} steps. Sum of all $\\delta_t$ = ${sumD.toFixed(2)}, and $G_0 - \\hat v(S_0) = ${-T} - (${V[0].toFixed(2)}) = ${rows[0].mc.toFixed(2)}$. They match.`;
+      Course.renderMath($('sum'));
+    }
+    drawWorld(); drawLog();
+  }
+  function newEpisode() {
+    s = 0; t = 0; rows = []; done = false;
+    $('verdict').textContent = 'Make a move.';
+    $('sum').textContent = 'The critic\'s column fills in at once. The Monte Carlo column has to wait for the flag.';
+    drawWorld(); drawLog();
+  }
+  $('bL').addEventListener('click', () => act(0));
+  $('bR').addEventListener('click', () => act(1));
+  $('bA').addEventListener('click', () => act(Math.random() < pSl() ? 1 : 0));
+  $('bNew').addEventListener('click', newEpisode);
+  newEpisode();
+
+  // ------------------------------------------------------------ histogram
+  const hc = $('hist'), hx = hc.getContext('2d');
+  let hdata = null;
+  function sampleScores() {
+    const s0 = +$('sCell').value, a0 = +$('sAct').value, p = pSl(), mc = [], td = [];
+    for (let i = 0; i < 2000; i++) {
+      let st = stepEnv(s0, a0), T = 1;
+      td.push(-1 + V[st] - V[s0]);
+      while (st !== GOAL && T < 2000) { st = stepEnv(st, Math.random() < p ? 1 : 0); T++; }
+      mc.push(-T - V[s0]);
+    }
+    const q = outcomes(s0, a0).reduce((x, [s2, pp]) => x + pp * (-1 + V[s2]), 0);
+    hdata = { mc, td, A: q - V[s0] };
+    drawHist();
+  }
+  function drawHist() {
+    const dpr = window.devicePixelRatio || 1, W = hc.clientWidth, H = hc.clientHeight;
+    hc.width = W * dpr; hc.height = H * dpr; hx.setTransform(dpr, 0, 0, dpr, 0, 0); hx.clearRect(0, 0, W, H);
+    if (!hdata) {
+      hx.fillStyle = '#9ca3af'; hx.font = '13px -apple-system, sans-serif'; hx.textAlign = 'center';
+      hx.fillText('Press "Sample 2000".', W / 2, H / 2); return;
+    }
+    const LO = -25, HI = 15, BW = 1, nb = (HI - LO) / BW, m = { l: 10, r: 10, t: 10, b: 24 };
+    const bin = (xs) => { const c = new Array(nb).fill(0); xs.forEach((x) => { c[Math.max(0, Math.min(nb - 1, Math.floor((x - LO) / BW)))]++; }); return c; };
+    const cm = bin(hdata.mc), ct = bin(hdata.td), top = Math.max(...cm, ...ct);
+    const X = (x) => m.l + ((x - LO) / (HI - LO)) * (W - m.l - m.r), Hh = (c) => (c / top) * (H - m.t - m.b);
+    const bw = (W - m.l - m.r) / nb;
+    cm.forEach((c, i) => { hx.fillStyle = 'rgba(156,163,175,0.6)'; hx.fillRect(m.l + i * bw, H - m.b - Hh(c), bw - 1, Hh(c)); });
+    ct.forEach((c, i) => { hx.fillStyle = 'rgba(5,150,105,0.65)'; hx.fillRect(m.l + i * bw + bw * 0.2, H - m.b - Hh(c), bw * 0.6, Hh(c)); });
+    hx.strokeStyle = C.amber; hx.setLineDash([4, 3]); hx.lineWidth = 2;
+    hx.beginPath(); hx.moveTo(X(hdata.A), m.t); hx.lineTo(X(hdata.A), H - m.b); hx.stroke(); hx.setLineDash([]);
+    hx.fillStyle = '#6b7280'; hx.font = '11px -apple-system, sans-serif'; hx.textAlign = 'center';
+    for (let x = -25; x <= 15; x += 5) hx.fillText(x === -25 ? '≤ −25' : x, X(x), H - 8);
+    hx.fillStyle = C.amber; hx.textAlign = 'left'; hx.fillText('true q − v', X(hdata.A) + 4, m.t + 10);
+    const stat = (xs) => { const mu = xs.reduce((a, b) => a + b, 0) / xs.length; const sd = Math.sqrt(xs.reduce((a, b) => a + (b - mu) * (b - mu), 0) / xs.length); return [mu, sd]; };
+    const [m1, s1] = stat(hdata.mc), [m2, s2] = stat(hdata.td);
+    $('hstats').innerHTML = `<div class="stat"><span class="k">true $q_\\pi - v_\\pi$</span><span class="v">${hdata.A.toFixed(2)}</span></div>
+      <div class="stat"><span class="k">Monte Carlo: mean, sd</span><span class="v">${m1.toFixed(2)}, ${s1.toFixed(1)}</span></div>
+      <div class="stat"><span class="k">critic $\\delta$: mean, sd</span><span class="v">${m2.toFixed(2)}, ${s2.toFixed(1)}</span></div>`;
+    Course.renderMath($('hstats'));
+  }
+  $('bHist').addEventListener('click', sampleScores);
+  new ResizeObserver(drawHist).observe(hc);
+
+  Course.quiz([
+    {
+      q: 'The critic has $\\hat v(S_t) = -10$ and $\\hat v(S_{t+1}) = -8$. The reward is $-1$ and $\\gamma = 1$. What is $\\delta_t$?',
+      answer: 1,
+      tol: 0.001,
+      explain: '$-1 + (-8) - (-10) = 1$. The move did better than the critic expected.',
+    },
+    {
+      q: 'An episode of three steps ($\\gamma = 1$) has TD errors $0.5$, $-1$ and $2$. What is $G_0 - \\hat v(S_0)$?',
+      answer: 1.5,
+      tol: 0.001,
+      hint: 'The TD errors telescope.',
+      explain: '$0.5 - 1 + 2 = 1.5$. The sum of the critic\'s scores equals the Monte Carlo score.',
+    },
+    {
+      q: 'In the histogram, why is the spread of $\\delta_t$ so much smaller than that of $G_t - \\hat v(S_t)$?',
+      choices: [
+        'The critic averages over many episodes before scoring',
+        '$\\delta_t$ depends on a single random step, $G_t$ on every later step',
+        'The TD error ignores the reward',
+      ],
+      answer: 1,
+      explain: 'All the randomness after $S_{t+1}$ is replaced by the critic\'s estimate $\\hat v(S_{t+1})$.',
+    },
+    {
+      q: 'Which statement is true of REINFORCE with baseline?',
+      choices: [
+        'It is an actor-critic method, because it learns $\\hat v$',
+        'Its $\\hat v$ is only a baseline: it never bootstraps, so it is not a critic',
+        'It cannot learn $\\hat v$ at all',
+      ],
+      answer: 1,
+      explain: 'S&B §13.5: a critic is a value function used to bootstrap. REINFORCE with baseline still waits for $G_t$.',
+    },
+  ]);
+</script>
+</body>
+</html>

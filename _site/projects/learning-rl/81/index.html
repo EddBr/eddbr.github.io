@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>81. KL divergence | Learning RL</title>
+<meta name="description" content="Drag two distributions and watch the KL divergence between them: never negative, zero only when they match, and not symmetric.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .dlabel { font-size: 0.85rem; color: var(--muted); margin: 10px 0 0; }
+  .dist { display: flex; gap: 6px; height: 110px; touch-action: none; cursor: ns-resize; user-select: none; border-bottom: 1px solid #9ca3af; }
+  .dist .col { flex: 1; position: relative; background: var(--soft); border-radius: 3px 3px 0 0; }
+  .dist .fill { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 3px 3px 0 0; }
+  .dist.p .fill { background: var(--accent); }
+  .dist.q .fill { background: var(--blue); }
+  .dist .lab { position: absolute; left: 0; right: 0; top: 2px; text-align: center; font-size: 0.75rem; color: var(--heading); font-variant-numeric: tabular-nums; }
+  .contrib { position: relative; display: flex; gap: 6px; height: 90px; }
+  .contrib .col { flex: 1; position: relative; }
+  .contrib .fill { position: absolute; left: 10%; right: 10%; }
+  .contrib .zero { position: absolute; left: 0; right: 0; top: 50%; border-top: 1px solid #9ca3af; }
+  .contrib .lab { position: absolute; left: 0; right: 0; text-align: center; font-size: 0.72rem; color: var(--heading); font-variant-numeric: tabular-nums; }
+  .xs { display: flex; gap: 6px; font-size: 0.75rem; color: var(--muted); }
+  .xs span { flex: 1; text-align: center; }
+  #eqKL { overflow-x: auto; min-height: 3em; }
+</style>
+</head>
+<body data-lesson="81">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>KL divergence</h1>
+  <p class="lede">Lesson 80 needed a way to say how far apart two policies are. The Kullback–Leibler divergence is that measure: the average extra surprise from using $q$ when outcomes really follow $p$. It is never negative, it is zero only when $p = q$, and swapping $p$ and $q$ changes it.</p>
+
+  <section class="card">
+    <h2>Drag the bars</h2>
+    <p class="note">Five outcomes, say five actions. Drag up or down on either row to reshape it; each row is rescaled to sum to 1.</p>
+    <p class="dlabel"><b class="good">$p$</b>, the distribution the outcomes really come from</p>
+    <div class="dist p" id="dp"></div>
+    <p class="dlabel"><b style="color:var(--blue)">$q$</b>, the distribution being compared with it</p>
+    <div class="dist q" id="dq"></div>
+    <div class="xs"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>
+    <p class="dlabel">Terms $p_i \log(p_i / q_i)$ of $D_{\mathrm{KL}}(p \,\|\, q)$. Some are negative; the total never is.</p>
+    <div class="contrib" id="dc"></div>
+    <div class="stats">
+      <div class="stat"><span class="k">$D_{\mathrm{KL}}(p \,\|\, q)$</span><span class="v" id="sPQ">–</span></div>
+      <div class="stat"><span class="k">$D_{\mathrm{KL}}(q \,\|\, p)$</span><span class="v" id="sQP">–</span></div>
+    </div>
+    <div id="eqKL"></div>
+    <div class="row">
+      <button id="bSame">Make them equal</button>
+      <button id="bShift">Shift $q$ right</button>
+      <button id="bMiss">$q$ misses outcome 5</button>
+      <span class="spacer"></span>
+      <button id="bRand" class="quiet">Random</button>
+    </div>
+
+    <div class="sub">
+      <h2>KL from samples</h2>
+      <p class="note">KL is an average under $p$, so it can be estimated without summing over every outcome: sample $x \sim p$ and average $\log p(x) / q(x)$. Language models (Lesson 88) have far too many outcomes to sum, so this is how they do it.</p>
+      <div class="row">
+        <button id="bSample">Draw 50 samples from $p$</button>
+        <button id="bClear" class="quiet">Clear</button>
+      </div>
+      <canvas class="chart" id="mc" style="height:200px" hidden></canvas>
+      <p class="status" id="mcStatus"></p>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>For distributions $p$ and $q$ over the same outcomes,</p>
+    $$\begin{aligned} D_{\mathrm{KL}}(p \,\|\, q) &= \sum_x p(x) \log \frac{p(x)}{q(x)} \\ &= \mathbb{E}_{x \sim p}\!\left[\log \frac{p(x)}{q(x)}\right] \end{aligned}$$
+    <p>It is the average, over outcomes drawn from $p$, of how much more likely $p$ found them than $q$ did. With the natural log the unit is nats. Terms with $p(x) = 0$ count as 0.</p>
+    <p><b>Never negative (Gibbs' inequality).</b> $\log$ is concave, so Jensen's inequality $\mathbb{E}[\log Z] \le \log \mathbb{E}[Z]$ gives</p>
+    $$\begin{aligned} -D_{\mathrm{KL}}(p \,\|\, q) &= \mathbb{E}_{p}\!\left[\log \frac{q(x)}{p(x)}\right] \le \log \mathbb{E}_{p}\!\left[\frac{q(x)}{p(x)}\right] \\ &= \log \sum_{x:\,p(x)>0} q(x) \le \log 1 = 0 \end{aligned}$$
+    <p>Equality needs $q(x)/p(x)$ to be constant, so $D_{\mathrm{KL}} = 0$ exactly when $p = q$.</p>
+    <p><b>Not symmetric.</b> In general $D_{\mathrm{KL}}(p \,\|\, q) \ne D_{\mathrm{KL}}(q \,\|\, p)$, so it is not a distance in the strict sense. If $q(x) = 0$ where $p(x) &gt; 0$, the term $p(x) \log(p(x)/0)$ is infinite: $q$ calls impossible something that happens.</p>
+    <p><b>Small changes.</b> Let $q = p + \Delta$ with $\sum_x \Delta(x) = 0$. Using $\log(1+u) \approx u - u^2/2$,</p>
+    $$\begin{aligned} D_{\mathrm{KL}}(p \,\|\, p + \Delta) &= -\sum_x p(x)\log\!\Big(1 + \frac{\Delta(x)}{p(x)}\Big) \\ &\approx -\sum_x \Delta(x) + \frac12\sum_x \frac{\Delta(x)^2}{p(x)} = \frac12 \sum_x \frac{\Delta(x)^2}{p(x)} \end{aligned}$$
+    <p>Nearby, KL is a squared distance where each change is divided by the probability it changes. Moving an outcome from $0.01$ to $0.02$ costs far more than moving one from $0.50$ to $0.51$. That is the policy-space distance Lesson 80 asked for. For policies it is applied state by state: $D_{\mathrm{KL}}\big(\pi_{\text{old}}(\cdot \mid s) \,\|\, \pi_{\text{new}}(\cdot \mid s)\big)$, and TRPO bounds its average over visited states.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const K = 5;
+  let wp = [0.2, 0.5, 0.9, 0.5, 0.2], wq = [0.6, 0.8, 0.5, 0.25, 0.1];
+  const norm = (w) => { const s = w.reduce((a, b) => a + b, 0); return w.map((x) => x / s); };
+  const kl = (p, q) => p.reduce((s, pi, i) => (pi === 0 ? s : s + pi * Math.log(pi / q[i])), 0);
+  const show = (x) => (isFinite(x) ? x.toFixed(3) : '∞');
+
+  function build(el) {
+    el.innerHTML = Array.from({ length: K }, () => '<div class="col"><div class="fill"></div><span class="lab"></span></div>').join('');
+  }
+  build($('dp')); build($('dq'));
+  $('dc').innerHTML = '<div class="zero"></div>' + Array.from({ length: K }, () => '<div class="col"><div class="fill"></div><span class="lab"></span></div>').join('');
+
+  function drag(el, w) {
+    const set = (e) => {
+      const r = el.getBoundingClientRect();
+      const i = Math.max(0, Math.min(K - 1, Math.floor(((e.clientX - r.left) / r.width) * K)));
+      const v = Math.max(0, Math.min(1, (r.bottom - e.clientY) / r.height));
+      w[i] = v < 0.03 ? 0 : v;
+      if (w.every((x) => x === 0)) w[i] = 0.03;
+      draw();
+    };
+    el.addEventListener('pointerdown', (e) => { el.setPointerCapture(e.pointerId); set(e); });
+    el.addEventListener('pointermove', (e) => { if (el.hasPointerCapture(e.pointerId)) set(e); });
+  }
+  drag($('dp'), wp); drag($('dq'), wq);
+
+  function paintDist(el, w, p) {
+    [...el.children].forEach((col, i) => {
+      col.firstChild.style.height = `${82 * w[i]}%`;
+      col.lastChild.textContent = p[i].toFixed(2);
+    });
+  }
+
+  function draw() {
+    const p = norm(wp), q = norm(wq);
+    paintDist($('dp'), wp, p); paintDist($('dq'), wq, q);
+    const terms = p.map((pi, i) => (pi === 0 ? 0 : pi * Math.log(pi / q[i])));
+    const M = Math.max(0.3, ...terms.filter(isFinite).map(Math.abs));
+    [...$('dc').querySelectorAll('.col')].forEach((col, i) => {
+      const t = terms[i], f = col.firstChild, lab = col.lastChild;
+      const h = isFinite(t) ? (50 * Math.abs(t)) / M : 50;
+      f.style.background = t >= 0 ? Course.colors.green : Course.colors.red;
+      f.style.top = t >= 0 ? `${50 - h}%` : '50%';
+      f.style.height = `${h}%`;
+      lab.textContent = show(t);
+      lab.style.top = t >= 0 ? '52%' : `calc(50% - 1.2em)`;
+    });
+    const pq = kl(p, q), qp = kl(q, p);
+    $('sPQ').textContent = show(pq);
+    $('sQP').textContent = show(qp);
+    const parts = p.map((pi, i) => (pi === 0 ? null : `${pi.toFixed(2)}\\log\\tfrac{${pi.toFixed(2)}}{${q[i].toFixed(2)}}`)).filter(Boolean);
+    Course.tex($('eqKL'), `D_{\\mathrm{KL}}(p\\,\\|\\,q) = ${parts.join(' + ')} = ${isFinite(pq) ? pq.toFixed(3) : '\\infty'}`, true);
+  }
+
+  const setW = (w, xs) => xs.forEach((x, i) => { w[i] = x; });
+  $('bSame').addEventListener('click', () => { setW(wq, wp.slice()); draw(); });
+  $('bShift').addEventListener('click', () => { setW(wq, [wp[4] * 0.3 + 0.02, ...wp.slice(0, 4)]); draw(); });
+  $('bMiss').addEventListener('click', () => { if (!wp[4]) wp[4] = 0.2; wq[4] = 0; if (wq.every((x) => !x)) wq[0] = 0.5; draw(); });
+  $('bRand').addEventListener('click', () => { setW(wp, wp.map(() => 0.1 + 0.9 * Math.random())); setW(wq, wq.map(() => 0.1 + 0.9 * Math.random())); draw(); });
+  draw();
+
+  // Monte Carlo estimate of KL(p||q).
+  let samples = [];
+  const mc = Course.lineChart($('mc'), { xLabel: 'samples', yLabel: 'estimate (nats)' });
+  function drawMC() {
+    const p = norm(wp), q = norm(wq), truth = kl(p, q);
+    if (!samples.length) { $('mc').hidden = true; $('mcStatus').textContent = ''; return; }
+    $('mc').hidden = false;
+    let s = 0;
+    const run = samples.map((x, i) => { s += Math.log(p[x] / q[x]); return [i + 1, s / (i + 1)]; });
+    const one = samples.map((x, i) => [i + 1, Math.log(p[x] / q[x])]);
+    if (!isFinite(truth)) {
+      $('mcStatus').textContent = 'q gives probability 0 to an outcome p produces: a single such sample makes the estimate infinite.';
+      mc.draw([{ data: one.map(([i, y]) => [i, isFinite(y) ? y : NaN]), color: Course.colors.blue, width: 0.01, dots: true, label: 'single samples' }]);
+      return;
+    }
+    mc.draw([
+      { data: one, color: Course.colors.blue, width: 0.01, dots: true, label: 'single samples' },
+      { data: run, color: Course.colors.green, label: 'running average' },
+    ], { hlines: [{ y: truth, label: `true KL ${truth.toFixed(3)}`, color: Course.colors.amber }] });
+    $('mcStatus').textContent = `${samples.length} samples: estimate ${run[run.length - 1][1].toFixed(3)}, true value ${truth.toFixed(3)}.`;
+  }
+  $('bSample').addEventListener('click', () => {
+    const p = norm(wp);
+    for (let i = 0; i < 50; i++) samples.push(Course.sample(p));
+    drawMC();
+  });
+  $('bClear').addEventListener('click', () => { samples = []; drawMC(); });
+  ['dp', 'dq'].forEach((id) => $(id).addEventListener('pointerup', () => samples.length && drawMC()));
+
+  const L = Math.log;
+  Course.quiz([
+    {
+      q: '$p = (0.5, 0.5)$ and $q = (0.9, 0.1)$. What is $D_{\\mathrm{KL}}(p \\,\\|\\, q)$ in nats?',
+      answer: 0.5 * L(0.5 / 0.9) + 0.5 * L(0.5 / 0.1),
+      tol: 0.005,
+      explain: '$0.5\\log(0.5/0.9) + 0.5\\log(0.5/0.1) = -0.294 + 0.805 = 0.511$.',
+    },
+    {
+      q: 'Same pair, other way round. What is $D_{\\mathrm{KL}}(q \\,\\|\\, p)$?',
+      answer: 0.9 * L(0.9 / 0.5) + 0.1 * L(0.1 / 0.5),
+      tol: 0.005,
+      explain: '$0.9\\log 1.8 + 0.1\\log 0.2 = 0.529 - 0.161 = 0.368$. Not the same as $0.511$: KL is not symmetric.',
+    },
+    {
+      q: '$p = (0.5, 0.5)$ moves to $q = (0.6, 0.4)$. Use the small-change formula $\\tfrac12\\sum \\Delta^2 / p$ to approximate $D_{\\mathrm{KL}}(p \\,\\|\\, q)$.',
+      answer: 0.5 * (0.01 / 0.5 + 0.01 / 0.5),
+      tol: 0.001,
+      explain: '$\\tfrac12(0.01/0.5 + 0.01/0.5) = 0.02$. The exact value is $0.0204$.',
+    },
+    {
+      q: 'An old policy gives action 3 probability 0.1. A new policy gives it probability 0. What is $D_{\\mathrm{KL}}(\\pi_{\\text{old}} \\,\\|\\, \\pi_{\\text{new}})$?',
+      choices: ['0.1', 'It depends on the other actions', 'Infinite', '0'],
+      answer: 2,
+      explain: 'The term $0.1 \\log(0.1/0)$ is infinite. Try "$q$ misses outcome 5" above.',
+    },
+  ]);
+</script>
+</body>
+</html>

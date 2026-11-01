@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>17. Stationary distributions | Learning RL</title>
+<meta name="description" content="Run a Markov chain long enough and the share of time in each state settles down. Drag the transition probabilities and watch the long-run distribution move.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  #eq1, #eq2, #check { overflow-x: auto; min-height: 2.6em; }
+  .rows { margin: 10px 0; }
+  .prow { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+  .prow .from { width: 28px; font-size: 20px; text-align: center; }
+  .pstrip { position: relative; flex: 1; height: 34px; cursor: pointer; border-radius: 5px; overflow: visible; touch-action: none; user-select: none; }
+  .pstrip .segm { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 600; color: #fff; overflow: hidden; white-space: nowrap; }
+  .pstrip .segm:first-child { border-radius: 5px 0 0 5px; }
+  .pstrip .segm:nth-child(3) { border-radius: 0 5px 5px 0; }
+  .pstrip .handle { position: absolute; top: -4px; bottom: -4px; width: 14px; margin-left: -7px; border-radius: 4px; background: #fff; border: 2px solid var(--heading); cursor: ew-resize; z-index: 2; }
+  .pstrip .handle:hover { background: var(--accent-soft); }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.85rem; color: var(--muted); }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: -1px; margin-right: 4px; }
+  .hist { display: flex; gap: 10px; align-items: flex-end; height: 110px; margin: 8px 0 2px; }
+  .hist .col { position: relative; flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
+  .hist .bar { width: 100%; flex: none; }
+  .hist .lab { font-size: 0.8rem; font-weight: 600; color: var(--heading); font-variant-numeric: tabular-nums; }
+  .hist .sim { position: absolute; left: -3px; right: -3px; height: 0; border-top: 3px dashed var(--heading); }
+  .hrow { display: flex; gap: 10px; }
+  .hrow span { flex: 1; text-align: center; font-size: 1.1rem; }
+</style>
+</head>
+<body data-lesson="17">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Stationary distributions</h1>
+  <p class="lede">In Lesson 16, every starting day led to the same distribution after a couple of weeks. That limit is the <b>stationary distribution</b> $\mu$: the distribution that one more step of the chain leaves unchanged. It is also the share of time the chain spends in each state in the long run.</p>
+
+  <section class="card">
+    <h2>Two states</h2>
+    <p class="note">A town with only sun and rain. $a$ is the chance a sunny day is followed by rain, $b$ the chance a rainy day is followed by sun.</p>
+    <label class="slider"><span>$a$: ☀️ → 🌧️</span><input id="iA" type="range" min="0" max="1" step="0.05" value="0.2"><output></output></label>
+    <label class="slider"><span>$b$: 🌧️ → ☀️</span><input id="iB" type="range" min="0" max="1" step="0.05" value="0.3"><output></output></label>
+    <div id="eq1"></div>
+    <canvas class="chart" id="chart"></canvas>
+    <p class="note" id="note1"></p>
+    <div class="row">
+      <button id="bFlip" class="quiet">Try a = b = 1</button>
+      <button id="bStuck" class="quiet">Try a = b = 0</button>
+      <button id="bBack" class="quiet">Back to a = 0.2, b = 0.3</button>
+    </div>
+
+    <div class="sub">
+      <h2>Three states: drag the matrix</h2>
+      <p class="note">Each bar is one row of $P$ (Town A from Lessons 15 and 16): the chances of tomorrow's weather given today's. Drag the white handles, or press anywhere on a row. The bars below are the stationary distribution, computed exactly; the dashed lines are the share of days in a simulated run.</p>
+      <div class="legend"><span><i style="background:var(--amber)"></i>☀️ tomorrow</span><span><i style="background:#9ca3af"></i>☁️ tomorrow</span><span><i style="background:var(--blue)"></i>🌧️ tomorrow</span></div>
+      <div class="rows" id="rows"></div>
+      <div class="hist" id="hist"></div>
+      <div class="hrow"><span>☀️</span><span>☁️</span><span>🌧️</span></div>
+      <div id="check"></div>
+      <div class="row">
+        <button id="bSim">Simulate 20,000 days</button>
+        <span class="spacer"></span>
+        <button id="bTown" class="quiet">Reset to Town A</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>A distribution $\mu$ over states (a row vector) is <b>stationary</b> if one step of the chain leaves it unchanged:</p>
+    $$\mu = \mu P, \qquad \sum_s \mu(s) = 1$$
+    <p>If today's weather is drawn from $\mu$, so is tomorrow's, and every day after.</p>
+    <p><b>Two states.</b> Write $x_t$ for $P(\text{sun on day } t)$. A sunny day stays sunny with probability $1 - a$, and a rainy day turns sunny with probability $b$:</p>
+    $$x_{t+1} = (1 - a)\,x_t + b\,(1 - x_t) = b + (1 - a - b)\,x_t$$
+    <p>The stationary value is the fixed point, where $x_{t+1} = x_t$. Equivalently, the flow from sun to rain must equal the flow back, $\mu(\text{sun})\,a = \mu(\text{rain})\,b$:</p>
+    $$\mu(\text{sun}) = \frac{b}{a + b}, \qquad \mu(\text{rain}) = \frac{a}{a + b}$$
+    <p><b>How fast.</b> Subtract $\mu(\text{sun}) = b + (1 - a - b)\,\mu(\text{sun})$ from the update, then repeat $t$ times:</p>
+    $$x_{t+1} - \mu(\text{sun}) = (1 - a - b)\,\big(x_t - \mu(\text{sun})\big)$$
+    $$x_t - \mu(\text{sun}) = (1 - a - b)^t\,\big(x_0 - \mu(\text{sun})\big)$$
+    <p>The gap shrinks by a factor $|1 - a - b|$ every day. When $1 - a - b < 0$ it also flips sign, so the curves zig-zag in. With $a = b = 1$ the factor is $-1$: the chain alternates forever and $x_t$ never settles, although the long-run share of sunny days is still $\tfrac{1}{2}$. With $a = b = 0$ each state is a trap and every distribution is stationary.</p>
+    <p><b>The general result.</b> A finite chain is <i>irreducible</i> if every state can reach every other, and <i>aperiodic</i> if it does not cycle with a fixed period. If it is both, then $\mu$ is unique, $\mu_0 P^t \to \mu$ from every start, and the fraction of the first $T$ days spent in $s$ tends to $\mu(s)$. In linear-algebra terms, $\mu$ is a left eigenvector of $P$ with eigenvalue 1.</p>
+    <p>RL uses this constantly. A fixed policy in an MDP makes a Markov chain over states. Its stationary distribution says how often the agent visits each state, which later sets how much each state's error counts when values are approximated (S&amp;B §9.2).</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const COLS = [Course.colors.amber, '#9ca3af', Course.colors.blue];
+  const W = ['☀️', '☁️', '🌧️'];
+
+  // ------------------------------------------------------------ two states
+  const ga = Course.slider('#iA', (v) => v.toFixed(2), draw1);
+  const gb = Course.slider('#iB', (v) => v.toFixed(2), draw1);
+  const chart = Course.lineChart($('chart'), { xLabel: 'day t', yLabel: 'P(sun)', yMin: 0, yMax: 1, xMin: 0, xMax: 30 });
+  function draw1() {
+    const a = ga(), b = gb(), r = 1 - a - b;
+    const curve = (m0) => { const out = [m0]; for (let t = 1; t <= 30; t++) out.push(b + r * out[t - 1]); return out; };
+    const hl = [];
+    if (a + b > 0) {
+      const mu = b / (a + b);
+      Course.tex($('eq1'), `\\mu(\\text{sun}) = \\frac{b}{a+b} = \\frac{${b.toFixed(2)}}{${a.toFixed(2)} + ${b.toFixed(2)}} = ${mu.toFixed(3)}`, true);
+      hl.push({ y: mu, label: `μ(sun) = ${mu.toFixed(3)}`, color: Course.colors.green });
+    } else {
+      Course.tex($('eq1'), 'a + b = 0: \\text{ every distribution is stationary}', true);
+    }
+    chart.draw([
+      { data: curve(1), color: Course.colors.amber, label: 'start sunny', dots: true },
+      { data: curve(0), color: Course.colors.blue, label: 'start rainy', dots: true },
+    ], { hlines: hl });
+    let msg;
+    if (a + b === 0) msg = 'Nothing ever changes. Each start stays where it is, so the limit depends on the start: no unique stationary distribution.';
+    else if (Math.abs(r) === 1) msg = 'The factor is 1 − a − b = −1. The chain flips every day and P(sun) never settles, even though μ = (0.5, 0.5) is stationary.';
+    else if (r < 0) msg = `The gap to μ shrinks by |1 − a − b| = ${Math.abs(r).toFixed(2)} per day and changes sign each day, so the curves zig-zag in.`;
+    else msg = `The gap to μ shrinks by a factor 1 − a − b = ${r.toFixed(2)} per day. ${r < 0.5 ? 'Fast mixing.' : r > 0.85 ? 'Slow mixing: the weather is sticky.' : ''}`;
+    $('note1').textContent = msg;
+  }
+  const setAB = (a, b) => { $('iA').value = a; $('iB').value = b; $('iA').dispatchEvent(new Event('input')); $('iB').dispatchEvent(new Event('input')); };
+  $('bFlip').addEventListener('click', () => setAB(1, 1));
+  $('bStuck').addEventListener('click', () => setAB(0, 0));
+  $('bBack').addEventListener('click', () => setAB(0.2, 0.3));
+  draw1();
+
+  // ------------------------------------------------------------ three states
+  const TOWN = [[0.7, 0.2, 0.1], [0.3, 0.4, 0.3], [0.2, 0.3, 0.5]];
+  let P = TOWN.map((r) => r.slice()), sim = null;
+
+  // Stationary distribution: solve μ(P − I) = 0 with Σμ = 1. Falls back to a long Cesàro average if singular.
+  function stationary(M) {
+    const A = [0, 1, 2].map((j) => [0, 1, 2].map((i) => M[i][j] - (i === j ? 1 : 0)));  // rows: equations for μ_j
+    A[2] = [1, 1, 1];
+    const rhs = [0, 0, 1];
+    const m = A.map((row, i) => [...row, rhs[i]]);
+    for (let c = 0; c < 3; c++) {
+      let p = c;
+      for (let r = c + 1; r < 3; r++) if (Math.abs(m[r][c]) > Math.abs(m[p][c])) p = r;
+      if (Math.abs(m[p][c]) < 1e-9) return cesaro(M);
+      [m[c], m[p]] = [m[p], m[c]];
+      for (let r = 0; r < 3; r++) if (r !== c) { const f = m[r][c] / m[c][c]; for (let k = c; k < 4; k++) m[r][k] -= f * m[c][k]; }
+    }
+    const mu = [0, 1, 2].map((i) => m[i][3] / m[i][i]);
+    return mu.some((x) => x < -1e-9 || !isFinite(x)) ? cesaro(M) : mu.map((x) => Math.max(0, x));
+  }
+  function cesaro(M) {
+    let mu = [1 / 3, 1 / 3, 1 / 3]; const avg = [0, 0, 0];
+    for (let t = 0; t < 3000; t++) { mu = [0, 1, 2].map((j) => mu.reduce((s, x, i) => s + x * M[i][j], 0)); mu.forEach((x, i) => { avg[i] += x / 3000; }); }
+    return avg;
+  }
+
+  function buildRows() {
+    $('rows').innerHTML = [0, 1, 2].map((i) => `<div class="prow"><span class="from">${W[i]}</span><div class="pstrip" data-i="${i}">
+      <div class="segm"></div><div class="segm"></div><div class="segm"></div>
+      <div class="handle" data-h="0"></div><div class="handle" data-h="1"></div></div></div>`).join('');
+  }
+  function draw2() {
+    document.querySelectorAll('.pstrip').forEach((el) => {
+      const row = P[+el.dataset.i], cuts = [0, row[0], row[0] + row[1], 1];
+      [...el.querySelectorAll('.segm')].forEach((sg, k) => {
+        sg.style.left = `${100 * cuts[k]}%`; sg.style.width = `${100 * (cuts[k + 1] - cuts[k])}%`;
+        sg.style.background = COLS[k]; sg.textContent = row[k] >= 0.1 ? row[k].toFixed(2) : '';
+      });
+      [...el.querySelectorAll('.handle')].forEach((h, k) => { h.style.left = `${100 * cuts[k + 1]}%`; });
+    });
+    const mu = stationary(P);
+    $('hist').innerHTML = mu.map((f, i) => `<div class="col"><span class="lab">${f.toFixed(3)}</span><div class="bar" style="height:${Math.max(1, 85 * f)}px;background:${COLS[i]}"></div>${sim ? `<div class="sim" style="bottom:${85 * sim[i]}px" title="simulated ${sim[i].toFixed(3)}"></div>` : ''}</div>`).join('');
+    // Show μP column by column for sun.
+    const muP0 = mu.reduce((s, x, i) => s + x * P[i][0], 0);
+    Course.tex($('check'), `(\\mu P)(\\text{sun}) = ${mu.map((x, i) => `${x.toFixed(3)} \\cdot ${P[i][0].toFixed(2)}`).join(' + ')} = ${muP0.toFixed(3)} = \\mu(\\text{sun})`, true);
+  }
+  let drag = null;
+  // Press anywhere on a row: the nearer handle jumps there and follows the pointer.
+  // If both handles sit on the same spot, the first move decides which one moves.
+  const posOf = (el, e) => { const r = el.getBoundingClientRect(); return Math.round(((e.clientX - r.left) / r.width) * 20) / 20; };
+  $('rows').addEventListener('pointerdown', (e) => {
+    const el = e.target.closest('.pstrip');
+    if (!el) return;
+    const i = +el.dataset.i, row = P[i], c1 = row[0], c2 = row[0] + row[1], x = posOf(el, e);
+    const k = Math.abs(c2 - c1) < 1e-9 ? (x < c1 ? 0 : x > c1 ? 1 : null) : Math.abs(x - c1) <= Math.abs(x - c2) ? 0 : 1;
+    drag = { i, k, el };
+    el.setPointerCapture(e.pointerId);
+    if (k !== null) move(e);
+  });
+  $('rows').addEventListener('pointermove', (e) => move(e));
+  function move(e) {
+    if (!drag) return;
+    let x = posOf(drag.el, e);   // steps of 0.05
+    const row = P[drag.i], c1 = row[0], c2 = row[0] + row[1];
+    if (drag.k === null) { if (x === c1) return; drag.k = x < c1 ? 0 : 1; }
+    if (drag.k === 0) { x = Math.max(0, Math.min(c2, x)); P[drag.i] = [x, c2 - x, 1 - c2]; }
+    else { x = Math.max(c1, Math.min(1, x)); P[drag.i] = [c1, x - c1, 1 - x]; }
+    P[drag.i] = P[drag.i].map((v) => Math.round(v * 100) / 100);
+    sim = null;
+    draw2();
+  }
+  const end = () => { drag = null; };
+  $('rows').addEventListener('pointerup', end);
+  $('rows').addEventListener('pointercancel', end);
+
+  $('bSim').addEventListener('click', () => {
+    const counts = [0, 0, 0];
+    let s = Course.randInt(3);
+    for (let d = 0; d < 20000; d++) { s = Course.sample(P[s]); counts[s]++; }
+    sim = counts.map((c) => c / 20000);
+    draw2();
+  });
+  $('bTown').addEventListener('click', () => { P = TOWN.map((r) => r.slice()); sim = null; draw2(); });
+  buildRows();
+  draw2();
+
+  // ------------------------------------------------------------ quiz
+  const muTown = stationary(TOWN);
+  Course.quiz([
+    {
+      q: 'Two states with $a = 0.2$ (sun → rain) and $b = 0.3$ (rain → sun). What fraction of days are sunny in the long run?',
+      answer: 0.3 / (0.2 + 0.3),
+      explain: '$\\mu(\\text{sun}) = \\frac{b}{a+b} = \\frac{0.3}{0.5} = 0.6$.',
+    },
+    {
+      q: 'Same chain, and day 0 is sunny. What is $P(\\text{sun on day } 3)$?',
+      answer: 0.6 + Math.pow(0.5, 3) * (1 - 0.6),
+      hint: 'The gap to $\\mu$ starts at $1 - 0.6$ and is multiplied by $1 - a - b$ each day.',
+      explain: '$0.6 + (1 - 0.2 - 0.3)^3 (1 - 0.6) = 0.6 + 0.125 \\times 0.4 = 0.65$.',
+    },
+    {
+      q: 'Town A (the starting matrix in the three-state interactive). In the long run, what fraction of days are sunny?',
+      answer: muTown[0],
+      tol: 0.003,
+      hint: 'Solve $\\mu = \\mu P$, or read the exact bar in the interactive.',
+      explain: 'Solving $\\mu = \\mu P$ gives $\\mu = \\left(\\tfrac{21}{46}, \\tfrac{13}{46}, \\tfrac{12}{46}\\right)$, so sun is $21/46 \\approx 0.457$.',
+    },
+    {
+      q: 'With $a = b = 1$ the weather alternates sun, rain, sun, rain. Which statement is true?',
+      choices: [
+        '$\\mu = (0.5, 0.5)$ is stationary, but $\\mu_t$ does not converge to it',
+        'There is no stationary distribution',
+        '$\\mu_t$ converges to $(0.5, 0.5)$ from any start',
+      ],
+      answer: 0,
+      explain: '$(0.5, 0.5)P = (0.5, 0.5)$, so it is stationary. But from a sure start, $\\mu_t$ jumps between $(1, 0)$ and $(0, 1)$. The chain is periodic.',
+    },
+  ]);
+</script>
+</body>
+</html>

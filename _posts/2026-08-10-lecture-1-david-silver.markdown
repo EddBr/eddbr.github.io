@@ -35,6 +35,7 @@ All goals can be described by the maximisation of the expected cumulative reward
 | Control a power station       | Producing power                | Exceeding safety thresholds |
 | Humanoid walk                 | Forward motion                 | Falling over                |
 | Atari games                   | Increasing score               | Decreasing score            |
+
 ## Sequential Decision Making
 **Goal:** Select actions to maximise total future reward
 - Actions have long term consequences
@@ -51,6 +52,7 @@ All goals can be described by the maximisation of the expected cumulative reward
 | Agent                                                                                        | Environment                                                                            |
 | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
 | 1. Executes action $A_t$<br>2. Receives observation $O_t$<br>3. Receives scalar reward $R_t$ | 1. Receives action $A_t$<br>2. Emits observation $O_t$<br>3. Emits scalar reward $R_t$ |
+
 ## History and State
 ### History 
 Sequence of observations, actions, rewards
@@ -74,7 +76,7 @@ Any function of history $S^a_t=f(H_t)$
 ## Information State / Markov State
 Contains all useful information from the history
 
-A state $S_t$ is Markov iff $\mathbb{P}[S_{t+1}|S_t]=\mathbb{P}[S_{t+1}|S_1,...,S_t]$
+A state $S_t$ is Markov iff $\mathbb{P}[S_{t+1}\vert S_t]=\mathbb{P}[S_{t+1}\vert S_1,...,S_t]$
 
 All of history is Markov (not very useful but true)
 ## Fully Observable Environments
@@ -100,19 +102,19 @@ May include one or more:
 2. Value function $V$ - how good each state/action
 3. Model - agent's representation of environment
 ## 1. Policy
-Map from state to action $a=\pi(s)$ or stochastically $\pi(a|s)=\mathbb{P}[A=a|S=s]$
+Map from state to action $a=\pi(s)$ or stochastically $\pi(a\vert s)=\mathbb{P}[A=a\vert S=s]$
 
 ## 2. Value Function
 Value function is a prediction of future reward
 Used to evaluate the goodness/badness of states
-$V_\pi(s)=\mathbb{E}_\pi[R_t+\gamma R_{t+1}+\gamma^2 R_{t+2}+...|S_t=s]$
+$V_\pi(s)=\mathbb{E}_\pi[R_t+\gamma R_{t+1}+\gamma^2 R_{t+2}+...\vert S_t=s]$
 ## 3. Model
 Predicts what environment will do next
 Transitions: $\mathcal{P}$ predicts next state (i.e. dynamics)
 Rewards: $\mathcal{R}$ predicts next (immediate) reward
 
-$\mathcal{P}^a_{ss'}=\mathbb{P}[S'=s'|S=s,A=a]$
-$\mathcal{R}^a_{s}=\mathbb{P}[R|S=s,A=a]$
+$\mathcal{P}^a_{ss'}=\mathbb{P}[S'=s'\vert S=s,A=a]$
+$\mathcal{R}^a_{s}=\mathbb{P}[R\vert S=s,A=a]$
 ## Categorising Agents
 
 | Value-based          | Policy-based      | Actor Critic   |
@@ -124,6 +126,7 @@ $\mathcal{R}^a_{s}=\mathbb{P}[R|S=s,A=a]$
 | ---------------------------- | ---------------------------- |
 | Policy and/or value function | Policy and/or value function |
 | No model                     | Model                        |
+
 ![[Pasted image 20260809154439.png]]
 # Problems within RL
 ## Reinforcement Learning
@@ -152,6 +155,7 @@ Exploitation exploits known information to maximise reward
 | Online Banner Advertisements | Show must successful advert     | Show a different advert |
 | Oil drilling                 | Drill at best known location    | Drill at a new location |
 | Game playing                 | Play best move                  | Play different strategy |
+
 ## Prediction and Control
 Prediction - evaluate the future given my policy
 Control - optimise the future (find the best policy)

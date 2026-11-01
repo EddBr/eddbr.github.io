@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>31. Policy improvement | Learning RL</title>
+<meta name="description" content="Act greedily with respect to a policy's values and the new policy is at least as good everywhere. See it on the S&amp;B Example 4.1 gridworld.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .grid.small { max-width: 300px; }
+  .gcell .v { font-weight: 600; color: var(--heading); font-size: 0.72em; }
+  #world .gcell .ar { color: #9ca3af; font-size: 0.62em; }
+  #world .gcell .ar.on { color: var(--accent); font-size: 0.8em; }
+  .gcell.term { background: #e5e7eb; color: var(--muted); font-size: 0.75em; }
+  .gcell.sel { box-shadow: inset 0 0 0 3px var(--blue); }
+  .gcell .ar { position: absolute; font-size: 0.7em; line-height: 1; color: var(--heading); font-weight: 700; }
+  .gcell .ar.u { top: 3px; left: 50%; transform: translateX(-50%); }
+  .gcell .ar.d { bottom: 3px; left: 50%; transform: translateX(-50%); }
+  .gcell .ar.l { left: 4px; top: 50%; transform: translateY(-50%); }
+  .gcell .ar.r { right: 4px; top: 50%; transform: translateY(-50%); }
+  .gcell .ar.on { color: var(--accent); }
+  .ks { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+  .ks button { padding: 0.3rem 0.7rem; }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .pair h3 { font-size: 0.9rem; color: var(--muted); font-weight: 500; text-align: center; margin: 0; }
+  .pair .grid { margin: 6px auto; }
+  .gcell .d { position: absolute; bottom: 2px; font-size: 0.6em; color: #047857; font-weight: 600; }
+  #qtab td.best { background: var(--accent-soft); font-weight: 600; }
+  @media (max-width: 560px) { .pair { grid-template-columns: 1fr; } .pair .grid { max-width: 260px; } }
+</style>
+</head>
+<body data-lesson="31">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Policy improvement</h1>
+  <p class="lede">Once you know a policy's values, a better policy is one step away: in every state, pick the action that looks best when you look one step ahead using those values. The new policy is guaranteed to be at least as good everywhere.</p>
+
+  <section class="card">
+    <p class="note">The gridworld from Lesson 30. The values are the random policy's values after $k$ sweeps of policy evaluation. The arrows show which actions the current policy uses. Click a cell to see its four action values.</p>
+    <div class="ks" id="ks"></div>
+    <div id="world"></div>
+    <div class="row center">
+      <button id="bGreedy" class="primary">Be greedy</button>
+      <button id="bRandom" class="quiet">Back to random</button>
+    </div>
+    <table class="data" id="qtab"></table>
+    <p class="status" id="status"></p>
+
+    <div class="sub">
+      <h2>Is the new policy better?</h2>
+      <p class="note">Left: the random policy's true values $v_\pi$. Right: the true values $v_{\pi'}$ of the policy shown above, found by running Lesson 30's evaluation to convergence. Green numbers show the gain.</p>
+      <div class="pair">
+        <div><h3>$v_\pi$ (random)</h3><div id="wOld" class="small"></div></div>
+        <div><h3>$v_{\pi'}$ (arrows above)</h3><div id="wNew" class="small"></div></div>
+      </div>
+      <p class="status" id="verdict"></p>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>The action value from Lesson 22 says how good it is to take action $a$ in $s$ and follow $\pi$ afterwards. With a model, it is one step of lookahead on $v_\pi$:</p>
+    $$q_\pi(s, a) = \sum_{s', r} p(s', r \mid s, a)\,\big[r + \gamma\, v_\pi(s')\big]$$
+    <p>In the gridworld this is just $-1 + v_\pi(s')$ for the cell $s'$ the move lands on. The <b>greedy policy</b> picks the best of these in each state:</p>
+    $$\pi'(s) = \arg\max_a q_\pi(s, a)$$
+    <p>Ties can be shared: any split of probability among the best actions works. The grid above splits them evenly.</p>
+    <p><b>Policy improvement theorem.</b> If $q_\pi(s, \pi'(s)) \ge v_\pi(s)$ for every $s$, then $v_{\pi'}(s) \ge v_\pi(s)$ for every $s$. The greedy policy meets the condition, because the maximum of the $q_\pi(s, a)$ is at least their $\pi$-weighted average, which is $v_\pi(s)$ (Lesson 23). Proof: keep using the condition at each next state.</p>
+    $$\begin{aligned}
+      v_\pi(s) &\le q_\pi(s, \pi'(s)) = \mathbb{E}_{\pi'}\big[R_{t+1} + \gamma v_\pi(S_{t+1}) \mid S_t = s\big] \\
+      &\le \mathbb{E}_{\pi'}\big[R_{t+1} + \gamma\, q_\pi(S_{t+1}, \pi'(S_{t+1})) \mid S_t = s\big] \\
+      &= \mathbb{E}_{\pi'}\big[R_{t+1} + \gamma R_{t+2} + \gamma^2 v_\pi(S_{t+2}) \mid S_t = s\big] \\
+      &\le \cdots \le \mathbb{E}_{\pi'}\big[R_{t+1} + \gamma R_{t+2} + \gamma^2 R_{t+3} + \cdots \mid S_t = s\big] = v_{\pi'}(s)
+    \end{aligned}$$
+    <p>Following $\pi'$ for one step and then $\pi$ is no worse than $\pi$. Following $\pi'$ for two steps is no worse than one, and so on, until you are following $\pi'$ forever.</p>
+    <p>If greedy changes nothing, so $v_{\pi'} = v_\pi$, then $v_\pi(s) = \max_a q_\pi(s, a)$ for every $s$. That is the Bellman optimality equation from Lesson 29, so $\pi$ was already optimal.</p>
+    <p>The theorem is about greedy with respect to the true $v_\pi$ ($k = \infty$). Greedy with respect to a partly evaluated $v_k$ carries no guarantee, though here S&amp;B Figure 4.1 shows it is already optimal by $k = 3$.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const TERM = (s) => s === 0 || s === 15;
+  const MOVES = [[-1, 0], [0, 1], [1, 0], [0, -1]];
+  const NAMES = ['up', 'right', 'down', 'left'];
+  const ARROWS = ['↑', '→', '↓', '←'];
+  const CLS = ['u', 'r', 'd', 'l'];
+  const next = (s, a) => {
+    const r = Math.floor(s / 4) + MOVES[a][0], c = (s % 4) + MOVES[a][1];
+    return r < 0 || r > 3 || c < 0 || c > 3 ? s : r * 4 + c;
+  };
+  const RANDOM = Array.from({ length: 16 }, () => [0.25, 0.25, 0.25, 0.25]);
+
+  // Iterative policy evaluation (Lesson 30) for a stochastic policy pi[s][a].
+  function sweep(v, pi) {
+    const out = v.slice(); let delta = 0;
+    for (let s = 0; s < 16; s++) {
+      if (TERM(s)) continue;
+      let x = 0;
+      for (let a = 0; a < 4; a++) x += pi[s][a] * (-1 + out[next(s, a)]);
+      delta = Math.max(delta, Math.abs(x - out[s])); out[s] = x;
+    }
+    return { v: out, delta };
+  }
+  function valuesAfter(k, pi = RANDOM) {
+    let v = new Array(16).fill(0);
+    if (k === Infinity) { for (let i = 0, d = 1; d > 1e-12 && i < 50000; i++) ({ v, delta: d } = sweep(v, pi)); return v; }
+    // Two-array sweeps, as in S&B Figure 4.1.
+    for (let i = 0; i < k; i++) {
+      const old = v.slice();
+      v = old.map((_, s) => TERM(s) ? 0 : [0, 1, 2, 3].reduce((t, a) => t + pi[s][a] * (-1 + old[next(s, a)]), 0));
+    }
+    return v;
+  }
+  const qOf = (v, s) => [0, 1, 2, 3].map((a) => -1 + v[next(s, a)]);
+  function greedy(v) {
+    return Array.from({ length: 16 }, (_, s) => {
+      const q = qOf(v, s), m = Math.max(...q);
+      const best = q.map((x) => Math.abs(x - m) < 1e-9);
+      const n = best.filter(Boolean).length;
+      return best.map((b) => (b ? 1 / n : 0));
+    });
+  }
+
+  const KS = [0, 1, 2, 3, 10, Infinity];
+  let k = Infinity, v = valuesAfter(k), pi = RANDOM, isGreedy = false, sel = 1;
+  const vRand = valuesAfter(Infinity);
+  let vNew = vRand;
+
+  $('ks').innerHTML = '<span class="muted" style="align-self:center">sweeps $k$:</span>' +
+    KS.map((x, i) => `<button data-i="${i}" class="quiet">${x === Infinity ? '∞' : x}</button>`).join('');
+
+  const fmt1 = (x) => (Math.abs(x) < 0.05 ? '0' : x.toFixed(1));
+  const paintValue = (vals, extra) => (r, c, cell) => {
+    const s = r * 4 + c;
+    if (TERM(s)) { cell.classList.add('term'); cell.textContent = 'end'; return; }
+    cell.style.background = Course.heat(vals()[s], 30);
+    cell.innerHTML = `<span class="v">${fmt1(vals()[s])}</span>`;
+    if (extra) extra(s, cell);
+  };
+  const g = Course.grid($('world'), 4, 4, paintValue(() => v, (s, cell) => {
+    cell.innerHTML += pi[s].map((p, a) => (p > 0 ? `<span class="ar ${CLS[a]}${isGreedy ? ' on' : ''}">${ARROWS[a]}</span>` : '')).join('');
+    if (s === sel) cell.classList.add('sel');
+  }));
+  const gOld = Course.grid($('wOld'), 4, 4, paintValue(() => vRand));
+  const gNew = Course.grid($('wNew'), 4, 4, paintValue(() => vNew, (s, cell) => {
+    const d = vNew[s] - vRand[s];
+    if (d > 0.05) cell.innerHTML += `<span class="d">+${d.toFixed(1)}</span>`;
+  }));
+
+  function qTable() {
+    const q = qOf(v, sel), m = Math.max(...q);
+    const kTex = k === Infinity ? 'v_\\pi' : `v_{${k}}`;
+    $('qtab').innerHTML = `<tr><th>action</th><th>lands on</th><th>$-1 + ${kTex}(s')$</th></tr>` +
+      q.map((x, a) => `<tr><td>${ARROWS[a]} ${NAMES[a]}</td><td>${next(sel, a) === sel ? 'stays' : fmt1(v[next(sel, a)])}</td>` +
+        `<td class="${Math.abs(x - m) < 1e-9 ? 'best' : ''}">${x.toFixed(2)}</td></tr>`).join('');
+    Course.renderMath($('qtab'));
+  }
+
+  function render() {
+    [...$('ks').querySelectorAll('button')].forEach((b) => b.classList.toggle('on', KS[+b.dataset.i] === k));
+    g.update(); qTable();
+    vNew = valuesAfter(Infinity, pi);
+    gNew.update();
+    const gain = vNew.map((x, s) => x - vRand[s]);
+    if (!isGreedy) $('verdict').textContent = 'Press "Be greedy" to build a new policy.';
+    else {
+      const worse = gain.filter((d) => d < -1e-9).length;
+      const total = gain.reduce((a, b) => a + b, 0);
+      $('verdict').textContent = worse
+        ? `${worse} cells got worse.`
+        : (total < 1e-6 ? 'No change: greedy with respect to all-zero values ties every action, so it is the random policy again.'
+          : `No cell got worse. Total gain over the 14 cells: ${total.toFixed(1)}.`);
+    }
+    $('status').textContent = isGreedy
+      ? `Arrows are greedy with respect to the values after ${k === Infinity ? '∞' : k} sweeps. Tied actions share the probability.`
+      : 'The random policy uses all four actions everywhere.';
+  }
+
+  $('ks').addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    k = KS[+b.dataset.i]; v = valuesAfter(k);
+    if (isGreedy) pi = greedy(v);
+    render();
+  });
+  $('bGreedy').addEventListener('click', () => { isGreedy = true; pi = greedy(v); render(); });
+  $('bRandom').addEventListener('click', () => { isGreedy = false; pi = RANDOM; render(); });
+  g.onClick((r, c) => { if (!TERM(r * 4 + c)) { sel = r * 4 + c; render(); } });
+  Course.renderMath($('ks'));
+  render();
+
+  const vK1 = valuesAfter(Infinity, greedy(valuesAfter(1)));
+
+  Course.quiz([
+    {
+      q: 'Let $s$ be the top-row cell just right of the corner. Under the random policy the cell below it has $v_\\pi = -18$. What is $q_\\pi(s, \\text{down})$?',
+      answer: Math.round(-1 + vRand[5]),
+      tol: 0.001,
+      explain: '$-1 + v_\\pi(s\') = -1 + (-18) = -19$. Moving left into the corner gives $-1 + 0 = -1$, which is why greedy goes left.',
+    },
+    {
+      q: 'A state has two actions with $q_\\pi(s, a_1) = 4$ and $q_\\pi(s, a_2) = 8$. The policy picks each with probability $0.5$. By how much does $q_\\pi(s, \\pi\'(s))$ exceed $v_\\pi(s)$ for the greedy $\\pi\'$?',
+      answer: 8 - 0.5 * 4 - 0.5 * 8,
+      hint: '$v_\\pi(s) = \\sum_a \\pi(a \\mid s)\\, q_\\pi(s, a)$.',
+      explain: '$v_\\pi(s) = 0.5 \\times 4 + 0.5 \\times 8 = 6$ and greedy picks $a_2$ with $q = 8$, so $8 - 6 = 2$.',
+    },
+    {
+      q: 'Choose $k = 1$ and press "Be greedy". What is the new policy’s true value $v_{\\pi\'}$ in the top-right cell?',
+      answer: Math.round(vK1[3] * 1e6) / 1e6,
+      tol: 0.01,
+      hint: 'Read it from the right-hand grid under "Is the new policy better?".',
+      explain: 'After one sweep every cell is $-1$, so only the cells next to a corner get a clear arrow. Elsewhere all moves tie, the walk is still partly random, and the top-right cell is worth $-9$, much better than $-22$ but not yet the optimal $-3$.',
+    },
+    {
+      q: 'Greedy improvement leaves a policy unchanged. What follows?',
+      choices: [
+        'Policy evaluation was not run for long enough',
+        'The policy satisfies the Bellman optimality equation, so it is optimal',
+        'The policy is optimal only in the states next to the goal',
+      ],
+      answer: 1,
+      explain: 'No change means $v_\\pi(s) = \\max_a q_\\pi(s, a)$ everywhere, which is the Bellman optimality equation.',
+    },
+  ]);
+</script>
+</body>
+</html>

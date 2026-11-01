@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>16. Markov chains | Learning RL</title>
+<meta name="description" content="A set of states and a table of transition probabilities. Run the weather chain day by day, then push a whole distribution forward with the matrix.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .chainwrap { display: grid; grid-template-columns: 1.2fr 1fr; gap: 16px; align-items: center; }
+  #diagram { width: 100%; max-width: 330px; display: block; margin: 0 auto; }
+  #diagram .edge { fill: none; stroke: #cbd5e1; stroke-width: 2; transition: stroke 0.15s; }
+  #diagram .edge.hot { stroke: var(--accent); stroke-width: 3.5; }
+  #diagram .elab { font-size: 11px; fill: var(--muted); text-anchor: middle; dominant-baseline: middle; font-variant-numeric: tabular-nums; }
+  #diagram .elab.hot { fill: var(--accent); font-weight: 700; }
+  #diagram .node { fill: var(--soft); stroke: var(--border); stroke-width: 2; transition: all 0.15s; }
+  #diagram .node.here { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 3; }
+  #diagram .emo { font-size: 24px; text-anchor: middle; dominant-baseline: central; }
+  table.mat td.hot { background: var(--accent-soft); font-weight: 700; color: var(--heading); }
+  table.mat tr.row td:first-child { font-weight: 700; }
+  .hist { display: flex; gap: 10px; align-items: flex-end; height: 110px; margin: 8px 0 2px; }
+  .hist .col { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
+  .hist .bar { width: 100%; flex: none; }
+  .hist .lab { font-size: 0.8rem; font-weight: 600; color: var(--heading); font-variant-numeric: tabular-nums; }
+  .hrow { display: flex; gap: 10px; }
+  .hrow span { flex: 1; text-align: center; font-size: 1.1rem; }
+  .seg { display: inline-flex; border: 1px solid var(--accent); border-radius: 4px; overflow: hidden; }
+  .seg button { border: 0; border-radius: 0; padding: 0.35rem 0.8rem; }
+  #mueq { overflow-x: auto; min-height: 2.6em; }
+  @media (max-width: 560px) { .chainwrap { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body data-lesson="16">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Markov chains</h1>
+  <p class="lede">A Markov chain is a set of states plus a table saying how likely each state is to follow each other one. There are no actions and no rewards yet: the world just moves. It is the skeleton that an MDP (Lesson 18) adds actions and rewards to.</p>
+
+  <section class="card">
+    <h2>Run the weather</h2>
+    <p class="note">Town A from Lesson 15. Each day, the next state is drawn from the current state's row of the table.</p>
+    <div class="chainwrap">
+      <svg id="diagram" viewBox="0 0 340 330" aria-label="Transition diagram of the weather chain"></svg>
+      <div>
+        <table class="data mat" id="mat"></table>
+        <p class="note" style="margin-top:8px">Row = today, column = tomorrow. Each row sums to 1.</p>
+      </div>
+    </div>
+    <p class="status" id="status"></p>
+    <div class="row">
+      <button id="bStep" class="primary">Next day</button>
+      <button id="bRun">Run</button>
+      <button id="bFast">+1000 days</button>
+      <span class="spacer"></span>
+      <button id="bReset" class="quiet">Reset</button>
+    </div>
+    <h3 style="font-size:0.9rem;margin:10px 0 0;color:var(--heading)">Share of days spent in each state</h3>
+    <div class="hist" id="hist"></div>
+    <div class="hrow"><span>☀️</span><span>☁️</span><span>🌧️</span></div>
+    <p class="note" id="histNote"></p>
+
+    <div class="sub">
+      <h2>Push a whole distribution forward</h2>
+      <p class="note">Instead of one sampled day, track the probability of every state. Pick where day 0 starts, then slide forward in time.</p>
+      <div class="row center">
+        <span class="muted">Day 0 is</span>
+        <span class="seg" id="starts"><button data-s="0" class="on">☀️</button><button data-s="1">☁️</button><button data-s="2">🌧️</button></span>
+      </div>
+      <label class="slider"><span>Days ahead $t$</span><input id="iT" type="range" min="0" max="15" step="1" value="1"><output></output></label>
+      <div class="hist" id="mu"></div>
+      <div class="hrow"><span>☀️</span><span>☁️</span><span>🌧️</span></div>
+      <div id="mueq"></div>
+      <canvas class="chart" id="chart"></canvas>
+      <p class="note">Change the start. Every start ends up at the same distribution. Lesson 17 is about that limit.</p>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>A <b>Markov chain</b> is a set of states $\mathcal{S}$ and a <b>transition matrix</b> $P$ with entries</p>
+    $$P_{ss'} = P(S_{t+1} = s' \mid S_t = s)$$
+    <p>Row $s$ is the forecast for tomorrow when today is $s$. Every entry is between 0 and 1 and every row sums to 1, because tomorrow has to be <i>something</i>:</p>
+    $$\sum_{s'} P_{ss'} = 1 \quad \text{for every } s$$
+    <p><b>Two steps ahead.</b> To go from $s$ to $s'$ in two days, pass through some $k$ on the way. Add up every route:</p>
+    $$P(S_{t+2} = s' \mid S_t = s) = \sum_{k} P_{sk}\, P_{ks'} = (P^2)_{ss'}$$
+    <p>The sum over $k$ is exactly how matrix multiplication works, so $n$ steps ahead is the matrix power $P^n$.</p>
+    <p><b>A distribution moves the same way.</b> Write $\mu_t$ for the row vector of probabilities of each state on day $t$. Then</p>
+    $$\mu_{t+1}(s') = \sum_s \mu_t(s)\, P_{ss'}$$
+    <p>The probability of $s'$ tomorrow is the sum over today's states of "be in $s$" times "move from $s$ to $s'$". In matrix form, $\mu_{t+1} = \mu_t P$, so $\mu_t = \mu_0 P^t$. Starting surely in state $s$ means $\mu_0$ is 1 at $s$ and 0 elsewhere, and then $\mu_t$ is just row $s$ of $P^t$.</p>
+    <p><b>How long a spell lasts.</b> Staying in $s$ has probability $P_{ss}$ each day, so a spell lasts $k$ days with probability $P_{ss}^{\,k-1}(1 - P_{ss})$. That is a geometric distribution with mean $1/(1 - P_{ss})$.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const W = ['☀️', '☁️', '🌧️'], WN = ['sunny', 'cloudy', 'rainy'];
+  const P = [
+    [0.7, 0.2, 0.1],
+    [0.3, 0.4, 0.3],
+    [0.2, 0.3, 0.5],
+  ];
+  const COLS = [Course.colors.amber, Course.colors.grey, Course.colors.blue];
+
+  // ------------------------------------------------------------ diagram
+  const C = [[85, 95], [255, 95], [170, 238]], R = 26;
+  const cx = (C[0][0] + C[1][0] + C[2][0]) / 3, cy = (C[0][1] + C[1][1] + C[2][1]) / 3;
+  const rot = ([x, y], a) => [x * Math.cos(a) - y * Math.sin(a), x * Math.sin(a) + y * Math.cos(a)];
+  function buildDiagram() {
+    let edges = '', labels = '';
+    for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
+      const [x1, y1] = C[i], [x2, y2] = C[j];
+      let d, lx, ly;
+      if (i === j) {
+        let u = [x1 - cx, y1 - cy]; const L = Math.hypot(...u); u = [u[0] / L, u[1] / L];
+        const a = rot(u, 0.5), b = rot(u, -0.5), ca = rot(u, 0.75), cb = rot(u, -0.75);
+        d = `M${x1 + a[0] * R},${y1 + a[1] * R} C${x1 + ca[0] * (R + 50)},${y1 + ca[1] * (R + 50)} ${x1 + cb[0] * (R + 50)},${y1 + cb[1] * (R + 50)} ${x1 + b[0] * R},${y1 + b[1] * R}`;
+        lx = x1 + u[0] * (R + 48); ly = y1 + u[1] * (R + 48);
+      } else {
+        const L = Math.hypot(x2 - x1, y2 - y1), dx = (x2 - x1) / L, dy = (y2 - y1) / L, nx = -dy, ny = dx;
+        const sx = x1 + dx * R + nx * 7, sy = y1 + dy * R + ny * 7, ex = x2 - dx * (R + 5) + nx * 7, ey = y2 - dy * (R + 5) + ny * 7;
+        const qx = (x1 + x2) / 2 + nx * 26, qy = (y1 + y2) / 2 + ny * 26;
+        d = `M${sx},${sy} Q${qx},${qy} ${ex},${ey}`;
+        lx = 0.25 * sx + 0.5 * qx + 0.25 * ex + nx * 9; ly = 0.25 * sy + 0.5 * qy + 0.25 * ey + ny * 9;
+      }
+      edges += `<path class="edge" id="e${i}${j}" d="${d}" marker-end="url(#arr)"/>`;
+      labels += `<text class="elab" id="l${i}${j}" x="${lx}" y="${ly}">${P[i][j]}</text>`;
+    }
+    const nodes = C.map(([x, y], i) => `<circle class="node" id="n${i}" cx="${x}" cy="${y}" r="${R}"/><text class="emo" x="${x}" y="${y}">${W[i]}</text>`).join('');
+    $('diagram').innerHTML = `<defs><marker id="arr" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"/></marker></defs>${edges}${labels}${nodes}`;
+  }
+
+  // ------------------------------------------------------------ sampling the chain
+  let s, counts, days, lastEdge, timer = null;
+  function reset() {
+    stop();
+    s = 0; counts = [0, 0, 0]; days = 0; lastEdge = null;
+    $('status').textContent = 'Day 0 is sunny. Press "Next day".';
+    draw();
+  }
+  function step(quiet) {
+    const next = Course.sample(P[s]);
+    lastEdge = [s, next];
+    if (!quiet) $('status').textContent = `Day ${days + 1}: ${WN[s]} → ${WN[next]}. The row for ${WN[s]} gave this a ${P[s][next]} chance.`;
+    s = next; counts[s]++; days++;
+  }
+  function draw() {
+    for (let i = 0; i < 3; i++) {
+      $(`n${i}`).classList.toggle('here', i === s);
+      for (let j = 0; j < 3; j++) {
+        const hot = lastEdge && lastEdge[0] === i && lastEdge[1] === j;
+        $(`e${i}${j}`).classList.toggle('hot', !!hot);
+        $(`l${i}${j}`).classList.toggle('hot', !!hot);
+      }
+    }
+    $('mat').innerHTML = `<thead><tr><th></th>${W.map((w) => `<th>${w}</th>`).join('')}</tr></thead><tbody>` +
+      P.map((row, i) => `<tr class="row"><td>${W[i]}</td>${row.map((p, j) => `<td class="${lastEdge && lastEdge[0] === i ? (lastEdge[1] === j ? 'hot' : '') : ''}">${p}</td>`).join('')}</tr>`).join('') + '</tbody>';
+    const frac = counts.map((c) => (days ? c / days : 0));
+    $('hist').innerHTML = frac.map((f, i) => `<div class="col"><span class="lab">${days ? (100 * f).toFixed(1) + '%' : '–'}</span><div class="bar" style="height:${Math.max(1, 85 * f)}px;background:${COLS[i]}"></div></div>`).join('');
+    $('histNote').textContent = days ? `${days} days so far. Run for a while: the shares stop moving much.` : '';
+  }
+  function stop() { clearInterval(timer); timer = null; $('bRun').textContent = 'Run'; }
+  $('bStep').addEventListener('click', () => { step(); draw(); });
+  $('bRun').addEventListener('click', () => {
+    if (timer) return stop();
+    $('bRun').textContent = 'Pause';
+    timer = setInterval(() => { step(); draw(); }, 120);
+  });
+  $('bFast').addEventListener('click', () => {
+    for (let i = 0; i < 1000; i++) step(true);
+    $('status').textContent = `Ran 1000 days. Now on day ${days}, which is ${WN[s]}.`;
+    draw();
+  });
+  $('bReset').addEventListener('click', reset);
+  buildDiagram();
+  reset();
+
+  // ------------------------------------------------------------ distributions
+  const mulVec = (mu) => [0, 1, 2].map((j) => mu.reduce((acc, m, i) => acc + m * P[i][j], 0));
+  let start = 0;
+  const T = Course.slider('#iT', (v) => v, drawMu);
+  const chart = Course.lineChart($('chart'), { xLabel: 'day t', yLabel: 'probability', yMin: 0, yMax: 1, xMin: 0, xMax: 15 });
+  function drawMu() {
+    const mus = [[0, 1, 2].map((i) => (i === start ? 1 : 0))];
+    for (let t = 1; t <= 15; t++) mus.push(mulVec(mus[t - 1]));
+    const t = T(), mu = mus[t];
+    $('mu').innerHTML = mu.map((f, i) => `<div class="col"><span class="lab">${f.toFixed(3)}</span><div class="bar" style="height:${Math.max(1, 85 * f)}px;background:${COLS[i]}"></div></div>`).join('');
+    if (t === 0) Course.tex($('mueq'), `\\mu_0 = (${mu.map((x) => x).join(',\\ ')})`, true);
+    else {
+      const prev = mus[t - 1];
+      Course.tex($('mueq'), `\\mu_{${t}}(\\text{sun}) = ${prev.map((m, i) => `${m.toFixed(2)} \\cdot ${P[i][0]}`).join(' + ')} = ${mu[0].toFixed(3)}`, true);
+    }
+    chart.draw([0, 1, 2].map((i) => ({ data: mus.map((m, k) => [k, m[i]]), color: COLS[i], label: WN[i], dots: true })),
+      { vlines: [{ x: t, color: '#9ca3af' }] });
+  }
+  $('starts').addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    start = +b.dataset.s;
+    [...$('starts').children].forEach((x) => x.classList.toggle('on', x === b));
+    drawMu();
+  });
+  drawMu();
+
+  // ------------------------------------------------------------ quiz
+  const twoStep = P[0].reduce((acc, p, k) => acc + p * P[k][2], 0);
+  Course.quiz([
+    {
+      q: 'A row of a transition matrix reads $(0.3,\\ 0.4,\\ ?)$. What is the missing entry?',
+      answer: 0.3,
+      explain: 'Rows sum to 1: $1 - 0.3 - 0.4 = 0.3$.',
+    },
+    {
+      q: 'Using the weather matrix above, today is sunny. What is the probability that it rains the day after tomorrow?',
+      answer: twoStep,
+      hint: 'Sum over tomorrow\'s weather: $\\sum_k P_{\\text{sun},k}\\, P_{k,\\text{rain}}$.',
+      explain: '$0.7 \\times 0.1 + 0.2 \\times 0.3 + 0.1 \\times 0.5 = 0.07 + 0.06 + 0.05 = 0.18$.',
+    },
+    {
+      q: 'Day 0 is cloudy or rainy with probability $0.5$ each: $\\mu_0 = (0,\\ 0.5,\\ 0.5)$ in the order sun, cloud, rain. What is $\\mu_1(\\text{rain})$, the probability of rain on day 1?',
+      answer: 0.5 * P[1][2] + 0.5 * P[2][2],
+      explain: '$\\mu_1(\\text{rain}) = 0 \\times 0.1 + 0.5 \\times 0.3 + 0.5 \\times 0.5 = 0.4$.',
+    },
+    {
+      q: 'Sunny days stay sunny with probability $0.7$. On average, how many days does a sunny spell last?',
+      answer: 1 / (1 - 0.7),
+      tol: 0.01,
+      explain: 'Spell lengths are geometric with mean $1/(1 - 0.7) = 1/0.3 \\approx 3.33$ days.',
+    },
+  ]);
+</script>
+</body>
+</html>

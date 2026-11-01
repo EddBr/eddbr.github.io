@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>57. λ-returns | Learning RL</title>
+<meta name="description" content="Average every n-step return at once, with geometrically fading weights. One parameter, λ, slides from TD(0) to Monte Carlo.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .wbars { display: flex; align-items: flex-end; gap: 6px; height: 150px; margin: 12px 0 4px; }
+  .wcol { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; position: relative; }
+  .wcol .wb { background: var(--accent); border-radius: 3px 3px 0 0; transition: height 0.15s ease; min-height: 1px; }
+  .wcol.mc .wb { background: var(--amber); }
+  .wcol .w { font-size: 0.75rem; color: var(--heading); text-align: center; font-variant-numeric: tabular-nums; margin-bottom: 2px; }
+  .wlab { display: flex; gap: 6px; font-size: 0.75rem; color: var(--muted); }
+  .wlab span { flex: 1; text-align: center; font-variant-numeric: tabular-nums; }
+  .wlab.g span { color: var(--blue); font-weight: 600; font-size: 0.85rem; }
+  .ep { width: 100%; }
+  .ep td, .ep th { padding: 3px 4px; }
+  #eq { overflow-x: auto; overflow-y: hidden; min-height: 2.8em; }
+  #fig { height: 260px; }
+  .key { display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.85rem; color: var(--muted); justify-content: center; }
+  .key b { display: inline-block; width: 14px; height: 10px; vertical-align: middle; margin-right: 4px; border-radius: 2px; }
+  @media (max-width: 560px) { .wbars, .wlab { gap: 3px; } .wcol .w { font-size: 0.65rem; } #eq .katex-display { font-size: 0.85em; } }
+</style>
+</head>
+<body data-lesson="57">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>λ-returns</h1>
+  <p class="lede">Lesson 56 had to pick one $n$. The λ-return uses every $n$ at once: a weighted average of all the $n$-step returns, with weights that fade by a factor $\lambda$ per extra step. $\lambda = 0$ is TD(0), $\lambda = 1$ is Monte Carlo, and values in between often beat both.</p>
+
+  <section class="card">
+    <label class="slider"><span>$\lambda$</span><input id="iL" type="range" min="0" max="1" step="0.01" value="0.7"><output></output></label>
+    <p class="note">One episode with 6 steps left after time $t$, $\gamma = 1$. Each bar is the weight on one $n$-step return; the blue number under it is that return $G_{t:t+n}$, built from the table below. The last bar (amber) is the full return $G_t$: it collects all the weight that would have gone to $n \ge 6$.</p>
+    <div class="wbars" id="wbars"></div>
+    <div class="wlab" id="wn"></div>
+    <div class="wlab g" id="wg"></div>
+    <div id="eq"></div>
+    <div class="stats">
+      <div class="stat"><span class="k">$G^\lambda_t$</span><span class="v" id="sG">–</span></div>
+      <div class="stat"><span class="k">Sum of weights</span><span class="v" id="sW">–</span></div>
+      <div class="stat"><span class="k">Half-life of the weights</span><span class="v" id="sH">–</span></div>
+    </div>
+    <table class="data ep">
+      <thead><tr><th>$k$</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th></tr></thead>
+      <tbody>
+        <tr><th>$R_{t+k}$</th><td id="r1"></td><td id="r2"></td><td id="r3"></td><td id="r4"></td><td id="r5"></td><td id="r6"></td></tr>
+        <tr><th>$V(S_{t+k})$</th><td id="v1"></td><td id="v2"></td><td id="v3"></td><td id="v4"></td><td id="v5"></td><td>end</td></tr>
+      </tbody>
+    </table>
+    <div class="row">
+      <button id="bNew">New episode</button>
+      <button id="b0" class="quiet">λ = 0</button>
+      <button id="b1" class="quiet">λ = 1</button>
+    </div>
+    <p class="note">The weights are Lesson 4's discount bars again, with $\lambda$ in place of $\gamma$. They only decide how much to trust each $n$-step return; $\gamma$ is already inside the returns.</p>
+
+    <div class="sub">
+      <h2>Error against α, by λ</h2>
+      <p class="note">The offline λ-return algorithm on the 19-state random walk from Lesson 56: at the end of each episode, every visited state moves towards its λ-return. Same measure as Lesson 56: RMS error over the first 10 episodes, 30 runs. Compare the shape with the $n$-step figure.</p>
+      <div class="row"><button id="bFig">Run comparison</button></div>
+      <canvas class="chart" id="fig" hidden></canvas>
+      <div class="key" id="figKey" hidden></div>
+      <p class="note" id="figNote" hidden>Intermediate λ (around 0.8 to 0.9) does best, as intermediate $n$ did. $\lambda = 0$ is offline TD(0) and $\lambda = 1$ is Monte Carlo.</p>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>The <b>λ-return</b> averages the $n$-step returns $G_{t:t+n}$ (Lesson 56) with weights $(1 - \lambda)\lambda^{n-1}$:</p>
+    $$G^\lambda_t = (1 - \lambda) \sum_{n=1}^{\infty} \lambda^{n-1} G_{t:t+n}$$
+    <p>In an episode ending at $T$, every $G_{t:t+n}$ with $n \ge T - t$ equals the full return $G_t$, so their weights can be collected into one term:</p>
+    $$G^\lambda_t = (1 - \lambda) \sum_{n=1}^{T-t-1} \lambda^{n-1} G_{t:t+n} + \lambda^{T-t-1} G_t$$
+    <p>The weights add up to 1, by the geometric sum: $(1 - \lambda)\sum_{n=1}^{m} \lambda^{n-1} = 1 - \lambda^{m}$, and the last term adds back exactly $\lambda^{m}$ with $m = T - t - 1$. So $G^\lambda_t$ is a true average. At $\lambda = 0$ all weight is on $G_{t:t+1}$, the TD(0) target. At $\lambda = 1$ it is all on $G_t$.</p>
+    <p>The weight halves every $\ln \tfrac12 / \ln \lambda$ steps: $\lambda = 0.9$ gives about 6.6 steps.</p>
+    <p>A recursion makes it cheap to compute backwards from the end of an episode, with $V$ held fixed. Using $G_{t:t+n} = R_{t+1} + \gamma G_{t+1:t+n}$ for $n \ge 2$ and regrouping the sum:</p>
+    $$G^\lambda_t = R_{t+1} + \gamma\Big[(1 - \lambda)\, V(S_{t+1}) + \lambda\, G^\lambda_{t+1}\Big], \qquad G^\lambda_{T} = 0$$
+    <p>Each step blends "stop and trust $V$" with "keep going". Subtracting $V(S_t)$ from both sides gives a form that Lesson 58 builds on, a discounted sum of TD errors $\delta_k = R_{k+1} + \gamma V(S_{k+1}) - V(S_k)$:</p>
+    $$G^\lambda_t - V(S_t) = \sum_{k=t}^{T-1} (\gamma\lambda)^{k-t}\, \delta_k$$
+    <p>The <b>offline λ-return algorithm</b> waits until the episode ends, then applies $V(S_t) \leftarrow V(S_t) + \alpha\,[G^\lambda_t - V(S_t)]$ for each $t$.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const L = 6;                                  // steps left in the episode
+  let Rw = [1, 0, 0, 2, 0, 1], Vs = [3, 6, 2, 4, 1];
+  const lam = Course.slider('#iL', (v) => v.toFixed(2), render);
+
+  // G_{t:t+n} for n = 1..L (γ = 1). n = L is the full return.
+  function nstep() {
+    return Array.from({ length: L }, (_, i) => {
+      const n = i + 1;
+      let g = 0;
+      for (let k = 0; k < n; k++) g += Rw[k];
+      return n < L ? g + Vs[n - 1] : g;
+    });
+  }
+  function weights(l) {
+    return Array.from({ length: L }, (_, i) => (i < L - 1 ? (1 - l) * Math.pow(l, i) : Math.pow(l, L - 1)));
+  }
+  const f = (x, d = 3) => Course.fmt(Math.round(x * 10 ** d) / 10 ** d, d);
+
+  function render() {
+    const l = lam(), w = weights(l), G = nstep();
+    const top = Math.max(...w, 0.05);
+    $('wbars').innerHTML = w.map((x, i) =>
+      `<div class="wcol${i === L - 1 ? ' mc' : ''}"><div class="w">${f(x, 2)}</div><div class="wb" style="height:${(100 * x) / top * 0.82}%"></div></div>`).join('');
+    $('wn').innerHTML = w.map((_, i) => `<span>${i === L - 1 ? 'n ≥ 6' : `n = ${i + 1}`}</span>`).join('');
+    $('wg').innerHTML = G.map((g) => `<span>${g}</span>`).join('');
+    const Gl = w.reduce((a, x, i) => a + x * G[i], 0);
+    const terms = w.map((x, i) => `${f(x, 2)}\\cdot ${G[i]}`);
+    Course.tex($('eq'), `\\begin{aligned} G^\\lambda_t &= ${terms.slice(0, 3).join(' + ')} \\\\ &\\quad + ${terms.slice(3).join(' + ')} = ${f(Gl)} \\end{aligned}`, true);
+    $('sG').textContent = f(Gl);
+    $('sW').textContent = f(w.reduce((a, b) => a + b, 0));
+    $('sH').textContent = l <= 0 ? '–' : l >= 1 ? '∞' : `${(Math.log(0.5) / Math.log(l)).toFixed(1)} steps`;
+    Rw.forEach((r, i) => { $(`r${i + 1}`).textContent = r; });
+    Vs.forEach((v, i) => { $(`v${i + 1}`).textContent = v; });
+  }
+  $('bNew').addEventListener('click', () => {
+    Rw = Array.from({ length: L }, () => Course.choice([0, 0, 0, 1, 2, -1]));
+    Vs = Array.from({ length: L - 1 }, () => Course.randInt(7));
+    render();
+  });
+  const setL = (v) => { $('iL').value = v; $('iL').dispatchEvent(new Event('input')); };
+  $('b0').addEventListener('click', () => setL(0));
+  $('b1').addEventListener('click', () => setL(1));
+  render();
+
+  // ------------------------------------------------------------ offline λ-return on the 19-state walk
+  const NS = 19, START = 10;
+  const TRUE = Array.from({ length: NS + 2 }, (_, i) => (i === 0 || i === NS + 1 ? 0 : (i - 10) / 10));
+  function errorFor(l, a, runs = 30, E = 10) {
+    let total = 0;
+    const S = new Int32Array(4000), Rr = new Int8Array(4000), Gl = new Float64Array(4000);
+    for (let k = 0; k < runs; k++) {
+      const V = new Float64Array(NS + 2);
+      for (let e = 0; e < E; e++) {
+        let T = 0;
+        S[0] = START;
+        while (S[T] !== 0 && S[T] !== NS + 1) {
+          const s2 = S[T] + (Math.random() < 0.5 ? -1 : 1);
+          T++; S[T] = s2; Rr[T] = s2 === 0 ? -1 : s2 === NS + 1 ? 1 : 0;
+        }
+        // Backward recursion with V fixed (γ = 1); V(terminal) = 0.
+        Gl[T] = 0;
+        for (let t = T - 1; t >= 0; t--) Gl[t] = Rr[t + 1] + (1 - l) * V[S[t + 1]] + l * Gl[t + 1];
+        // Then the updates are applied in order, each against the current V (S&B §12.1).
+        for (let t = 0; t < T; t++) V[S[t]] += a * (Gl[t] - V[S[t]]);
+        let se = 0;
+        for (let i = 1; i <= NS; i++) se += (V[i] - TRUE[i]) ** 2;
+        total += Math.sqrt(se / NS);
+      }
+    }
+    return total / (runs * E);
+  }
+  const LAMS = [0, 0.4, 0.8, 0.9, 0.95, 0.975, 1];
+  const COLS = ['#dc2626', '#d97706', '#059669', '#2a7ae2', '#7c3aed', '#db2777', '#374151'];
+  $('figKey').innerHTML = LAMS.map((l, j) => `<span><b style="background:${COLS[j]}"></b>λ = ${l}</span>`).join('');
+  const fig = Course.lineChart($('fig'), { xLabel: 'α', yLabel: 'average RMS error', yMin: 0.25, yMax: 0.55, xMin: 0, xMax: 1 });
+  $('bFig').addEventListener('click', () => {
+    $('bFig').disabled = true; $('bFig').textContent = 'Running…';
+    setTimeout(() => {
+      const AL = Array.from({ length: 11 }, (_, i) => i / 10);
+      fig.draw(LAMS.map((l, j) => ({ data: AL.map((a) => [a, errorFor(l, a)]), color: COLS[j], width: 1.5 })));
+      $('fig').hidden = false; $('figKey').hidden = false; $('figNote').hidden = false;
+      $('bFig').disabled = false; $('bFig').textContent = 'Run again';
+    }, 30);
+  });
+
+  Course.quiz([
+    {
+      q: 'With $\\lambda = 0.5$, what weight does the 2-step return $G_{t:t+2}$ get (episode long enough)?',
+      answer: (1 - 0.5) * 0.5,
+      explain: '$(1 - \\lambda)\\lambda^{2-1} = 0.5 \\times 0.5 = 0.25$.',
+    },
+    {
+      q: 'With $\\lambda = 0.8$ and 4 steps left in the episode ($T - t = 4$), what weight does the full return $G_t$ get?',
+      answer: Math.pow(0.8, 3),
+      explain: '$\\lambda^{T-t-1} = 0.8^3 = 0.512$. The weights on $n = 1, 2, 3$ are $0.2, 0.16, 0.128$, which add to $0.488$.',
+    },
+    {
+      q: 'Two steps are left ($T - t = 2$), $\\lambda = 0.6$, $G_{t:t+1} = 2$ and $G_t = 5$. What is $G^\\lambda_t$?',
+      answer: 0.4 * 2 + 0.6 * 5,
+      explain: '$(1 - 0.6) \\times 2 + 0.6 \\times 5 = 0.8 + 3 = 3.8$.',
+    },
+    {
+      q: 'With $\\lambda = 0$, the λ-return is:',
+      choices: ['The Monte Carlo return $G_t$', 'The TD(0) target $R_{t+1} + \\gamma V(S_{t+1})$', 'The average of all $n$-step returns, equally weighted', 'Zero'],
+      answer: 1,
+      explain: 'All the weight, $(1 - 0)\\cdot 0^0 = 1$, is on the 1-step return.',
+    },
+  ]);
+</script>
+</body>
+</html>

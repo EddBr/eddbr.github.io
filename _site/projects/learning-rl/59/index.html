@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>59. Dyna-Q: learning and planning | Learning RL</title>
+<meta name="description" content="Remember what each action did, then replay those memories as imagined experience. A few planning steps per real step make Q-learning many times faster.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  #maze { width: 100%; display: block; margin: 8px 0 0; }
+  .key { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.85rem; color: var(--muted); justify-content: center; }
+  .key b { display: inline-block; width: 14px; height: 10px; vertical-align: middle; margin-right: 4px; border-radius: 2px; }
+  #live { height: 200px; }
+  #fig { height: 240px; }
+</style>
+</head>
+<body data-lesson="59">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Dyna-Q: learning and planning</h1>
+  <p class="lede">Q-learning uses each real experience once and throws it away. Dyna-Q also stores it in a model: "in this state, this action led there, with this reward". Between real steps it replays remembered transitions and applies the same Q-learning update to them. Planning is learning from imagined experience.</p>
+
+  <section class="card">
+    <label class="slider"><span>Planning steps $n$</span><input id="iN" type="range" min="0" max="50" step="1" value="10"><output></output></label>
+    <canvas id="maze" aria-label="Dyna maze"></canvas>
+    <div class="key">
+      <span><b style="background:#059669"></b>agent</span>
+      <span><b style="border:2px solid rgba(124,58,237,.75)"></b>planned last step</span>
+      <span><b style="background:#e0f2fe"></b>in the model</span>
+      <span>arrows: greedy, where $Q &gt; 0$</span>
+    </div>
+    <p class="status" id="status"></p>
+    <div class="row">
+      <button id="bStep">Step</button>
+      <button id="bRun" class="primary">Run</button>
+      <button id="bEp">+1 episode</button>
+      <span class="spacer"></span>
+      <button id="bReset" class="quiet">Reset</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="k">Episode</span><span class="v" id="sEp">1</span></div>
+      <div class="stat"><span class="k">Real steps this episode</span><span class="v" id="sSt">0</span></div>
+      <div class="stat"><span class="k">Q updates in total</span><span class="v" id="sUp">0</span></div>
+      <div class="stat"><span class="k">Model entries</span><span class="v" id="sM">0</span></div>
+    </div>
+    <canvas class="chart" id="live"></canvas>
+    <p class="note">S&amp;B Example 8.1, the Dyna maze: start S, goal G, walls in grey. Reward $+1$ on reaching G, $0$ otherwise, $\gamma = 0.95$, $\alpha = 0.1$, $\varepsilon = 0.1$. The shortest path takes 14 steps. Run the first episode with $n = 0$ and then with $n = 50$, and compare the arrows a few steps into the second episode.</p>
+
+    <div class="sub">
+      <h2>More planning, fewer real steps</h2>
+      <p class="note">Steps per episode for $n = 0$ (plain Q-learning), $5$ and $50$, averaged over 30 runs. Episode 1 is left out: planning cannot help before the first reward is found, so it is the same for all three. This is S&amp;B Figure 8.2.</p>
+      <div class="row"><button id="bFig">Run comparison</button></div>
+      <canvas class="chart" id="fig" hidden></canvas>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>Each real step of tabular Dyna-Q does three things. With $S$ the current state:</p>
+    $$\begin{aligned}
+      &\text{1. Act: } A \leftarrow \varepsilon\text{-greedy}(S, Q), \ \text{observe } R, S' \\
+      &\text{2. Learn: } Q(S, A) \leftarrow Q(S, A) + \alpha\big[R + \gamma \max_a Q(S', a) - Q(S, A)\big] \\
+      &\text{3. Remember: } \mathit{Model}(S, A) \leftarrow (R, S')
+    \end{aligned}$$
+    <p>Then it plans, repeating $n$ times:</p>
+    $$\begin{aligned}
+      &\tilde S \leftarrow \text{a random previously visited state}, \quad \tilde A \leftarrow \text{a random action previously taken in } \tilde S \\
+      &(\tilde R, \tilde S') \leftarrow \mathit{Model}(\tilde S, \tilde A) \\
+      &Q(\tilde S, \tilde A) \leftarrow Q(\tilde S, \tilde A) + \alpha\big[\tilde R + \gamma \max_a Q(\tilde S', a) - Q(\tilde S, \tilde A)\big]
+    \end{aligned}$$
+    <p>The planning update is the Q-learning update (Lesson 52) applied to remembered transitions. The maze is deterministic, so the model can store the single outcome it saw. Both kinds of update improve the same $Q$, so the agent cannot tell real from imagined progress.</p>
+    <p>Why it helps. With all $Q = 0$ and reward only at G, plain Q-learning ($n = 0$) finishes its first episode having changed exactly one value: the last step into G, to $\alpha \cdot 1 = 0.1$. Each later episode pushes that information back about one more step. With planning, every remembered transition next to a valued state can pick up value in the same real step, so the value spreads back along the whole remembered path within a few steps of the second episode.</p>
+    <p>The values it is heading for: one step before G, $q_*$ is $1$. Each step further back multiplies by $\gamma$, so a state $k$ steps from G has</p>
+    $$v_*(s) = \gamma^{\,k-1}$$
+    <p>Dyna is the simplest form of model-based RL. Its model is a lookup table of what happened. Lesson 97 returns to agents that learn richer models and plan inside them.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  // ------------------------------------------------------------ canvas gridworld
+  // drawGrid(canvas, R, C, { paint(s) -> {fill, text, textColor}, Q, agent, path, below: [labels per column] })
+  const DIRS = [[-1, 0], [0, 1], [1, 0], [0, -1]];       // up, right, down, left
+  function drawGrid(canvas, R, C, o = {}) {
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const W = canvas.clientWidth;
+    if (!W) return;
+    const cs = Math.min(W / C, o.maxCell || 56), gw = cs * C, x0 = (W - gw) / 2;
+    const extra = o.below ? 18 : 0, H = cs * R + extra + 2;
+    canvas.style.height = `${H}px`;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    const X = (c) => x0 + c * cs, Y = (r) => 1 + r * cs;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) {
+      const s = r * C + c, p = (o.paint && o.paint(s)) || {};
+      ctx.fillStyle = p.fill || '#f9fafb';
+      ctx.fillRect(X(c) + 1, Y(r) + 1, cs - 2, cs - 2);
+      ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 1;
+      ctx.strokeRect(X(c) + 1.5, Y(r) + 1.5, cs - 3, cs - 3);
+      if (p.outline) { ctx.strokeStyle = p.outline; ctx.lineWidth = 3; ctx.strokeRect(X(c) + 3, Y(r) + 3, cs - 6, cs - 6); }
+      if (p.arrow !== undefined && p.arrow !== null) {
+        const [dr, dc] = DIRS[p.arrow], L = cs * 0.3, cx = X(c) + cs / 2, cy = Y(r) + cs / 2;
+        const ex = cx + dc * L, ey = cy + dr * L;
+        ctx.strokeStyle = p.arrowColor || '#374151'; ctx.fillStyle = ctx.strokeStyle;
+        ctx.globalAlpha = p.arrowAlpha ?? 1; ctx.lineWidth = Math.max(1.5, cs / 18);
+        ctx.beginPath(); ctx.moveTo(cx - dc * L * 0.6, cy - dr * L * 0.6); ctx.lineTo(ex, ey); ctx.stroke();
+        const h = cs * 0.13;
+        ctx.beginPath();
+        ctx.moveTo(ex + dc * h, ey + dr * h);
+        ctx.lineTo(ex - dc * h + dr * h, ey - dr * h + dc * h);
+        ctx.lineTo(ex - dc * h - dr * h, ey - dr * h - dc * h);
+        ctx.closePath(); ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+      if (p.text) {
+        ctx.fillStyle = p.textColor || '#374151';
+        ctx.font = `${p.bold ? '600 ' : ''}${Math.round(cs * (p.size || 0.4))}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+        ctx.fillText(p.text, X(c) + cs / 2, Y(r) + cs / 2 + 1);
+      }
+    }
+    if (o.path && o.path.length > 1) {
+      ctx.strokeStyle = o.pathColor || '#059669'; ctx.lineWidth = Math.max(2, cs / 9); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+      ctx.globalAlpha = 0.8;
+      ctx.beginPath();
+      o.path.forEach((s, i) => { const x = X(s % C) + cs / 2, y = Y(Math.floor(s / C)) + cs / 2; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+      ctx.stroke(); ctx.globalAlpha = 1;
+    }
+    if (o.agent !== undefined && o.agent !== null) {
+      const r = Math.floor(o.agent / C), c = o.agent % C;
+      ctx.fillStyle = o.agentColor || '#059669'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(X(c) + cs / 2, Y(r) + cs / 2, cs * 0.24, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+    }
+    if (o.below) {
+      ctx.fillStyle = '#6b7280'; ctx.font = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      o.below.forEach((t, c) => ctx.fillText(t, X(c) + cs / 2, Y(R) + 9));
+    }
+    return { cs, x0 };
+  }
+  // ------------------------------------------------------------ Dyna maze (S&B Example 8.1)
+  const R = 6, C = 9, START = 2 * C, GOAL = 8;
+  const WALLS = new Set([[1, 2], [2, 2], [3, 2], [4, 5], [0, 7], [1, 7], [2, 7]].map(([r, c]) => r * C + c));
+  const ALPHA = 0.1, GAMMA = 0.95, EPS = 0.1;
+  function envStep(s, a) {
+    const r = Math.floor(s / C) + DIRS[a][0], c = (s % C) + DIRS[a][1];
+    if (r < 0 || r >= R || c < 0 || c >= C || WALLS.has(r * C + c)) return [s, 0];
+    const s2 = r * C + c;
+    return [s2, s2 === GOAL ? 1 : 0];
+  }
+  const maxOf = (q) => Math.max(...q);
+  const nPlan = Course.slider('#iN', (v) => v);
+
+  // An agent: Q table, a deterministic model, and the visited states/actions to sample from.
+  function agent() {
+    return {
+      Q: Array.from({ length: R * C }, () => [0, 0, 0, 0]),
+      model: new Map(), seenStates: [], seenActs: Array.from({ length: R * C }, () => []),
+      s: START, steps: 0, lens: [], updates: 0, planned: new Set(),
+    };
+  }
+  function qUpdate(Ag, s, a, r, s2) {
+    const target = r + (s2 === GOAL ? 0 : GAMMA * maxOf(Ag.Q[s2]));
+    Ag.Q[s][a] += ALPHA * (target - Ag.Q[s][a]);
+    Ag.updates++;
+  }
+  // One real step plus n planning steps. Returns true when the episode ends.
+  function dynaStep(Ag, n) {
+    const s = Ag.s, a = Math.random() < EPS ? Course.randInt(4) : Course.argmax(Ag.Q[s]);
+    const [s2, r] = envStep(s, a);
+    qUpdate(Ag, s, a, r, s2);
+    const key = s * 4 + a;
+    if (!Ag.model.has(key)) {
+      if (!Ag.seenActs[s].length) Ag.seenStates.push(s);
+      Ag.seenActs[s].push(a);
+    }
+    Ag.model.set(key, [r, s2]);
+    Ag.planned.clear();
+    for (let i = 0; i < n; i++) {
+      const ps = Course.choice(Ag.seenStates), pa = Course.choice(Ag.seenActs[ps]);
+      const [pr, ps2] = Ag.model.get(ps * 4 + pa);
+      qUpdate(Ag, ps, pa, pr, ps2);
+      Ag.planned.add(ps);
+    }
+    Ag.steps++;
+    if (s2 === GOAL) { Ag.lens.push(Ag.steps); Ag.steps = 0; Ag.s = START; return true; }
+    Ag.s = s2;
+    return false;
+  }
+
+  let A, timer = null;
+  function reset() {
+    stop(); A = agent();
+    $('status').textContent = 'Press Run. The first episode is a long random search: nothing has value until G is found.';
+    draw();
+  }
+
+  const live = Course.lineChart($('live'), { xLabel: 'episode', yLabel: 'steps', yMin: 0, xMin: 1 });
+  function draw() {
+    const Q = A.Q, vmax = Math.max(1e-9, ...Q.map(maxOf));
+    drawGrid($('maze'), R, C, {
+      maxCell: 56,
+      paint(k) {
+        if (WALLS.has(k)) return { fill: '#6b7280' };
+        if (k === GOAL) return { text: 'G', bold: true, fill: '#fef3c7' };
+        const p = {};
+        const v = maxOf(Q[k]);
+        if (A.seenActs[k].length) p.fill = '#e0f2fe';
+        if (v > 0) { p.fill = `rgba(5,150,105,${(0.12 + 0.5 * v / vmax).toFixed(3)})`; p.arrow = Q[k].indexOf(v); p.arrowAlpha = 0.8; }
+        if (A.planned.has(k)) p.outline = 'rgba(124,58,237,0.75)';
+        if (k === START) { p.text = 'S'; p.bold = true; }
+        return p;
+      },
+      agent: A.s,
+    });
+    $('sEp').textContent = A.lens.length + 1;
+    $('sSt').textContent = A.steps;
+    $('sUp').textContent = A.updates.toLocaleString();
+    $('sM').textContent = A.model.size;
+    live.draw([{ data: [[1, 0], [10, 0]], color: 'rgba(0,0,0,0)' }, { data: A.lens.length ? A.lens.map((y, i) => [i + 1, y]) : [], color: Course.colors.green, dots: true }]);
+  }
+
+  function stepAndReport() {
+    const ended = dynaStep(A, nPlan());
+    if (ended) {
+      const L = A.lens[A.lens.length - 1];
+      $('status').textContent = `Reached G in ${L} steps. Episode ${A.lens.length + 1} starts.`;
+    } else if (!A.lens.length) {
+      $('status').textContent = 'Searching. Every Q is still 0, so actions are chosen at random.';
+    } else {
+      $('status').textContent = `${nPlan()} imagined update${nPlan() === 1 ? '' : 's'} per real step (purple outlines).`;
+    }
+    return ended;
+  }
+  function stop() { clearInterval(timer); timer = null; $('bRun').textContent = 'Run'; }
+  $('bStep').addEventListener('click', () => { stepAndReport(); draw(); });
+  $('bRun').addEventListener('click', () => {
+    if (timer) return stop();
+    $('bRun').textContent = 'Pause';
+    timer = setInterval(() => {
+      // The first search is long, so take several steps per frame until G is first found.
+      const k = A.lens.length ? 1 : 8;
+      for (let i = 0; i < k; i++) if (stepAndReport()) break;
+      draw();
+    }, 50);
+  });
+  $('bEp').addEventListener('click', () => {
+    for (let i = 0; i < 1e5; i++) if (stepAndReport()) break;
+    draw();
+  });
+  $('bReset').addEventListener('click', reset);
+  new ResizeObserver(() => A && draw()).observe($('maze'));
+  reset();
+
+  // ------------------------------------------------------------ S&B Figure 8.2
+  function curve(n, runs = 30, E = 50) {
+    const avg = new Array(E).fill(0);
+    for (let k = 0; k < runs; k++) {
+      const Ag = agent();
+      while (Ag.lens.length < E) dynaStep(Ag, n);
+      Ag.lens.forEach((L, i) => { avg[i] += L / runs; });
+    }
+    return avg.map((y, i) => [i + 1, y]).slice(1);
+  }
+  const fig = Course.lineChart($('fig'), { xLabel: 'episode', yLabel: 'steps per episode', yMin: 0, yMax: 800, xMin: 2, xMax: 50 });
+  $('bFig').addEventListener('click', () => {
+    $('bFig').disabled = true; $('bFig').textContent = 'Running…';
+    setTimeout(() => {
+      $('fig').hidden = false;
+      fig.draw([
+        { data: curve(0), color: Course.colors.grey, label: 'n = 0' },
+        { data: curve(5), color: Course.colors.blue, label: 'n = 5' },
+        { data: curve(50), color: Course.colors.green, label: 'n = 50' },
+      ], { hlines: [{ y: 14, label: 'shortest 14', color: Course.colors.amber }] });
+      $('bFig').disabled = false; $('bFig').textContent = 'Run again';
+    }, 30);
+  });
+
+  Course.quiz([
+    {
+      q: 'A planning update: $Q(\\tilde S, \\tilde A) = 0$, the model says $\\tilde R = 0$, and $\\max_a Q(\\tilde S\', a) = 1$. With $\\alpha = 0.1$ and $\\gamma = 0.95$, what is the new $Q(\\tilde S, \\tilde A)$?',
+      answer: 0 + 0.1 * (0 + 0.95 * 1 - 0),
+      explain: '$0 + 0.1(0 + 0.95 \\times 1 - 0) = 0.095$.',
+    },
+    {
+      q: 'With $n = 0$ and all $Q = 0$ at the start, how many action values are nonzero at the end of the first episode?',
+      answer: 1,
+      tol: 0,
+      hint: 'Which update has a nonzero target?',
+      explain: 'Only the final step into G has a nonzero target ($R = 1$). Every other target is $0 + \\gamma \\cdot 0$.',
+    },
+    {
+      q: 'The shortest path from S to G is 14 steps. With $\\gamma = 0.95$, what is $v_*(\\text{S})$?',
+      answer: Math.pow(0.95, 13),
+      tol: 0.001,
+      explain: 'The reward of 1 arrives on the 14th step, so it is discounted 13 times: $0.95^{13} \\approx 0.513$.',
+    },
+    {
+      q: 'What does Dyna-Q\'s model store for each visited $(s, a)$?',
+      choices: [
+        'The action value $Q(s, a)$',
+        'The reward and next state that followed the last time $a$ was taken in $s$',
+        'The full sequence of states in the episode',
+        'The probability of each action under the policy',
+      ],
+      answer: 1,
+      explain: 'A table $\\mathit{Model}(s, a) = (r, s\')$. In a deterministic world, one observation is the whole truth.',
+    },
+  ]);
+</script>
+</body>
+</html>

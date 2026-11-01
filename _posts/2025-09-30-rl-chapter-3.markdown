@@ -66,9 +66,9 @@ It doesn't matter how that position and velocity came about, all that matters is
 
 Independent of its history
 
-$Pr(R_{t+1}=r,S_{t+1}=s'|S_0,A_0,R_1,...S_{t-1},A_{t-1},S_t,A_t)$
+$Pr(R_{t+1}=r,S_{t+1}=s'\vert S_0,A_0,R_1,...S_{t-1},A_{t-1},S_t,A_t)$
 If the state signal has the Markov property, this can be written as:
-$p(s',r|s,a)=Pr(R_{t+1}=r,S_{t+1}=s'|S_t,A_t)$ for all $r,s',S_t,A_t$
+$p(s',r\vert s,a)=Pr(R_{t+1}=r,S_{t+1}=s'\vert S_t,A_t)$ for all $r,s',S_t,A_t$
 
 
 Markov state provides equivalent predictions to full histories
@@ -77,11 +77,11 @@ RL tasks that satisfy the Markov property are called Markov Decision Processes
 
 MDP enables the computation of other environmental quantities:
 ## Expected reward
-$r(s,a)=\mathbb{E}[R_{t+1}|S_t=s,A_t=a]=\sum_{r\in \mathcal{R}}r\sum_{s'\in\mathcal{S}}p(s',r|s,a)$
+$r(s,a)=\mathbb{E}[R_{t+1}\vert S_t=s,A_t=a]=\sum_{r\in \mathcal{R}}r\sum_{s'\in\mathcal{S}}p(s',r\vert s,a)$
 ## State Transition Probabilities
-$p(s'|s,a)=Pr(S_{t+1}=s'|S_t=s,A_t=a)=\sum_{r\in\mathcal{R}}p(s',r|s,a)$
+$p(s'\vert s,a)=Pr(S_{t+1}=s'\vert S_t=s,A_t=a)=\sum_{r\in\mathcal{R}}p(s',r\vert s,a)$
 ### Expected Rewards to state-action-next-state triples
-$r(s,a,s')=\mathbb{E}[R_{t+1}|S_t=s,A_t=a,S_{t+1}=s']=\cfrac{\sum_{r\in \mathcal{R}}r\times p(s',r|s,a)}{p(s'|s,a)}$
+$r(s,a,s')=\mathbb{E}[R_{t+1}\vert S_t=s,A_t=a,S_{t+1}=s']=\cfrac{\sum_{r\in \mathcal{R}}r\times p(s',r\vert s,a)}{p(s'\vert s,a)}$
 ![[Pasted image 20250930040238.png]]
 
 ## Policy Vs Value
@@ -89,23 +89,23 @@ Policy: Mapping: state $\to$ probability
 Value: Expected return when following policy $\pi$ from state $S$
 
 ## Value/Expected return
-$v_\pi(s)=\mathbb{E}_\pi[G_t|S_t=s]=\mathbb{E}_\pi[\sum^\infty_{k=0}\gamma^kR_{t+k+1}|S_t=s]$
+$v_\pi(s)=\mathbb{E}_\pi[G_t\vert S_t=s]=\mathbb{E}_\pi[\sum^\infty_{k=0}\gamma^kR_{t+k+1}\vert S_t=s]$
 where $\mathbb{E}_\pi$ denotes expected value of a random variable given that the agent follows policy $\pi$
 ## Important Note
 Value of terminal state, if any, is always 0
 
 # Action-Value Function for policy $\pi$
-Value of taking an action $q_\pi(s,a)=\mathbb{E}_\pi[G_t|S_t=s,A_t=a]=\mathbb{E}_\pi[\sum^\infty_{k=0}\gamma^kR_{t+k+1}|S_t=s,A_t=a]$
+Value of taking an action $q_\pi(s,a)=\mathbb{E}_\pi[G_t\vert S_t=s,A_t=a]=\mathbb{E}_\pi[\sum^\infty_{k=0}\gamma^kR_{t+k+1}\vert S_t=s,A_t=a]$
 
 
 $v_\pi$ and $q_\pi$ can be estimated from experience
 
 ## Making $v_\pi$ Recursive
-$v_\pi(s)=\mathbb{E}_\pi[G_t|S_t=s]$
-$=\mathbb{E}_\pi[\sum^\infty_{k=0}\gamma^kR_{t+k+1}|S_t=s]$
-$=\mathbb{E}_\pi[R_{t+1}+\sum^\infty_{k=0}\gamma^kR_{t+k+2}|S_t=s]$
-$=\underset{a}\sum\pi(a,s)\underset{s'}\sum\underset{r}\sum p(s',r|s,a)[r+\gamma\mathbb{E}_\pi[\sum^\infty_{k=0}\gamma^kR_{t+k+2}|S_{t+1}=s']]$ since $\mathbb{E}_\pi()=\sum\text{Value}\times p(\text{Value})$ for all actions, states and rewards
-$=\underset{a}\sum\pi(a|s)\underset{s',r}p(s',r|s,a)[r+\gamma v_\pi(s')]$ - #vpibellmanequation Bellman equation for $v_\pi$
+$v_\pi(s)=\mathbb{E}_\pi[G_t\vert S_t=s]$
+$=\mathbb{E}_\pi[\sum^\infty_{k=0}\gamma^kR_{t+k+1}\vert S_t=s]$
+$=\mathbb{E}_\pi[R_{t+1}+\sum^\infty_{k=0}\gamma^kR_{t+k+2}\vert S_t=s]$
+$=\underset{a}\sum\pi(a,s)\underset{s'}\sum\underset{r}\sum p(s',r\vert s,a)[r+\gamma\mathbb{E}_\pi[\sum^\infty_{k=0}\gamma^kR_{t+k+2}\vert S_{t+1}=s']]$ since $\mathbb{E}_\pi()=\sum\text{Value}\times p(\text{Value})$ for all actions, states and rewards
+$=\underset{a}\sum\pi(a\vert s)\underset{s',r}p(s',r\vert s,a)[r+\gamma v_\pi(s')]$ - #vpibellmanequation Bellman equation for $v_\pi$
 # Optimal Value Functions
 ## Better Policies
 A policy $\pi$ is better than or equal to another policy if its expected return $\ge$ $\pi'$ s expected return for all states $s$
@@ -122,18 +122,18 @@ $v_*(s)=\underset{\pi}\max v_\pi(s)$ for all $s\in \mathcal{S}$
 **Bellman optimality equation**
 
 $v_*(s)=\underset{a\in\mathcal{A}(s)}\max q_\pi(s,a)$
-$=\underset{a}\max\mathbb{E}_{\pi*}[G_t|S_t=s,A_t=a]$
-$=\underset{a}\max\mathbb{E}_{\pi*}[\sum^\infty_{k=0} \gamma^kR_{t+k+1}|S_t=s,A_t=a]$
-$=\underset{a}\max\mathbb{E}_{\pi*}[R_{t+1}+\gamma\sum^\infty_{k=0} \gamma^kR_{t+k+2}|S_t=s,A_t=a]$
-$=\underset{a}\max\mathbb{E}[R_{t+1}+\gamma v_*(S_{t+1}|S_t=s,A_t=a)]$ #vstarbellmanequation
-$=\underset{a\in\mathcal{A(s)}}\max{\underset{s',r}\sum} p(s',r|s,a)[r+\gamma v_*(s')]$ #vstarbellmanequation
+$=\underset{a}\max\mathbb{E}_{\pi*}[G_t\vert S_t=s,A_t=a]$
+$=\underset{a}\max\mathbb{E}_{\pi*}[\sum^\infty_{k=0} \gamma^kR_{t+k+1}\vert S_t=s,A_t=a]$
+$=\underset{a}\max\mathbb{E}_{\pi*}[R_{t+1}+\gamma\sum^\infty_{k=0} \gamma^kR_{t+k+2}\vert S_t=s,A_t=a]$
+$=\underset{a}\max\mathbb{E}[R_{t+1}+\gamma v_*(S_{t+1}\vert S_t=s,A_t=a)]$ #vstarbellmanequation
+$=\underset{a\in\mathcal{A(s)}}\max{\underset{s',r}\sum} p(s',r\vert s,a)[r+\gamma v_*(s')]$ #vstarbellmanequation
 ### Optimal Action-Value Function $q_*$
 $q_*(s,a)=\underset{\pi}\max q_\pi(s,a)$ for all $s\in\mathcal{S}$ and $a\in\mathcal{A}(s)$
-$q_*(s,a)=\mathbb{E}[R_{t+1}+\gamma v_*(S_{t+1})|S_t=s, A_t=a]$
+$q_*(s,a)=\mathbb{E}[R_{t+1}+\gamma v_*(S_{t+1})\vert S_t=s, A_t=a]$
 
 **Bellman optimality equation**
-$q_*(s,a)=\mathbb{E}[R_{t+1}+\gamma\underset{a'}\max q_*(S_{t+1},a')|S_t=s,A_t=a]$
-$=\underset{s',r}\sum p(s',r|s,a)[r+\gamma \underset{a'}\max q_*(s',a')]$ #qstarbellmanequation
+$q_*(s,a)=\mathbb{E}[R_{t+1}+\gamma\underset{a'}\max q_*(S_{t+1},a')\vert S_t=s,A_t=a]$
+$=\underset{s',r}\sum p(s',r\vert s,a)[r+\gamma \underset{a'}\max q_*(s',a')]$ #qstarbellmanequation
 
 ## Bellman Optimality equations
 $N$ Bellman equations for $N$ states
@@ -208,22 +208,22 @@ But, we do not have enough information, we cannot see what is hidden and cannot 
 **Exercise 3.7**
 
 **Exercise 3.8**
-$\underset{s',r}\sum p(s',r|s,a)[r+\underset{a'}\sum \pi(a'|s')\gamma q_\pi(s',a')]$
+$\underset{s',r}\sum p(s',r\vert s,a)[r+\underset{a'}\sum \pi(a'\vert s')\gamma q_\pi(s',a')]$
 **Exercise 3.9**
-$v_\pi(s)=\underset{a}\sum\pi(a|s)\underset{s',r}p(s',r|s,a)[r+\gamma v_\pi(s')]$
+$v_\pi(s)=\underset{a}\sum\pi(a\vert s)\underset{s',r}p(s',r\vert s,a)[r+\gamma v_\pi(s')]$
 Assuming each state has probability 1/4 and using $\gamma=0.9$:
 $\frac 1 4 (0.9\times2.3+0.9\times-0.4+0.9\times0.4+0.9\times0.7)$
 $=0.675\approx 0.7 \square$ 
 **Exercise 3.10**
 The signs are important. If all rewards were positive, it is possible that a strong enough positive association could be built with the wrong outcome if enforced over time.
 
-$v_\pi(s)=\underset{a}\sum\pi(a|s)\underset{s',r}p(s',r|s,a)[r+\gamma v_\pi(s')]$ - Bellman Equation
+$v_\pi(s)=\underset{a}\sum\pi(a\vert s)\underset{s',r}p(s',r\vert s,a)[r+\gamma v_\pi(s')]$ - Bellman Equation
 
-$v'_\pi(s)=\underset{a}\sum\pi(a|s)\underset{s',r}p(s',r|s,a)[r+c+\gamma v'_\pi(s')]$
-$v'_\pi(s)=\underset{a}\sum\pi(a|s)\underset{s',r}p(s',r|s,a)[r+c+\gamma [v_\pi(s')+v_c]]$
-$=[\underset{a}\sum\pi(a|s)\underset{s',r}p(s',r|s,a)][r+c+\gamma [v_\pi(s')+v_c]]$
-$=[c+\gamma v_c]+\underset{a}\sum\pi(a|s)\underset{s',r}p(s',r|s,a)[r+\gamma v_\pi(s')]$
-$=v_\pi(s)+\underset{a}\sum\pi(a|s)\underset{s',r}p(s',r|s,a)[c+\gamma v_c]$
+$v'_\pi(s)=\underset{a}\sum\pi(a\vert s)\underset{s',r}p(s',r\vert s,a)[r+c+\gamma v'_\pi(s')]$
+$v'_\pi(s)=\underset{a}\sum\pi(a\vert s)\underset{s',r}p(s',r\vert s,a)[r+c+\gamma [v_\pi(s')+v_c]]$
+$=[\underset{a}\sum\pi(a\vert s)\underset{s',r}p(s',r\vert s,a)][r+c+\gamma [v_\pi(s')+v_c]]$
+$=[c+\gamma v_c]+\underset{a}\sum\pi(a\vert s)\underset{s',r}p(s',r\vert s,a)[r+\gamma v_\pi(s')]$
+$=v_\pi(s)+\underset{a}\sum\pi(a\vert s)\underset{s',r}p(s',r\vert s,a)[c+\gamma v_c]$
 $=v_\pi(s)+c+\gamma v_c$ since $c$ and $\gamma v_c$ are constants that do not change over $a,s',r$
 And we know $v'_\pi(s)=v_\pi(s)+v_c$ 
 $\therefore v_\pi(s)+c+\gamma v_c=v_\pi(s)+v_c$
@@ -235,9 +235,9 @@ $\to v_c=\frac c {(1-\gamma)}$
 Longer routes are now more incentivised. If $c$ is large enough, there is a greater incentive to do the longest route possible if $c$ is greater than rewards pre-existing
 
 **Exercise 3.12**
-$v_\pi(s)=\pi(a|S_t=s)$
-$\mathbb{E}_\pi(q_\pi(s,a|S_t=s,a=a_3)$
-$\pi(a|s)q_\pi(s,a)$
+$v_\pi(s)=\pi(a\vert S_t=s)$
+$\mathbb{E}_\pi(q_\pi(s,a\vert S_t=s,a=a_3)$
+$\pi(a\vert s)q_\pi(s,a)$
 **Exercise 3.13**
 I'm sorry, I have so many other assignments to do. Think these are quite self explanatory (I was too lazy)
 **Exercise 3.14**

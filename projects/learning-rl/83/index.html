@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>83. The clipped objective | Learning RL</title>
+<meta name="description" content="PPO's clip: once the probability ratio leaves [1 - ε, 1 + ε] in the helpful direction, the gradient switches off. Plot it, then train on one batch for many epochs.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  #eqClip { overflow-x: auto; min-height: 2.8em; }
+  .tablewrap { overflow-x: auto; }
+  .key { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.85rem; color: var(--muted); margin: 0; }
+  .key > span::before { content: ""; display: inline-block; width: 16px; vertical-align: middle; margin-right: 5px; border-top: 3px solid; }
+  .key .kc::before { border-color: var(--accent); }
+  .key .ku::before { border-color: #9ca3af; border-top-style: dashed; }
+</style>
+</head>
+<body data-lesson="83">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>The clipped objective</h1>
+  <p class="lede">Lesson 82's surrogate $r\hat A$ rewards pushing the ratio as far as it will go. PPO caps the reward: once $r$ leaves $[1-\epsilon, 1+\epsilon]$ in the direction the advantage wants, that sample stops contributing gradient. The policy can be trained for many epochs on one batch without running away.</p>
+
+  <section class="card">
+    <h2>One sample's objective</h2>
+    <p class="note">This is PPO's Figure 1, live. Set the sign and size of the advantage, then move $r$.</p>
+    <label class="slider"><span>Advantage $\hat A$</span><input id="iA" type="range" min="-2" max="2" step="0.1" value="1"><output></output></label>
+    <label class="slider"><span>Clip $\epsilon$</span><input id="iE" type="range" min="0.05" max="0.5" step="0.05" value="0.2"><output></output></label>
+    <label class="slider"><span>Ratio $r$</span><input id="iR" type="range" min="0" max="2.5" step="0.01" value="1.5"><output></output></label>
+    <canvas class="chart" id="fig" style="height:220px"></canvas>
+    <p class="key"><span class="kc">$L^{\text{CLIP}}$ for this sample</span><span class="ku">$r\hat A$ (Lesson 82)</span></p>
+    <div id="eqClip"></div>
+    <p class="status" id="grad"></p>
+
+    <div class="sub">
+      <h2>Many epochs on one batch</h2>
+      <p class="note">Lesson 80's bandit ($q = 1, 0.5, 0$). A batch of 32 pulls from the uniform policy, advantages $\hat A = R - \text{batch mean}$. Then full-batch gradient ascent, step size $0.5$, on each objective. Drag the epoch slider.</p>
+      <div class="row"><button id="bBatch">New batch</button></div>
+      <label class="slider"><span>Epochs</span><input id="iK" type="range" min="0" max="60" step="1" value="30"><output></output></label>
+      <canvas class="chart" id="kl" style="height:200px"></canvas>
+      <p class="key"><span class="kc">clipped $L^{\text{CLIP}}$, $\epsilon$ from the slider above</span><span class="ku">unclipped $L^{\text{CPI}}$</span></p>
+      <div class="tablewrap">
+        <table class="data" style="margin-top:8px">
+          <thead><tr><th>$a$</th><th>pulls</th><th>mean $\hat A$</th><th>$\pi$ unclipped</th><th>$\pi$ clipped</th><th>$r$ clipped</th></tr></thead>
+          <tbody id="tab"></tbody>
+        </table>
+      </div>
+      <p class="status" id="status"></p>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>With $r_t(\theta)$ the probability ratio and $\hat A_t$ the advantage estimate, PPO maximises (Schulman et al. 2017, eq. 7)</p>
+    $$\begin{aligned} L^{\text{CLIP}}(\theta) = \hat{\mathbb{E}}_t\Big[\min\big(&r_t(\theta)\,\hat A_t,\\ &\operatorname{clip}\big(r_t(\theta), 1-\epsilon, 1+\epsilon\big)\,\hat A_t\big)\Big] \end{aligned}$$
+    <p>$\operatorname{clip}(r, 1-\epsilon, 1+\epsilon)$ forces $r$ into that interval. The paper uses $\epsilon = 0.2$.</p>
+    <p><b>Two cases.</b> Taking the minimum works out as</p>
+    $$\min\big(r\hat A, \operatorname{clip}(r)\hat A\big) = \begin{cases} \min(r,\, 1+\epsilon)\,\hat A & \hat A &gt; 0 \\ \max(r,\, 1-\epsilon)\,\hat A & \hat A &lt; 0 \end{cases}$$
+    <p>A good action ($\hat A &gt; 0$) earns credit for being made more likely, up to $r = 1 + \epsilon$ and no further. A bad action ($\hat A &lt; 0$) earns credit for being made less likely, down to $r = 1 - \epsilon$. On the flat parts the gradient with respect to $\theta$ is zero, so that sample stops pushing.</p>
+    <p><b>Mistakes are never clipped.</b> If a bad action became more likely ($\hat A &lt; 0$, $r &gt; 1 + \epsilon$) or a good one less likely ($\hat A &gt; 0$, $r &lt; 1 - \epsilon$), the minimum picks $r\hat A$ with its full gradient, pulling $r$ back. The minimum makes $L^{\text{CLIP}}$ a pessimistic version of $L^{\text{CPI}}$:</p>
+    $$L^{\text{CLIP}}(\theta) \le L^{\text{CPI}}(\theta)$$
+    <p>The two are equal, with equal gradients, at $\theta = \theta_{\text{old}}$. Near $r = 1$ nothing is clipped, so the first step is the ordinary policy gradient. Further steps can only be credited inside the trust region.</p>
+    <p><b>The algorithm.</b> Repeat: run $\pi_{\theta_{\text{old}}}$ to collect a batch; compute $\hat A_t$ with GAE (Lesson 78); do several epochs of minibatch gradient ascent on $L^{\text{CLIP}}$; set $\theta_{\text{old}} \leftarrow \theta$.</p>
+    <p>The clip removes the incentive to move, not the movement itself. Other samples, and the shared softmax, can still carry a ratio past $1 \pm \epsilon$, as the $r$ column sometimes shows. In practice the KL stays small, which is what the bound in Lesson 82 asks for.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const C = Course.colors;
+  const clip = (r, e) => Math.max(1 - e, Math.min(1 + e, r));
+  const Lclip = (r, A, e) => Math.min(r * A, clip(r, e) * A);
+
+  // Part 1: Figure 1.
+  const fig = Course.lineChart($('fig'), { xLabel: 'ratio r', yLabel: 'objective', xMin: 0, xMax: 2.5, yMin: -5, yMax: 5 });
+  const gA = Course.slider('#iA', (v) => v.toFixed(1), drawFig);
+  const gE = Course.slider('#iE', (v) => v.toFixed(2), () => { drawFig(); runBatch(); });
+  const gR = Course.slider('#iR', (v) => v.toFixed(2), drawFig);
+  function drawFig() {
+    const A = gA(), e = gE(), r = gR();
+    const xs = Array.from({ length: 251 }, (_, i) => i / 100);
+    const val = Lclip(r, A, e);
+    fig.draw([
+      { data: xs.map((x) => [x, x * A]), color: C.grey, dashed: true, width: 2 },
+      { data: xs.map((x) => [x, Lclip(x, A, e)]), color: C.green, width: 3 },
+      { data: [[r, val]], color: C.blue, dots: true, width: 0.01 },
+    ], { vlines: [{ x: 1 - e, label: '1−ε' }, { x: 1 + e, label: '1+ε' }], hlines: [{ y: 0 }] });
+    const c = clip(r, e);
+    Course.tex($('eqClip'),
+      `\\min\\big(${r.toFixed(2)} \\times ${A.toFixed(1)},\\ ${c.toFixed(2)} \\times ${A.toFixed(1)}\\big) = \\min(${(r * A).toFixed(2)},\\ ${(c * A).toFixed(2)}) = ${val.toFixed(2)}`, true);
+    const flat = (A > 0 && r > 1 + e) || (A < 0 && r < 1 - e);
+    $('grad').innerHTML = A === 0 ? 'With $\\hat A = 0$ the sample has no effect.'
+      : flat ? `Clipped: gradient with respect to $r$ is <b>0</b>. ${A > 0 ? 'This good action is already ' + (100 * e).toFixed(0) + '% more likely; no more credit.' : 'This bad action is already ' + (100 * e).toFixed(0) + '% less likely; no more credit.'}`
+      : `Not clipped: gradient with respect to $r$ is $\\hat A = ${A.toFixed(1)}$.${A < 0 && r > 1 + e ? ' A bad action made more likely is never clipped.' : A > 0 && r < 1 - e ? ' A good action made less likely is never clipped.' : ''}`;
+    Course.renderMath($('grad'));
+  }
+  drawFig();
+
+  // Part 2: K epochs on one batch, clipped vs unclipped.
+  const Q = [1, 0.5, 0], N = 32, LR = 0.5, KMAX = 60;
+  const softmax = (th) => { const m = Math.max(...th), e = th.map((x) => Math.exp(x - m)), s = e.reduce((a, b) => a + b, 0); return e.map((x) => x / s); };
+  const P0 = [1 / 3, 1 / 3, 1 / 3];
+  let batch = [], hist = null;
+
+  function newBatch() {
+    batch = Array.from({ length: N }, () => { const a = Course.sample(P0); return { a, r: Q[a] + Course.gauss() }; });
+    const m = batch.reduce((s, x) => s + x.r, 0) / N;
+    batch.forEach((x) => { x.A = x.r - m; });
+  }
+  // Gradient of the batch objective with respect to the logits.
+  // d r_i / d theta_c = r_i (1{c = a_i} - pi(c)); clipped terms on the flat side contribute 0.
+  function train(useClip, eps) {
+    let th = [0, 0, 0];
+    const ps = [softmax(th)];
+    for (let k = 0; k < KMAX; k++) {
+      const p = softmax(th), g = [0, 0, 0];
+      for (const x of batch) {
+        const r = p[x.a] / P0[x.a];
+        if (useClip && ((x.A > 0 && r > 1 + eps) || (x.A < 0 && r < 1 - eps))) continue;
+        for (let c = 0; c < 3; c++) g[c] += (x.A * r * ((c === x.a ? 1 : 0) - p[c])) / N;
+      }
+      th = th.map((t, c) => t + LR * g[c]);
+      ps.push(softmax(th));
+    }
+    return ps;
+  }
+  const kl = (p) => P0.reduce((s, q, a) => s + q * Math.log(q / p[a]), 0);
+  const klChart = Course.lineChart($('kl'), { xLabel: 'epoch', yLabel: 'KL(π_old ‖ π)', xMin: 0, xMax: KMAX, yMin: 0 });
+  const gK = Course.slider('#iK', (v) => v, showEpoch);
+
+  function runBatch() {
+    if (!batch.length) newBatch();
+    const e = gE();
+    hist = { u: train(false, e), c: train(true, e) };
+    showEpoch();
+  }
+  function showEpoch() {
+    if (!hist) return;
+    const K = gK(), e = gE();
+    klChart.draw([
+      { data: hist.u.map(kl), color: C.grey, dashed: true, width: 2 },
+      { data: hist.c.map(kl), color: C.green, width: 3 },
+    ], { vlines: [{ x: K, color: C.blue }] });
+    const pu = hist.u[K], pc = hist.c[K];
+    $('tab').innerHTML = [0, 1, 2].map((a) => {
+      const xs = batch.filter((x) => x.a === a), mA = xs.length ? xs.reduce((s, x) => s + x.A, 0) / xs.length : 0;
+      const rc = pc[a] / P0[a], out = rc > 1 + e + 1e-3 || rc < 1 - e - 1e-3;
+      return `<tr><td>${a + 1}</td><td>${xs.length}</td><td>${mA.toFixed(2)}</td><td>${pu[a].toFixed(2)}</td><td>${pc[a].toFixed(2)}</td><td${out ? ' class="bad"' : ''}>${rc.toFixed(2)}</td></tr>`;
+    }).join('');
+    const ku = kl(pu), kc = kl(pc);
+    $('status').textContent = K === 0 ? 'Epoch 0: both policies are still the uniform old policy.'
+      : `After ${K} epochs: KL ${ku.toFixed(3)} unclipped vs ${kc.toFixed(3)} clipped. The unclipped policy keeps moving on the same 32 samples.`;
+  }
+  $('bBatch').addEventListener('click', () => { newBatch(); runBatch(); });
+  runBatch();
+
+  const eps = 0.2;
+  Course.quiz([
+    {
+      q: '$\\hat A = 2$, $r = 1.5$, $\\epsilon = 0.2$. What is $\\min(r\\hat A, \\operatorname{clip}(r)\\hat A)$?',
+      answer: Lclip(1.5, 2, eps),
+      tol: 0.001,
+      explain: '$\\min(3,\\ 1.2 \\times 2) = 2.4$. Credit stops at $r = 1.2$.',
+    },
+    {
+      q: '$\\hat A = -1$, $r = 0.6$, $\\epsilon = 0.2$. What is the clipped objective for this sample?',
+      answer: Lclip(0.6, -1, eps),
+      tol: 0.001,
+      explain: '$\\min(-0.6,\\ 0.8 \\times (-1)) = -0.8$. The value is frozen at $r = 0.8$, so lowering $r$ further earns nothing.',
+    },
+    {
+      q: '$\\hat A = -1$, $r = 1.5$, $\\epsilon = 0.2$. What is the clipped objective?',
+      answer: Lclip(1.5, -1, eps),
+      tol: 0.001,
+      explain: '$\\min(-1.5,\\ -1.2) = -1.5$. This is the unclipped term, so its gradient still pushes $r$ down: a mistake is never clipped.',
+    },
+    {
+      q: 'A sample has $\\hat A &gt; 0$ and $r = 1.3$, with $\\epsilon = 0.2$. What does it contribute to the gradient of $L^{\\text{CLIP}}$?',
+      choices: ['$\\hat A \\nabla_\\theta r$, pushing $r$ higher', 'Nothing: it is on the flat part', 'A push back towards $r = 1$', '$1.2\\,\\hat A$'],
+      answer: 1,
+      explain: 'For $\\hat A &gt; 0$ the term is $\\min(r, 1.2)\\hat A = 1.2\\hat A$, a constant in $\\theta$.',
+    },
+  ]);
+</script>
+</body>
+</html>

@@ -42,6 +42,7 @@ Finds and utilises best policy
 | ------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
 | Works well when either:<br>1. Small set of policies<br>2. Good policies easy to find<br>3. Lots of time for policy search | Ignore useful structures |
 | Have advantages when agent cannot sense state of environment                                                              |                          |
+
 ## Policy Gradient Methods
 Estimate direction parameters should be adjusted to most rapidly improve policy's performance
 

@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>52. Q-learning | Learning RL</title>
+<meta name="description" content="Replace SARSA's next action with the best next action. Q-learning learns the optimal action values whatever policy generates the data.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  #world { width: 100%; display: block; margin: 8px 0 0; }
+  #eq { overflow-x: auto; overflow-y: hidden; min-height: 2.8em; }
+  .key { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.85rem; color: var(--muted); justify-content: center; }
+  .key b { display: inline-block; width: 14px; height: 10px; vertical-align: middle; margin-right: 4px; border-radius: 2px; }
+  #chart { height: 200px; }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .pair h3 { font-size: 0.95rem; color: var(--heading); margin: 0; text-align: center; }
+  .pair p { text-align: center; margin: 2px 0; font-size: 0.85rem; }
+  .pair canvas { width: 100%; display: block; }
+  @media (max-width: 560px) {
+    #eq .katex-display { font-size: 0.8em; }
+    .pair { gap: 8px; }
+    .pair h3 { font-size: 0.85rem; }
+  }
+</style>
+</head>
+<body data-lesson="52">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Q-learning</h1>
+  <p class="lede">One change to SARSA: in the target, use the <i>best</i> next action instead of the one the agent will actually take. The target then estimates the optimal action values $q_*$ directly, whatever the agent does while exploring. Learning about one policy while following another is called <b>off-policy</b> learning.</p>
+
+  <section class="card">
+    <canvas id="world" aria-label="Windy gridworld"></canvas>
+    <div class="key">
+      <span><b style="background:#059669"></b>agent</span>
+      <span>numbers below: wind ↑</span>
+      <span>arrows: greedy action</span>
+    </div>
+    <div id="eq"></div>
+    <p class="status" id="status"></p>
+    <div class="row">
+      <button id="bStep">Step</button>
+      <button id="bRun" class="primary">Run</button>
+      <button id="bFast">+20 episodes</button>
+      <span class="spacer"></span>
+      <label class="muted"><input type="checkbox" id="cPath"> greedy path</label>
+      <button id="bReset" class="quiet">Reset</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="k">Episodes</span><span class="v" id="sEp">0</span></div>
+      <div class="stat"><span class="k">Time steps</span><span class="v" id="sT">0</span></div>
+      <div class="stat"><span class="k">Mean length, last 10</span><span class="v" id="sMean">–</span></div>
+      <div class="stat"><span class="k">Exploring steps</span><span class="v" id="sOff">0</span></div>
+    </div>
+    <canvas class="chart" id="chart"></canvas>
+    <p class="note">The windy gridworld from Lesson 51, same settings ($\varepsilon = 0.1$, $\alpha = 0.5$, reward $-1$ per step). Green: Q-learning. Grey: SARSA, run alongside on its own copy of the grid. "Exploring steps" counts steps where the next action was not the greedy one, so the two targets differed.</p>
+
+    <div class="sub">
+      <h2>Learn from a random walker</h2>
+      <p class="note">S&amp;B's 4×4 gridworld (Example 4.1): grey corners are terminal, every step costs $-1$. A walker picks uniformly random moves, starting each episode in a random cell. SARSA and Q-learning learn from the <b>same</b> stream of experience, with $\alpha = 0.1$.</p>
+      <div class="pair">
+        <div><h3>SARSA</h3><p class="muted">$\sum_a \pi(a \mid s)\,Q(s, a)$</p><canvas id="gS"></canvas></div>
+        <div><h3>Q-learning</h3><p class="muted">$\max_a Q(s, a)$</p><canvas id="gQ"></canvas></div>
+      </div>
+      <div class="row">
+        <button id="b10">+10 episodes</button>
+        <button id="b300">+1000 episodes</button>
+        <span class="spacer"></span>
+        <label class="muted"><input type="checkbox" id="cTrue"> show true values</label>
+        <button id="bReset2" class="quiet">Reset</button>
+      </div>
+      <div class="stats">
+        <div class="stat"><span class="k">Episodes</span><span class="v" id="sEp2">0</span></div>
+        <div class="stat"><span class="k">SARSA: error from $v_\pi$</span><span class="v" id="sErrS">–</span></div>
+        <div class="stat"><span class="k">Q-learning: error from $v_*$</span><span class="v" id="sErrQ">–</span></div>
+      </div>
+      <p class="note">Errors are root-mean-square over the 14 cells. $v_\pi$ is the random policy's value (S&amp;B Figure 4.1, $-14$ to $-22$). $v_*$ is minus the distance to the nearest corner. Same data, different targets, different answers. SARSA needs a few thousand episodes to get close; Q-learning needs a few hundred.</p>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>The Q-learning update (Watkins, 1989):</p>
+    $$Q(S_t, A_t) \leftarrow Q(S_t, A_t) + \alpha\big[R_{t+1} + \gamma \max_a Q(S_{t+1}, a) - Q(S_t, A_t)\big]$$
+    <p>Compare SARSA, which uses $Q(S_{t+1}, A_{t+1})$. Here the target takes the best next action according to the current $Q$, whether or not the agent takes it.</p>
+    <p>The target is a sample of the Bellman optimality equation for action values (Lesson 29):</p>
+    $$q_*(s, a) = \mathbb{E}\big[R_{t+1} + \gamma \max_{a'} q_*(S_{t+1}, a') \,\big|\, S_t = s, A_t = a\big]$$
+    <p>The expectation is only over the environment's response $p(s', r \mid s, a)$. No policy appears in it. So it does not matter which policy chose $A_t$: any transition from $(s, a)$ is a valid sample. The policy that generates data (the <b>behaviour policy</b>) can explore freely while $Q$ learns about the greedy policy (the <b>target policy</b>).</p>
+    <p>Q-learning converges to $q_*$ with probability 1 provided every pair $(s, a)$ keeps being updated and the step sizes satisfy</p>
+    $$\sum_{n=1}^{\infty} \alpha_n = \infty, \qquad \sum_{n=1}^{\infty} \alpha_n^2 < \infty$$
+    <p>The first condition lets the steps overcome any starting values. The second makes them small enough that the noise averages out (Lesson 7). A constant $\alpha$ breaks the second, so estimates keep fluctuating, but they stay close.</p>
+    <p>In the random-walker demo, SARSA's $A_{t+1}$ comes from the random policy, so it learns $q_\pi$ of that policy, and $\sum_a \pi(a \mid s) Q(s, a)$ approaches $v_\pi$ (Lesson 23). Q-learning's $\max$ ignores how badly the walker behaves and approaches $v_*(s) = \max_a q_*(s, a)$.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  // ------------------------------------------------------------ canvas gridworld
+  // drawGrid(canvas, R, C, { paint(s) -> {fill, text, textColor}, Q, agent, path, below: [labels per column] })
+  const DIRS = [[-1, 0], [0, 1], [1, 0], [0, -1]];       // up, right, down, left
+  function drawGrid(canvas, R, C, o = {}) {
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const W = canvas.clientWidth;
+    if (!W) return;
+    const cs = Math.min(W / C, o.maxCell || 56), gw = cs * C, x0 = (W - gw) / 2;
+    const extra = o.below ? 18 : 0, H = cs * R + extra + 2;
+    canvas.style.height = `${H}px`;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    const X = (c) => x0 + c * cs, Y = (r) => 1 + r * cs;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) {
+      const s = r * C + c, p = (o.paint && o.paint(s)) || {};
+      ctx.fillStyle = p.fill || '#f9fafb';
+      ctx.fillRect(X(c) + 1, Y(r) + 1, cs - 2, cs - 2);
+      ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 1;
+      ctx.strokeRect(X(c) + 1.5, Y(r) + 1.5, cs - 3, cs - 3);
+      if (p.arrow !== undefined && p.arrow !== null) {
+        const [dr, dc] = DIRS[p.arrow], L = cs * 0.3, cx = X(c) + cs / 2, cy = Y(r) + cs / 2;
+        const ex = cx + dc * L, ey = cy + dr * L;
+        ctx.strokeStyle = p.arrowColor || '#374151'; ctx.fillStyle = ctx.strokeStyle;
+        ctx.globalAlpha = p.arrowAlpha ?? 1; ctx.lineWidth = Math.max(1.5, cs / 18);
+        ctx.beginPath(); ctx.moveTo(cx - dc * L * 0.6, cy - dr * L * 0.6); ctx.lineTo(ex, ey); ctx.stroke();
+        const h = cs * 0.13;
+        ctx.beginPath();
+        ctx.moveTo(ex + dc * h, ey + dr * h);
+        ctx.lineTo(ex - dc * h + dr * h, ey - dr * h + dc * h);
+        ctx.lineTo(ex - dc * h - dr * h, ey - dr * h - dc * h);
+        ctx.closePath(); ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+      if (p.text) {
+        ctx.fillStyle = p.textColor || '#374151';
+        ctx.font = `${p.bold ? '600 ' : ''}${Math.round(cs * (p.size || 0.4))}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+        ctx.fillText(p.text, X(c) + cs / 2, Y(r) + cs / 2 + 1);
+      }
+    }
+    if (o.path && o.path.length > 1) {
+      ctx.strokeStyle = o.pathColor || '#059669'; ctx.lineWidth = Math.max(2, cs / 9); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+      ctx.globalAlpha = 0.8;
+      ctx.beginPath();
+      o.path.forEach((s, i) => { const x = X(s % C) + cs / 2, y = Y(Math.floor(s / C)) + cs / 2; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+      ctx.stroke(); ctx.globalAlpha = 1;
+    }
+    if (o.agent !== undefined && o.agent !== null) {
+      const r = Math.floor(o.agent / C), c = o.agent % C;
+      ctx.fillStyle = o.agentColor || '#059669'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(X(c) + cs / 2, Y(r) + cs / 2, cs * 0.24, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+    }
+    if (o.below) {
+      ctx.fillStyle = '#6b7280'; ctx.font = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      o.below.forEach((t, c) => ctx.fillText(t, X(c) + cs / 2, Y(R) + 9));
+    }
+    return { cs, x0 };
+  }
+  // ------------------------------------------------------------ windy gridworld (S&B Example 6.5)
+  const R = 7, C = 10, WIND = [0, 0, 0, 1, 1, 1, 2, 2, 1, 0];
+  const START = 3 * C, GOAL = 3 * C + 7, EPS = 0.1, ALPHA = 0.5;
+  const ANAME = ['up', 'right', 'down', 'left'];
+  function envStep(s, a) {
+    const r = Math.floor(s / C), c = s % C;
+    const nr = Math.max(0, Math.min(R - 1, r + DIRS[a][0] - WIND[c]));
+    const nc = Math.max(0, Math.min(C - 1, c + DIRS[a][1]));
+    return nr * C + nc;
+  }
+  const egreedy = (q) => (Math.random() < EPS ? Course.randInt(4) : Course.argmax(q));
+  const maxOf = (q) => Math.max(...q);
+
+  // A learner on its own copy of the grid. kind = 'q' (Q-learning) or 's' (SARSA).
+  function learner(kind) {
+    return { kind, Q: Array.from({ length: R * C }, () => [0, 0, 0, 0]), s: null, a: null, t: 0, eps: 0, len: 0, curve: [[0, 0]], last: null, off: 0 };
+  }
+  function step(L) {
+    if (L.s === null) { L.s = START; L.a = egreedy(L.Q[L.s]); L.len = 0; }
+    const s = L.s, a = L.a, s2 = envStep(s, a), old = L.Q[s][a];
+    L.t++; L.len++;
+    let a2 = null, next = 0, best = null;
+    if (s2 !== GOAL) {
+      a2 = egreedy(L.Q[s2]);
+      best = L.Q[s2].indexOf(maxOf(L.Q[s2]));
+      next = L.kind === 'q' ? maxOf(L.Q[s2]) : L.Q[s2][a2];
+      if (L.Q[s2][a2] < maxOf(L.Q[s2])) L.off++;
+    }
+    L.Q[s][a] = old + ALPHA * (-1 + next - old);
+    L.last = { s, a, s2, a2, best, old, next, now: L.Q[s][a] };
+    if (s2 === GOAL) { L.eps++; L.curve.push([L.t, L.eps]); L.s = null; }
+    else { L.s = s2; L.a = a2; }
+  }
+
+  let QL, SA, timer = null;
+  function reset() {
+    stop();
+    QL = learner('q'); SA = learner('s');
+    Course.tex($('eq'), 'Q(S,A) \\leftarrow Q(S,A) + \\alpha\\,[R + \\gamma \\max_a Q(S\',a) - Q(S,A)]', true);
+    $('status').textContent = 'Press Step to take one action and make one update.';
+    draw();
+  }
+  function greedyPath(Q) {
+    const path = [START];
+    let x = START;
+    for (let k = 0; k < 60 && x !== GOAL; k++) { x = envStep(x, Q[x].indexOf(maxOf(Q[x]))); path.push(x); }
+    return path;
+  }
+
+  const fx = (v) => Course.fmt(Math.round(v * 100) / 100, 2);
+  const chart = Course.lineChart($('chart'), { xLabel: 'time steps', yLabel: 'episodes', xMin: 0, yMin: 0 });
+  function draw() {
+    const Q = QL.Q, vmin = Math.min(-1, ...Q.map(maxOf)), last = QL.last;
+    drawGrid($('world'), R, C, {
+      maxCell: 52,
+      paint(k) {
+        const q = Q[k], v = maxOf(q), p = {};
+        if (q.some((x) => x !== 0)) {
+          p.fill = `rgba(5,150,105,${(0.08 + 0.45 * (1 - v / vmin)).toFixed(3)})`;
+          p.arrow = q.indexOf(v); p.arrowAlpha = 0.75;
+        }
+        if (k === START) { p.text = 'S'; p.bold = true; }
+        if (k === GOAL) { p.text = 'G'; p.bold = true; p.fill = '#fef3c7'; p.arrow = null; }
+        if (last && k === last.s) p.fill = 'rgba(42,122,226,0.25)';
+        return p;
+      },
+      agent: QL.s ?? (last ? last.s2 : START),
+      path: $('cPath').checked ? greedyPath(Q) : null,
+      below: WIND.map((w) => (w ? `${w}↑` : '0')),
+    });
+    if (last) {
+      if (last.a2 === null) {
+        Course.tex($('eq'), `Q(S,\\text{${ANAME[last.a]}}) \\leftarrow ${fx(last.old)} + ${ALPHA}\\,[\\,{-1} + 0 - (${fx(last.old)})\\,] = ${fx(last.now)}`, true);
+        $('status').textContent = `Reached G. Episode ${QL.eps} took ${QL.curve[QL.curve.length - 1][0] - QL.curve[QL.curve.length - 2][0]} steps.`;
+      } else {
+        Course.tex($('eq'), `Q(S,\\text{${ANAME[last.a]}}) \\leftarrow ${fx(last.old)} + ${ALPHA}\\,[\\,{-1} + ${fx(last.next)} - (${fx(last.old)})\\,] = ${fx(last.now)}`, true);
+        $('status').textContent = QL.Q[last.s2][last.a2] < maxOf(QL.Q[last.s2])
+          ? `The target used the best action at S′ (${ANAME[last.best]}, worth ${fx(last.next)}). The agent will actually explore ${ANAME[last.a2]}, which SARSA would have used.`
+          : `The target used the best action at S′, worth ${fx(last.next)}. The agent's next action (${ANAME[last.a2]}) is that greedy one, so SARSA's target would match.`;
+      }
+    }
+    $('sEp').textContent = QL.eps;
+    $('sT').textContent = QL.t;
+    const c = QL.curve, n = Math.min(10, c.length - 1);
+    $('sMean').textContent = n ? ((c[c.length - 1][0] - c[c.length - 1 - n][0]) / n).toFixed(1) : '–';
+    $('sOff').textContent = QL.off;
+    chart.draw([
+      { data: [[0, 0], [400, 4]], color: 'rgba(0,0,0,0)' },
+      { data: SA.curve, color: Course.colors.grey, label: 'SARSA' },
+      { data: QL.curve, color: Course.colors.green, label: 'Q-learning' },
+    ]);
+  }
+
+  // SARSA is stepped the same number of times, so both curves share the time axis.
+  const both = () => { step(QL); step(SA); };
+  function stop() { clearInterval(timer); timer = null; $('bRun').textContent = 'Run'; }
+  $('bStep').addEventListener('click', () => { both(); draw(); });
+  $('bRun').addEventListener('click', () => {
+    if (timer) return stop();
+    $('bRun').textContent = 'Pause';
+    timer = setInterval(() => { both(); draw(); }, 40);
+  });
+  $('bFast').addEventListener('click', () => {
+    const target = QL.eps + 20;
+    for (let k = 0; k < 2e5 && QL.eps < target; k++) both();
+    draw();
+  });
+  $('cPath').addEventListener('change', draw);
+  $('bReset').addEventListener('click', reset);
+  new ResizeObserver(() => QL && draw()).observe($('world'));
+  reset();
+
+  // ------------------------------------------------------------ 4×4 gridworld, random behaviour
+  const N4 = 4, A2 = 0.1;
+  const term = (s) => s === 0 || s === 15;
+  function step4(s, a) {
+    const r = Math.floor(s / N4) + DIRS[a][0], c = (s % N4) + DIRS[a][1];
+    return r < 0 || r >= N4 || c < 0 || c >= N4 ? s : r * N4 + c;
+  }
+  // True values: iterative policy evaluation for the random policy (Lesson 30), and distances for v*.
+  const VPI = new Array(16).fill(0);
+  for (let it = 0; it < 2000; it++) {
+    for (let s = 1; s < 15; s++) VPI[s] = DIRS.reduce((acc, _, a) => acc + 0.25 * (-1 + VPI[step4(s, a)]), 0);
+  }
+  const VSTAR = Array.from({ length: 16 }, (_, s) => {
+    const r = Math.floor(s / N4), c = s % N4;
+    return -Math.min(r + c, (3 - r) + (3 - c));
+  });
+
+  let QS, QQ, eps2;
+  function reset2() {
+    QS = Array.from({ length: 16 }, () => [0, 0, 0, 0]);
+    QQ = Array.from({ length: 16 }, () => [0, 0, 0, 0]);
+    eps2 = 0; draw2();
+  }
+  function episode4() {
+    let s = 1 + Course.randInt(14), a = Course.randInt(4);
+    for (let k = 0; k < 10000 && !term(s); k++) {
+      const s2 = step4(s, a), a2 = Course.randInt(4);
+      QS[s][a] += A2 * (-1 + (term(s2) ? 0 : QS[s2][a2]) - QS[s][a]);
+      QQ[s][a] += A2 * (-1 + (term(s2) ? 0 : maxOf(QQ[s2])) - QQ[s][a]);
+      s = s2; a = a2;
+    }
+    eps2++;
+  }
+  const vS = (s) => QS[s].reduce((x, y) => x + y, 0) / 4;
+  const vQ = (s) => maxOf(QQ[s]);
+  const rms = (f, ref) => Math.sqrt([...Array(16).keys()].filter((s) => !term(s)).reduce((a, s) => a + (f(s) - ref[s]) ** 2, 0) / 14);
+  function drawSmall(canvas, f, ref) {
+    const show = $('cTrue').checked;
+    const g = drawGrid(canvas, N4, N4, { maxCell: 64, paint: (s) => {
+      if (term(s)) return { fill: '#d1d5db' };
+      const v = f(s);
+      return { fill: `rgba(220,38,38,${Math.min(0.5, -v / 44).toFixed(3)})`, text: v.toFixed(1), size: 0.27, bold: true };
+    } });
+    if (!g || !show) return;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = Course.colors.amber; ctx.font = `${Math.round(g.cs * 0.2)}px -apple-system, sans-serif`;
+    ctx.textAlign = 'center';
+    for (let s = 0; s < 16; s++) {
+      if (term(s)) continue;
+      ctx.fillText(Course.fmt(Math.round(ref[s] * 10) / 10, 1), g.x0 + (s % N4) * g.cs + g.cs / 2, 1 + Math.floor(s / N4) * g.cs + g.cs * 0.8);
+    }
+  }
+  function draw2() {
+    drawSmall($('gS'), vS, VPI);
+    drawSmall($('gQ'), vQ, VSTAR);
+    $('sEp2').textContent = eps2;
+    $('sErrS').textContent = rms(vS, VPI).toFixed(2);
+    $('sErrQ').textContent = rms(vQ, VSTAR).toFixed(2);
+  }
+  $('b10').addEventListener('click', () => { for (let k = 0; k < 10; k++) episode4(); draw2(); });
+  $('b300').addEventListener('click', () => { for (let k = 0; k < 1000; k++) episode4(); draw2(); });
+  $('bReset2').addEventListener('click', reset2);
+  $('cTrue').addEventListener('change', draw2);
+  new ResizeObserver(() => QS && draw2()).observe($('gS'));
+  reset2();
+
+  Course.quiz([
+    {
+      q: '$Q(S, A) = -5$, $R = -1$, $\\gamma = 1$, $\\alpha = 0.5$. At $S\'$ the four action values are $-4, -2, -6, -5$. What is Q-learning\'s new $Q(S, A)$?',
+      answer: -5 + 0.5 * (-1 + -2 - -5),
+      explain: 'Target $-1 + \\max(-4, -2, -6, -5) = -3$. New value $-5 + 0.5(-3 + 5) = -4$.',
+    },
+    {
+      q: 'Same transition, but the agent explores and takes the action worth $-6$ next. What would SARSA\'s new $Q(S, A)$ be?',
+      answer: -5 + 0.5 * (-1 + -6 - -5),
+      explain: 'SARSA uses the action taken: target $-1 + (-6) = -7$, new value $-5 + 0.5(-7 + 5) = -6$.',
+    },
+    {
+      q: '$\\gamma = 0.9$, $R = 0$, $\\max_a Q(S\', a) = 10$, $Q(S, A) = 5$, $\\alpha = 0.1$. What is the new $Q(S, A)$?',
+      answer: 5 + 0.1 * (0 + 0.9 * 10 - 5),
+      explain: '$5 + 0.1(0 + 9 - 5) = 5.4$.',
+    },
+    {
+      q: 'Why can Q-learning learn $q_*$ from a uniformly random walker?',
+      choices: [
+        'Random behaviour happens to be optimal in gridworlds',
+        'Its target uses the max over next actions, so it does not depend on which action the walker takes next',
+        'It uses a smaller step size than SARSA',
+      ],
+      answer: 1,
+      explain: 'The Bellman optimality equation contains no behaviour policy. The walker only needs to keep visiting every state–action pair.',
+    },
+  ]);
+</script>
+</body>
+</html>

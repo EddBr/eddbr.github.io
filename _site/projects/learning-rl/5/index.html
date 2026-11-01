@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>5. The multi-armed bandit | Learning RL</title>
+<meta name="description" content="Ten slot machines, each with a hidden average payout. Pull levers, estimate their values, and find the best one.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  #arms { width: 100%; height: 300px; display: block; cursor: pointer; touch-action: manipulation; }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 0.85rem; color: var(--muted); margin: 4px 0 0; }
+  .legend > span::before { content: ""; display: inline-block; width: 16px; height: 0; vertical-align: middle; margin-right: 6px; border-top: 3px solid var(--accent); }
+  .legend > .dotk::before { width: 7px; height: 7px; border: 0; border-radius: 50%; background: var(--blue); opacity: 0.6; }
+  .legend > .truek::before { border-top: 2px dashed var(--amber); }
+</style>
+</head>
+<body data-lesson="5">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>The multi-armed bandit</h1>
+  <p class="lede">Ten slot machines ("one-armed bandits"). Each pays a random amount around its own hidden average. Pulling a lever is the only way to learn about it. This is the simplest RL problem: one state, ten actions.</p>
+
+  <section class="card">
+    <canvas id="arms" aria-label="Ten arms. Click a column to pull that arm."></canvas>
+    <div class="legend">
+      <span class="dotk">one reward</span>
+      <span class="qk">estimate $Q(a)$</span>
+      <span class="truek" id="trueKey" hidden>true value $q_*(a)$</span>
+    </div>
+    <p class="status" id="status">Click a column (or press 0–9) to pull that arm.</p>
+    <div class="stats">
+      <div class="stat"><span class="k">Pulls</span><span class="v" id="sPulls">0</span></div>
+      <div class="stat"><span class="k">Total reward</span><span class="v" id="sTotal">0</span></div>
+      <div class="stat"><span class="k">Average reward</span><span class="v" id="sAvg">–</span></div>
+      <div class="stat" id="statBest" hidden><span class="k">Pulls on the best arm</span><span class="v" id="sBest">–</span></div>
+    </div>
+    <div class="row">
+      <button id="bEach">Pull each arm 3×</button>
+      <button id="bGreedy">Greedy pull ×10</button>
+      <button id="bReveal" class="quiet">Reveal true values</button>
+      <span class="spacer"></span>
+      <button id="bNew" class="quiet">New bandit</button>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>Each action $a$ has a <b>true value</b>: the reward you get from it on average.</p>
+    $$q_*(a) = \mathbb{E}[R_t \mid A_t = a]$$
+    <p>$\mathbb{E}$ means "expected value", the long-run average. The agent can't see $q_*(a)$, so it keeps an <b>estimate</b> $Q_t(a)$, the average of the rewards it has seen from $a$:</p>
+    $$Q_t(a) = \frac{\text{sum of rewards from } a \text{ before } t}{\text{number of times } a \text{ was chosen before } t}$$
+    <p>By the law of large numbers, $Q_t(a) \to q_*(a)$ as $a$ is chosen more often. The greedy action is $\arg\max_a Q_t(a)$.</p>
+    <p>This is the <b>10-armed testbed</b> from Sutton &amp; Barto. Each $q_*(a)$ is drawn from a normal distribution with mean 0 and variance 1, and each reward from a normal distribution with mean $q_*(a)$ and variance 1:</p>
+    $$q_*(a) \sim \mathcal{N}(0, 1), \qquad R_t \sim \mathcal{N}(q_*(A_t), 1)$$
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const canvas = $('arms'), ctx = canvas.getContext('2d');
+  const K = 10, YMIN = -4, YMAX = 4;
+  let B, samples, revealed, total, pulls, bestPulls;
+
+  function newBandit() {
+    B = Course.bandit(K);
+    samples = Array.from({ length: K }, () => []);
+    revealed = false; total = 0; pulls = 0; bestPulls = 0;
+    $('trueKey').hidden = true; $('statBest').hidden = true;
+    $('bReveal').textContent = 'Reveal true values';
+    $('status').textContent = 'Click a column (or press 0–9) to pull that arm.';
+    draw();
+  }
+
+  const Q = (a) => (samples[a].length ? samples[a].reduce((x, s) => x + s.r, 0) / samples[a].length : null);
+
+  function pull(a) {
+    const r = B.pull(a);
+    samples[a].push({ r, jitter: Math.random() - 0.5 });
+    total += r; pulls++;
+    if (a === B.best) bestPulls++;
+    $('status').innerHTML = `Arm ${a} paid <b>${r.toFixed(2)}</b>. Its estimate is now ${Q(a).toFixed(2)} from ${samples[a].length} pull${samples[a].length > 1 ? 's' : ''}.`;
+  }
+
+  // Samples are stored as {r, jitter} so dots keep their place between redraws.
+  function draw() {
+    const dpr = window.devicePixelRatio || 1;
+    const W = canvas.clientWidth, H = canvas.clientHeight;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+
+    const left = 30, bottom = 22, colW = (W - left) / K;
+    const Y = (y) => 8 + ((YMAX - y) / (YMAX - YMIN)) * (H - bottom - 8);
+    ctx.font = '11px -apple-system, sans-serif';
+
+    // grid
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    for (let y = YMIN; y <= YMAX; y++) {
+      ctx.strokeStyle = y === 0 ? '#9ca3af' : '#eef0f3';
+      ctx.beginPath(); ctx.moveTo(left, Y(y)); ctx.lineTo(W, Y(y)); ctx.stroke();
+      ctx.fillStyle = '#6b7280'; ctx.fillText(y, left - 6, Y(y));
+    }
+
+    for (let a = 0; a < K; a++) {
+      const x0 = left + a * colW, cx = x0 + colW / 2;
+      if (a % 2) { ctx.fillStyle = 'rgba(0,0,0,0.018)'; ctx.fillRect(x0, 0, colW, H - bottom); }
+
+      if (revealed) {
+        // reward distribution: q* ± 1 standard deviation
+        ctx.fillStyle = 'rgba(217,119,6,0.10)';
+        ctx.fillRect(x0 + 3, Y(B.q[a] + 1), colW - 6, Y(B.q[a] - 1) - Y(B.q[a] + 1));
+        ctx.strokeStyle = Course.colors.amber; ctx.setLineDash([4, 3]); ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(x0 + 3, Y(B.q[a])); ctx.lineTo(x0 + colW - 3, Y(B.q[a])); ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      ctx.fillStyle = 'rgba(42,122,226,0.55)';
+      for (const s of samples[a]) {
+        ctx.beginPath(); ctx.arc(cx + s.jitter * colW * 0.55, Y(Math.max(YMIN, Math.min(YMAX, s.r))), 2.6, 0, 2 * Math.PI); ctx.fill();
+      }
+
+      const q = Q(a);
+      if (q !== null) {
+        ctx.strokeStyle = Course.colors.green; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(x0 + 5, Y(q)); ctx.lineTo(x0 + colW - 5, Y(q)); ctx.stroke();
+      }
+
+      ctx.fillStyle = revealed && a === B.best ? Course.colors.amber : '#374151';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.font = (revealed && a === B.best ? 'bold ' : '') + '12px -apple-system, sans-serif';
+      ctx.fillText(revealed && a === B.best ? `★${a}` : a, cx, H - bottom + 5);
+      ctx.font = '11px -apple-system, sans-serif';
+    }
+
+    $('sPulls').textContent = pulls;
+    $('sTotal').textContent = total.toFixed(1);
+    $('sAvg').textContent = pulls ? (total / pulls).toFixed(2) : '–';
+    $('sBest').textContent = pulls ? `${Math.round((100 * bestPulls) / pulls)}%` : '–';
+  }
+
+  canvas.addEventListener('click', (e) => {
+    const r = canvas.getBoundingClientRect();
+    const a = Math.floor(((e.clientX - r.left - 30) / (r.width - 30)) * K);
+    if (a >= 0 && a < K) { pull(a); draw(); }
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT' || !/^[0-9]$/.test(e.key)) return;
+    pull(+e.key); draw();
+  });
+
+  $('bEach').addEventListener('click', () => {
+    for (let i = 0; i < 3; i++) for (let a = 0; a < K; a++) pull(a);
+    $('status').textContent = 'Each arm pulled 3 more times. Which estimate would you trust most?';
+    draw();
+  });
+  $('bGreedy').addEventListener('click', () => {
+    for (let i = 0; i < 10; i++) {
+      const qs = Array.from({ length: K }, (_, a) => Q(a) ?? 0);
+      pull(Course.argmax(qs));
+    }
+    draw();
+  });
+  $('bReveal').addEventListener('click', () => {
+    revealed = !revealed;
+    $('trueKey').hidden = !revealed; $('statBest').hidden = !revealed;
+    $('bReveal').textContent = revealed ? 'Hide true values' : 'Reveal true values';
+    if (revealed) $('status').textContent = `The best arm is ${B.best}, with q* = ${B.q[B.best].toFixed(2)}. The shaded band is q* ± 1, where about two-thirds of its rewards land.`;
+    draw();
+  });
+  $('bNew').addEventListener('click', newBandit);
+  new ResizeObserver(draw).observe(canvas);
+  newBandit();
+
+  Course.quiz([
+    {
+      q: 'An arm has paid $1.2$, $-0.4$ and $0.7$. What is its estimate $Q$?',
+      answer: 0.5,
+      explain: '$(1.2 - 0.4 + 0.7)/3 = 1.5/3 = 0.5$.',
+    },
+    {
+      q: 'An arm has $q_*(a) = 1.5$. In the testbed, what reward does it pay on average?',
+      answer: 1.5,
+      explain: 'Rewards are $\\mathcal{N}(q_*(a), 1)$, so their mean is $q_*(a)$. Single rewards vary a lot around it.',
+    },
+    {
+      q: 'Arm A has $Q = 1.1$ from 1 pull. Arm B has $Q = 0.9$ from 40 pulls. Which does a greedy agent pick, and is that wise?',
+      choices: [
+        'A, and it is clearly the better arm',
+        'A, but one pull says little. B\'s estimate is far more reliable',
+        'B, because it has more pulls',
+      ],
+      answer: 1,
+      explain: 'Greedy only compares estimates and ignores how certain they are. Lesson 9 fixes this.',
+    },
+  ]);
+</script>
+</body>
+</html>

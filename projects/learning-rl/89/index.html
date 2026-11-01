@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>89. Direct preference optimisation | Learning RL</title>
+<meta name="description" content="DPO skips the reward model and the RL loop: a classification loss on preference pairs pushes the chosen reply up and the rejected one down, and lands on the same policy as KL-penalised RLHF.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .resp { margin: 10px 0; }
+  .rrow { display: grid; grid-template-columns: 1fr 44%; gap: 8px; align-items: center; padding: 4px 0; border-bottom: 1px solid var(--border); }
+  .rrow .txt { font-size: 0.88rem; color: var(--heading); line-height: 1.3; }
+  .rrow .txt small { display: block; color: var(--muted); font-size: 0.75rem; font-variant-numeric: tabular-nums; }
+  .rrow .track { position: relative; height: 22px; background: var(--soft); border-radius: 3px; }
+  .rrow .fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); border-radius: 3px; transition: width 0.2s ease; }
+  .rrow .ref { position: absolute; top: -3px; bottom: -3px; border-left: 3px dashed #6b7280; }
+  .rrow .rl { position: absolute; top: -5px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; border: 2px solid var(--amber); background: #fff; }
+  .rrow .pv { position: absolute; right: 4px; top: 2px; font-size: 0.75rem; color: var(--heading); font-variant-numeric: tabular-nums; }
+  .rrow .arrow { font-weight: 700; margin-left: 4px; }
+  .rrow.win { background: var(--accent-soft); }
+  .rrow.lose { background: var(--red-soft); }
+  .key { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.85rem; color: var(--muted); margin: 0; }
+  .key > span::before { content: ""; display: inline-block; width: 16px; vertical-align: middle; margin-right: 5px; border-top: 3px solid; }
+  .key .kn::before { border-color: var(--accent); border-top-width: 8px; }
+  .key .kr::before { border-color: #6b7280; border-top-style: dashed; }
+  .key .ka::before { width: 8px; height: 8px; border: 2px solid var(--amber); border-radius: 50%; }
+  #eqPair { overflow-x: auto; min-height: 2.6em; }
+</style>
+</head>
+<body data-lesson="89">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Direct preference optimisation</h1>
+  <p class="lede">Lessons 87 and 88 fit a reward model, then run RL against it with a KL penalty. Lesson 88 also found the exact answer to that RL problem. DPO inverts that answer: it trains the policy directly on preference pairs with a classification loss. No reward model and no sampling during training.</p>
+
+  <section class="card">
+    <h2>Push chosen up, rejected down</h2>
+    <p class="note">Lesson 88's six replies and reference model. A careful rater compared pairs of replies sampled from $\pi_{\text{ref}}$ and preferred higher true quality (with Bradley–Terry noise). The policy $\pi_\theta$ starts equal to $\pi_{\text{ref}}$. Step through pairs or train on the whole set.</p>
+    <label class="slider"><span>$\beta$</span><input id="iB" type="range" min="0.05" max="1" step="0.05" value="0.3"><output></output></label>
+    <p class="key"><span class="kn">$\pi_\theta$</span><span class="kr">$\pi_{\text{ref}}$</span><span class="ka">RLHF optimum, Lesson 88</span></p>
+    <div class="resp" id="resp"></div>
+    <div id="eqPair"></div>
+    <p class="status" id="status"></p>
+    <div class="row">
+      <button id="bStep">Step on next pair</button>
+      <button id="bTrain" class="primary">Train 100 epochs</button>
+      <span class="spacer"></span>
+      <button id="bData" class="quiet">New 40 pairs</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="k">DPO loss (all pairs)</span><span class="v" id="sL">–</span></div>
+      <div class="stat"><span class="k">True quality $\mathbb{E}_{\pi_\theta}$</span><span class="v" id="sQ">–</span></div>
+      <div class="stat"><span class="k">$D_{\mathrm{KL}}(\pi_\theta \,\|\, \pi_{\text{ref}})$</span><span class="v" id="sK">–</span></div>
+    </div>
+    <canvas class="chart" id="loss" style="height:180px"></canvas>
+    <p class="note">The amber circles come from the two-stage route: fit Bradley–Terry scores to the same 40 pairs (Lesson 87), then reweight $\pi_{\text{ref}}$ by $e^{r/\beta}$ (Lesson 88). Both routes take the same number of gradient steps on the same pairs, and after every step the green bars sit on the circles.</p>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p><b>Step 1: solve for the reward.</b> Lesson 88 showed the KL-penalised optimum is $\pi^*(y \mid x) = \pi_{\text{ref}}(y \mid x)\, e^{r(x,y)/\beta} / Z(x)$. Take logs and rearrange:</p>
+    $$r(x, y) = \beta \log \frac{\pi^*(y \mid x)}{\pi_{\text{ref}}(y \mid x)} + \beta \log Z(x)$$
+    <p>Any policy defines a reward this way. $\beta \log \frac{\pi_\theta}{\pi_{\text{ref}}}$ is called its <b>implicit reward</b>, written $\hat r_\theta$ below.</p>
+    <p><b>Step 2: put it into Bradley–Terry.</b> Bradley–Terry (Lesson 86) uses only reward differences, and both replies share the prompt $x$, so $\beta \log Z(x)$ cancels:</p>
+    $$\begin{aligned} P(y_w \succ y_l \mid x) = \sigma\!\Big(&\beta \log \frac{\pi^*(y_w \mid x)}{\pi_{\text{ref}}(y_w \mid x)} \\ &- \beta \log \frac{\pi^*(y_l \mid x)}{\pi_{\text{ref}}(y_l \mid x)}\Big) \end{aligned}$$
+    <p>The intractable $Z$ is gone. The preference probability is written in terms of the policy alone.</p>
+    <p><b>Step 3: maximum likelihood.</b> Fit $\pi_\theta$ to the comparisons exactly as Lesson 87 fit $r_\phi$ (Rafailov et al. 2023, eq. 7):</p>
+    $$\begin{aligned} \mathcal{L}_{\text{DPO}}(\theta) = -\,\mathbb{E}_{(x, y_w, y_l) \sim \mathcal{D}}\Big[\log \sigma\Big(&\beta \log \frac{\pi_\theta(y_w \mid x)}{\pi_{\text{ref}}(y_w \mid x)} \\ &- \beta \log \frac{\pi_\theta(y_l \mid x)}{\pi_{\text{ref}}(y_l \mid x)}\Big)\Big] \end{aligned}$$
+    <p>It is Lesson 87's loss with $r_\phi$ replaced by the implicit reward $\hat r_\theta$. That is why the two routes land in the same place: they minimise the same function of the rewards.</p>
+    <p><b>The gradient.</b> With $\hat r_\theta(y) = \beta \log \frac{\pi_\theta(y \mid x)}{\pi_{\text{ref}}(y \mid x)}$,</p>
+    $$\begin{aligned} \nabla_\theta \mathcal{L}_{\text{DPO}} = -\beta\, \mathbb{E}\Big[&\sigma\big(\hat r_\theta(y_l) - \hat r_\theta(y_w)\big) \\ &\times \big(\nabla_\theta \log \pi_\theta(y_w \mid x) - \nabla_\theta \log \pi_\theta(y_l \mid x)\big)\Big] \end{aligned}$$
+    <p>Raise the chosen reply's log-probability, lower the rejected one's, weighted by how wrongly the implicit reward currently orders them. A pair already ordered with a wide margin barely moves anything.</p>
+    <p><b>On this page.</b> The policy is a softmax over the six whole replies with logits $\theta_y$, so $\log \pi_\theta(y_w) - \log \pi_\theta(y_l) = \theta_w - \theta_l$: the normaliser cancels and each step changes only the two logits in the pair. Replies that never appear in the data keep their logits and change only through the normaliser, so DPO learns nothing about them. The reply that invents a statistic is almost never produced by $\pi_{\text{ref}}$, so it shows up in few pairs or none, and what DPO does to it depends on luck. RLHF with a learned reward model would instead score it by extrapolating, as in Lessons 87 and 88.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const C = Course.colors;
+  const RESP = [
+    { t: 'Accurate and concise', ref: 0.10, q: 1.0 },
+    { t: 'Accurate, a little long', ref: 0.20, q: 0.8 },
+    { t: 'Mostly accurate, misses the main point', ref: 0.30, q: 0.4 },
+    { t: 'Vague and generic', ref: 0.25, q: 0.1 },
+    { t: 'Off-topic', ref: 0.145, q: -0.5 },
+    { t: 'Long, confident, invents a statistic', ref: 0.005, q: -1.0 },
+  ];
+  const K = RESP.length, NPAIR = 40, RATER = 3;
+  const sig = (z) => 1 / (1 + Math.exp(-z));
+  const logRef = RESP.map((x) => Math.log(x.ref));
+  const softmax = (z) => { const m = Math.max(...z), e = z.map((x) => Math.exp(x - m)), s = e.reduce((a, b) => a + b, 0); return e.map((x) => x / s); };
+  let th, bt, data, next, lossHist, epochs, last = null;
+
+  const beta = Course.slider('#iB', (v) => v.toFixed(2), () => { resetPolicy(); draw(); });
+
+  function newData() {
+    data = [];
+    while (data.length < NPAIR) {
+      const i = Course.sample(RESP.map((x) => x.ref)), j = Course.sample(RESP.map((x) => x.ref));
+      if (i === j) continue;
+      data.push(Math.random() < sig(RATER * (RESP[i].q - RESP[j].q)) ? [i, j] : [j, i]);
+    }
+  }
+  function resetPolicy() { th = logRef.slice(); bt = new Array(K).fill(0); next = 0; epochs = 0; last = null; lossHist = [[0, dpoLoss()]]; }
+
+  const implicit = (y) => beta() * (th[y] - logRef[y]);   // beta log(pi/pi_ref) up to the shared log-normaliser
+  const margin = ([w, l]) => implicit(w) - implicit(l);
+  const dpoLoss = () => data.reduce((s, p) => s + Math.log(1 + Math.exp(-margin(p))), 0) / data.length;
+
+  // One gradient step on the DPO loss for a set of pairs. Step size scales as 1/beta^2 so the
+  // implicit rewards move at the same speed for every beta.
+  function step(pairs) {
+    const b = beta(), lr = 1 / (b * b), g = new Array(K).fill(0);
+    for (const p of pairs) {
+      const wgt = sig(-margin(p));          // sigma(r_l - r_w)
+      g[p[0]] += b * wgt; g[p[1]] -= b * wgt;
+    }
+    for (let k = 0; k < K; k++) th[k] += (lr * g[k]) / pairs.length;
+    // Two-stage route, computed separately: one Bradley-Terry step (Lesson 86, step size 1)
+    // on a table of scores bt, using the same pairs.
+    const gs = new Array(K).fill(0);
+    for (const [w, l] of pairs) { const c = sig(-(bt[w] - bt[l])); gs[w] += c; gs[l] -= c; }
+    for (let k = 0; k < K; k++) bt[k] += gs[k] / pairs.length;
+  }
+
+  // Then the Lesson 88 optimum for those scores: pi_ref * exp(bt / beta), normalised.
+  const rlhf = () => softmax(bt.map((x, k) => logRef[k] + x / beta()));
+
+  $('resp').innerHTML = RESP.map((x) => `<div class="rrow"><div class="txt">${x.t}<small></small></div><div class="track"><div class="fill"></div><div class="ref" style="left:${100 * x.ref}%"></div><div class="rl"></div><span class="pv"></span></div></div>`).join('');
+  const lossChart = Course.lineChart($('loss'), { xLabel: 'epochs', yLabel: 'DPO loss', yMin: 0, xMin: 0 });
+
+  function draw() {
+    const p = softmax(th), pr = rlhf();
+    const counts = RESP.map((_, k) => data.filter((d) => d[0] === k || d[1] === k).length);
+    [...$('resp').children].forEach((row, k) => {
+      row.className = 'rrow' + (last && last[0] === k ? ' win' : last && last[1] === k ? ' lose' : '');
+      row.querySelector('.fill').style.width = `${100 * p[k]}%`;
+      row.querySelector('.rl').style.left = `${100 * pr[k]}%`;
+      const arrow = last && last[0] === k ? '<span class="arrow good">↑</span>' : last && last[1] === k ? '<span class="arrow bad">↓</span>' : '';
+      row.querySelector('.pv').innerHTML = p[k].toFixed(3) + arrow;
+      row.querySelector('small').textContent = `true ${RESP[k].q}, in ${counts[k]} pairs, β log π/π_ref = ${(beta() * Math.log(p[k] / RESP[k].ref)).toFixed(2)}`;
+    });
+    $('sL').textContent = dpoLoss().toFixed(3);
+    $('sQ').textContent = p.reduce((s, x, k) => s + x * RESP[k].q, 0).toFixed(3);
+    $('sK').textContent = p.reduce((s, x, k) => s + x * Math.log(x / RESP[k].ref), 0).toFixed(3);
+    lossChart.draw([{ data: lossHist, color: C.green, dots: lossHist.length < 30 }], { hlines: [{ y: Math.log(2), label: 'log 2', color: C.grey }] });
+  }
+
+  $('bStep').addEventListener('click', () => {
+    const pair = data[next % data.length], [w, l] = pair, m = margin(pair), b = beta();
+    Course.tex($('eqPair'),
+      `m = \\hat r(y_w) - \\hat r(y_l) = ${m.toFixed(2)}, \\quad -\\log\\sigma(m) = ${Math.log(1 + Math.exp(-m)).toFixed(3)}, \\quad \\text{weight } \\sigma(-m) = ${sig(-m).toFixed(2)}`, true);
+    $('status').textContent = `Pair ${(next % data.length) + 1} of ${data.length}: "${RESP[w].t}" was preferred to "${RESP[l].t}". Only these two logits move.`;
+    step([pair]); next++; last = pair;
+    draw();
+  });
+  $('bTrain').addEventListener('click', () => {
+    for (let e = 0; e < 100; e++) { step(data); epochs++; if (epochs % 5 === 0) lossHist.push([epochs, dpoLoss()]); }
+    last = null;
+    $('eqPair').innerHTML = '';
+    $('status').textContent = `${epochs} epochs of full-batch gradient descent on the DPO loss.`;
+    draw();
+  });
+  $('bData').addEventListener('click', () => { newData(); resetPolicy(); $('eqPair').innerHTML = ''; $('status').textContent = 'New pairs. The policy is back to π_ref.'; draw(); });
+
+  newData(); resetPolicy();
+  $('status').textContent = 'Press "Step on next pair" to see one update.';
+  draw();
+
+  const L = Math.log;
+  Course.quiz([
+    {
+      q: 'With $\\beta = 0.1$, a reply has $\\pi_\\theta = 0.4$ and $\\pi_{\\text{ref}} = 0.2$. What is its implicit reward $\\beta\\log(\\pi_\\theta/\\pi_{\\text{ref}})$?',
+      answer: 0.1 * L(2),
+      tol: 0.001,
+      explain: '$0.1 \\log 2 = 0.069$.',
+    },
+    {
+      q: '$\\beta = 0.5$. The policy has doubled the chosen reply\'s probability relative to $\\pi_{\\text{ref}}$ and halved the rejected one\'s. What is the DPO loss on this pair?',
+      answer: -L(sig(0.5 * (L(2) - L(0.5)))),
+      tol: 0.003,
+      hint: 'The margin is $0.5(\\log 2 - \\log 0.5)$.',
+      explain: 'Margin $= 0.5 \\times 2\\log 2 = \\log 2$, and $\\sigma(\\log 2) = 2/3$, so the loss is $-\\log(2/3) = 0.405$.',
+    },
+    {
+      q: 'What is the DPO loss on any pair before training, when $\\pi_\\theta = \\pi_{\\text{ref}}$?',
+      answer: L(2),
+      tol: 0.002,
+      explain: 'Both implicit rewards are 0, so the loss is $-\\log\\sigma(0) = \\log 2 = 0.693$.',
+    },
+    {
+      q: 'Compared with RLHF using PPO, what does DPO not need?',
+      choices: [
+        'A reference model $\\pi_{\\text{ref}}$',
+        'Preference data',
+        'A separately trained reward model, and sampling from the policy during training',
+        'The parameter $\\beta$',
+      ],
+      answer: 2,
+      explain: 'DPO still needs $\\pi_{\\text{ref}}$, $\\beta$ and preference pairs. It replaces the reward model and the RL loop with one supervised loss.',
+    },
+  ]);
+</script>
+</body>
+</html>

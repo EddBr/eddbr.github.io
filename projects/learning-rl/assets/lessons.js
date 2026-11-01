@@ -149,16 +149,16 @@ window.RL_LESSONS = [
   { n: 84, unit: 17, title: 'Entropy bonuses', read: 'Schulman et al. (2017), PPO, §5' },
 
   // Unit 18: RL for language models
-  { n: 85, unit: 18, title: 'A language model is a policy', read: 'Lambert, RLHF Book, ch. 1–3' },
-  { n: 86, unit: 18, title: 'From preferences to scores', read: 'Lambert, RLHF Book, ch. 7' },
-  { n: 87, unit: 18, title: 'Reward models', read: 'Lambert, RLHF Book, ch. 7' },
-  { n: 88, unit: 18, title: 'The KL penalty', read: 'Lambert, RLHF Book, ch. 8' },
+  { n: 85, unit: 18, title: 'A language model is a policy', read: 'Lambert, RLHF Book (rlhfbook.com), introduction' },
+  { n: 86, unit: 18, title: 'From preferences to scores', read: 'Lambert, RLHF Book, reward modelling chapter' },
+  { n: 87, unit: 18, title: 'Reward models', read: 'Lambert, RLHF Book, reward modelling chapter' },
+  { n: 88, unit: 18, title: 'The KL penalty', read: 'Lambert, RLHF Book, regularisation chapter' },
   { n: 89, unit: 18, title: 'Direct preference optimisation', read: 'Rafailov et al. (2023), DPO' },
 
   // Unit 19: When RL goes wrong
   { n: 90, unit: 19, title: 'Reward hacking', read: 'Krakovna et al. (2020), Specification gaming' },
   { n: 91, unit: 19, title: "Goodhart's law", read: 'Gao, Schulman & Hilton (2022), Scaling laws for reward model overoptimization' },
-  { n: 92, unit: 19, title: 'Verifiable rewards', read: 'Lambert et al. (2024), Tülu 3, §6' },
+  { n: 92, unit: 19, title: 'Verifiable rewards', read: 'Lambert et al. (2024), Tülu 3 (RL with verifiable rewards)' },
   { n: 93, unit: 19, title: 'GRPO', read: 'Shao et al. (2024), DeepSeekMath, §4' },
   { n: 94, unit: 19, title: 'Sparse rewards and curiosity', read: 'Bellemare et al. (2016); Pathak et al. (2017)' },
 
@@ -167,6 +167,6 @@ window.RL_LESSONS = [
   { n: 96, unit: 20, title: 'AlphaZero', read: 'Silver et al. (2018), AlphaZero' },
   { n: 97, unit: 20, title: 'World models', read: 'Schrittwieser et al. (2020), MuZero; Ha & Schmidhuber (2018)' },
   { n: 98, unit: 20, title: 'Offline RL', read: 'Levine et al. (2020), Offline RL tutorial, §1–2' },
-  { n: 99, unit: 20, title: 'Multi-agent RL', read: 'S&B §17.6; any intro to game theory' },
+  { n: 99, unit: 20, title: 'Multi-agent RL', read: 'Busoniu, Babuska & De Schutter (2008), A comprehensive survey of multiagent RL' },
   { n: 100, unit: 20, title: 'Final review', read: 'Lessons 1–99' },
 ];

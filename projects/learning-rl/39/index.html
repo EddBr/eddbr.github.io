@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>39. Importance sampling | Learning RL</title>
+<meta name="description" content="Estimate what one policy would get using data from another. Reweight fair-die rolls to learn about a loaded die, then reproduce S&amp;B Figure 5.3.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .die { font-size: 64px; line-height: 1; text-align: center; min-height: 66px; color: var(--heading); }
+  .probs th:first-child, .probs td:first-child { text-align: left; color: var(--muted); }
+  .probs td.hit { background: var(--accent-soft); font-weight: 600; }
+  #rollInfo { text-align: center; }
+  .stats .stat .v.g { color: var(--accent); }
+  .stats .stat .v.b { color: var(--blue); }
+  .stats .stat .v.a { color: var(--amber); }
+</style>
+</head>
+<body data-lesson="39">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Importance sampling</h1>
+  <p class="lede">Sometimes the data comes from one policy but you want the value of another: learning the greedy policy while exploring, or judging a new policy from old logs. Importance sampling reweights each outcome by how much more (or less) likely the target policy was to produce it.</p>
+
+  <section class="card">
+    <p class="note">You can only roll the fair die $b$. You want the average roll of the loaded die $\pi$. Each roll $x$ gets weight $\rho = \pi(x)/b(x)$.</p>
+    <label class="slider"><span>$\pi(6)$, loaded</span><input id="iW" type="range" min="0.2" max="0.9" step="0.05" value="0.5"><output></output></label>
+    <table class="data probs" id="probs"></table>
+    <div class="die" id="die">🎲</div>
+    <p class="status" id="rollInfo">Press "Roll".</p>
+    <div class="row center">
+      <button id="bRoll" class="primary">Roll</button>
+      <button id="b100">Roll 100</button>
+      <button id="bReset" class="quiet">Reset</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="k">Plain average (fair die)</span><span class="v" id="sPlain">–</span></div>
+      <div class="stat"><span class="k">Ordinary IS</span><span class="v g" id="sOrd">–</span></div>
+      <div class="stat"><span class="k">Weighted IS</span><span class="v b" id="sWt">–</span></div>
+      <div class="stat"><span class="k">True $\mathbb{E}_\pi[X]$</span><span class="v a" id="sTrue">–</span></div>
+    </div>
+    <canvas class="chart" id="chart"></canvas>
+
+    <div class="sub">
+      <h2>Off-policy blackjack (S&amp;B Example 5.4)</h2>
+      <p class="note">Target policy: Lesson 37's "stick on 20 or 21". Behaviour policy: hit or stick at random, half each. Estimate the target policy's value of one state (sum 13 with a usable ace, dealer showing 2) from behaviour hands only. 100 independent runs of 10,000 hands each; the lines are mean squared error against the true value, as in S&amp;B Figure 5.3.</p>
+      <div class="row"><button id="bBJ">Run 100 runs</button></div>
+      <canvas class="chart" id="chart2" hidden></canvas>
+      <p class="status" id="bjInfo"></p>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>For one roll, reweighting turns an average under $b$ into an average under $\pi$:</p>
+    $$\mathbb{E}_b\!\left[\frac{\pi(X)}{b(X)}\,X\right] = \sum_x b(x)\,\frac{\pi(x)}{b(x)}\,x = \sum_x \pi(x)\,x = \mathbb{E}_\pi[X]$$
+    <p>This needs <b>coverage</b>: $b(x) &gt; 0$ wherever $\pi(x) &gt; 0$, or some outcomes can never be seen.</p>
+    <p>In an episode, the ratio multiplies over every action from time $t$ to the end $T$:</p>
+    $$\rho_{t:T-1} = \prod_{k=t}^{T-1} \frac{\pi(A_k \mid S_k)\, p(S_{k+1} \mid S_k, A_k)}{b(A_k \mid S_k)\, p(S_{k+1} \mid S_k, A_k)} = \prod_{k=t}^{T-1} \frac{\pi(A_k \mid S_k)}{b(A_k \mid S_k)}$$
+    <p>The transition probabilities appear in both the numerator and the denominator and cancel, so the ratio needs no model. Then $\mathbb{E}_b[\rho_{t:T-1} G_t \mid S_t = s] = v_\pi(s)$.</p>
+    <p>Let $\mathcal{T}(s)$ be the times $s$ is visited (first visits, across all episodes). Two ways to average:</p>
+    $$V_{\text{ordinary}}(s) = \frac{\sum_{t \in \mathcal{T}(s)} \rho_{t:T(t)-1}\, G_t}{|\mathcal{T}(s)|} \qquad V_{\text{weighted}}(s) = \frac{\sum_{t \in \mathcal{T}(s)} \rho_{t:T(t)-1}\, G_t}{\sum_{t \in \mathcal{T}(s)} \rho_{t:T(t)-1}}$$
+    <p><b>Ordinary</b> is unbiased, but its variance can be huge: one roll of 6 with $\rho = 3$ triples a value. <b>Weighted</b> is a weighted average of real returns, so it never leaves their range. It is biased (after one sample it just equals that return), but the bias fades and its variance is far lower. In practice weighted is preferred.</p>
+    <p>In the blackjack example, $\pi$ is deterministic and $b = \tfrac12$, so $\rho$ is $2^k$ if the behaviour policy happened to make the target's choice at all $k$ decisions, and $0$ otherwise.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const FACES = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+  const w = Course.slider('#iW', (x) => x.toFixed(2), reset);
+  const piOf = () => [1, 2, 3, 4, 5, 6].map((x) => (x === 6 ? w() : (1 - w()) / 5));
+  const B = 1 / 6;
+  let sumRhoX, sumRho, sumX, n, hist, last;
+
+  function table() {
+    const pi = piOf();
+    const cell = (x, s) => `<td class="${x === last ? 'hit' : ''}">${s}</td>`;
+    $('probs').innerHTML =
+      `<tr><th>face</th>${[1, 2, 3, 4, 5, 6].map((x) => `<th>${x}</th>`).join('')}</tr>` +
+      `<tr><td>$\\pi(x)$</td>${pi.map((p, i) => cell(i + 1, p.toFixed(2))).join('')}</tr>` +
+      `<tr><td>$b(x)$</td>${pi.map((_, i) => cell(i + 1, '1/6')).join('')}</tr>` +
+      `<tr><td>$\\rho$</td>${pi.map((p, i) => cell(i + 1, (p / B).toFixed(2))).join('')}</tr>`;
+    Course.renderMath($('probs'));
+  }
+  const chart = Course.lineChart($('chart'), { xLabel: 'rolls', yLabel: 'estimate', yMin: 1, yMax: 7, xMin: 0 });
+  function draw() {
+    const truth = piOf().reduce((t, p, i) => t + p * (i + 1), 0);
+    chart.draw([
+      { data: hist.map((h) => [h.n, h.ord]), color: Course.colors.green, label: 'ordinary' },
+      { data: hist.map((h) => [h.n, h.wt]), color: Course.colors.blue, label: 'weighted' },
+      { data: hist.map((h) => [h.n, h.plain]), color: Course.colors.grey, label: 'plain', dashed: true },
+    ], { hlines: [{ y: truth, label: 'true', color: Course.colors.amber }] });
+  }
+  function stats() {
+    const truth = piOf().reduce((t, p, i) => t + p * (i + 1), 0);
+    $('sTrue').textContent = truth.toFixed(3);
+    $('sPlain').textContent = n ? (sumX / n).toFixed(3) : '–';
+    $('sOrd').textContent = n ? (sumRhoX / n).toFixed(3) : '–';
+    $('sWt').textContent = n ? (sumRhoX / sumRho).toFixed(3) : '–';
+  }
+  function reset() {
+    sumRhoX = 0; sumRho = 0; sumX = 0; n = 0; hist = []; last = null;
+    $('die').textContent = '🎲'; $('rollInfo').textContent = 'Press "Roll".';
+    table(); stats(); draw();
+  }
+  function roll(quiet) {
+    const x = 1 + Course.randInt(6), rho = piOf()[x - 1] / B;
+    n++; sumX += x; sumRho += rho; sumRhoX += rho * x; last = x;
+    hist.push({ n, ord: sumRhoX / n, wt: sumRhoX / sumRho, plain: sumX / n });
+    if (!quiet) {
+      $('die').textContent = FACES[x - 1];
+      $('rollInfo').innerHTML = `Rolled ${x}. $\\rho = ${piOf()[x - 1].toFixed(2)} \\div \\tfrac16 = ${rho.toFixed(2)}$, so this roll counts as $\\rho x = ${(rho * x).toFixed(2)}$ in the ordinary sum and weight ${rho.toFixed(2)} in the weighted one.`;
+      Course.renderMath($('rollInfo'));
+      table(); stats(); draw();
+    }
+  }
+  $('bRoll').addEventListener('click', () => roll(false));
+  $('b100').addEventListener('click', () => { for (let i = 0; i < 99; i++) roll(true); roll(false); });
+  $('bReset').addEventListener('click', reset);
+  reset();
+
+  // ---- Off-policy blackjack (S&B Example 5.4 / Figure 5.3).
+  const card = () => Math.min(10, 1 + Course.randInt(13));
+  function add(h, c) {
+    let sum = h.sum + c, u = h.u;
+    if (c === 1 && sum + 10 <= 21) { sum += 10; u = true; }
+    if (sum > 21 && u) { sum -= 10; u = false; }
+    return { sum, u };
+  }
+  const EMPTY = { sum: 0, u: false };
+  const UP = 2;
+  const target = (h) => (h.sum < 20 ? 1 : 0);   // 1 = hit
+  // One behaviour hand from (13, usable ace, dealer 2). Returns [rho, G].
+  function behaviourHand() {
+    let h = { sum: 13, u: true }, rho = 1;
+    for (;;) {
+      const a = Course.randInt(2);
+      rho *= a === target(h) ? 2 : 0;           // pi(a|s) / b(a|s) with b = 1/2
+      if (a === 0) break;
+      h = add(h, card());
+      if (h.sum > 21) return [rho, -1];
+    }
+    let d = add(add(EMPTY, UP), card());
+    while (d.sum < 17) d = add(d, card());
+    return [rho, d.sum > 21 || h.sum > d.sum ? 1 : h.sum < d.sum ? -1 : 0];
+  }
+  // Exact value of the target policy from that state, by recursion over the infinite deck.
+  const PC = (c) => (c === 10 ? 4 / 13 : 1 / 13);
+  function dealerDist() {
+    const out = new Array(6).fill(0);
+    (function rec(h, p) {
+      if (h.sum > 21) { out[5] += p; return; }
+      if (h.sum >= 17) { out[h.sum - 17] += p; return; }
+      for (let c = 1; c <= 10; c++) rec(add(h, c), p * PC(c));
+    })(add(EMPTY, UP), 1);
+    return out;
+  }
+  const DD = dealerDist();
+  function exactV(h) {
+    if (h.sum > 21) return -1;
+    if (!target(h)) { let v = DD[5]; for (let k = 0; k < 5; k++) v += h.sum > 17 + k ? DD[k] : h.sum < 17 + k ? -DD[k] : 0; return v; }
+    let v = 0; for (let c = 1; c <= 10; c++) v += PC(c) * exactV(add(h, c));
+    return v;
+  }
+  const TRUE_V = exactV({ sum: 13, u: true });
+
+  const chart2 = Course.lineChart($('chart2'), { xLabel: 'log₁₀ episodes', yLabel: 'mean squared error', yMin: 0, yMax: 5, xMin: 0, xMax: 4 });
+  $('bBJ').addEventListener('click', () => {
+    $('bBJ').disabled = true; $('bBJ').textContent = 'Running…';
+    setTimeout(() => {
+      const RUNS = 100, EP = 10000;
+      const marks = []; for (let e = 0; e <= 40; e++) marks.push(Math.round(Math.pow(10, e / 10)));
+      const uniq = [...new Set(marks)];
+      const seOrd = new Array(uniq.length).fill(0), seWt = new Array(uniq.length).fill(0);
+      for (let r = 0; r < RUNS; r++) {
+        let num = 0, den = 0, m = 0;
+        for (let k = 1; k <= EP; k++) {
+          const [rho, G] = behaviourHand();
+          num += rho * G; den += rho;
+          if (k === uniq[m]) {
+            const ord = num / k, wt = den ? num / den : 0;
+            seOrd[m] += (ord - TRUE_V) ** 2; seWt[m] += (wt - TRUE_V) ** 2; m++;
+          }
+        }
+      }
+      $('chart2').hidden = false;
+      chart2.draw([
+        { data: uniq.map((k, i) => [Math.log10(k), seOrd[i] / RUNS]), color: Course.colors.green, label: 'ordinary IS' },
+        { data: uniq.map((k, i) => [Math.log10(k), seWt[i] / RUNS]), color: Course.colors.blue, label: 'weighted IS' },
+      ]);
+      $('bjInfo').textContent = `True value ${TRUE_V.toFixed(4)} (S&B quote −0.27726). After 10,000 hands: ordinary MSE ${(seOrd[seOrd.length - 1] / RUNS).toFixed(4)}, weighted MSE ${(seWt[seWt.length - 1] / RUNS).toFixed(4)}.`;
+      $('bBJ').disabled = false; $('bBJ').textContent = 'Run again';
+    }, 30);
+  });
+
+  // Quiz: pi(6) = 1/2, others 1/10. Rolls 6, 2, 6, 1.
+  const rho = (x) => (x === 6 ? 0.5 : 0.1) * 6;
+  const rolls = [6, 2, 6, 1];
+  const num = rolls.reduce((t, x) => t + rho(x) * x, 0), den = rolls.reduce((t, x) => t + rho(x), 0);
+
+  Course.quiz([
+    {
+      q: 'The loaded die has $\\pi(6) = 0.5$ and $\\pi(x) = 0.1$ for the other faces. The fair die gives $b(x) = 1/6$. What is $\\rho$ for a roll of 6?',
+      answer: 3,
+      tol: 0.001,
+      explain: '$\\rho = 0.5 / (1/6) = 3$. A 1 to 5 gets $0.1/(1/6) = 0.6$.',
+    },
+    {
+      q: 'Same dice. The fair die rolls $6, 2, 6, 1$. What is the ordinary importance-sampling estimate of $\\mathbb{E}_\\pi[X]$?',
+      answer: Math.round((num / rolls.length) * 1e6) / 1e6,
+      tol: 0.005,
+      hint: 'Average $\\rho x$ over the four rolls.',
+      explain: '$(3 \\cdot 6 + 0.6 \\cdot 2 + 3 \\cdot 6 + 0.6 \\cdot 1)/4 = 37.8/4 = 9.45$, more than any face of the die. The true value is $4.5$.',
+    },
+    {
+      q: 'Same rolls. What is the weighted importance-sampling estimate?',
+      answer: Math.round((num / den) * 1e6) / 1e6,
+      tol: 0.005,
+      hint: 'Divide the same sum by the total weight instead of by 4.',
+      explain: '$37.8 / (3 + 0.6 + 3 + 0.6) = 37.8 / 7.2 = 5.25$: inside the range of real rolls.',
+    },
+    {
+      q: 'Off-policy blackjack: the behaviour policy picks each action with probability $\\tfrac12$ and happened to match the target policy at all 3 decisions in a hand. What is $\\rho$?',
+      answer: 8,
+      tol: 0,
+      explain: 'Each matching decision contributes $1 / \\tfrac12 = 2$, so $\\rho = 2^3 = 8$.',
+    },
+  ]);
+</script>
+</body>
+</html>

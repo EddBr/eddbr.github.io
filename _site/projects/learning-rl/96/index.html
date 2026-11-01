@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>96. AlphaZero | Learning RL</title>
+<meta name="description" content="Search improves the policy, the policy guides the search. Step through AlphaZero's self-play loop on tic-tac-toe, then train it and watch it stop losing to perfect play.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .loop { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 4px 0 14px; }
+  .loop div { border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font-size: 0.82rem; color: var(--muted); background: var(--soft); }
+  .loop div b { display: block; color: var(--heading); font-size: 0.9rem; }
+  .loop div.on { border-color: var(--accent); background: var(--accent-soft); color: var(--heading); }
+  .boards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: start; }
+  .boards h3 { font-size: 0.82rem; color: var(--muted); font-weight: 500; margin: 0 0 4px; text-align: center; }
+  .tb { max-width: 180px !important; margin: 4px auto; }
+  .tb .gcell { font-size: 14px; font-weight: 600; }
+  #board .gcell { font-size: 30px; }
+  .gcell.x { color: var(--accent); }
+  .gcell.o { color: var(--blue); }
+  .gcell.dim { color: #cbd5e1; }
+  .gcell.played { box-shadow: inset 0 0 0 3px var(--heading); }
+  .vline { text-align: center; font-size: 0.85rem; color: var(--muted); margin: 0; }
+  .logwrap { max-height: 220px; overflow-y: auto; margin-top: 8px; }
+  #status { min-height: 3em; }
+  @media (max-width: 560px) {
+    .loop { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .boards { gap: 6px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .boards > div:first-child { grid-column: 1 / -1; }
+    .tb .gcell { font-size: 11px; }
+    #board .gcell { font-size: 22px; }
+  }
+</style>
+</head>
+<body data-lesson="96">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>AlphaZero</h1>
+  <p class="lede">AlphaZero joins Lesson 95's tree search to a learned policy and value. The policy tells the search which moves to look at, and the value replaces random rollouts. The search then produces a better policy than the one it started from, and the network is trained to imitate it. The same loop, with no human games, learned chess, shogi and Go.</p>
+
+  <section class="card">
+    <div class="loop" id="loop">
+      <div data-k="search"><b>1. Search</b>PUCT with 30 simulations, guided by $p$ and $v$</div>
+      <div data-k="play"><b>2. Play</b>sample a move from the visit shares $\pi$</div>
+      <div data-k="learn"><b>3. Learn</b>move $p$ towards $\pi$ and $v$ towards the result $z$</div>
+      <div data-k="repeat"><b>4. Repeat</b>a better $p$ and $v$ make the next search better</div>
+    </div>
+    <div class="boards">
+      <div><h3>Self-play game</h3><div id="board" class="tb"></div></div>
+      <div><h3>Network prior $p$</h3><div id="gp" class="tb"></div></div>
+      <div><h3>Search result $\pi$</h3><div id="gpi" class="tb"></div></div>
+    </div>
+    <p class="vline" id="vline"></p>
+    <p class="status" id="status"></p>
+    <div class="row">
+      <button id="bStep" class="primary">Step</button>
+      <button id="bGame">Finish game</button>
+      <span class="spacer"></span>
+      <button id="bReset" class="quiet">Forget everything</button>
+    </div>
+    <div class="logwrap" id="logwrap" hidden>
+      <table class="data">
+        <thead><tr><th>move</th><th>player</th><th>$z$</th><th>$v(s)$</th><th>$p$ of move played</th></tr></thead>
+        <tbody id="log"></tbody>
+      </table>
+    </div>
+    <p class="note">The "network" here is a table: for every board it has met, nine logits for $p$ and one number $v$, both learned by gradient steps of size $\alpha = 0.3$. A real network generalises across boards. The loop is the same.</p>
+
+    <div class="sub">
+      <h2>Train it</h2>
+      <p class="note">Each press plays 500 self-play games and learns from them, then plays 40 test games against a perfect minimax player (20 as X, 20 as O). Press it several times. Grey: the raw policy alone (play $\arg\max_a p$, no search). Green: policy plus 30-simulation search.</p>
+      <div class="row"><button id="bTrain">Train ×500 games</button><span class="muted" id="trainOut"></span></div>
+      <canvas class="chart" id="chart"></canvas>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>A network $f_\theta(s) = (\mathbf p, v)$ gives move probabilities $\mathbf p$ and a value $v \in [-1, 1]$ for the player to move. Search selects moves by the PUCT rule:</p>
+    $$a = \arg\max_a \big[ Q(s, a) + U(s, a) \big]$$
+    $$U(s, a) = c\, P(s, a) \frac{\sqrt{N(s)}}{1 + N(s, a)}$$
+    <p>It is Lesson 95's UCT with the network's prior $P(s, a)$ deciding which moves deserve exploration. A new leaf is not rolled out: its value is $v$ from the network. At the root, noise $P = 0.75\,\mathbf p + 0.25\,\boldsymbol\eta$ with $\boldsymbol\eta \sim \mathrm{Dir}(1, \dots, 1)$ (uniform on the probability simplex) keeps self-play from repeating itself. AlphaZero used smaller Dirichlet parameters for games with more moves.</p>
+    <p>After the simulations, the visit shares $\pi(a) = N(s, a)/\sum_b N(s, b)$ are the search's policy. Each self-play position $s_t$ becomes a training example $(s_t, \pi_t, z_t)$, where $z_t = +1, 0, -1$ is the final result from the view of the player to move. The loss is</p>
+    $$\ell = (z - v)^2 - \boldsymbol\pi^\top \log \mathbf p + c_2 \lVert\theta\rVert^2$$
+    <p>The value is regressed on game outcomes (Monte Carlo targets, Lesson 35). The policy is trained by cross-entropy to match the search. For a softmax policy the gradient of $-\boldsymbol\pi^\top \log \mathbf p$ with respect to the logits is $\mathbf p - \boldsymbol\pi$, so a gradient step of size $\alpha$ moves each logit by $\alpha(\pi_a - p_a)$, the rule used in the table above. The value moves by $\alpha(z - v)$.</p>
+    <p>This is policy iteration (Lesson 32) with search as the improvement step. Search turns $\mathbf p$ into a stronger $\boldsymbol\pi$. Training turns $\boldsymbol\pi$ into the next $\mathbf p$. The chart shows the improvement operator at work: with search the agent usually loses less often than its raw policy, and the gap closes as $\mathbf p$ absorbs what the search found.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const LINES = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
+  function result(b) {
+    for (const [p, q, r] of LINES) if (b[p] && b[p] === b[q] && b[p] === b[r]) return b[p];
+    return b.includes(0) ? 0 : 3;
+  }
+  const empties = (b) => b.map((v, i) => (v ? -1 : i)).filter((i) => i >= 0);
+  const toMove = (b) => { let x = 0, o = 0; for (const v of b) { if (v === 1) x++; else if (v === 2) o++; } return x === o ? 1 : 2; };
+  const key = (b) => b.join('');
+  const SIMS = 30, CPUCT = 1.5, ETA = 0.3, TEMP_MOVES = 2, ALPHA = 1;
+
+  // ------------------------------------------------------------ perfect play (negamax, memoised)
+  const MM = new Map();
+  function mm(b) {
+    const k = key(b);
+    if (MM.has(k)) return MM.get(k);
+    const r = result(b);
+    let v;
+    if (r) v = r === 3 ? 0 : -1;
+    else { const p = toMove(b); v = -2; for (const m of empties(b)) { b[m] = p; v = Math.max(v, -mm(b)); b[m] = 0; } }
+    MM.set(k, v);
+    return v;
+  }
+  function perfect(b) {
+    const p = toMove(b);
+    let best = -2, ms = [];
+    for (const m of empties(b)) { b[m] = p; const v = -mm(b); b[m] = 0; if (v > best) { best = v; ms = [m]; } else if (v === best) ms.push(m); }
+    return Course.choice(ms);
+  }
+
+  // ------------------------------------------------------------ the "network": a table of logits and values
+  let P, V;
+  function forget() { P = new Map(); V = new Map(); }
+  const logits = (b) => { const k = key(b); if (!P.has(k)) P.set(k, new Array(9).fill(0)); return P.get(k); };
+  function prior(b) {
+    const L = logits(b), E = empties(b), p = new Array(9).fill(0);
+    if (!E.length) return p;
+    const mx = Math.max(...E.map((m) => L[m])), e = E.map((m) => Math.exp(L[m] - mx)), s = e.reduce((a, c) => a + c, 0);
+    E.forEach((m, i) => { p[m] = e[i] / s; });
+    return p;
+  }
+  const val = (b) => V.get(key(b)) ?? 0;
+
+  // Gamma(k, 1) by Marsaglia–Tsang, for Dirichlet noise.
+  function gammaSample(k) {
+    if (k < 1) return gammaSample(k + 1) * Math.pow(Math.random(), 1 / k);
+    const d = k - 1 / 3, c = 1 / Math.sqrt(9 * d);
+    for (;;) {
+      let x, v;
+      do { x = Course.gauss(); v = 1 + c * x; } while (v <= 0);
+      v = v * v * v;
+      if (Math.log(Math.random()) < 0.5 * x * x + d - d * v + d * Math.log(v)) return d * v;
+    }
+  }
+
+  // ------------------------------------------------------------ PUCT search
+  // Each node: { b, N, kids: Map(move -> {n, W, node}), p, tm }. sim() returns the value for the player to move.
+  function search(b, sims, noise) {
+    const root = { b: b.slice(), N: 0, kids: null };
+    const expand = (n) => {
+      n.kids = new Map(); n.p = prior(n.b); n.tm = toMove(n.b);
+      for (const m of empties(n.b)) n.kids.set(m, { n: 0, W: 0, node: null });
+    };
+    function sim(n) {
+      const r = result(n.b);
+      if (r) { n.N++; return r === 3 ? 0 : -1; }        // the previous player just won
+      if (!n.kids) { expand(n); n.N++; return val(n.b); }
+      let best = -Infinity, bm = null;
+      for (const [m, e] of n.kids) {
+        const q = e.n ? e.W / e.n : 0, u = q + CPUCT * n.p[m] * Math.sqrt(n.N) / (1 + e.n);
+        if (u > best) { best = u; bm = m; }
+      }
+      const e = n.kids.get(bm);
+      if (!e.node) { const b2 = n.b.slice(); b2[bm] = n.tm; e.node = { b: b2, N: 0, kids: null }; }
+      const v = -sim(e.node);
+      e.n++; e.W += v; n.N++;
+      return v;
+    }
+    expand(root);
+    if (noise) {
+      const E = empties(b), g = E.map(() => gammaSample(ALPHA)), s = g.reduce((a, c) => a + c, 0);
+      E.forEach((m, i) => { root.p[m] = 0.75 * root.p[m] + 0.25 * g[i] / s; });
+    }
+    for (let i = 0; i < sims; i++) sim(root);
+    const pi = new Array(9).fill(0);
+    let tot = 0;
+    for (const [m, e] of root.kids) { pi[m] = e.n; tot += e.n; }
+    return pi.map((x) => x / tot);
+  }
+  function pickMove(pi, t) {
+    if (t < TEMP_MOVES) return Course.sample(pi);
+    return Course.argmax(pi);
+  }
+  function train(recs) {
+    for (const r of recs) {
+      const k = key(r.b);
+      V.set(k, val(r.b) + ETA * (r.z - val(r.b)));
+      const L = logits(r.b), p = prior(r.b);
+      for (const m of empties(r.b)) L[m] += ETA * (r.pi[m] - p[m]);
+    }
+  }
+  function selfPlay() {
+    const b = new Array(9).fill(0), recs = [];
+    for (let t = 0; !result(b); t++) {
+      const pi = search(b, SIMS, true);
+      recs.push({ b: b.slice(), pi, p: toMove(b) });
+      b[pickMove(pi, t)] = toMove(b);
+    }
+    const res = result(b);
+    recs.forEach((r) => { r.z = res === 3 ? 0 : res === r.p ? 1 : -1; });
+    return recs;
+  }
+  function evaluate(useSearch) {
+    let losses = 0;
+    for (let g = 0; g < 40; g++) {
+      const me = g < 20 ? 1 : 2, b = new Array(9).fill(0);
+      while (!result(b)) {
+        const p = toMove(b);
+        let m;
+        if (p !== me) m = perfect(b);
+        else if (useSearch) m = Course.argmax(search(b, SIMS, false));
+        else m = Course.argmax(prior(b));
+        b[m] = p;
+      }
+      const r = result(b);
+      if (r !== 3 && r !== me) losses++;
+    }
+    return losses;
+  }
+
+  // ------------------------------------------------------------ step-through game
+  let game, games, curve;
+  const mark = (v) => (v === 1 ? 'X' : v === 2 ? 'O' : '');
+  const board = Course.grid($('board'), 3, 3, (r, c, cell) => {
+    const i = r * 3 + c, v = game ? game.b[i] : 0;
+    cell.textContent = mark(v);
+    if (v) cell.classList.add(v === 1 ? 'x' : 'o');
+    if (game && i === game.lastMove) cell.classList.add('played');
+  });
+  const overlay = (which) => (r, c, cell) => {
+    const i = r * 3 + c;
+    if (!game) return;
+    const b = game.view;
+    if (b[i]) { cell.textContent = mark(b[i]); cell.classList.add('dim'); return; }
+    const probs = which === 'p' ? game.pView : game.pi;
+    if (!probs) { cell.textContent = ''; return; }
+    cell.textContent = Math.round(100 * probs[i]) + '%';
+    cell.style.background = Course.heat(probs[i], 0.8);
+  };
+  const gp = Course.grid($('gp'), 3, 3, overlay('p'));
+  const gpi = Course.grid($('gpi'), 3, 3, overlay('pi'));
+
+  function setPhase(k) { [...$('loop').children].forEach((d) => d.classList.toggle('on', d.dataset.k === k)); }
+  function newGame() {
+    const b = new Array(9).fill(0);
+    game = { b, view: b.slice(), pView: prior(b), pi: null, recs: [], t: 0, phase: 'search', lastMove: -1 };
+    setPhase(null);
+    $('logwrap').hidden = true;
+    $('status').textContent = `Self-play game ${games + 1}. Press Step to run the search for X's first move.`;
+    $('vline').textContent = `v(empty board) = ${val(b).toFixed(2)}`;
+    drawAll();
+  }
+  function drawAll() { board.update(); gp.update(); gpi.update(); }
+
+  function step() {
+    const g = game;
+    if (g.phase === 'search') {
+      g.view = g.b.slice(); g.pView = prior(g.b);
+      g.pi = search(g.b, SIMS, true);
+      g.recs.push({ b: g.b.slice(), pi: g.pi, p: toMove(g.b) });
+      setPhase('search');
+      const who = mark(toMove(g.b));
+      $('status').textContent = `${who} to move. ${SIMS} simulations turned the prior on the left into the visit shares on the right.`;
+      $('vline').textContent = `v(this board) = ${val(g.b).toFixed(2)} for ${who}`;
+      g.phase = 'play';
+    } else if (g.phase === 'play') {
+      const m = pickMove(g.pi, g.t);
+      g.recs[g.recs.length - 1].m = m;
+      g.b[m] = toMove(g.b); g.lastMove = m; g.t++;
+      setPhase('play');
+      $('status').textContent = g.t <= TEMP_MOVES ? `Played square ${m + 1}, sampled from π (the first ${TEMP_MOVES} moves are sampled, for variety).` : `Played square ${m + 1}, the most visited move.`;
+      const res = result(g.b);
+      if (res) {
+        g.res = res;
+        $('status').textContent += ` Game over: ${res === 3 ? 'a draw' : mark(res) + ' wins'}. Press Step to learn from it.`;
+        g.phase = 'learn';
+      } else g.phase = 'search';
+    } else if (g.phase === 'learn') {
+      g.recs.forEach((r) => { r.z = g.res === 3 ? 0 : g.res === r.p ? 1 : -1; });
+      const rows = g.recs.map((r, i) => ({ i, r, played: r.m, v0: val(r.b), p0: prior(r.b)[r.m] }));
+      train(g.recs);
+      games++;
+      $('log').innerHTML = rows.map(({ i, r, played, v0, p0 }) =>
+        `<tr><td>${i + 1}</td><td>${mark(r.p)}</td><td>${r.z > 0 ? '+1' : r.z}</td><td>${v0.toFixed(2)} → ${val(r.b).toFixed(2)}</td><td>${p0.toFixed(2)} → ${prior(r.b)[played].toFixed(2)}</td></tr>`).join('');
+      $('logwrap').hidden = false;
+      setPhase('learn');
+      $('status').textContent = 'Each position\'s value moved towards the result and its prior towards the search. Press Step for the next game.';
+      g.phase = 'repeat';
+    } else {
+      setPhase('repeat');
+      newGame();
+      setPhase('repeat');
+      return;
+    }
+    drawAll();
+  }
+  $('bStep').addEventListener('click', step);
+  $('bGame').addEventListener('click', () => { if (game.phase === 'repeat') step(); while (game.phase !== 'learn') step(); });
+
+  const chart = Course.lineChart($('chart'), { xLabel: 'self-play games', yLabel: 'losses / 40', yMin: 0, yMax: 40, xMin: 0 });
+  function drawChart() {
+    chart.draw([
+      { data: [[Math.max(1000, games), 0]], color: 'rgba(0,0,0,0)' },
+      { data: curve.map(([x, a]) => [x, a]), color: Course.colors.grey, label: 'policy alone', dots: true },
+      { data: curve.map(([x, , b]) => [x, b]), color: Course.colors.green, label: 'policy + search', dots: true },
+    ]);
+  }
+  function reset() {
+    forget(); games = 0;
+    curve = [[0, evaluate(false), evaluate(true)]];
+    drawChart();
+    $('trainOut').textContent = '';
+    newGame();
+  }
+  $('bTrain').addEventListener('click', () => {
+    $('bTrain').disabled = true; $('bTrain').textContent = 'Training…';
+    setTimeout(() => {
+      for (let k = 0; k < 500; k++) train(selfPlay());
+      games += 500;
+      curve.push([games, evaluate(false), evaluate(true)]);
+      drawChart();
+      $('trainOut').textContent = `${games} games, ${V.size} boards in the table.`;
+      $('bTrain').disabled = false; $('bTrain').textContent = 'Train ×500 games';
+      newGame();
+    }, 30);
+  });
+  $('bReset').addEventListener('click', reset);
+  reset();
+
+  const q1 = 0.2 + 1.5 * 0.5 * Math.sqrt(16) / (1 + 3);
+  const ce = -(0.6 * Math.log(0.5) + 0.3 * Math.log(0.3) + 0.1 * Math.log(0.2));
+  Course.quiz([
+    {
+      q: 'A move has $Q = 0.2$, prior $P = 0.5$ and $N(s, a) = 3$. The node has $N(s) = 16$ and $c = 1.5$. What is its PUCT score?',
+      answer: q1,
+      explain: '$0.2 + 1.5 \\times 0.5 \\times \\sqrt{16}/(1 + 3) = 0.2 + 0.75 = 0.95$.',
+    },
+    {
+      q: 'Same node. An unvisited move has prior $P = 0.1$. What is its score?',
+      answer: 1.5 * 0.1 * 4,
+      explain: '$Q$ counts as 0, so $0 + 1.5 \\times 0.1 \\times 4/1 = 0.6$. It loses to the first move, so a low prior delays exploring it.',
+    },
+    {
+      q: 'Search visits three moves 6, 3 and 1 times. The network\'s prior is $(0.5, 0.3, 0.2)$. What is the policy loss $-\\boldsymbol\\pi^\\top \\log \\mathbf p$ (natural log)?',
+      answer: ce,
+      tol: 0.005,
+      hint: '$\\boldsymbol\\pi = (0.6, 0.3, 0.1)$.',
+      explain: '$-(0.6 \\ln 0.5 + 0.3 \\ln 0.3 + 0.1 \\ln 0.2) = 0.416 + 0.361 + 0.161 \\approx 0.938$.',
+    },
+    {
+      q: 'Why is $\\pi$ from the search a sensible training target for $\\mathbf p$?',
+      choices: [
+        'It is the move a human expert would choose',
+        'The search looks ahead using $\\mathbf p$ and $v$, so its move choice is usually stronger than $\\mathbf p$ alone: an improved policy',
+        'It is always the optimal policy',
+      ],
+      answer: 1,
+      explain: 'Search is a policy improvement operator. Imitating it, then searching again with the better network, is policy iteration.',
+    },
+  ]);
+</script>
+</body>
+</html>

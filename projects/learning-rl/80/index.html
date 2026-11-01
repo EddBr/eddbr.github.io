@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>80. Why big steps break things | Learning RL</title>
+<meta name="description" content="Turn up the step size on a policy gradient learner and watch runs lock onto the wrong action for good. The case for trust regions.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .key { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.85rem; color: var(--muted); margin: 0; }
+  .key span::before { content: ""; display: inline-block; width: 14px; height: 0; vertical-align: middle; margin-right: 5px; border-top: 3px solid; }
+  .key .kb::before { border-color: var(--accent); }
+  .key .ks::before { border-color: var(--red); }
+  .key .km::before { border-color: #9ca3af; }
+  #eqStep { overflow-x: auto; min-height: 2.6em; }
+</style>
+</head>
+<body data-lesson="80">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Why big steps break things</h1>
+  <p class="lede">A policy gradient step trusts the slope at the current policy. The slope only holds nearby, and in RL the next data comes from the policy the step produces. One step too far can push a policy somewhere it never collects the data it needs to come back.</p>
+
+  <section class="card">
+    <h2>Twenty learners, one step size</h2>
+    <p class="note">A 3-armed bandit with true values $1$, $0.5$ and $0$ and reward noise $\mathcal{N}(0,1)$. Each line is one softmax policy trained by the gradient bandit rule from Lesson 13 (its preferences $H$ are the parameters $\boldsymbol\theta$ here) for 300 steps. Drag the step size.</p>
+    <label class="slider"><span>Step size $\alpha$</span><input id="iA" type="range" min="0" max="6" step="1" value="4"><output></output></label>
+    <canvas class="chart" id="runs"></canvas>
+    <p class="key"><span class="kb">ends on the best arm</span><span class="ks">stuck on a worse arm</span><span class="km">still undecided</span></p>
+    <div class="stats">
+      <div class="stat"><span class="k">Best arm ($\pi &gt; 0.9$)</span><span class="v" id="sBest">–</span></div>
+      <div class="stat"><span class="k">Stuck on a worse arm</span><span class="v bad" id="sStuck">–</span></div>
+      <div class="stat"><span class="k">Mean final $J(\boldsymbol\theta)$</span><span class="v" id="sJ">–</span></div>
+    </div>
+    <div class="row"><button id="bRuns">New runs</button></div>
+    <p class="status" id="status"></p>
+
+    <div class="sub">
+      <h2>Same step in $\theta$, different step in the policy</h2>
+      <p class="note">Two actions, $\pi(\text{left}) = \sigma(\theta)$. Move the starting point and the step. The step in $\theta$ stays the same size; the change in the policy does not.</p>
+      <label class="slider"><span>Start $\theta$</span><input id="iT" type="range" min="-6" max="6" step="0.1" value="0"><output></output></label>
+      <label class="slider"><span>Step $\Delta\theta$</span><input id="iD" type="range" min="0" max="4" step="0.1" value="2"><output></output></label>
+      <canvas class="chart" id="sig" style="height:210px"></canvas>
+      <div id="eqStep"></div>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>Policy gradient methods (Lessons 70 to 79) do gradient ascent on the expected return $J(\boldsymbol\theta)$ with an estimate $\hat g$ of its gradient:</p>
+    $$\boldsymbol\theta_{k+1} = \boldsymbol\theta_k + \alpha\,\hat g_k, \qquad \mathbb{E}[\hat g_k] = \nabla J(\boldsymbol\theta_k)$$
+    <p>Each step moves the parameters a distance proportional to $\alpha$ along the estimated uphill direction.</p>
+    <p><b>The slope is local.</b> By Taylor's theorem, for a step $\Delta$,</p>
+    $$J(\boldsymbol\theta + \Delta) = J(\boldsymbol\theta) + \nabla J(\boldsymbol\theta)^{\top}\Delta + O(\lVert\Delta\rVert^2)$$
+    <p>The gradient predicts the gain only while the squared term is small. A large $\Delta$ can land anywhere, including downhill.</p>
+    <p><b>The step is in the wrong units.</b> For a softmax policy $\pi(a) = e^{\theta_a} / \sum_b e^{\theta_b}$,</p>
+    $$\frac{\partial \pi(a)}{\partial \theta_a} = \pi(a)\big(1 - \pi(a)\big)$$
+    <p>Near $\pi(a) = 0.5$ a unit change in $\theta_a$ moves the probability by about $0.25$. Near $\pi(a) = 0.999$ it moves it by about $0.001$. The same $\alpha$ is a huge step in one place and a tiny one in another, which is what the second plot shows.</p>
+    <p><b>The data depends on the step.</b> In supervised learning a bad step is fixed by the next batch, which comes from the same dataset. Here the next batch is sampled from $\pi_{\boldsymbol\theta_{k+1}}$. After one noisy reward and a big $\alpha$, a worse arm can reach $\pi \approx 0.999$. The other arms are then almost never tried, and the update on them is scaled by $1 - \pi \approx 0.001$. The run is stuck: these are the red lines.</p>
+    <p><b>The fix: limit the step in policy space.</b> Plain gradient ascent already solves a constrained problem. The best linear gain inside a ball of radius $\epsilon$ around $\boldsymbol\theta$ is</p>
+    $$\max_{\lVert\Delta\rVert \le \epsilon} \nabla J^{\top}\Delta \quad\Rightarrow\quad \Delta = \epsilon\,\frac{\nabla J}{\lVert \nabla J\rVert}$$
+    <p>so the gradient step is a <b>trust region</b> in parameter space, measured with Euclidean distance. TRPO (Schulman et al., 2015) keeps the idea but measures distance between the old and new <i>policies</i> instead of their parameters, with the KL divergence of Lesson 81. PPO (Lessons 82 and 83) gets a similar effect more cheaply by clipping.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const C = Course.colors;
+  const Q = [1, 0.5, 0], T = 300, RUNS = 20;
+  const ALPHAS = [0.05, 0.2, 0.5, 1, 2, 4, 8];
+
+  const softmax = (th) => {
+    const m = Math.max(...th), e = th.map((x) => Math.exp(x - m)), s = e.reduce((a, b) => a + b, 0);
+    return e.map((x) => x / s);
+  };
+  const J = (p) => p.reduce((s, pa, a) => s + pa * Q[a], 0);
+
+  // Gradient bandit (S&B §2.8): theta_b += alpha (R - Rbar)(1{b = A} - pi(b)),
+  // Rbar = mean of earlier rewards with Rbar_1 = R_1, as in Lesson 13.
+  function run(alpha) {
+    const th = [0, 0, 0], curve = [];
+    let rbar = 0;
+    for (let t = 1; t <= T; t++) {
+      const p = softmax(th);
+      curve.push([t - 1, J(p)]);
+      const a = Course.sample(p), r = Q[a] + Course.gauss();
+      if (t === 1) rbar = r;
+      const adv = r - rbar;
+      for (let b = 0; b < 3; b++) th[b] += alpha * adv * ((b === a ? 1 : 0) - p[b]);
+      rbar += (r - rbar) / t;
+    }
+    const p = softmax(th);
+    curve.push([T, J(p)]);
+    return { curve, p };
+  }
+
+  const alpha = Course.slider('#iA', (i) => ALPHAS[i], simulate);
+  const chart = Course.lineChart($('runs'), { xLabel: 'step', yLabel: 'J(θ) = Σ π(a) q(a)', yMin: 0, yMax: 1, xMin: 0, xMax: T });
+
+  function simulate() {
+    const a = ALPHAS[alpha()];
+    const rs = Array.from({ length: RUNS }, () => run(a));
+    let best = 0, stuck = 0, sumJ = 0;
+    const lines = rs.map(({ curve, p }) => {
+      const isBest = p[0] > 0.9, isStuck = p[1] > 0.99 || p[2] > 0.99;
+      best += isBest; stuck += isStuck; sumJ += J(p);
+      return { data: curve, width: 1.4, color: isBest ? C.green : isStuck ? C.red : C.grey };
+    });
+    chart.draw(lines, { hlines: [{ y: 1, label: 'best possible', color: C.amber }] });
+    $('sBest').textContent = `${best} / ${RUNS}`;
+    $('sStuck').textContent = `${stuck} / ${RUNS}`;
+    $('sJ').textContent = (sumJ / RUNS).toFixed(2);
+    $('status').textContent = stuck
+      ? `α = ${a}: ${stuck} run${stuck > 1 ? 's' : ''} put over 99% on a worse arm and stopped learning.`
+      : a < 0.2 ? `α = ${a}: safe but slow. No run has settled yet.` : `α = ${a}: no run got stuck this time. Try "New runs" or a bigger α.`;
+  }
+  $('bRuns').addEventListener('click', simulate);
+  simulate();
+
+  // Part 2: sigmoid policy.
+  const sig = (x) => 1 / (1 + Math.exp(-x));
+  const sigChart = Course.lineChart($('sig'), { xLabel: 'θ', yLabel: 'π(left)', yMin: 0, yMax: 1, xMin: -6, xMax: 10 });
+  const curve = Array.from({ length: 161 }, (_, i) => [-6 + i * 0.1, sig(-6 + i * 0.1)]);
+  const th0 = Course.slider('#iT', (v) => v.toFixed(1), drawSig);
+  const dth = Course.slider('#iD', (v) => v.toFixed(1), drawSig);
+  function drawSig() {
+    const a = th0(), b = a + dth(), pa = sig(a), pb = sig(b);
+    sigChart.draw([
+      { data: curve, color: C.grey, width: 2 },
+      { data: [[a, pa], [b, pb]], color: C.green, width: 3, dots: true },
+    ], {
+      vlines: [{ x: a, color: C.blue }, { x: b, color: C.green }],
+      hlines: [{ y: pa, color: C.blue }, { y: pb, color: C.green }],
+    });
+    Course.tex($('eqStep'),
+      `\\pi(\\text{left}):\\; \\sigma(${a.toFixed(1)}) = ${pa.toFixed(3)} \\;\\to\\; \\sigma(${b.toFixed(1)}) = ${pb.toFixed(3)}, \\quad \\Delta\\pi = ${(pb - pa).toFixed(3)}`, true);
+  }
+  drawSig();
+
+  Course.quiz([
+    {
+      q: 'Two actions with $\\pi(\\text{left}) = \\sigma(\\theta)$. Starting at $\\theta = 0$, a step of $\\Delta\\theta = 2$ is taken. What is the new $\\pi(\\text{left})$?',
+      answer: 1 / (1 + Math.exp(-2)),
+      tol: 0.005,
+      explain: '$\\sigma(2) = 1/(1 + e^{-2}) \\approx 0.881$. The policy moved from $0.5$ to $0.881$.',
+    },
+    {
+      q: 'The same step $\\Delta\\theta = 2$, but starting at $\\theta = 4$. By how much does $\\pi(\\text{left})$ increase?',
+      answer: 1 / (1 + Math.exp(-6)) - 1 / (1 + Math.exp(-4)),
+      tol: 0.001,
+      hint: 'Compute $\\sigma(6) - \\sigma(4)$.',
+      explain: '$\\sigma(6) - \\sigma(4) \\approx 0.9975 - 0.9820 = 0.0155$, about 25 times less than from $\\theta = 0$.',
+    },
+    {
+      q: 'A softmax policy puts $\\pi(a) = 0.99$ on action $a$. What is $\\partial \\pi(a) / \\partial \\theta_a$?',
+      answer: 0.99 * 0.01,
+      tol: 0.0002,
+      explain: '$\\pi(a)(1 - \\pi(a)) = 0.99 \\times 0.01 = 0.0099$. The policy barely responds to its own parameter.',
+    },
+    {
+      q: 'Why can a red run in the first chart not recover, even after thousands more steps?',
+      choices: [
+        'The step size shrinks to zero over time',
+        'Its data comes from its own policy, which almost never tries the other arms, and its updates are scaled by $1 - \\pi \\approx 0$',
+        'The baseline $\\bar R$ is wrong',
+        'The best arm has been removed from the bandit',
+      ],
+      answer: 1,
+      explain: 'On-policy data plus a saturated softmax: no samples from the better arm, and tiny gradients for the one it does sample.',
+    },
+  ]);
+</script>
+</body>
+</html>

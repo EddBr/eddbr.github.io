@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>7. Step sizes and moving targets | Learning RL</title>
+<meta name="description" content="When the true value drifts, a plain average falls behind. A constant step size keeps up.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  canvas#chart { height: 260px; }
+  .bars { height: 110px; }
+  .bars .bar.avg { background: var(--blue); }
+  .weights { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .weights h3 { font-size: 0.9rem; margin: 0; color: var(--heading); }
+  @media (max-width: 560px) { .weights { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body data-lesson="7">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Step sizes and moving targets</h1>
+  <p class="lede">A restaurant gets a new chef. A slot machine is quietly re-tuned. When the true value changes over time, an average of everything since the start falls behind. Replacing $\tfrac{1}{n}$ with a constant step size $\alpha$ fixes this.</p>
+
+  <section class="card">
+    <canvas class="chart" id="chart"></canvas>
+    <label class="slider"><span>Step size α</span><input id="iAlpha" type="range" min="0.01" max="1" step="0.01" value="0.1"><output></output></label>
+    <label class="slider"><span>Drift</span><input id="iDrift" type="range" min="0" max="0.3" step="0.01" value="0.08"><output></output></label>
+    <div class="row">
+      <button id="bRun" class="primary">Run</button>
+      <button id="bReset" class="quiet">Reset</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="k">Steps</span><span class="v" id="sT">0</span></div>
+      <div class="stat"><span class="k">Average error, $\tfrac{1}{n}$</span><span class="v" id="sE1" style="color:var(--blue)">–</span></div>
+      <div class="stat"><span class="k">Average error, α</span><span class="v" id="sE2" style="color:var(--accent)">–</span></div>
+    </div>
+    <p class="note">Error is $|Q - q_*|$ averaged over the last 100 steps. Set drift to 0 and see which estimate wins then.</p>
+
+    <div class="sub">
+      <h2>How much does each past reward count?</h2>
+      <div class="weights">
+        <div><h3 style="color:var(--blue)">Sample average, $n = 20$</h3><div class="bars" id="wAvg"></div></div>
+        <div><h3 style="color:var(--accent)">Constant α</h3><div class="bars" id="wAlpha"></div></div>
+      </div>
+      <div class="axis"><span>oldest</span><span style="text-align:right">newest →</span></div>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>Replace $\tfrac{1}{n}$ with a fixed $\alpha \in (0, 1]$:</p>
+    $$Q_{n+1} = Q_n + \alpha\,\big[R_n - Q_n\big]$$
+    <p>Unrolling the recursion shows how much each reward counts:</p>
+    $$Q_{n+1} = (1-\alpha)^n\, Q_1 + \sum_{i=1}^{n} \alpha (1-\alpha)^{n-i}\, R_i$$
+    <p>The weight on a reward shrinks by a factor $(1-\alpha)$ for every newer reward. This is an <b>exponential recency-weighted average</b>. The weights sum to 1, the initial guess $Q_1$ fades away, and recent rewards matter most.</p>
+    <p>The trade-off: a constant $\alpha$ never settles down, because every new reward keeps nudging it. Stochastic approximation theory says an estimate converges for sure only if the step sizes $\alpha_n$ satisfy</p>
+    $$\sum_{n=1}^{\infty} \alpha_n = \infty \qquad \text{and} \qquad \sum_{n=1}^{\infty} \alpha_n^2 < \infty$$
+    <p>The first condition means steps stay big enough to overcome any starting error. The second means they eventually shrink enough to stop the noise. $\tfrac{1}{n}$ satisfies both. A constant $\alpha$ fails the second, which is exactly what lets it keep tracking a moving target.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const WINDOW = 100, SHOW = 400;
+  let q, qAvg, qAlpha, n, hist, err1, err2, timer = null;
+
+  const alpha = Course.slider('#iAlpha', (v) => v.toFixed(2), weights);
+  const drift = Course.slider('#iDrift', (v) => v.toFixed(2));
+  const chart = Course.lineChart($('chart'), { xLabel: 'step', yLabel: 'value' });
+
+  function reset() {
+    stop();
+    q = 0; qAvg = 0; qAlpha = 0; n = 0;
+    hist = { q: [], r: [], avg: [], alpha: [] };
+    err1 = []; err2 = [];
+    for (let i = 0; i < 150; i++) step();
+    draw();
+  }
+
+  function step() {
+    q += drift() * Course.gauss();          // the true value takes a small random walk
+    const r = q + Course.gauss();           // reward = true value + noise
+    n++;
+    qAvg += (r - qAvg) / n;
+    qAlpha += alpha() * (r - qAlpha);
+    hist.q.push([n, q]); hist.r.push([n, r]); hist.avg.push([n, qAvg]); hist.alpha.push([n, qAlpha]);
+    err1.push(Math.abs(qAvg - q)); err2.push(Math.abs(qAlpha - q));
+    for (const k in hist) if (hist[k].length > SHOW) hist[k].shift();
+    if (err1.length > WINDOW) { err1.shift(); err2.shift(); }
+  }
+
+  function draw() {
+    chart.draw([
+      { data: hist.r, color: 'rgba(156,163,175,0.45)', width: 1, label: 'reward' },
+      { data: hist.q, color: Course.colors.amber, width: 2.5, dashed: true, label: 'true q*' },
+      { data: hist.avg, color: Course.colors.blue, label: '1/n' },
+      { data: hist.alpha, color: Course.colors.green, label: 'α' },
+    ]);
+    $('sT').textContent = n;
+    const mean = (xs) => (xs.length ? (xs.reduce((a, b) => a + b, 0) / xs.length).toFixed(2) : '–');
+    $('sE1').textContent = mean(err1);
+    $('sE2').textContent = mean(err2);
+  }
+
+  function weights() {
+    const N = 20, a = alpha();
+    const top = Math.max(a, 1 / N) * 1.1;   // both panels share one scale
+    const bar = (w, cls = '') => `<div class="bar ${cls}" style="height:${(w / top) * 100}%" title="weight ${w.toFixed(3)}"></div>`;
+    $('wAvg').innerHTML = Array.from({ length: N }, () => bar(1 / N, 'avg')).join('');
+    $('wAlpha').innerHTML = Array.from({ length: N }, (_, i) => bar(a * Math.pow(1 - a, N - 1 - i))).join('');
+  }
+
+  function stop() { clearInterval(timer); timer = null; $('bRun').textContent = 'Run'; }
+  $('bRun').addEventListener('click', () => {
+    if (timer) return stop();
+    $('bRun').textContent = 'Pause';
+    timer = setInterval(() => { for (let i = 0; i < 4; i++) step(); draw(); }, 40);
+  });
+  $('bReset').addEventListener('click', reset);
+  weights();
+  reset();
+
+  Course.quiz([
+    {
+      q: 'With $\\alpha = 0.1$, what weight does the newest reward get?',
+      answer: 0.1,
+      tol: 0.001,
+      explain: 'The newest reward has $i = n$, so its weight is $\\alpha(1-\\alpha)^0 = \\alpha$.',
+    },
+    {
+      q: 'With $\\alpha = 0.1$, what weight does the reward just before the newest get?',
+      answer: 0.09,
+      tol: 0.001,
+      explain: '$\\alpha(1-\\alpha) = 0.1 \\times 0.9 = 0.09$.',
+    },
+    {
+      q: 'With $\\alpha = 0.5$, how much weight is left on the initial guess $Q_1$ after 10 rewards?',
+      answer: Math.pow(0.5, 10),
+      tol: 0.0001,
+      explain: '$(1-\\alpha)^n = 0.5^{10} \\approx 0.001$. The starting guess is almost forgotten.',
+    },
+    {
+      q: 'Which step-size sequence satisfies both convergence conditions?',
+      choices: ['$\\alpha_n = 0.1$', '$\\alpha_n = 1/n$', '$\\alpha_n = 1/n^2$'],
+      answer: 1,
+      explain: '$\\sum 1/n$ diverges and $\\sum 1/n^2$ converges. A constant fails the second condition. $1/n^2$ fails the first: its steps shrink so fast the total movement is finite.',
+    },
+  ]);
+</script>
+</body>
+</html>

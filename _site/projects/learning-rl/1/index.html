@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>1. The agent–environment loop | Learning RL</title>
+<meta name="description" content="Be the agent. Take actions, collect rewards, and see the loop at the heart of reinforcement learning.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .loop { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0 0 8px; }
+  .box { border: 2px solid var(--border); border-radius: 8px; padding: 8px 14px; font-weight: 600; color: var(--heading); background: var(--soft); white-space: nowrap; }
+  .arrows { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; color: var(--muted); }
+  .arrows span { padding: 1px 8px; border-radius: 4px; transition: background 0.3s ease, color 0.3s ease; white-space: nowrap; }
+  .flash { background: var(--accent); color: #fff !important; }
+  .logwrap { max-height: 200px; overflow-y: auto; margin-top: 10px; }
+  #log tr:last-child td { background: var(--accent-soft); }
+  .logwrap { overflow-x: auto; }
+  @media (max-width: 560px) { .box { padding: 6px 8px; font-size: 0.85rem; } .arrows { font-size: 0.72rem; } }
+</style>
+</head>
+<body data-lesson="1">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>The agent–environment loop</h1>
+  <p class="lede">Reinforcement learning is learning from trial and error. An <b>agent</b> acts, the <b>environment</b> responds with a new situation and a number called the <b>reward</b>, and the loop repeats. You are the agent.</p>
+
+  <section class="card">
+    <div class="loop">
+      <div class="box">🤖 Agent</div>
+      <div class="arrows">
+        <span id="aAct">action →</span>
+        <span id="aBack">← state, reward</span>
+      </div>
+      <div class="box">🌍 Environment</div>
+    </div>
+
+    <div class="world" id="world"></div>
+    <p class="status" id="status">Reach the flag.</p>
+    <div class="row center">
+      <button id="bLeft">← Left</button>
+      <button id="bRight">Right →</button>
+      <button id="bRandom" class="quiet">Random agent</button>
+      <button id="bReset" class="quiet">Reset</button>
+    </div>
+    <div class="row center">
+      <label class="muted">Rewards:
+        <select id="scheme">
+          <option value="flag">+1 at the flag, 0 otherwise</option>
+          <option value="cost">−1 per step, +10 at the flag</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="logwrap">
+      <table class="data">
+        <thead><tr><th>$t$</th><th>$S_t$</th><th>$A_t$</th><th>$R_{t+1}$</th><th>$S_{t+1}$</th></tr></thead>
+        <tbody id="log"></tbody>
+      </table>
+    </div>
+    <div class="stats" style="justify-content:center">
+      <div class="stat"><span class="k">Steps</span><span class="v" id="steps">0</span></div>
+      <div class="stat"><span class="k">Return $G$</span><span class="v" id="ret">0</span></div>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>Time moves in steps $t = 0, 1, 2, \dots$ At each step the agent sees a <b>state</b> $S_t$, picks an <b>action</b> $A_t$, and receives a <b>reward</b> $R_{t+1}$ and the next state $S_{t+1}$. One run from start to finish is an <b>episode</b>. Written out, it is a <b>trajectory</b>:</p>
+    $$S_0,\ A_0,\ R_1,\ S_1,\ A_1,\ R_2,\ S_2,\ \dots,\ R_T,\ S_T$$
+    <p>The reward has index $t+1$ because it arrives after the action taken at time $t$. $T$ is the final step.</p>
+    <p>The agent's goal is to maximise the <b>return</b>, the sum of the rewards it collects:</p>
+    $$G = R_1 + R_2 + \dots + R_T$$
+    <p>Under the first reward scheme, every route to the flag has $G = 1$. Under the second, each extra step costs 1, so shorter routes have higher return.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const N = 6, GOAL = N - 1;
+  let s, t, G, done, timer = null;
+
+  function reward(s2) {
+    if ($('scheme').value === 'flag') return s2 === GOAL ? 1 : 0;
+    return s2 === GOAL ? 9 : -1;   // −1 for the step, +10 for arriving
+  }
+
+  function draw() {
+    $('world').innerHTML = Array.from({ length: N }, (_, i) =>
+      `<div class="cell${i === s ? ' here' : ''}">${i === s ? '🤖' : i === GOAL ? '🏁' : ''}<small>${i}</small></div>`).join('');
+    $('bLeft').disabled = $('bRight').disabled = done || !!timer;
+    $('bRandom').disabled = done || !!timer;
+    $('steps').textContent = t;
+    $('ret').textContent = G;
+  }
+
+  function flash(id) {
+    $(id).classList.add('flash');
+    setTimeout(() => $(id).classList.remove('flash'), 300);
+  }
+
+  function step(dir) {
+    if (done) return;
+    const s2 = Math.min(GOAL, Math.max(0, s + dir));
+    const r = reward(s2);
+    flash('aAct');
+    setTimeout(() => flash('aBack'), 200);
+    $('log').insertAdjacentHTML('beforeend', `<tr><td>${t}</td><td>${s}</td><td>${dir < 0 ? '←' : '→'}</td><td>${r}</td><td>${s2}</td></tr>`);
+    $('log').closest('.logwrap').scrollTop = 1e9;
+    s = s2; t++; G += r;
+    if (s === GOAL) {
+      done = true;
+      $('status').textContent = `Flag reached in ${t} steps. Episode over. Return G = ${G}.`;
+    } else {
+      $('status').textContent = `Reward ${r}. You're in state ${s}.`;
+    }
+    draw();
+  }
+
+  function reset() {
+    clearInterval(timer); timer = null;
+    s = 0; t = 0; G = 0; done = false;
+    $('log').innerHTML = '';
+    $('status').textContent = 'Reach the flag.';
+    draw();
+  }
+
+  // A random agent: 50/50 left or right each step.
+  function randomAgent() {
+    reset();
+    timer = setInterval(() => {
+      if (done || t > 200) { clearInterval(timer); timer = null; draw(); return; }
+      step(Math.random() < 0.5 ? -1 : 1);
+    }, 120);
+    draw();
+  }
+
+  $('bLeft').addEventListener('click', () => step(-1));
+  $('bRight').addEventListener('click', () => step(1));
+  $('bReset').addEventListener('click', reset);
+  $('bRandom').addEventListener('click', randomAgent);
+  $('scheme').addEventListener('change', reset);
+  document.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT') return;
+    if (e.key === 'ArrowLeft') step(-1);
+    if (e.key === 'ArrowRight') step(1);
+  });
+  reset();
+
+  Course.quiz([
+    {
+      q: 'In the trajectory $S_0, A_0, R_1, S_1, A_1, R_2, S_2$, which reward comes from action $A_1$?',
+      choices: ['$R_1$', '$R_2$', '$S_2$'],
+      answer: 1,
+      explain: 'The reward for the action at time $t$ is $R_{t+1}$.',
+    },
+    {
+      q: 'Rewards are −1 per step, plus 10 on the step that reaches the flag. You reach the flag in 5 steps. What is $G$?',
+      answer: 5,
+      explain: 'Four steps at −1, then a final step worth $-1 + 10 = 9$. So $G = -4 + 9 = 5$. Walk straight to the flag above to check.',
+    },
+    {
+      q: 'Under the "+1 at the flag" scheme, a random agent takes 30 steps to reach the flag. What is its return?',
+      answer: 1,
+      explain: 'Only the final step pays. Every route gets $G = 1$, so this reward gives no reason to hurry.',
+    },
+  ]);
+</script>
+</body>
+</html>

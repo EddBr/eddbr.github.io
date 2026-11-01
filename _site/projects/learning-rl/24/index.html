@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>24. Optimal policies | Learning RL</title>
+<meta name="description" content="An optimal policy is at least as good as every other policy in every state. Act greedily on your action values and watch the arrows snap to it.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  #grid { max-width: 440px !important; }
+  .gcell.goal { background: var(--accent-soft); }
+  .gcell.pit { background: var(--red-soft); }
+  .gcell.better { box-shadow: inset 0 0 0 3px var(--amber); }
+  .gcell.flash { animation: flash 0.9s ease; }
+  @keyframes flash { from { box-shadow: inset 0 0 0 6px var(--accent); } to { box-shadow: inset 0 0 0 0 var(--accent); } }
+  .term { display: flex; flex-direction: column; align-items: center; line-height: 1.1; }
+  .term small { font-size: 0.6em; color: var(--heading); font-weight: 600; }
+  .pc { display: flex; flex-direction: column; align-items: center; line-height: 1.05; }
+  .pc .arr { font-size: 1.6em; font-weight: 700; color: var(--heading); }
+  .pc small { font-size: 0.85em; color: var(--ink); font-weight: 600; }
+  .alt { position: absolute; top: 2px; right: 4px; font-size: 0.95em; color: var(--amber); font-weight: 700; }
+</style>
+</head>
+<body data-lesson="24">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Optimal policies</h1>
+  <p class="lede">One policy is better than another if it gets at least as much expected return from every state. An <b>optimal policy</b> is one that no other policy beats anywhere. It can be read straight off the optimal action values: in each state, pick the action with the largest one.</p>
+
+  <section class="card">
+    <p class="note">The icy gridworld again. Every arrow starts pointing left, a poor policy. Click a cell to turn its arrow. Each cell shows its arrow and $v_\pi(s)$ for the whole policy. An amber frame means another action has a higher $q_\pi(s, a)$ there; the small amber arrow is that action.</p>
+    <div id="grid"></div>
+    <p class="status" id="status"></p>
+    <div class="row">
+      <button id="bGreedy" class="primary">Act greedily</button>
+      <button id="bOpt">Jump to optimal</button>
+      <span class="spacer"></span>
+      <button id="bRand" class="quiet">Random arrows</button>
+      <button id="bReset" class="quiet">Reset</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="k">$v_\pi$(start)</span><span class="v" id="sV">–</span></div>
+      <div class="stat"><span class="k">$v_*$(start)</span><span class="v" id="sStar">–</span></div>
+      <div class="stat"><span class="k">Cells already optimal</span><span class="v" id="sOpt">–</span></div>
+    </div>
+    <div class="sub">
+      <h2>Change the world</h2>
+      <label class="slider"><span>Slip probability</span><input id="iSlip" type="range" min="0" max="0.5" step="0.05" value="0.2"><output></output></label>
+      <label class="slider"><span>Step reward</span><input id="iStep" type="range" min="-2" max="0" step="0.25" value="0"><output></output></label>
+      <p class="note">The optimal policy depends on the world. Press "Jump to optimal" and look at $(1,3)$, the cell left of 🕳️: it points ←, backing away, because going ↑ slides into the pit 10% of the time. Lower the slip to 0.15, or set the step reward to −1, and press "Jump to optimal" again: the arrow flips to ↑. Less risk, or a costlier detour, makes the direct route worth it. With slip 0, the best route is simply the shortest.</p>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>Policies are compared state by state:</p>
+    $$\pi \ge \pi' \iff v_\pi(s) \ge v_{\pi'}(s) \text{ for all } s$$
+    <p>Two policies need not be comparable: each could win in different states. Even so, for any finite MDP there is at least one policy $\pi_*$ that is $\ge$ every other. All optimal policies share the same value functions:</p>
+    $$v_*(s) = \max_\pi v_\pi(s), \qquad q_*(s, a) = \max_\pi q_\pi(s, a)$$
+    <p>$v_*(s)$ is the most expected return any policy can get from $s$. $q_*(s, a)$ is the most it can get after taking $a$ first. Once you have $q_*$, an optimal policy is greedy with respect to it:</p>
+    $$\pi_*(s) = \arg\max_a q_*(s, a)$$
+    <p>Taking the best first action and then behaving optimally is optimal, so</p>
+    $$v_*(s) = \max_a q_*(s, a)$$
+    <p>This is Lesson 23's average with all the weight on the best action. Ties in the argmax are fine: any action that reaches the maximum is optimal.</p>
+    <p>"Act greedily" uses the current policy's $q_\pi$, not $q_*$. Each press makes no cell worse and, while any amber frame remains, makes some cell strictly better. When no arrow changes, the policy is greedy with respect to its own values, and that only happens at an optimal policy. Lessons 31 and 32 prove both facts (the policy improvement theorem and policy iteration).</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  // ---- The icy gridworld (Lessons 18–19's layout, used in Lessons 20–29) ---
+  // 4×5 grid. G = goal (+10, ends), P = pit (−10, ends), # = wall. Every other move pays `step`.
+  // An action goes where you meant with probability 1 − slip, and slips to each side with slip/2.
+  // Moving into the wall or the edge leaves you where you are.
+  const MAP = ['....G', '.#..P', '...#.', '.....'];
+  const ROWS = 4, COLS = 5, NS = ROWS * COLS;
+  const ARROW = ['↑', '→', '↓', '←'], ANAME = ['up', 'right', 'down', 'left'];
+  const DR = [-1, 0, 1, 0], DC = [0, 1, 0, -1];
+  const kind = (s) => MAP[Math.floor(s / COLS)][s % COLS];
+  const isWall = (s) => kind(s) === '#';
+  const isTerm = (s) => kind(s) === 'G' || kind(s) === 'P';
+  const STATES = [...Array(NS).keys()].filter((s) => !isWall(s) && !isTerm(s));
+  const START = 15;
+  const rc = (s) => [Math.floor(s / COLS), s % COLS];
+  const cellName = (s) => `(${rc(s)[0]},${rc(s)[1]})`;
+
+  function move(s, d) {
+    const [r, c] = rc(s), nr = r + DR[d], nc = c + DC[d];
+    if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) return s;
+    const s2 = nr * COLS + nc;
+    return isWall(s2) ? s : s2;
+  }
+  const reward = (W, s2) => (kind(s2) === 'G' ? W.goal : kind(s2) === 'P' ? W.pit : W.step);
+  // The three possible results of action a in state s: meant, slip clockwise, slip anticlockwise.
+  function outcomes(W, s, a) {
+    return [[a, 1 - W.slip], [(a + 1) % 4, W.slip / 2], [(a + 3) % 4, W.slip / 2]]
+      .filter(([, p]) => p > 0)
+      .map(([d, p]) => { const s2 = move(s, d); return { d, p, s2, r: reward(W, s2) }; });
+  }
+  const uniform = () => { const pi = []; STATES.forEach((s) => (pi[s] = [0.25, 0.25, 0.25, 0.25])); return pi; };
+  const deterministic = (arrows) => { const pi = []; STATES.forEach((s) => { pi[s] = [0, 0, 0, 0]; pi[s][arrows[s]] = 1; }); return pi; };
+
+  // Exact v_π: solve (I − γ P_π) v = r_π over the non-terminal states by Gaussian elimination.
+  function evaluate(W, pi) {
+    const n = STATES.length, idx = new Map(STATES.map((s, i) => [s, i]));
+    const A = STATES.map(() => new Array(n + 1).fill(0));
+    STATES.forEach((s, i) => {
+      A[i][i] += 1;
+      for (let a = 0; a < 4; a++) {
+        if (!pi[s][a]) continue;
+        for (const o of outcomes(W, s, a)) {
+          const w = pi[s][a] * o.p;
+          A[i][n] += w * o.r;
+          if (!isTerm(o.s2)) A[i][idx.get(o.s2)] -= W.gamma * w;
+        }
+      }
+    });
+    for (let c = 0; c < n; c++) {
+      let piv = c;
+      for (let r = c + 1; r < n; r++) if (Math.abs(A[r][c]) > Math.abs(A[piv][c])) piv = r;
+      [A[c], A[piv]] = [A[piv], A[c]];
+      for (let r = 0; r < n; r++) {
+        if (r === c || !A[r][c]) continue;
+        const f = A[r][c] / A[c][c];
+        for (let k = c; k <= n; k++) A[r][k] -= f * A[c][k];
+      }
+    }
+    const v = new Array(NS).fill(0);
+    STATES.forEach((s, i) => (v[s] = A[i][n] / A[i][i]));
+    return v;
+  }
+  // q(s, a) = Σ p(s', r | s, a) [r + γ v(s')]
+  const qOf = (W, v, s, a) => outcomes(W, s, a).reduce((t, o) => t + o.p * (o.r + W.gamma * v[o.s2]), 0);
+  const qAll = (W, v) => { const q = []; STATES.forEach((s) => (q[s] = [0, 1, 2, 3].map((a) => qOf(W, v, s, a)))); return q; };
+  // v_* by value iteration (Lesson 33), run to convergence.
+  function optimal(W) {
+    let v = new Array(NS).fill(0);
+    for (let k = 0; k < 5000; k++) {
+      let delta = 0;
+      const nv = v.slice();
+      STATES.forEach((s) => { nv[s] = Math.max(...[0, 1, 2, 3].map((a) => qOf(W, v, s, a))); delta = Math.max(delta, Math.abs(nv[s] - v[s])); });
+      v = nv;
+      if (delta < 1e-12) break;
+    }
+    return v;
+  }
+  function stepEnv(W, s, a) {
+    const os = outcomes(W, s, a), o = os[Course.sample(os.map((x) => x.p))];
+    return o;
+  }
+  // One episode under π from s0 (and optional forced first action a0). Returns the steps.
+  function episode(W, pi, s0, a0 = null, maxT = 1000) {
+    const steps = [];
+    let s = s0;
+    for (let t = 0; t < maxT && !isTerm(s); t++) {
+      const a = t === 0 && a0 !== null ? a0 : Course.sample(pi[s]);
+      const o = stepEnv(W, s, a);
+      steps.push({ s, a, d: o.d, r: o.r, s2: o.s2 });
+      s = o.s2;
+    }
+    return steps;
+  }
+  // Two decimals without a minus sign on zero.
+  const f2 = (x) => (Math.abs(x) < 0.005 ? 0 : x).toFixed(2);
+  const discounted = (W, steps) => steps.reduceRight((g, x) => x.r + W.gamma * g, 0);
+  // ---- end of the icy gridworld ---------------------------------------------
+
+  const slip = Course.slider('#iSlip', (x) => f2(x), () => recompute('world'));
+  const step = Course.slider('#iStep', (x) => f2(x), () => recompute('world'));
+  const EPS = 1e-9;
+  const ALLLEFT = Object.fromEntries(STATES.map((s) => [s, 3]));
+  let W, arrows = { ...ALLLEFT }, v, q, vStar, flash = new Set();
+
+  const bestSet = (qs) => { const top = Math.max(...qs); return [0, 1, 2, 3].filter((a) => qs[a] > top - EPS); };
+
+  const G = Course.grid($('grid'), ROWS, COLS, (r, c, el) => {
+    const s = r * COLS + c, k = kind(s);
+    if (k === '#') { el.classList.add('wall'); return; }
+    if (k === 'G') { el.classList.add('goal'); el.innerHTML = '<span class="term">🏁<small>+10</small></span>'; return; }
+    if (k === 'P') { el.classList.add('pit'); el.innerHTML = '<span class="term">🕳️<small>−10</small></span>'; return; }
+    if (!v) return;
+    el.style.background = Course.heat(v[s], 10);
+    el.innerHTML = `<span class="pc"><span class="arr">${ARROW[arrows[s]]}</span><small>${f2(v[s])}</small></span>`;
+    const best = bestSet(q[s]);
+    if (!best.includes(arrows[s])) { el.classList.add('better'); el.insertAdjacentHTML('beforeend', `<span class="alt">${ARROW[best[0]]}</span>`); }
+    if (flash.has(s)) el.classList.add('flash');
+  });
+  G.onClick((r, c) => {
+    const s = r * COLS + c;
+    if (!STATES.includes(s)) return;
+    arrows[s] = (arrows[s] + 1) % 4;
+    recompute();
+  });
+
+  function recompute(why) {
+    W = { slip: slip(), step: step(), goal: 10, pit: -10, gamma: 0.9 };
+    v = evaluate(W, deterministic(arrows));
+    q = qAll(W, v);
+    vStar = optimal(W);
+    const qStar = qAll(W, vStar);
+    const nOpt = STATES.filter((s) => bestSet(qStar[s]).includes(arrows[s])).length;
+    $('sV').textContent = f2(v[START]);
+    $('sStar').textContent = f2(vStar[START]);
+    $('sOpt').textContent = `${nOpt} / ${STATES.length}`;
+    const amber = STATES.filter((s) => !bestSet(q[s]).includes(arrows[s])).length;
+    if (why !== 'keep') {
+      $('status').textContent = amber
+        ? `${amber} cell${amber > 1 ? 's have' : ' has'} a better action than ${amber > 1 ? 'their arrows' : 'its arrow'}. Press "Act greedily".`
+        : 'Every arrow is already the best action under its own values. This policy is optimal.';
+    }
+    G.update();
+    flash = new Set();
+  }
+
+  $('bGreedy').addEventListener('click', () => {
+    const old = v.slice();
+    const changed = [];
+    STATES.forEach((s) => {
+      const best = bestSet(q[s]);
+      if (!best.includes(arrows[s])) { arrows[s] = best[0]; changed.push(s); }
+    });
+    flash = new Set(changed);
+    recompute('keep');
+    if (!changed.length) {
+      $('status').textContent = 'No arrow changed. The policy is greedy with respect to its own values, so it is optimal: v_π = v_*.';
+      return;
+    }
+    const worst = Math.min(...STATES.map((s) => v[s] - old[s]));
+    const gain = Math.max(...STATES.map((s) => v[s] - old[s]));
+    $('status').textContent = `${changed.length} arrow${changed.length > 1 ? 's' : ''} changed. Biggest gain in any cell: +${gain.toFixed(2)}. Smallest change: ${worst >= -EPS ? '+' : ''}${Math.abs(worst) < 0.005 ? '0.00' : worst.toFixed(2)}. No cell got worse.`;
+  });
+  $('bOpt').addEventListener('click', () => {
+    const qStar = qAll(W, vStar);
+    STATES.forEach((s) => { const best = bestSet(qStar[s]); if (!best.includes(arrows[s])) arrows[s] = best[0]; });
+    recompute();
+  });
+  $('bRand').addEventListener('click', () => { STATES.forEach((s) => (arrows[s] = Course.randInt(4))); recompute(); });
+  $('bReset').addEventListener('click', () => {
+    arrows = { ...ALLLEFT };
+    $('iSlip').value = 0.2; $('iSlip').dispatchEvent(new Event('input'));
+    $('iStep').value = 0; $('iStep').dispatchEvent(new Event('input'));
+  });
+  recompute();
+
+  Course.quiz([
+    {
+      q: 'In some state, $q_*(s, \\cdot) = (2.1, 5.4, 4.9, 3.0)$ over $(\\uparrow, \\rightarrow, \\downarrow, \\leftarrow)$. What is $v_*(s)$?',
+      answer: 5.4,
+      explain: '$v_*(s) = \\max_a q_*(s, a) = 5.4$, and $\\pi_*(s) = \\rightarrow$.',
+    },
+    {
+      q: 'Set slip to 0 and step reward to 0 ($\\gamma = 0.9$). The shortest route from the start to 🏁 takes 7 moves. What is $v_*(\\text{start})$?',
+      answer: 10 * Math.pow(0.9, 6),
+      tol: 0.005,
+      hint: 'Only the last reward is non-zero, and it arrives on the 7th move.',
+      explain: 'The $+10$ is the 7th reward, so it is discounted 6 times: $0.9^6 \\times 10 \\approx 5.31$. Check it with the sliders.',
+    },
+    {
+      q: 'Same, but with step reward $-1$. Each of the first 6 moves costs $-1$ and the 7th pays $+10$. What is $v_*(\\text{start})$?',
+      answer: -(1 - Math.pow(0.9, 6)) / (1 - 0.9) + 10 * Math.pow(0.9, 6),
+      tol: 0.005,
+      hint: 'The costs form a geometric series: $1 + 0.9 + \\dots + 0.9^5 = (1 - 0.9^6)/(1 - 0.9)$.',
+      explain: '$-(1 + 0.9 + \\dots + 0.9^5) + 0.9^6 \\times 10 = -4.686 + 5.314 \\approx 0.63$. Check it with the sliders.',
+    },
+    {
+      q: 'Two different policies are both optimal. What do you know about their state values?',
+      choices: [
+        'Nothing: they may differ in some states',
+        'They are equal only in the start state',
+        'They are equal in every state: both equal $v_*$',
+      ],
+      answer: 2,
+      explain: 'Optimal means $v_\\pi(s) = \\max_{\\pi\'} v_{\\pi\'}(s) = v_*(s)$ for every $s$. They can differ only in how they break ties.',
+    },
+  ]);
+</script>
+</body>
+</html>

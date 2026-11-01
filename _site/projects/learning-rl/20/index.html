@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>20. Policies | Learning RL</title>
+<meta name="description" content="A policy is the agent's rule for choosing actions: a probability for every action in every state. Set one by clicking arrows and watch it play out on ice.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  #grid { max-width: 420px !important; }
+  .gcell.goal { background: var(--accent-soft); }
+  .gcell.pit { background: var(--red-soft); }
+  .gcell.sel { box-shadow: inset 0 0 0 3px var(--blue); }
+  .gcell.trail { background: #eef6ff; }
+  .term { display: flex; flex-direction: column; align-items: center; line-height: 1.1; }
+  .term small { font-size: 0.6em; color: var(--heading); font-weight: 600; }
+  .ar { position: absolute; color: var(--accent); font-weight: 700; line-height: 1; transition: opacity 0.2s ease, font-size 0.2s ease; }
+  .ar.a0 { top: 3px; left: 50%; transform: translateX(-50%); }
+  .ar.a1 { right: 4px; top: 50%; transform: translateY(-50%); }
+  .ar.a2 { bottom: 3px; left: 50%; transform: translateX(-50%); }
+  .ar.a3 { left: 4px; top: 50%; transform: translateY(-50%); }
+  .bot { font-size: 1.3em; z-index: 1; }
+  .startlab { position: absolute; bottom: 1px; right: 3px; font-size: 9px; color: var(--muted); }
+  .pibars { display: grid; grid-template-columns: 2em 1fr 3.5em; gap: 4px 8px; align-items: center; max-width: 420px; margin: 6px auto; font-variant-numeric: tabular-nums; }
+  .pibars .track { height: 14px; background: var(--soft); border: 1px solid var(--border); border-radius: 3px; overflow: hidden; }
+  .pibars .track div { height: 100%; background: var(--accent); transition: width 0.2s ease; }
+  .pibars .lab { text-align: center; font-weight: 700; color: var(--accent); }
+  .pibars .val { text-align: right; color: var(--heading); font-weight: 600; }
+  #piEq { overflow-x: auto; overflow-y: hidden; text-align: center; min-height: 2.4em; }
+</style>
+</head>
+<body data-lesson="20">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Policies</h1>
+  <p class="lede">A <b>policy</b> is the agent's whole behaviour written down: for every state, a probability for every action. It can be a fixed arrow per cell, pure chance, or anything in between. Everything that follows in this course is about finding a good one.</p>
+
+  <section class="card">
+    <p class="note">Lesson 19's icy world with one change: ordinary moves now pay 0 instead of −1, so only 🏁 (+10) and 🕳️ (−10) score, and both end the episode. An action goes where it was meant 80% of the time and slips sideways 10% each way. The arrows start as Lesson 19's route. Click a cell to turn its arrow.</p>
+    <div id="grid"></div>
+    <label class="slider"><span>Randomness $\varepsilon$</span><input id="iEps" type="range" min="0" max="1" step="0.05" value="0"><output></output></label>
+    <p class="status" id="status">Press "Run episode" to watch this policy play.</p>
+    <div class="row">
+      <button id="bRun" class="primary">Run episode</button>
+      <button id="bMany">Run 100 episodes</button>
+      <span class="spacer"></span>
+      <button id="bRandom" class="quiet">Fully random</button>
+      <button id="bReset" class="quiet">Reset</button>
+    </div>
+    <div class="stats" id="manyStats" hidden>
+      <div class="stat"><span class="k">Reached 🏁</span><span class="v" id="sGoal">–</span></div>
+      <div class="stat"><span class="k">Fell in 🕳️</span><span class="v" id="sPit">–</span></div>
+      <div class="stat"><span class="k">Average steps</span><span class="v" id="sSteps">–</span></div>
+      <div class="stat"><span class="k">Average return $G$</span><span class="v" id="sG">–</span></div>
+    </div>
+
+    <div class="sub">
+      <h2 id="selTitle">The policy in one cell</h2>
+      <div class="pibars" id="pibars"></div>
+      <div id="piEq"></div>
+      <p class="note">Each cell's four arrows are drawn with strength $\pi(a \mid s)$. This panel shows the cell you clicked last. Slide $\varepsilon$ to blend every arrow with chance.</p>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>A policy $\pi$ gives the probability of each action in each state:</p>
+    $$\pi(a \mid s) = \Pr\{A_t = a \mid S_t = s\}$$
+    <p>It depends only on the current state, not the time or the history. For every state the probabilities must add up to one:</p>
+    $$\pi(a \mid s) \ge 0, \qquad \sum_{a} \pi(a \mid s) = 1$$
+    <p>So a policy is one probability distribution per state. A <b>deterministic</b> policy puts all the probability on one action and is often written $a = \pi(s)$. With 4 actions and 16 non-terminal cells, there are $4^{16}$ deterministic policies, and infinitely many stochastic ones.</p>
+    <p>The slider mixes your arrow with a uniformly random choice, the same idea as ε-greedy in Lesson 3:</p>
+    $$\pi(a \mid s) = (1 - \varepsilon)\,\mathbb{1}[a = \text{arrow}(s)] + \frac{\varepsilon}{|\mathcal{A}|}$$
+    <p>The arrow's action gets $1 - \varepsilon + \varepsilon/4$, every other action gets $\varepsilon/4$.</p>
+    <p>A policy plus the MDP's dynamics $p(s' \mid s, a)$ gives the probability of moving between states:</p>
+    $$p_\pi(s' \mid s) = \sum_{a} \pi(a \mid s)\, p(s' \mid s, a)$$
+    <p>The choice of action disappears into a weighted sum. Fixing a policy turns an MDP into a Markov chain (Lesson 16): the agent still moves at random, but nothing is chosen any more.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  // ---- The icy gridworld (Lessons 18–19's layout, used in Lessons 20–29) ---
+  // 4×5 grid. G = goal (+10, ends), P = pit (−10, ends), # = wall. Every other move pays `step`.
+  // An action goes where you meant with probability 1 − slip, and slips to each side with slip/2.
+  // Moving into the wall or the edge leaves you where you are.
+  const MAP = ['....G', '.#..P', '...#.', '.....'];
+  const ROWS = 4, COLS = 5, NS = ROWS * COLS;
+  const ARROW = ['↑', '→', '↓', '←'], ANAME = ['up', 'right', 'down', 'left'];
+  const DR = [-1, 0, 1, 0], DC = [0, 1, 0, -1];
+  const kind = (s) => MAP[Math.floor(s / COLS)][s % COLS];
+  const isWall = (s) => kind(s) === '#';
+  const isTerm = (s) => kind(s) === 'G' || kind(s) === 'P';
+  const STATES = [...Array(NS).keys()].filter((s) => !isWall(s) && !isTerm(s));
+  const START = 15;
+  const rc = (s) => [Math.floor(s / COLS), s % COLS];
+  const cellName = (s) => `(${rc(s)[0]},${rc(s)[1]})`;
+
+  function move(s, d) {
+    const [r, c] = rc(s), nr = r + DR[d], nc = c + DC[d];
+    if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) return s;
+    const s2 = nr * COLS + nc;
+    return isWall(s2) ? s : s2;
+  }
+  const reward = (W, s2) => (kind(s2) === 'G' ? W.goal : kind(s2) === 'P' ? W.pit : W.step);
+  // The three possible results of action a in state s: meant, slip clockwise, slip anticlockwise.
+  function outcomes(W, s, a) {
+    return [[a, 1 - W.slip], [(a + 1) % 4, W.slip / 2], [(a + 3) % 4, W.slip / 2]]
+      .filter(([, p]) => p > 0)
+      .map(([d, p]) => { const s2 = move(s, d); return { d, p, s2, r: reward(W, s2) }; });
+  }
+  const uniform = () => { const pi = []; STATES.forEach((s) => (pi[s] = [0.25, 0.25, 0.25, 0.25])); return pi; };
+  const deterministic = (arrows) => { const pi = []; STATES.forEach((s) => { pi[s] = [0, 0, 0, 0]; pi[s][arrows[s]] = 1; }); return pi; };
+
+  // Exact v_π: solve (I − γ P_π) v = r_π over the non-terminal states by Gaussian elimination.
+  function evaluate(W, pi) {
+    const n = STATES.length, idx = new Map(STATES.map((s, i) => [s, i]));
+    const A = STATES.map(() => new Array(n + 1).fill(0));
+    STATES.forEach((s, i) => {
+      A[i][i] += 1;
+      for (let a = 0; a < 4; a++) {
+        if (!pi[s][a]) continue;
+        for (const o of outcomes(W, s, a)) {
+          const w = pi[s][a] * o.p;
+          A[i][n] += w * o.r;
+          if (!isTerm(o.s2)) A[i][idx.get(o.s2)] -= W.gamma * w;
+        }
+      }
+    });
+    for (let c = 0; c < n; c++) {
+      let piv = c;
+      for (let r = c + 1; r < n; r++) if (Math.abs(A[r][c]) > Math.abs(A[piv][c])) piv = r;
+      [A[c], A[piv]] = [A[piv], A[c]];
+      for (let r = 0; r < n; r++) {
+        if (r === c || !A[r][c]) continue;
+        const f = A[r][c] / A[c][c];
+        for (let k = c; k <= n; k++) A[r][k] -= f * A[c][k];
+      }
+    }
+    const v = new Array(NS).fill(0);
+    STATES.forEach((s, i) => (v[s] = A[i][n] / A[i][i]));
+    return v;
+  }
+  // q(s, a) = Σ p(s', r | s, a) [r + γ v(s')]
+  const qOf = (W, v, s, a) => outcomes(W, s, a).reduce((t, o) => t + o.p * (o.r + W.gamma * v[o.s2]), 0);
+  const qAll = (W, v) => { const q = []; STATES.forEach((s) => (q[s] = [0, 1, 2, 3].map((a) => qOf(W, v, s, a)))); return q; };
+  // v_* by value iteration (Lesson 33), run to convergence.
+  function optimal(W) {
+    let v = new Array(NS).fill(0);
+    for (let k = 0; k < 5000; k++) {
+      let delta = 0;
+      const nv = v.slice();
+      STATES.forEach((s) => { nv[s] = Math.max(...[0, 1, 2, 3].map((a) => qOf(W, v, s, a))); delta = Math.max(delta, Math.abs(nv[s] - v[s])); });
+      v = nv;
+      if (delta < 1e-12) break;
+    }
+    return v;
+  }
+  function stepEnv(W, s, a) {
+    const os = outcomes(W, s, a), o = os[Course.sample(os.map((x) => x.p))];
+    return o;
+  }
+  // One episode under π from s0 (and optional forced first action a0). Returns the steps.
+  function episode(W, pi, s0, a0 = null, maxT = 1000) {
+    const steps = [];
+    let s = s0;
+    for (let t = 0; t < maxT && !isTerm(s); t++) {
+      const a = t === 0 && a0 !== null ? a0 : Course.sample(pi[s]);
+      const o = stepEnv(W, s, a);
+      steps.push({ s, a, d: o.d, r: o.r, s2: o.s2 });
+      s = o.s2;
+    }
+    return steps;
+  }
+  // Two decimals without a minus sign on zero.
+  const f2 = (x) => (Math.abs(x) < 0.005 ? 0 : x).toFixed(2);
+  const discounted = (W, steps) => steps.reduceRight((g, x) => x.r + W.gamma * g, 0);
+  // ---- end of the icy gridworld ---------------------------------------------
+
+  const W = { slip: 0.2, step: 0, goal: 10, pit: -10, gamma: 0.9 };
+  // Lesson 19's route: up the left side, then along the top row.
+  const PRESET = { 0: 1, 1: 1, 2: 1, 3: 1, 5: 0, 7: 0, 8: 0, 10: 0, 11: 3, 12: 0, 14: 2, 15: 0, 16: 3, 17: 3, 18: 3, 19: 3 };
+  let arrows = { ...PRESET }, sel = START, agent = START, trail = new Set(), timer = null;
+  const eps = Course.slider('#iEps', (v) => v.toFixed(2), () => { drawAll(); });
+
+  function policy() {
+    const pi = [];
+    STATES.forEach((s) => (pi[s] = [0, 1, 2, 3].map((a) => (a === arrows[s] ? 1 - eps() : 0) + eps() / 4)));
+    return pi;
+  }
+
+  const G = Course.grid($('grid'), ROWS, COLS, (r, c, el) => {
+    const s = r * COLS + c, k = kind(s);
+    if (k === '#') { el.classList.add('wall'); return; }
+    if (k === 'G') { el.classList.add('goal'); el.innerHTML = '<span class="term">🏁<small>+10</small></span>'; }
+    else if (k === 'P') { el.classList.add('pit'); el.innerHTML = '<span class="term">🕳️<small>−10</small></span>'; }
+    else {
+      const p = policy()[s];
+      el.innerHTML = p.map((x, a) => `<span class="ar a${a}" style="opacity:${0.08 + 0.92 * x};font-size:${0.7 + 0.9 * x}em">${ARROW[a]}</span>`).join('');
+      if (s === START) el.insertAdjacentHTML('beforeend', '<span class="startlab">start</span>');
+      if (trail.has(s)) el.classList.add('trail');
+      if (s === sel) el.classList.add('sel');
+    }
+    if (s === agent) el.insertAdjacentHTML('beforeend', '<span class="bot">🤖</span>');
+  });
+  G.onClick((r, c) => {
+    const s = r * COLS + c;
+    if (!STATES.includes(s) || timer) return;
+    arrows[s] = (arrows[s] + 1) % 4;
+    sel = s;
+    drawAll();
+  });
+
+  function drawPanel() {
+    const p = policy()[sel];
+    $('selTitle').textContent = `The policy in cell ${cellName(sel)}`;
+    $('pibars').innerHTML = p.map((x, a) =>
+      `<span class="lab">${ARROW[a]}</span><span class="track"><div style="width:${100 * x}%"></div></span><span class="val">${x.toFixed(3)}</span>`).join('');
+    const e = eps(), A = ARROW[arrows[sel]];
+    Course.tex($('piEq'),
+      `\\begin{aligned}\\pi(\\text{${A}} \\mid s) &= (1 - ${e}) + \\tfrac{${e}}{4} \\\\ &= ${(1 - e + e / 4).toFixed(3)} \\\\ \\pi(\\text{other} \\mid s) &= \\tfrac{${e}}{4} = ${(e / 4).toFixed(4)}\\end{aligned}`, true);
+  }
+  function drawAll() { G.update(); drawPanel(); }
+
+  function stop() {
+    clearInterval(timer); timer = null;
+    $('bRun').textContent = 'Run episode';
+  }
+
+  $('bRun').addEventListener('click', () => {
+    if (timer) return stop();
+    const pi = policy();
+    let s = START, t = 0, g = 0;
+    agent = s; trail = new Set([s]); drawAll();
+    $('bRun').textContent = 'Pause';
+    $('status').textContent = 'Starting from the start cell.';
+    timer = setInterval(() => {
+      const a = Course.sample(pi[s]), prob = pi[s][a], o = stepEnv(W, s, a);
+      g += Math.pow(W.gamma, t) * o.r;
+      t++;
+      const slipped = o.d !== a ? ` but slipped ${ARROW[o.d]}` : '';
+      s = o.s2; agent = s; trail.add(s);
+      if (isTerm(s)) {
+        $('status').innerHTML = `${kind(s) === 'G' ? 'Reached 🏁' : 'Fell in 🕳️'} after ${t} step${t > 1 ? 's' : ''}. Return $G = \\gamma^{${t - 1}} \\times ${o.r} = ${g.toFixed(2)}$.`;
+        Course.renderMath($('status'));
+        stop();
+      } else if (t >= 200) {
+        $('status').textContent = 'Still wandering after 200 steps. Stopped.';
+        stop();
+      } else {
+        $('status').textContent = `Step ${t}: the policy picked ${ARROW[a]} (probability ${prob.toFixed(3)})${slipped}.`;
+      }
+      G.update();
+    }, 260);
+  });
+
+  $('bMany').addEventListener('click', () => {
+    stop();
+    const pi = policy(), N = 100;
+    let goal = 0, pit = 0, steps = 0, ret = 0;
+    for (let i = 0; i < N; i++) {
+      const ep = episode(W, pi, START);
+      const end = ep.length ? ep[ep.length - 1].s2 : START;
+      if (kind(end) === 'G') goal++;
+      if (kind(end) === 'P') pit++;
+      steps += ep.length; ret += discounted(W, ep);
+    }
+    $('manyStats').hidden = false;
+    $('sGoal').textContent = `${goal}%`;
+    $('sPit').textContent = `${pit}%`;
+    $('sSteps').textContent = (steps / N).toFixed(1);
+    $('sG').textContent = (ret / N).toFixed(2);
+    $('status').textContent = `100 episodes from the start with ε = ${eps()}. Change arrows or ε and run again.`;
+  });
+
+  $('bRandom').addEventListener('click', () => {
+    stop();
+    $('iEps').value = 1; $('iEps').dispatchEvent(new Event('input'));
+    $('status').textContent = 'Every action now has probability 1/4 in every cell. Your arrows no longer matter.';
+  });
+  $('bReset').addEventListener('click', () => {
+    stop();
+    arrows = { ...PRESET }; sel = START; agent = START; trail = new Set();
+    $('iEps').value = 0; $('iEps').dispatchEvent(new Event('input'));
+    $('manyStats').hidden = true;
+    $('status').textContent = 'Press "Run episode" to watch this policy play.';
+  });
+
+  drawAll();
+
+  Course.quiz([
+    {
+      q: 'A cell\'s arrow points →, and $\\varepsilon = 0.2$. What is $\\pi(\\rightarrow \\mid s)$?',
+      answer: 1 - 0.2 + 0.2 / 4,
+      tol: 0.001,
+      explain: '$(1 - 0.2) + 0.2/4 = 0.8 + 0.05 = 0.85$. Set $\\varepsilon = 0.2$ and click a cell to check.',
+    },
+    {
+      q: 'Same cell, with open cells on every side. On the 80/10/10 ice, what is the probability the agent actually moves right?',
+      answer: 0.85 * 0.8 + 0.05 * 0.1 + 0.05 * 0.1,
+      tol: 0.001,
+      hint: 'Sum over actions: $\\sum_a \\pi(a \\mid s)\\, p(\\text{right} \\mid s, a)$. Which actions can slip to the right?',
+      explain: 'Choosing → and not slipping: $0.85 \\times 0.8 = 0.68$. Choosing ↑ or ↓ and slipping right: $2 \\times 0.05 \\times 0.1 = 0.01$. Total $0.69$.',
+    },
+    {
+      q: 'How many deterministic policies are there on this grid (16 non-terminal cells, 4 actions each)?',
+      answer: Math.pow(4, 16),
+      tol: 0,
+      explain: 'Each cell picks one of 4 arrows independently: $4^{16} = 4{,}294{,}967{,}296$.',
+    },
+    {
+      q: 'Which of these is a valid policy in one state, listed as $(\\uparrow, \\rightarrow, \\downarrow, \\leftarrow)$?',
+      choices: ['$(0.5, 0.5, 0.5, 0.5)$', '$(0.7, 0.3, 0, 0)$', '$(1, 0.2, 0, -0.2)$'],
+      answer: 1,
+      explain: 'Probabilities must be non-negative and add up to 1. Only $(0.7, 0.3, 0, 0)$ does.',
+    },
+  ]);
+</script>
+</body>
+</html>

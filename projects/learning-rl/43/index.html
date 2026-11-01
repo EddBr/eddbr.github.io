@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>43. Tic-tac-toe: learning by self-play | Learning RL</title>
+<meta name="description" content="Two value tables play each other thousands of times. Watch how often they lose to a perfect player fall towards zero, then try to beat the result.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  #board { max-width: 240px !important; margin: 4px auto; }
+  #board .gcell { font-size: 40px; font-weight: 600; }
+  .gcell.x { color: var(--accent); }
+  .gcell.o { color: var(--blue); }
+  .gcell.win { background: var(--accent-soft); }
+  .gcell .hint { font-size: 12px; font-weight: 600; color: var(--muted); }
+  .seat { display: flex; gap: 0; }
+  .seat button { border-radius: 0; }
+  .seat button:first-child { border-radius: 4px 0 0 4px; }
+  .seat button:last-child { border-radius: 0 4px 4px 0; margin-left: -1px; }
+</style>
+</head>
+<body data-lesson="43">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Tic-tac-toe: learning by self-play</h1>
+  <p class="lede">Lesson 42's agent learned from you, one slow game at a time. Here two copies of it, one playing X and one playing O, play each other tens of thousands of times. Neither is told the rules of good play. Within about 30,000 games, both usually stop losing to a perfect player.</p>
+
+  <section class="card">
+    <label class="slider"><span>Explore $\varepsilon$</span><input id="iE" type="range" min="0.05" max="0.5" step="0.05" value="0.3"><output></output></label>
+    <label class="slider"><span>Step size $\alpha$</span><input id="iA" type="range" min="0.05" max="0.5" step="0.05" value="0.2"><output></output></label>
+    <div class="row">
+      <button id="bRun" class="primary">Run</button>
+      <button id="bStep">+1,000 games</button>
+      <span class="spacer"></span>
+      <button id="bReset" class="quiet">Reset tables</button>
+    </div>
+    <canvas class="chart" id="chart"></canvas>
+    <p class="note">Every 1,000 self-play games, each table plays 200 test games greedily ($\varepsilon = 0$, no learning) against a perfect player that picks at random among its best moves. The chart shows the share of those games lost. A perfect player can never be beaten, so 0% lost means only draws.</p>
+    <div class="stats">
+      <div class="stat"><span class="k">Self-play games</span><span class="v" id="sG">0</span></div>
+      <div class="stat"><span class="k">Boards in X / O tables</span><span class="v" id="sN">0 / 0</span></div>
+      <div class="stat"><span class="k">Lost vs random player (X / O)</span><span class="v" id="sR">– / –</span></div>
+    </div>
+
+    <div class="sub">
+      <h2>Play the trained agent</h2>
+      <p class="note">The agent plays greedily from its table and does not learn during these games. After each of its moves, the empty squares show how it rated the moves it did not make.</p>
+      <div class="row">
+        <span class="muted">You play</span>
+        <span class="seat"><button id="bAsO" class="on">O (agent starts)</button><button id="bAsX">X (you start)</button></span>
+        <span class="spacer"></span>
+        <button id="bNew">New game</button>
+      </div>
+      <div id="board"></div>
+      <p class="status" id="status"></p>
+      <div class="stats" style="justify-content:center">
+        <div class="stat"><span class="k">You won</span><span class="v" id="pW">0</span></div>
+        <div class="stat"><span class="k">Draws</span><span class="v" id="pD">0</span></div>
+        <div class="stat"><span class="k">You lost</span><span class="v" id="pL">0</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>Each player $p \in \{\text{X}, \text{O}\}$ keeps its own table $V_p$, scored from its own side: $1$ for its win, $\tfrac12$ for a draw, $0$ for its loss. After a greedy move from its board $S_t$ to its next board $S_{t+1}$, it applies Lesson 42's update:</p>
+    $$V_p(S_t) \leftarrow V_p(S_t) + \alpha\big[V_p(S_{t+1}) - V_p(S_t)\big]$$
+    <p>Each table learns from the boards that followed its own moves, and the other player's moves happen in between.</p>
+    <p>When the game ends, the player who did not make the last move updates its last board towards the final score:</p>
+    $$V_p(S_\text{last}) \leftarrow V_p(S_\text{last}) + \alpha\big[z_p - V_p(S_\text{last})\big], \qquad z_p \in \{0, \tfrac12\}$$
+    <p>A loss pulls the board that allowed it towards $0$; a draw pulls it towards $\tfrac12$. The player who made the last move needs no extra rule: its ordinary update already targets the finished board, whose value is fixed at $1$ or $\tfrac12$.</p>
+    <p>Each player's opponent is the other learner, so the opponent keeps changing. That makes the problem non-stationary, which is why a constant $\alpha$ (Lesson 7) suits it better than a $1/n$ average. It also means the curves can jump: when one table changes, the other's old values can stop being right.</p>
+    <p>Tic-tac-toe is a draw under perfect play: the minimax value of the empty board is a draw. So the best possible result against the perfect player is 0% lost. Getting there needs exploration ($\varepsilon$ too small and some lines are never tried), and O usually takes longer because it must learn a defence against every opening X tries.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const LINES = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
+  const X = 1, O = 2, DRAW = 3;
+  function result(b) {
+    for (const [p, q, r] of LINES) if (b[p] && b[p] === b[q] && b[p] === b[r]) return b[p];
+    return b.includes(0) ? 0 : DRAW;
+  }
+  const winLine = (b) => LINES.find(([p, q, r]) => b[p] && b[p] === b[q] && b[p] === b[r]);
+  const key = (b) => b.join('');
+  const empties = (b) => b.map((v, i) => (v ? -1 : i)).filter((i) => i >= 0);
+  const toMove = (b) => (b.filter(Boolean).length % 2 ? O : X);
+
+  // ------------------------------------------------------------ learners
+  function makeTable(p) {
+    const V = new Map();
+    const val = (b) => {
+      const k = key(b);
+      if (!V.has(k)) {
+        const r = result(b);
+        V.set(k, r === p ? 1 : r === DRAW ? 0.5 : r ? 0 : 0.5);
+      }
+      return V.get(k);
+    };
+    const peek = (b) => { const k = key(b); if (V.has(k)) return V.get(k); const r = result(b); return r === p ? 1 : r === DRAW ? 0.5 : r ? 0 : 0.5; };
+    return { p, V, val, peek };
+  }
+  function choose(T, b, e, look = T.val) {
+    const opts = empties(b);
+    if (Math.random() < e) return { m: Course.choice(opts), greedy: false };
+    let best = -1, ties = [];
+    for (const i of opts) {
+      b[i] = T.p; const v = look(b); b[i] = 0;
+      if (v > best + 1e-12) { best = v; ties = [i]; } else if (Math.abs(v - best) <= 1e-12) ties.push(i);
+    }
+    return { m: Course.choice(ties), greedy: true };
+  }
+  function update(T, k, target, a) { const v = T.V.get(k); T.V.set(k, v + a * (target - v)); }
+
+  function selfPlayGame(A, e, a) {
+    const b = new Array(9).fill(0), last = { [X]: null, [O]: null };
+    let p = X;
+    for (;;) {
+      const T = A[p], { m, greedy } = choose(T, b, e);
+      b[m] = p;
+      const k = key(b); T.val(b);
+      if (greedy && last[p] !== null) update(T, last[p], T.V.get(k), a);
+      last[p] = k;
+      const r = result(b);
+      if (r) {
+        const q = 3 - p;
+        if (last[q] !== null) update(A[q], last[q], r === DRAW ? 0.5 : 0, a);
+        return r;
+      }
+      p = 3 - p;
+    }
+  }
+
+  // ------------------------------------------------------------ perfect player (minimax, memoised)
+  const MM = new Map();   // value from X's side: 1 X wins, 0 draw, -1 O wins
+  function minimax(b) {
+    const k = key(b);
+    if (MM.has(k)) return MM.get(k);
+    const r = result(b);
+    let v;
+    if (r) v = r === X ? 1 : r === O ? -1 : 0;
+    else {
+      const p = toMove(b);
+      v = p === X ? -2 : 2;
+      for (const i of empties(b)) { b[i] = p; const c = minimax(b); b[i] = 0; v = p === X ? Math.max(v, c) : Math.min(v, c); }
+    }
+    MM.set(k, v);
+    return v;
+  }
+  function perfectMove(b) {
+    const p = toMove(b), sgn = p === X ? 1 : -1;
+    let best = -2, ties = [];
+    for (const i of empties(b)) {
+      b[i] = p; const v = sgn * minimax(b); b[i] = 0;
+      if (v > best) { best = v; ties = [i]; } else if (v === best) ties.push(i);
+    }
+    return Course.choice(ties);
+  }
+  const randomMove = (b) => Course.choice(empties(b));
+
+  function playOut(moveX, moveO) {
+    const b = new Array(9).fill(0);
+    for (;;) {
+      const p = toMove(b);
+      b[p === X ? moveX(b) : moveO(b)] = p;
+      const r = result(b);
+      if (r) return r;
+    }
+  }
+  const greedyOf = (T) => (b) => choose(T, b, 0, T.peek).m;
+  function lossRates(A, opp, n = 200) {
+    let lx = 0, lo = 0;
+    for (let i = 0; i < n; i++) {
+      if (playOut(greedyOf(A[X]), opp) === O) lx++;
+      if (playOut(opp, greedyOf(A[O])) === X) lo++;
+    }
+    return [(100 * lx) / n, (100 * lo) / n];
+  }
+
+  // ------------------------------------------------------------ training loop + chart
+  const eps = Course.slider('#iE', (v) => v.toFixed(2));
+  const alpha = Course.slider('#iA', (v) => v.toFixed(2));
+  const chart = Course.lineChart($('chart'), { xLabel: 'self-play games', yLabel: '% lost vs perfect', yMin: 0, yMax: 100, xMin: 0, xMax: 42000 });
+  const MAX = 40000;
+  let A, games, curveX, curveO, timer = null;
+
+  function reset() {
+    stop();
+    A = { [X]: makeTable(X), [O]: makeTable(O) };
+    games = 0;
+    const [x, o] = lossRates(A, perfectMove);
+    curveX = [[0, x]]; curveO = [[0, o]];
+    $('sR').textContent = '– / –';
+    draw();
+  }
+  function draw() {
+    chart.draw([
+      { data: curveX, color: Course.colors.green, label: 'X table', dots: curveX.length < 3 },
+      { data: curveO, color: Course.colors.blue, label: 'O table', dots: curveO.length < 3 },
+    ]);
+    $('sG').textContent = games.toLocaleString();
+    $('sN').textContent = `${A[X].V.size.toLocaleString()} / ${A[O].V.size.toLocaleString()}`;
+  }
+  function train1000() {
+    const e = eps(), a = alpha();
+    for (let i = 0; i < 1000; i++) selfPlayGame(A, e, a);
+    games += 1000;
+    const [x, o] = lossRates(A, perfectMove);
+    curveX.push([games, x]); curveO.push([games, o]);
+    const [rx, ro] = lossRates(A, randomMove);
+    $('sR').textContent = `${Math.round(rx)}% / ${Math.round(ro)}%`;
+    draw();
+  }
+  function stop() { clearInterval(timer); timer = null; $('bRun').textContent = 'Run'; }
+  $('bRun').addEventListener('click', () => {
+    if (timer) return stop();
+    if (games >= MAX) reset();
+    $('bRun').textContent = 'Pause';
+    timer = setInterval(() => { train1000(); if (games >= MAX) stop(); }, 40);
+  });
+  $('bStep').addEventListener('click', () => { if (games < MAX) train1000(); });
+  $('bReset').addEventListener('click', reset);
+  reset();
+
+  // ------------------------------------------------------------ play against it
+  let human = O, board = new Array(9).fill(0), over = false, pw = 0, pd = 0, pl = 0;
+  const agentSide = () => 3 - human;
+  const g = Course.grid($('board'), 3, 3, (r, c, cell) => {
+    const i = r * 3 + c, v = board[i];
+    if (v) {
+      cell.textContent = v === X ? 'X' : 'O';
+      cell.classList.add(v === X ? 'x' : 'o');
+      const wl = winLine(board);
+      if (wl && wl.includes(i)) cell.classList.add('win');
+    } else cell.textContent = '';
+  });
+  let pending = null;   // the agent's reply, while it is waiting to move
+  g.onClick((r, c) => {
+    const i = r * 3 + c;
+    if (over || pending || board[i] || toMove(board) !== human) return;
+    board[i] = human;
+    if (!finish()) pending = setTimeout(() => { pending = null; agentTurn(); }, 200);
+    g.update();
+  });
+  function agentTurn() {
+    const T = A[agentSide()];
+    const opts = empties(board).map((i) => { board[i] = T.p; const v = T.peek(board); board[i] = 0; return [i, v]; });
+    const m = choose(T, board, 0, T.peek).m;
+    board[m] = T.p;
+    g.update();
+    opts.forEach(([i, v]) => { if (i !== m) g.cell(Math.floor(i / 3), i % 3).innerHTML = `<span class="hint">${v.toFixed(2)}</span>`; });
+    const chosen = opts.find((o) => o[0] === m)[1];
+    if (!finish()) $('status').textContent = `Agent rates its move ${chosen.toFixed(2)}. Your move.`;
+  }
+  function finish() {
+    const r = result(board);
+    if (!r) { $('status').textContent = 'Your move.'; return false; }
+    over = true;
+    if (r === human) pw++; else if (r === DRAW) pd++; else pl++;
+    $('status').textContent = r === human ? 'You win. The table has a hole: train longer.' : r === DRAW ? 'Draw.' : 'The agent wins.';
+    $('pW').textContent = pw; $('pD').textContent = pd; $('pL').textContent = pl;
+    g.update();
+    return true;
+  }
+  function newGame() {
+    clearTimeout(pending); pending = null;
+    board = new Array(9).fill(0); over = false;
+    g.update();
+    if (agentSide() === X) agentTurn(); else $('status').textContent = 'Your move.';
+  }
+  function seat(h) {
+    human = h;
+    $('bAsO').className = h === O ? 'on' : '';
+    $('bAsX').className = h === X ? 'on' : '';
+    newGame();
+  }
+  $('bAsO').addEventListener('click', () => seat(O));
+  $('bAsX').addEventListener('click', () => seat(X));
+  $('bNew').addEventListener('click', newGame);
+  newGame();
+
+  // ------------------------------------------------------------ quiz
+  Course.quiz([
+    {
+      q: 'O\'s last board has $V_\\text{O} = 0.7$, then X wins. With $\\alpha = 0.2$, what does that value become?',
+      answer: 0.7 + 0.2 * (0 - 0.7),
+      tol: 0.0005,
+      explain: 'A loss for O, so the target is $0$: $0.7 + 0.2\\,(0 - 0.7) = 0.56$.',
+    },
+    {
+      q: 'X fills the last square and the game is drawn. O\'s last board had $V_\\text{O} = 0.4$. With $\\alpha = 0.2$, what does it become?',
+      answer: 0.4 + 0.2 * (0.5 - 0.4),
+      tol: 0.0005,
+      explain: 'A draw scores $\\tfrac12$: $0.4 + 0.2\\,(0.5 - 0.4) = 0.42$.',
+    },
+    {
+      q: 'An agent wins a quarter of its test games, draws half and loses a quarter. What is its average score, the quantity $V$ estimates?',
+      answer: 0.25 * 1 + 0.5 * 0.5 + 0.25 * 0,
+      tol: 0.0005,
+      explain: '$0.25 \\times 1 + 0.5 \\times \\tfrac12 + 0.25 \\times 0 = 0.5$.',
+    },
+    {
+      q: 'Why does self-play suit a constant step size better than a $1/n$ average?',
+      choices: [
+        'Tic-tac-toe rewards are noisy',
+        'The opponent is also learning, so the value of each board keeps changing',
+        'A $1/n$ average needs a model of the game',
+        'Constant step sizes always converge faster',
+      ],
+      answer: 1,
+      explain: 'The target moves as the other table learns. A $1/n$ average weights early, outdated games as much as recent ones (Lesson 7).',
+    },
+  ]);
+</script>
+</body>
+</html>

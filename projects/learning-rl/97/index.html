@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>97. World models | Learning RL</title>
+<meta name="description" content="Explore the Dyna maze, count what happens, and build a model of the world. Then plan entirely inside the model and see whether the plan works in reality.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .pair h3 { font-size: 0.9rem; color: var(--heading); margin: 0; text-align: center; }
+  .pair canvas { width: 100%; display: block; margin: 6px 0 0; }
+  #gM { cursor: pointer; }
+  .key { display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.8rem; color: var(--muted); justify-content: center; }
+  .key b { display: inline-block; width: 12px; height: 10px; vertical-align: middle; margin-right: 3px; border-radius: 2px; }
+  #ptab { overflow-x: auto; }
+  #ptab td:first-child, #ptab th:first-child { text-align: left; }
+  @media (max-width: 560px) { .pair { grid-template-columns: 1fr; gap: 8px; } }
+</style>
+</head>
+<body data-lesson="97">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>World models</h1>
+  <p class="lede">A world model predicts what happens next: given a state and an action, which state follows and what reward arrives. With one, an agent can plan by imagining trajectories instead of living them. Dyna-Q (Lesson 59) remembered single transitions. Here the agent learns the probabilities, then solves the whole maze in its head.</p>
+
+  <section class="card">
+    <label class="slider"><span>Slip chance</span><input id="iS" type="range" min="0" max="0.4" step="0.05" value="0.2"><output></output></label>
+    <div class="pair">
+      <div><h3>The real world</h3><canvas id="gW" aria-label="The real Dyna maze"></canvas></div>
+      <div><h3>The agent's model</h3><canvas id="gM" aria-label="What the agent has learned. Click a cell to inspect its model."></canvas></div>
+    </div>
+    <div class="key">
+      <span><b style="background:#e5e7eb"></b>never visited</span>
+      <span><b style="background:#6b7280"></b>wall it has bumped into</span>
+      <span><b style="background:rgba(5,150,105,0.5)"></b>planned value $V(s)$</span>
+    </div>
+    <p class="status" id="status"></p>
+    <div class="row">
+      <button id="bExp">Explore 50 steps</button>
+      <button id="bExp5">+500</button>
+      <button id="bPlan">Plan in the model</button>
+      <button id="bAct" class="primary">Act in the real world</button>
+      <span class="spacer"></span>
+      <button id="bReset" class="quiet">Forget everything</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="k">Real steps so far</span><span class="v" id="sReal">0</span></div>
+      <div class="stat"><span class="k">$(s, a)$ pairs tried</span><span class="v" id="sPairs">0</span></div>
+      <div class="stat"><span class="k">Imagined backups</span><span class="v" id="sImag">0</span></div>
+    </div>
+    <div id="ptab"></div>
+    <p class="note">S&amp;B's Dyna maze (Lesson 59), with one change: each move slips sideways with the chance set above. Exploring is a random walk. Planning is value iteration on the learned model, $\gamma = 0.95$, reward 1 at G. Pairs never tried are modelled as "nothing happens". Click a cell in the model to see what the agent believes each action does there.</p>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>The simplest world model is a table of counts. With $N(s, a)$ the times action $a$ was taken in $s$ and $N(s, a, s')$ the times it led to $s'$:</p>
+    $$\hat p(s' \mid s, a) = \frac{N(s, a, s')}{N(s, a)}$$
+    <p>and $\hat r(s, a)$ is the average reward seen after taking $a$ in $s$.</p>
+    <p>These are maximum-likelihood estimates. By the law of large numbers they converge to the true $p$ and $r$ as each pair is tried more often (Lesson 6's averages again).</p>
+    <p>Planning then treats the model as if it were the truth and runs value iteration (Lesson 33) on it:</p>
+    $$V(s) \leftarrow \max_a \sum_{s'} \hat p(s' \mid s, a) \big[ \hat r(s, a) + \gamma V(s') \big]$$
+    <p>Every backup is imagined. No real step is spent. The policy is only as good as the model: where $\hat p$ is wrong or missing, the plan is confidently wrong. Explore 50 steps, plan and act. Then explore more and plan again.</p>
+    <p>Modern world models learn the same two things with networks instead of tables. Ha and Schmidhuber (2018) compressed game frames with a variational autoencoder, learned a recurrent model of how the compressed state evolves, and trained a controller entirely inside that "dream". MuZero (Schrittwieser et al., 2020) goes further. Its model never predicts observations. From a hidden state $s^k$ it predicts only what planning needs:</p>
+    $$\begin{aligned} s^0 &= h_\theta(o_t) &&\text{(encode the observation)} \\ r^k, s^k &= g_\theta(s^{k-1}, a^k) &&\text{(imagined step)} \\ \mathbf p^k, v^k &= f_\theta(s^k) &&\text{(policy and value, as in Lesson 96)} \end{aligned}$$
+    <p>It is trained so that rewards, values and policies predicted along imagined trajectories match those seen in real games. Lesson 96's tree search then runs inside this learned model, which let MuZero match AlphaZero at chess, shogi and Go without being told the rules.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const DIRS = [[-1, 0], [0, 1], [1, 0], [0, -1]], ANAME = ['up', 'right', 'down', 'left'], ARROW = ['↑', '→', '↓', '←'];
+
+  // ------------------------------------------------------------ canvas gridworld (as in Lesson 59)
+  function drawGrid(canvas, R, C, o = {}) {
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const W = canvas.clientWidth;
+    if (!W) return null;
+    const cs = Math.min(W / C, o.maxCell || 36), gw = cs * C, x0 = (W - gw) / 2, H = cs * R + 2;
+    canvas.style.height = `${H}px`;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    const X = (c) => x0 + c * cs, Y = (r) => 1 + r * cs;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) {
+      const s = r * C + c, p = o.paint(s) || {};
+      ctx.fillStyle = p.fill || '#f9fafb';
+      ctx.fillRect(X(c) + 1, Y(r) + 1, cs - 2, cs - 2);
+      if (p.outline) { ctx.strokeStyle = p.outline; ctx.lineWidth = 2.5; ctx.strokeRect(X(c) + 2.5, Y(r) + 2.5, cs - 5, cs - 5); }
+      if (p.text) {
+        ctx.fillStyle = p.textColor || '#374151';
+        ctx.font = `600 ${Math.round(cs * (p.size || 0.42))}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+        ctx.fillText(p.text, X(c) + cs / 2, Y(r) + cs / 2 + 1);
+      }
+    }
+    if (o.path && o.path.length > 1) {
+      ctx.strokeStyle = '#059669'; ctx.lineWidth = Math.max(2, cs / 9); ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.globalAlpha = 0.75;
+      ctx.beginPath();
+      o.path.forEach((s, i) => { const x = X(s % C) + cs / 2, y = Y(Math.floor(s / C)) + cs / 2; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+      ctx.stroke(); ctx.globalAlpha = 1;
+    }
+    if (o.agent !== undefined && o.agent !== null) {
+      const r = Math.floor(o.agent / C), c = o.agent % C;
+      ctx.fillStyle = '#059669'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(X(c) + cs / 2, Y(r) + cs / 2, cs * 0.26, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+    }
+    return { cs, x0 };
+  }
+
+  // ------------------------------------------------------------ the world: Dyna maze with slips
+  const R = 6, C = 9, START = 2 * C, GOAL = 8, GAMMA = 0.95;
+  const WALLS = new Set([[1, 2], [2, 2], [3, 2], [4, 5], [0, 7], [1, 7], [2, 7]].map(([r, c]) => r * C + c));
+  const slip = Course.slider('#iS', (v) => v.toFixed(2));
+  function target(s, a) {
+    const r = Math.floor(s / C) + DIRS[a][0], c = (s % C) + DIRS[a][1];
+    if (r < 0 || r >= R || c < 0 || c >= C || WALLS.has(r * C + c)) return [s, true];
+    return [r * C + c, false];
+  }
+  // A real step: with probability `slip` the move goes to one of the two perpendicular directions.
+  function envStep(s, a) {
+    let d = a;
+    if (Math.random() < slip()) d = (a + (Math.random() < 0.5 ? 1 : 3)) % 4;
+    const [s2, bumped] = target(s, d);
+    const wr = Math.floor(s / C) + DIRS[d][0], wc = (s % C) + DIRS[d][1];
+    const wall = bumped && wr >= 0 && wr < R && wc >= 0 && wc < C ? wr * C + wc : -1;
+    return { s2, r: s2 === GOAL ? 1 : 0, wall };
+  }
+
+  // ------------------------------------------------------------ the learned model: counts
+  let Nsa, Nsas, Rsum, seen, bumpedWalls, V, agent, realSteps, imagined, trail, selected, timer = null;
+  function forget() {
+    stop();
+    Nsa = Array.from({ length: R * C }, () => [0, 0, 0, 0]);
+    Nsas = Array.from({ length: R * C }, () => [new Map(), new Map(), new Map(), new Map()]);
+    Rsum = Array.from({ length: R * C }, () => [0, 0, 0, 0]);
+    seen = new Set([START]); bumpedWalls = new Set();
+    V = null; agent = START; realSteps = 0; imagined = 0; trail = null; selected = null;
+    $('status').textContent = 'The agent knows nothing. Press "Explore 50 steps".';
+    draw();
+  }
+  function record(s, a, out) {
+    Nsa[s][a]++;
+    Nsas[s][a].set(out.s2, (Nsas[s][a].get(out.s2) || 0) + 1);
+    Rsum[s][a] += out.r;
+    seen.add(out.s2);
+    if (out.wall >= 0) bumpedWalls.add(out.wall);
+    realSteps++;
+  }
+  function explore(n) {
+    for (let i = 0; i < n; i++) {
+      const a = Course.randInt(4), out = envStep(agent, a);
+      record(agent, a, out);
+      agent = out.s2 === GOAL ? START : out.s2;
+    }
+  }
+  // Model backup for (s, a) given V: sum over s' of p-hat [r-hat + gamma V(s')]. Untried pairs: stay, reward 0.
+  function qModel(s, a, Vv) {
+    const n = Nsa[s][a];
+    if (!n) return GAMMA * Vv[s];
+    let q = Rsum[s][a] / n;
+    for (const [s2, k] of Nsas[s][a]) q += (k / n) * (s2 === GOAL ? 0 : GAMMA * Vv[s2]);
+    return q;
+  }
+  function plan() {
+    const Vv = new Array(R * C).fill(0);
+    for (let it = 0; it < 500; it++) {
+      let delta = 0;
+      for (let s = 0; s < R * C; s++) {
+        if (s === GOAL || WALLS.has(s)) continue;
+        const v = Math.max(...[0, 1, 2, 3].map((a) => qModel(s, a, Vv)));
+        imagined += 4;
+        delta = Math.max(delta, Math.abs(v - Vv[s]));
+        Vv[s] = v;
+      }
+      if (delta < 1e-6) break;
+    }
+    V = Vv;
+  }
+  const greedy = (s) => Course.argmax([0, 1, 2, 3].map((a) => qModel(s, a, V)));
+
+  // ------------------------------------------------------------ drawing
+  let layout = null;
+  function draw() {
+    drawGrid($('gW'), R, C, {
+      paint(s) {
+        if (WALLS.has(s)) return { fill: '#6b7280' };
+        if (s === GOAL) return { fill: '#fef3c7', text: 'G', textColor: '#b45309' };
+        if (s === START) return { text: 'S' };
+        return {};
+      },
+      agent, path: trail,
+    });
+    const vmax = V ? Math.max(1e-9, ...V) : 1;
+    layout = drawGrid($('gM'), R, C, {
+      paint(s) {
+        const p = {};
+        if (bumpedWalls.has(s)) return { fill: '#6b7280' };
+        if (!seen.has(s)) return { fill: '#e5e7eb', text: '?', textColor: '#9ca3af', size: 0.36 };
+        if (s === GOAL) return { fill: '#fef3c7', text: 'G', textColor: '#b45309' };
+        if (V && V[s] > 0) { p.fill = `rgba(5,150,105,${(0.1 + 0.55 * V[s] / vmax).toFixed(3)})`; p.text = ARROW[greedy(s)]; p.size = 0.4; }
+        if (s === START && !p.text) p.text = 'S';
+        if (s === selected) p.outline = '#7c3aed';
+        return p;
+      },
+    });
+    const pairs = Nsa.reduce((t, row) => t + row.filter((n) => n > 0).length, 0);
+    $('sReal').textContent = realSteps;
+    $('sPairs').textContent = `${pairs} / 184`;
+    $('sImag').textContent = imagined.toLocaleString();
+    showTable();
+  }
+  function showTable() {
+    if (selected === null) { $('ptab').innerHTML = ''; return; }
+    const s = selected, rc = (x) => `(${Math.floor(x / C)},${x % C})`;
+    const rows = [0, 1, 2, 3].map((a) => {
+      const n = Nsa[s][a];
+      const outs = n ? [...Nsas[s][a]].sort((x, y) => y[1] - x[1]).map(([s2, k]) => `${s2 === s ? 'stay' : rc(s2)}: ${(k / n).toFixed(2)}`).join(', ') : 'never tried';
+      return `<tr><td>${ARROW[a]} ${ANAME[a]}</td><td>${n}</td><td>${outs}</td></tr>`;
+    }).join('');
+    $('ptab').innerHTML = `<table class="data"><thead><tr><th>action at ${rc(s)}</th><th>$N(s,a)$</th><th>$\\hat p(s' \\mid s, a)$</th></tr></thead><tbody>${rows}</tbody></table>`;
+    Course.renderMath($('ptab'));
+  }
+  $('gM').addEventListener('click', (e) => {
+    if (!layout) return;
+    const rect = $('gM').getBoundingClientRect();
+    const c = Math.floor((e.clientX - rect.left - layout.x0) / layout.cs), r = Math.floor((e.clientY - rect.top - 1) / layout.cs);
+    if (r < 0 || r >= R || c < 0 || c >= C) return;
+    selected = r * C + c;
+    draw();
+  });
+
+  // ------------------------------------------------------------ buttons
+  function stop() { clearInterval(timer); timer = null; $('bAct').textContent = 'Act in the real world'; }
+  $('bExp').addEventListener('click', () => doExplore(50));
+  $('bExp5').addEventListener('click', () => doExplore(500));
+  function doExplore(n) {
+    stop(); trail = null;
+    explore(n);
+    if (V) plan();
+    $('status').textContent = `Explored. ${seen.size} cells seen so far.` + (V ? ' The plan was updated with the new data.' : ' Now plan.');
+    draw();
+  }
+  $('bPlan').addEventListener('click', () => {
+    plan();
+    const vS = V[START];
+    $('status').textContent = vS > 0 ? `Planned in the model. V(S) = ${vS.toFixed(3)}: the agent believes it can reach G. Arrows show its plan.` : 'Planned, but the model contains no way to reach G yet. Explore more.';
+    draw();
+  });
+  $('bAct').addEventListener('click', () => {
+    if (timer) return stop();
+    if (!V) plan();
+    let s = START, k = 0;
+    trail = [s]; agent = s;
+    $('bAct').textContent = 'Stop';
+    timer = setInterval(() => {
+      const a = greedy(s), out = envStep(s, a);
+      record(s, a, out);
+      s = out.s2; k++; trail.push(s); agent = s;
+      if (s === GOAL) { $('status').textContent = `Reached G in ${k} real steps (the shortest path is 14). The plan was made entirely in the model.`; agent = START; stop(); }
+      else if (k >= 60) { $('status').textContent = 'Stuck after 60 steps. The model is missing part of the route. Explore more and plan again.'; agent = START; stop(); }
+      draw();
+    }, 90);
+  });
+  $('bReset').addEventListener('click', forget);
+  new ResizeObserver(draw).observe($('gM'));
+  forget();
+
+  const q2 = 0.9 * (0.85 * 0.8 + 0.1 * 0.5 + 0.05 * 0.5);
+  Course.quiz([
+    {
+      q: 'In some cell the agent has moved right 20 times: 17 times it went right, twice it slipped up and once down. What is $\\hat p(\\text{right cell} \\mid s, \\text{right})$?',
+      answer: 17 / 20,
+      explain: '$17/20 = 0.85$.',
+    },
+    {
+      q: 'Same counts. The right cell has $V = 0.8$, the cells above and below have $V = 0.5$, the reward is 0 and $\\gamma = 0.9$. What does one planning backup give for $Q(s, \\text{right})$?',
+      answer: q2,
+      tol: 0.002,
+      hint: 'Weights $0.85$, $0.10$ and $0.05$.',
+      explain: '$0.9\\,(0.85 \\times 0.8 + 0.10 \\times 0.5 + 0.05 \\times 0.5) = 0.9 \\times 0.755 \\approx 0.680$.',
+    },
+    {
+      q: 'The maze has 54 cells, 7 of them walls, and G ends the episode. How many $(s, a)$ pairs must be tried at least once for a complete model?',
+      answer: (54 - 7 - 1) * 4,
+      tol: 0,
+      explain: '$46$ non-terminal open cells $\\times\\ 4$ actions $= 184$, the counter under the maze.',
+    },
+    {
+      q: 'What does MuZero\'s learned model predict?',
+      choices: [
+        'The next screen image, pixel by pixel',
+        'Rewards, values and move probabilities for imagined future steps, from a hidden state',
+        'Only whether the game is over',
+      ],
+      answer: 1,
+      explain: 'It predicts only what planning needs. The hidden state does not have to look like the real observation.',
+    },
+  ]);
+</script>
+</body>
+</html>

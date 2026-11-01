@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>88. The KL penalty | Learning RL</title>
+<meta name="description" content="Optimise a flawed reward model too hard and the policy finds the flaw. A KL penalty keeps it near the reference model. Slide β and watch true quality rise, then fall.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .resp { margin: 10px 0; }
+  .rrow { display: grid; grid-template-columns: 1fr 44%; gap: 8px; align-items: center; padding: 4px 0; border-bottom: 1px solid var(--border); }
+  .rrow .txt { font-size: 0.88rem; color: var(--heading); line-height: 1.3; }
+  .rrow .txt small { display: block; color: var(--muted); font-size: 0.75rem; font-variant-numeric: tabular-nums; }
+  .rrow .track { position: relative; height: 22px; background: var(--soft); border-radius: 3px; }
+  .rrow .fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); border-radius: 3px; transition: width 0.15s ease; }
+  .rrow .ref { position: absolute; top: -3px; bottom: -3px; border-left: 3px dashed #6b7280; }
+  .rrow .pv { position: absolute; right: 4px; top: 2px; font-size: 0.75rem; color: var(--heading); font-variant-numeric: tabular-nums; }
+  .rrow.hack .txt { color: var(--red); }
+  .key { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.85rem; color: var(--muted); margin: 0; }
+  .key > span::before { content: ""; display: inline-block; width: 16px; vertical-align: middle; margin-right: 5px; border-top: 3px solid; }
+  .key .kp::before { border-color: var(--blue); }
+  .key .kt::before { border-color: var(--amber); }
+  .key .kn::before { border-color: var(--accent); border-top-width: 8px; }
+  .key .kr::before { border-color: #6b7280; border-top-style: dashed; }
+  #eqObj, #eqTok { overflow-x: auto; min-height: 2.6em; }
+</style>
+</head>
+<body data-lesson="88">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>The KL penalty</h1>
+  <p class="lede">A reward model is only accurate on the kind of replies it was trained on. Optimise against it without limits and the policy finds replies it scores wrongly. RLHF subtracts $\beta$ times the KL divergence from the original model, which keeps the policy close to where the reward model can be trusted.</p>
+
+  <section class="card">
+    <h2>Pull the leash</h2>
+    <p class="note">Six possible replies to "Summarise this article". Each has a reward-model score $r$ and a true quality only a careful human would see. The reward model has one flaw: it loves the long, confident reply that invents a statistic. The green bars are the best policy for the KL-penalised objective, computed exactly.</p>
+    <label class="slider"><span>KL weight $\beta$</span><input id="iB" type="range" min="0" max="40" step="1" value="20"><output></output></label>
+    <p class="key"><span class="kn">$\pi^*$ for this $\beta$</span><span class="kr">$\pi_{\text{ref}}$</span></p>
+    <div class="resp" id="resp"></div>
+    <div class="stats">
+      <div class="stat"><span class="k">Reward model $\mathbb{E}_\pi[r]$</span><span class="v" style="color:var(--blue)" id="sP">–</span></div>
+      <div class="stat"><span class="k">True quality</span><span class="v" style="color:var(--amber)" id="sT">–</span></div>
+      <div class="stat"><span class="k">$D_{\mathrm{KL}}(\pi \,\|\, \pi_{\text{ref}})$</span><span class="v" id="sK">–</span></div>
+    </div>
+    <div id="eqObj"></div>
+    <canvas class="chart" id="curve" style="height:230px"></canvas>
+    <p class="key"><span class="kp">reward model score</span><span class="kt">true quality</span></p>
+    <p class="status" id="status"></p>
+
+    <div class="sub">
+      <h2>The penalty, one sample at a time</h2>
+      <p class="note">In training the KL is not summed over every reply. Each sampled reply gets the reward $r(y) - \beta \log \frac{\pi(y)}{\pi_{\text{ref}}(y)}$, and the average of that is the objective (Lesson 81's sample estimate).</p>
+      <div class="row"><button id="bSamp">Sample 20 replies from $\pi_\beta$</button><button id="bClr" class="quiet">Clear</button></div>
+      <div id="eqTok"></div>
+      <p class="status" id="sampStatus"></p>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>With $\pi_{\text{ref}}$ the model before RL (usually the supervised fine-tuned one) and $r_\phi$ the reward model from Lesson 87, RLHF maximises</p>
+    $$\begin{aligned} J(\pi) = \;&\mathbb{E}_{x \sim \mathcal{D},\, y \sim \pi(\cdot \mid x)}\big[r_\phi(x, y)\big] \\ &- \beta\, \mathbb{E}_{x \sim \mathcal{D}}\Big[D_{\mathrm{KL}}\big(\pi(\cdot \mid x) \,\|\, \pi_{\text{ref}}(\cdot \mid x)\big)\Big] \end{aligned}$$
+    <p>The first term asks for high reward. The second charges for every nat of distance from the reference model. $\beta$ sets the exchange rate.</p>
+    <p><b>The exact optimum.</b> Fix $x$ and write $Z = \sum_y \pi_{\text{ref}}(y)\, e^{r(y)/\beta}$. Then</p>
+    $$\begin{aligned}
+      J(\pi) &= \mathbb{E}_{y \sim \pi}\Big[r(y) - \beta \log \frac{\pi(y)}{\pi_{\text{ref}}(y)}\Big] \\
+      &= -\beta\, \mathbb{E}_{y \sim \pi}\Big[\log \frac{\pi(y)}{\pi_{\text{ref}}(y)\, e^{r(y)/\beta}}\Big] \\
+      &= -\beta\, D_{\mathrm{KL}}\big(\pi \,\|\, \pi^*\big) + \beta \log Z, \\
+      \pi^*(y) &= \frac{\pi_{\text{ref}}(y)\, e^{r(y)/\beta}}{Z}
+    \end{aligned}$$
+    <p>$\beta \log Z$ does not depend on $\pi$, and KL is zero only when the two distributions match (Lesson 81). So the best policy is $\pi^*$: the reference model reweighted by $e^{r/\beta}$. The green bars are $\pi^*$, and the line under the stats checks that $J(\pi^*) = \beta \log Z$.</p>
+    <p>As $\beta \to \infty$, $\pi^* \to \pi_{\text{ref}}$. As $\beta \to 0$, $\pi^*$ piles onto the highest $r$, flaw or not. This is Lesson 84's calculation with $\pi_{\text{ref}}$ in place of the uniform policy.</p>
+    <p><b>Per token.</b> Because $\log \pi(y \mid x) = \sum_t \log \pi(y_t \mid s_t)$ (Lesson 85), the sequence penalty splits into a penalty on each token. Ouyang et al. (2022, eq. 2) write the objective with the log ratio of the whole reply; PPO implementations split it and give the policy the per-token reward</p>
+    $$\begin{aligned} R_t = &-\beta \log \frac{\pi_\theta(y_t \mid s_t)}{\pi_{\text{ref}}(y_t \mid s_t)} \\ &+ \mathbb{1}_{t = T}\, r_\phi(x, y) \end{aligned}$$
+    <p>The sampled log ratio is an unbiased estimate of the KL. A single sample can be negative; its expectation cannot.</p>
+    <p><b>Overoptimisation.</b> The curve above has the shape Gao, Schulman and Hilton (2022) measured on real reward models: as KL from the reference grows, the reward model's score keeps rising while true quality peaks and then falls. That is Lesson 91's topic.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const C = Course.colors;
+  const RESP = [
+    { t: 'Accurate and concise', ref: 0.10, r: 1.0, q: 1.0 },
+    { t: 'Accurate, a little long', ref: 0.20, r: 0.9, q: 0.8 },
+    { t: 'Mostly accurate, misses the main point', ref: 0.30, r: 0.4, q: 0.4 },
+    { t: 'Vague and generic', ref: 0.25, r: 0.2, q: 0.1 },
+    { t: 'Off-topic', ref: 0.145, r: -0.5, q: -0.5 },
+    { t: 'Long, confident, invents a statistic', ref: 0.005, r: 1.5, q: -1.0, hack: true },
+  ];
+  // Slider index -> beta on a log scale from 0.02 to 10.
+  const betaOf = (i) => 0.02 * Math.pow(500, i / 40);
+  const fmtB = (b) => (b < 0.1 ? b.toFixed(3) : b < 1 ? b.toFixed(2) : b.toFixed(1));
+
+  function opt(b) {
+    const m = Math.max(...RESP.map((x) => x.r / b));
+    const w = RESP.map((x) => x.ref * Math.exp(x.r / b - m));
+    const s = w.reduce((a, c) => a + c, 0);
+    return { p: w.map((x) => x / s), logZ: Math.log(s) + m };
+  }
+  const stats = (p) => ({
+    proxy: p.reduce((s, x, i) => s + x * RESP[i].r, 0),
+    truth: p.reduce((s, x, i) => s + x * RESP[i].q, 0),
+    kl: p.reduce((s, x, i) => (x > 0 ? s + x * Math.log(x / RESP[i].ref) : s), 0),
+  });
+
+  // Curve traced by beta from 10 down to 0.02.
+  const trace = Array.from({ length: 121 }, (_, k) => stats(opt(0.02 * Math.pow(500, 1 - k / 120)).p));
+  const chart = Course.lineChart($('curve'), { xLabel: 'KL(π ‖ π_ref)', yLabel: 'expected score' });
+
+  $('resp').innerHTML = RESP.map((x) => `<div class="rrow${x.hack ? ' hack' : ''}"><div class="txt">${x.t}<small>$r$ = ${x.r}, true = ${x.q}</small></div><div class="track"><div class="fill"></div><div class="ref" style="left:${100 * x.ref}%"></div><span class="pv"></span></div></div>`).join('');
+  Course.renderMath($('resp'));
+
+  const bi = Course.slider('#iB', (i) => fmtB(betaOf(i)), draw);
+  let samples = [];
+
+  function draw() {
+    const b = betaOf(bi()), { p, logZ } = opt(b), s = stats(p);
+    [...$('resp').children].forEach((row, i) => {
+      row.querySelector('.fill').style.width = `${100 * p[i]}%`;
+      row.querySelector('.pv').textContent = p[i].toFixed(3);
+    });
+    $('sP').textContent = s.proxy.toFixed(3);
+    $('sT').textContent = s.truth.toFixed(3);
+    $('sK').textContent = s.kl.toFixed(3);
+    Course.tex($('eqObj'), `J(\\pi^*) = ${s.proxy.toFixed(3)} - ${fmtB(b)} \\times ${s.kl.toFixed(3)} = ${(s.proxy - b * s.kl).toFixed(3)} = \\beta \\log Z`, true);
+    chart.draw([
+      { data: trace.map((t) => [t.kl, t.proxy]), color: C.blue, width: 2.5 },
+      { data: trace.map((t) => [t.kl, t.truth]), color: C.amber, width: 2.5 },
+      { data: [[s.kl, s.proxy], [s.kl, s.truth]], color: C.grey, width: 1, dots: true },
+    ], { vlines: [{ x: s.kl, color: C.green, label: `β = ${fmtB(b)}` }] });
+    const ref = stats(RESP.map((x) => x.ref));
+    $('status').textContent = b > 3 ? `β = ${fmtB(b)}: the policy barely moves from the reference (true quality ${ref.truth.toFixed(2)}).`
+      : p[5] > 0.5 ? `β = ${fmtB(b)}: the leash is too loose. ${(100 * p[5]).toFixed(0)}% of replies invent a statistic. The reward model is delighted; readers are not.`
+      : `β = ${fmtB(b)}: true quality ${s.truth.toFixed(2)}, against ${ref.truth.toFixed(2)} for the reference model.`;
+    samples = []; drawSamples();
+  }
+
+  function drawSamples() {
+    const b = betaOf(bi()), { p, logZ } = opt(b);
+    if (!samples.length) { $('eqTok').innerHTML = ''; $('sampStatus').textContent = ''; return; }
+    const shaped = samples.map((i) => RESP[i].r - b * Math.log(p[i] / RESP[i].ref));
+    const last = samples[samples.length - 1], lr = Math.log(p[last] / RESP[last].ref);
+    Course.tex($('eqTok'), `\\text{last: } ${RESP[last].r} - ${fmtB(b)} \\log\\tfrac{${p[last].toFixed(3)}}{${RESP[last].ref}} = ${RESP[last].r} - ${fmtB(b)} \\times (${lr.toFixed(2)}) = ${shaped[shaped.length - 1].toFixed(3)}`, true);
+    const avg = shaped.reduce((a, c) => a + c, 0) / shaped.length;
+    const mkl = samples.reduce((a, i) => a + Math.log(p[i] / RESP[i].ref), 0) / samples.length;
+    $('sampStatus').textContent = `${samples.length} samples. Average penalised reward ${avg.toFixed(3)} (exact ${(b * logZ).toFixed(3)}). Average log ratio ${mkl.toFixed(3)} (exact KL ${stats(p).kl.toFixed(3)}).`;
+  }
+  $('bSamp').addEventListener('click', () => {
+    const { p } = opt(betaOf(bi()));
+    for (let k = 0; k < 20; k++) samples.push(Course.sample(p));
+    drawSamples();
+  });
+  $('bClr').addEventListener('click', () => { samples = []; drawSamples(); });
+  draw();
+
+  const s4 = Math.exp(1 / 0.5), s2 = Math.exp(1 / 2);
+  Course.quiz([
+    {
+      q: 'Two replies with $\\pi_{\\text{ref}} = (0.5, 0.5)$ and rewards $r = (1, 0)$. With $\\beta = 0.5$, what probability does $\\pi^*$ give the first?',
+      answer: s4 / (s4 + 1),
+      tol: 0.002,
+      explain: '$0.5e^{2} / (0.5e^{2} + 0.5e^{0}) = 7.389/8.389 = 0.881$.',
+    },
+    {
+      q: 'Same replies, now $\\beta = 2$. What probability does $\\pi^*$ give the first?',
+      answer: s2 / (s2 + 1),
+      tol: 0.002,
+      explain: '$e^{0.5}/(e^{0.5} + 1) = 1.649/2.649 = 0.622$. A larger $\\beta$ holds the policy closer to $(0.5, 0.5)$.',
+    },
+    {
+      q: 'A token has $\\pi_\\theta = 0.6$ and $\\pi_{\\text{ref}} = 0.3$. With $\\beta = 0.1$, what is its KL reward $-\\beta\\log(\\pi_\\theta/\\pi_{\\text{ref}})$?',
+      answer: -0.1 * Math.log(2),
+      tol: 0.001,
+      explain: '$-0.1 \\log 2 = -0.069$. The policy pays for making this token twice as likely as the reference did.',
+    },
+    {
+      q: 'What happens as $\\beta \\to 0$?',
+      choices: [
+        'The policy stays at $\\pi_{\\text{ref}}$',
+        'The policy puts all its probability on the reply with the highest reward-model score, including any the reward model scores wrongly',
+        'The policy becomes uniform',
+        'True quality keeps rising',
+      ],
+      answer: 1,
+      explain: 'With no leash, $\\pi^*$ is greedy on $r_\\phi$. Drag $\\beta$ to the left end.',
+    },
+  ]);
+</script>
+</body>
+</html>

@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>53. Cliff walking | Learning RL</title>
+<meta name="description" content="SARSA and Q-learning on the same cliff. One learns the safe path, the other the optimal path that it keeps falling off while exploring.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .agent h3 { font-size: 0.95rem; margin: 10px 0 0; color: var(--heading); display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .agent h3 small { font-weight: 400; color: var(--muted); font-size: 0.85rem; }
+  .agent canvas { width: 100%; display: block; margin: 4px 0; }
+  #live, #fig { height: 220px; }
+</style>
+</head>
+<body data-lesson="53">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Cliff walking</h1>
+  <p class="lede">SARSA and Q-learning differ by one term. On a cliff edge that term decides everything. Q-learning learns the shortest path, right along the edge, and keeps falling off while it explores. SARSA learns a path that is safe for an agent that sometimes moves at random.</p>
+
+  <section class="card">
+    <label class="slider"><span>Exploration $\varepsilon$</span><input id="iE" type="range" min="0" max="0.3" step="0.01" value="0.1"><output></output></label>
+    <div class="agent">
+      <h3>SARSA <small id="hS"></small></h3>
+      <canvas id="gS" aria-label="SARSA on the cliff"></canvas>
+    </div>
+    <div class="agent">
+      <h3>Q-learning <small id="hQ"></small></h3>
+      <canvas id="gQ" aria-label="Q-learning on the cliff"></canvas>
+    </div>
+    <div class="row">
+      <button id="bRun" class="primary">Run</button>
+      <button id="bFast">+50 episodes</button>
+      <span class="spacer"></span>
+      <button id="bReset" class="quiet">Reset</button>
+    </div>
+    <canvas class="chart" id="live"></canvas>
+    <p class="note">S&amp;B Example 6.6. Start S, goal G, reward $-1$ per step. Stepping into the cliff (red) gives $-100$ and sends the agent back to S. $\alpha = 0.5$, $\gamma = 1$. The green line is each agent's greedy path. The chart shows the reward collected per episode while learning, averaged over the last 10 episodes. Try $\varepsilon = 0$ after some training.</p>
+
+    <div class="sub">
+      <h2>The book's figure</h2>
+      <p class="note">Sum of rewards per episode, averaged over 50 independent runs and smoothed over 10 episodes, with $\varepsilon = 0.1$.</p>
+      <div class="row"><button id="bFig">Run comparison</button></div>
+      <canvas class="chart" id="fig" hidden></canvas>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>The two updates differ only in how they value the next state:</p>
+    $$\begin{aligned}
+      \text{SARSA:}\quad & R_{t+1} + \gamma\, Q(S_{t+1}, A_{t+1}) \\
+      \text{Q-learning:}\quad & R_{t+1} + \gamma \max_a Q(S_{t+1}, a)
+    \end{aligned}$$
+    <p>So they learn different things. With an ε-greedy policy $\pi$, SARSA's values satisfy the Bellman equation for $q_\pi$, and Q-learning's satisfy the optimality equation for $q_*$:</p>
+    $$\begin{aligned}
+      q_\pi(s, a) &= \mathbb{E}\big[R_{t+1} + \gamma \textstyle\sum_{a'} \pi(a' \mid S_{t+1})\, q_\pi(S_{t+1}, a')\big] \\
+      q_*(s, a) &= \mathbb{E}\big[R_{t+1} + \gamma \max_{a'} q_*(S_{t+1}, a')\big]
+    \end{aligned}$$
+    <p>(Both expectations are conditioned on $S_t = s, A_t = a$.) $q_\pi$ includes the cost of the agent's own random moves, $q_*$ assumes perfect play from the next step on. Next to the cliff, $q_\pi$ is low, because a random "down" is a $-100$ fall. $q_*$ does not see that risk.</p>
+    <p>The risk is real while exploring. On 11 of the edge path's 13 steps, one action leads into the cliff: "right" from S, then "down" from each of the 10 edge cells. ε-greedy picks that action at random with probability $\varepsilon/4$, so the chance of falling at least once on a trip is</p>
+    $$1 - \Big(1 - \frac{\varepsilon}{4}\Big)^{11} = 1 - 0.975^{11} \approx 0.24 \quad (\varepsilon = 0.1)$$
+    <p>Roughly one trip in four costs an extra 100 or more. That is why Q-learning's online reward per episode is worse even though its greedy path (13 steps, return $-13$) is optimal. SARSA's path along the top row takes 17 steps ($-17$) but almost never falls.</p>
+    <p>Neither is wrong. Q-learning values the agent as if it will stop exploring. SARSA values it as it actually behaves, random moves included. If $\varepsilon$ decays to 0, the two coincide and both find the 13-step path.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  // ------------------------------------------------------------ canvas gridworld
+  // drawGrid(canvas, R, C, { paint(s) -> {fill, text, textColor}, Q, agent, path, below: [labels per column] })
+  const DIRS = [[-1, 0], [0, 1], [1, 0], [0, -1]];       // up, right, down, left
+  function drawGrid(canvas, R, C, o = {}) {
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const W = canvas.clientWidth;
+    if (!W) return;
+    const cs = Math.min(W / C, o.maxCell || 56), gw = cs * C, x0 = (W - gw) / 2;
+    const extra = o.below ? 18 : 0, H = cs * R + extra + 2;
+    canvas.style.height = `${H}px`;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    const X = (c) => x0 + c * cs, Y = (r) => 1 + r * cs;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) {
+      const s = r * C + c, p = (o.paint && o.paint(s)) || {};
+      ctx.fillStyle = p.fill || '#f9fafb';
+      ctx.fillRect(X(c) + 1, Y(r) + 1, cs - 2, cs - 2);
+      ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 1;
+      ctx.strokeRect(X(c) + 1.5, Y(r) + 1.5, cs - 3, cs - 3);
+      if (p.arrow !== undefined && p.arrow !== null) {
+        const [dr, dc] = DIRS[p.arrow], L = cs * 0.3, cx = X(c) + cs / 2, cy = Y(r) + cs / 2;
+        const ex = cx + dc * L, ey = cy + dr * L;
+        ctx.strokeStyle = p.arrowColor || '#374151'; ctx.fillStyle = ctx.strokeStyle;
+        ctx.globalAlpha = p.arrowAlpha ?? 1; ctx.lineWidth = Math.max(1.5, cs / 18);
+        ctx.beginPath(); ctx.moveTo(cx - dc * L * 0.6, cy - dr * L * 0.6); ctx.lineTo(ex, ey); ctx.stroke();
+        const h = cs * 0.13;
+        ctx.beginPath();
+        ctx.moveTo(ex + dc * h, ey + dr * h);
+        ctx.lineTo(ex - dc * h + dr * h, ey - dr * h + dc * h);
+        ctx.lineTo(ex - dc * h - dr * h, ey - dr * h - dc * h);
+        ctx.closePath(); ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+      if (p.text) {
+        ctx.fillStyle = p.textColor || '#374151';
+        ctx.font = `${p.bold ? '600 ' : ''}${Math.round(cs * (p.size || 0.4))}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+        ctx.fillText(p.text, X(c) + cs / 2, Y(r) + cs / 2 + 1);
+      }
+    }
+    if (o.path && o.path.length > 1) {
+      ctx.strokeStyle = o.pathColor || '#059669'; ctx.lineWidth = Math.max(2, cs / 9); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+      ctx.globalAlpha = 0.8;
+      ctx.beginPath();
+      o.path.forEach((s, i) => { const x = X(s % C) + cs / 2, y = Y(Math.floor(s / C)) + cs / 2; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+      ctx.stroke(); ctx.globalAlpha = 1;
+    }
+    if (o.agent !== undefined && o.agent !== null) {
+      const r = Math.floor(o.agent / C), c = o.agent % C;
+      ctx.fillStyle = o.agentColor || '#059669'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(X(c) + cs / 2, Y(r) + cs / 2, cs * 0.24, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+    }
+    if (o.below) {
+      ctx.fillStyle = '#6b7280'; ctx.font = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      o.below.forEach((t, c) => ctx.fillText(t, X(c) + cs / 2, Y(R) + 9));
+    }
+    return { cs, x0 };
+  }
+  // ------------------------------------------------------------ cliff world (S&B Example 6.6)
+  const R = 4, C = 12, START = 3 * C, GOAL = 3 * C + 11, ALPHA = 0.5;
+  const isCliff = (s) => Math.floor(s / C) === 3 && s % C >= 1 && s % C <= 10;
+  function envStep(s, a) {
+    const r = Math.max(0, Math.min(R - 1, Math.floor(s / C) + DIRS[a][0]));
+    const c = Math.max(0, Math.min(C - 1, (s % C) + DIRS[a][1]));
+    const s2 = r * C + c;
+    return isCliff(s2) ? [START, -100, s2] : [s2, -1, s2];
+  }
+  const eps = Course.slider('#iE', (v) => v.toFixed(2));
+  const egreedy = (q, e) => (Math.random() < e ? Course.randInt(4) : Course.argmax(q));
+  const maxOf = (q) => Math.max(...q);
+  const newQ = () => Array.from({ length: R * C }, () => [0, 0, 0, 0]);
+
+  // One step of SARSA ('s') or Q-learning ('q') for a learner L. Returns true at episode end.
+  function step(L, e) {
+    if (L.s === null) { L.s = START; L.a = egreedy(L.Q[L.s], e); L.G = 0; }
+    const [s2, r] = envStep(L.s, L.a);
+    L.G += r;
+    if (r === -100) L.falls++;
+    let target = r, a2 = null;
+    if (s2 !== GOAL) {
+      a2 = egreedy(L.Q[s2], e);
+      target += L.kind === 's' ? L.Q[s2][a2] : maxOf(L.Q[s2]);
+    }
+    L.Q[L.s][L.a] += ALPHA * (target - L.Q[L.s][L.a]);
+    if (s2 === GOAL) { L.returns.push(L.G); L.s = null; return true; }
+    L.s = s2; L.a = a2;
+    return false;
+  }
+  const learner = (kind) => ({ kind, Q: newQ(), s: null, a: null, G: 0, returns: [], falls: 0 });
+
+  function greedyPath(Q) {
+    const path = [START];
+    let x = START;
+    for (let k = 0; k < 40 && x !== GOAL; k++) {
+      const [s2, , seen] = envStep(x, Q[x].indexOf(maxOf(Q[x])));
+      if (s2 === START && seen !== START) { path.push(seen); break; }   // walked into the cliff
+      x = s2; path.push(x);
+    }
+    return path;
+  }
+  const pathReturn = (p) => (p[p.length - 1] === GOAL ? -(p.length - 1) : null);
+
+  let S, Qn, timer = null;
+  function reset() { stop(); S = learner('s'); Qn = learner('q'); draw(); }
+
+  function paintFor(L) {
+    return (k) => {
+      if (isCliff(k)) return { fill: '#fecaca' };
+      if (k === START) return { text: 'S', bold: true };
+      if (k === GOAL) return { text: 'G', bold: true, fill: '#fef3c7' };
+      return {};
+    };
+  }
+  const smooth = (xs, w = 10) => xs.map((_, i) => { const a = xs.slice(Math.max(0, i - w + 1), i + 1); return a.reduce((x, y) => x + y, 0) / a.length; });
+  const live = Course.lineChart($('live'), { xLabel: 'episode', yLabel: 'reward per episode', yMin: -100, yMax: 0, xMin: 0 });
+
+  function draw() {
+    for (const [L, id, hid] of [[S, 'gS', 'hS'], [Qn, 'gQ', 'hQ']]) {
+      const p = greedyPath(L.Q);
+      // Only draw the greedy path once it leads somewhere (G or the cliff), not while it bumps a wall.
+      const end = p[p.length - 1];
+      drawGrid($(id), R, C, { maxCell: 48, paint: paintFor(L), path: end === GOAL || isCliff(end) ? p : null, agent: L.s ?? GOAL });
+      const pr = pathReturn(p), last = L.returns.slice(-20);
+      $(hid).textContent = `${L.returns.length} episodes · greedy path ${pr === null ? 'not yet' : `${-pr} steps`}` +
+        (last.length ? ` · last 20 averaged ${(last.reduce((x, y) => x + y, 0) / last.length).toFixed(1)}` : '') + ` · ${L.falls} falls`;
+    }
+    const n = Math.min(S.returns.length, Qn.returns.length);
+    live.draw(n ? [
+      { data: smooth(S.returns.slice(0, n)).map((y, i) => [i + 1, y]), color: Course.colors.blue, label: 'SARSA' },
+      { data: smooth(Qn.returns.slice(0, n)).map((y, i) => [i + 1, y]), color: Course.colors.green, label: 'Q-learning' },
+    ] : [{ data: [[0, -50], [10, -50]], color: 'rgba(0,0,0,0)' }]);
+  }
+
+  // Each agent runs at its own pace; Run gives each one step per tick.
+  function stop() { clearInterval(timer); timer = null; $('bRun').textContent = 'Run'; }
+  $('bRun').addEventListener('click', () => {
+    if (timer) return stop();
+    $('bRun').textContent = 'Pause';
+    timer = setInterval(() => {
+      const e = eps(), k = S.returns.length < 3 ? 4 : 1;
+      for (let i = 0; i < k; i++) { step(S, e); step(Qn, e); }
+      draw();
+    }, 35);
+  });
+  $('bFast').addEventListener('click', () => {
+    const e = eps();
+    for (const L of [S, Qn]) {
+      const target = L.returns.length + 50;
+      for (let k = 0; k < 1e6 && L.returns.length < target; k++) step(L, e);
+    }
+    draw();
+  });
+  $('bReset').addEventListener('click', reset);
+  new ResizeObserver(() => S && draw()).observe($('gS'));
+  reset();
+
+  // ------------------------------------------------------------ the book's comparison
+  const fig = Course.lineChart($('fig'), { xLabel: 'episode', yLabel: 'sum of rewards', yMin: -100, yMax: 0, xMin: 0, xMax: 500 });
+  function average(kind, runs = 50, E = 500) {
+    const sum = new Array(E).fill(0);
+    for (let k = 0; k < runs; k++) {
+      const L = learner(kind);
+      for (let e = 0; e < E; e++) { while (!step(L, 0.1)); sum[e] += L.returns[e] / runs; }
+    }
+    return smooth(sum);
+  }
+  $('bFig').addEventListener('click', () => {
+    $('bFig').disabled = true; $('bFig').textContent = 'Running…';
+    setTimeout(() => {
+      $('fig').hidden = false;
+      fig.draw([
+        { data: average('s').map((y, i) => [i + 1, y]), color: Course.colors.blue, label: 'SARSA' },
+        { data: average('q').map((y, i) => [i + 1, y]), color: Course.colors.green, label: 'Q-learning' },
+      ], { hlines: [{ y: -13, label: 'optimal path −13', color: Course.colors.amber }] });
+      $('bFig').disabled = false; $('bFig').textContent = 'Run again';
+    }, 30);
+  });
+
+  Course.quiz([
+    {
+      q: 'What is the return of the shortest path from S to G, with no falls? (Up 1, right 11, down 1.)',
+      answer: -13,
+      tol: 0,
+      explain: '13 steps at $-1$ each: $-13$.',
+    },
+    {
+      q: 'Along the top row (up 3, right 11, down 3), what is the return?',
+      answer: -17,
+      tol: 0,
+      explain: '17 steps: $-17$. Four steps longer, but far from the edge.',
+    },
+    {
+      q: 'With $\\varepsilon = 0.1$ and 4 actions, what is the probability of falling at least once while walking just the 10 edge cells, if the greedy action there is always "right"?',
+      answer: 1 - Math.pow(1 - 0.1 / 4, 10),
+      tol: 0.005,
+      hint: 'Each edge cell has chance $\\varepsilon/4$ of a random "down".',
+      explain: '$1 - (1 - 0.025)^{10} = 1 - 0.776 \\approx 0.224$. Counting the risky first step off S too gives the maths card\'s $0.24$.',
+    },
+    {
+      q: 'Why does SARSA learn the safer path?',
+      choices: [
+        'It explores less than Q-learning',
+        'Its target uses the action it will actually take, so the cost of its own random moves near the edge is in its values',
+        'Its step size is smaller near the cliff',
+      ],
+      answer: 1,
+      explain: 'SARSA estimates $q_\\pi$ for the ε-greedy policy, falls included. Q-learning estimates $q_*$, which assumes no more random moves.',
+    },
+  ]);
+</script>
+</body>
+</html>

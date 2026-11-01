@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>67. Experience replay | Learning RL</title>
+<meta name="description" content="Train on the last few steps and a network forgets everything else. Train on random memories and it learns the whole map. Watch both side by side.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  #fitC { width: 100%; height: 300px; display: block; margin: 8px 0; }
+  .key { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.85rem; color: var(--muted); }
+  .key b { display: inline-block; width: 16px; vertical-align: middle; margin-right: 4px; }
+</style>
+</head>
+<body data-lesson="67">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Experience replay</h1>
+  <p class="lede">An agent's experience arrives in order: this step looks almost like the last one. A network trained on it in that order fits wherever the agent is now and forgets the rest. DQN stores experience in a replay memory and trains on random samples from it instead.</p>
+
+  <section class="card">
+    <p class="note">An agent sweeps slowly from one end of a corridor to the other and back. Each step it sees one noisy target for the state it is in. Two identical networks (Lesson 64, 16 units) learn from the same stream with the same number of updates and the same batch size of 32. <b>Online</b> trains on the 32 most recent samples. <b>Replay</b> trains on 32 drawn at random from its memory.</p>
+    <canvas id="fitC" aria-label="Target curve, the online and replay networks, the agent's position and the samples held in replay memory"></canvas>
+    <div class="key">
+      <span><b style="border-top:3px solid var(--amber)"></b>true value</span>
+      <span><b style="border-top:3px solid var(--red)"></b>online</span>
+      <span><b style="border-top:3px solid var(--accent)"></b>replay</span>
+      <span><b style="border-top:2px dashed #374151"></b>agent now</span>
+      <span><b style="height:8px;background:rgba(42,122,226,0.35)"></b>states in memory</span>
+    </div>
+    <label class="slider"><span>Memory size $N$</span><input id="iN" type="range" min="0" max="4" step="1" value="4"><output></output></label>
+    <canvas class="chart" id="errC" style="height:190px"></canvas>
+    <div class="stats">
+      <div class="stat"><span class="k">Steps</span><span class="v" id="sT">0</span></div>
+      <div class="stat"><span class="k">RMS error, online</span><span class="v bad" id="sOn">–</span></div>
+      <div class="stat"><span class="k">RMS error, replay</span><span class="v good" id="sRe">–</span></div>
+    </div>
+    <div class="row">
+      <button id="bRun" class="primary">Run</button>
+      <button id="bSkip">+2,000 steps</button>
+      <span class="spacer"></span>
+      <button id="bReset" class="quiet">Reset</button>
+    </div>
+    <p class="note">To isolate the effect of ordering, the targets here are fixed noisy values rather than TD targets, as in Lesson 64's demo.</p>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>DQN stores each transition $e_t = (S_t, A_t, R_{t+1}, S_{t+1})$ in a memory $\mathcal{D}$ that holds the last $N$ of them. Each update uses a minibatch $B$ drawn uniformly from $\mathcal{D}$:</p>
+    $$\boldsymbol\theta \leftarrow \boldsymbol\theta + \frac{\alpha}{|B|} \sum_{(s,a,r,s') \in B} \big[y - Q(s, a; \boldsymbol\theta)\big]\, \nabla_{\boldsymbol\theta} Q(s, a; \boldsymbol\theta).$$
+    <p>A minibatch update only reduces the error averaged over <i>whatever distribution the batch comes from</i>. Write that distribution $d_t$ and, as in the demo, let the target at state $s$ average to $U(s)$. Then the expected update is a step down the gradient of</p>
+    $$\tfrac12 \sum_s d_t(s)\, \big[U(s) - \hat v(s, \boldsymbol\theta)\big]^2 .$$
+    <p>For the online learner, $d_t$ covers only the few states the agent just passed through, so each step reduces the error there and nothing pins down the rest. That is catastrophic forgetting. For replay, $d_t$ is spread over the last $N$ steps, which covers the whole corridor once $N$ spans a full sweep. Shrink $N$ and replay turns back into online learning.</p>
+    <p>Replay also reuses data. If one transition is stored per step and one update of $|B|$ samples happens every $u$ steps, a transition stays in a full memory for $N$ steps, during which there are $N/u$ updates, each picking it with probability about $|B|/N$. So each transition is used</p>
+    $$\frac{N}{u} \cdot \frac{|B|}{N} = \frac{|B|}{u} \text{ times on average.}$$
+    <p>In DQN, $|B| = 32$ and $u = 4$: every transition is learned from about 8 times.</p>
+    <p>The price: replayed transitions were generated by older policies. Only an off-policy method can learn from them as they are, which is why DQN is built on Q-learning, whose target $r + \gamma \max_{a'} Q(s', a')$ does not depend on which policy chose the actions. Replay is one more reason DQN sits inside the deadly triad of Lesson 65.</p>
+    <p>Later work samples surprising transitions, those with large $|\delta|$, more often: prioritised experience replay (Schaul et al., 2016).</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const f = (s) => 0.8 * Math.sin(3 * Math.PI * s) + 0.6 * s - 0.3;   // the true values, s in [0, 1]
+  const SWEEP = 2000, NOISE = 0.1, BATCH = 32, HID = 16, LR = 0.01;
+  const SIZES = [32, 250, 1000, 2000, 4000];
+  const memSize = Course.slider('#iN', (v) => SIZES[v].toLocaleString('en-GB'), () => reset());
+
+  // ------------------------------------------------------------ a 1-16-1 tanh network trained with Adam
+  function makeNet(seed) {
+    const p = { a: seed.a.slice(), b: seed.b.slice(), c: seed.c.slice(), d: 0 };
+    p.m = new Float64Array(3 * HID + 1); p.v = new Float64Array(3 * HID + 1); p.t = 0;
+    return p;
+  }
+  const out = (p, s) => p.c.reduce((y, c, j) => y + c * Math.tanh(p.a[j] * s + p.b[j]), p.d);
+  function train(p, batch) {
+    const g = new Float64Array(3 * HID + 1);
+    for (const [s, y] of batch) {
+      const hs = p.a.map((a, j) => Math.tanh(a * s + p.b[j]));
+      const e = (hs.reduce((t, h, j) => t + p.c[j] * h, p.d) - y) / batch.length;
+      for (let j = 0; j < HID; j++) {
+        const dz = e * p.c[j] * (1 - hs[j] * hs[j]);
+        g[j] += dz * s; g[HID + j] += dz; g[2 * HID + j] += e * hs[j];
+      }
+      g[3 * HID] += e;
+    }
+    p.t++;
+    for (let i = 0; i < g.length; i++) {
+      p.m[i] = 0.9 * p.m[i] + 0.1 * g[i];
+      p.v[i] = 0.999 * p.v[i] + 0.001 * g[i] * g[i];
+      const st = (LR * (p.m[i] / (1 - 0.9 ** p.t))) / (Math.sqrt(p.v[i] / (1 - 0.999 ** p.t)) + 1e-8);
+      if (i < HID) p.a[i] -= st; else if (i < 2 * HID) p.b[i - HID] -= st; else if (i < 3 * HID) p.c[i - 2 * HID] -= st; else p.d -= st;
+    }
+  }
+  function rms(p) { let e = 0; for (let i = 0; i <= 100; i++) e += (out(p, i / 100) - f(i / 100)) ** 2; return Math.sqrt(e / 101); }
+
+  // ------------------------------------------------------------ the stream
+  let online, replay, memory, recent, t, errOn, errRe, lastBatch, timer = null;
+  const where = (k) => { const u = (k % (2 * SWEEP)) / SWEEP; return u < 1 ? u : 2 - u; };
+
+  function reset() {
+    stop();
+    const seed = {
+      a: Array.from({ length: HID }, () => 4 * Course.gauss()),
+      b: Array.from({ length: HID }, () => 2 * Course.gauss()),
+      c: Array.from({ length: HID }, () => 0.3 * Course.gauss()),
+    };
+    online = makeNet(seed); replay = makeNet(seed);         // identical starting weights
+    memory = []; recent = []; t = 0; errOn = []; errRe = []; lastBatch = [];
+    draw();
+  }
+
+  function step() {
+    const s = Math.min(1, Math.max(0, where(t) + 0.02 * Course.gauss()));
+    const sample = [s, f(s) + NOISE * Course.gauss()];
+    recent.push(sample); if (recent.length > BATCH) recent.shift();
+    const N = SIZES[memSize()];
+    if (memory.length < N) memory.push(sample); else memory[t % N] = sample;   // overwrite the oldest
+    train(online, recent);
+    lastBatch = Array.from({ length: BATCH }, () => memory[Course.randInt(memory.length)]);
+    train(replay, lastBatch);
+    t++;
+    if (t % 50 === 0) { errOn.push([t, rms(online)]); errRe.push([t, rms(replay)]); }
+  }
+
+  // ------------------------------------------------------------ drawing
+  const cv = $('fitC'), ctx = cv.getContext('2d');
+  const errChart = Course.lineChart($('errC'), { xLabel: 'step', yLabel: 'RMS error', yMin: 0, xMin: 0 });
+  function draw() {
+    const dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
+    if (W) {
+      cv.width = W * dpr; cv.height = H * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+      const m = { l: 30, r: 8, t: 8, b: 34 }, YM = 1.5;
+      const X = (s) => m.l + s * (W - m.l - m.r);
+      const Y = (v) => m.t + ((YM - v) / (2 * YM)) * (H - m.t - m.b);
+      ctx.font = '11px -apple-system, sans-serif'; ctx.fillStyle = '#6b7280'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      [-1, 0, 1].forEach((v) => {
+        ctx.strokeStyle = v ? '#eef0f3' : '#9ca3af'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(m.l, Y(v)); ctx.lineTo(W - m.r, Y(v)); ctx.stroke();
+        ctx.fillText(v, m.l - 5, Y(v));
+      });
+      // memory contents as a strip of ticks, sampled batch darker
+      const y0 = H - m.b + 6;
+      ctx.fillStyle = 'rgba(42,122,226,0.12)';
+      memory.forEach(([s]) => ctx.fillRect(X(s) - 0.5, y0, 1, 12));
+      ctx.fillStyle = 'rgba(42,122,226,0.9)';
+      lastBatch.forEach((b) => b && ctx.fillRect(X(b[0]) - 1, y0, 2, 12));
+      ctx.fillStyle = '#6b7280'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+      ctx.fillText(`memory: ${memory.length.toLocaleString('en-GB')} samples (dark: this batch)`, m.l, y0 + 14);
+      ctx.save(); ctx.beginPath(); ctx.rect(m.l, m.t, W - m.l - m.r, H - m.t - m.b); ctx.clip();
+      const curve = (g, color, width) => {
+        ctx.strokeStyle = color; ctx.lineWidth = width; ctx.beginPath();
+        for (let k = 0; k <= 200; k++) (k ? ctx.lineTo : ctx.moveTo).call(ctx, X(k / 200), Y(g(k / 200)));
+        ctx.stroke();
+      };
+      curve(f, Course.colors.amber, 2.5);
+      curve((s) => out(online, s), Course.colors.red, 2.5);
+      curve((s) => out(replay, s), Course.colors.green, 2.5);
+      ctx.strokeStyle = '#374151'; ctx.setLineDash([4, 4]); ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(X(where(t)), m.t); ctx.lineTo(X(where(t)), H - m.b); ctx.stroke(); ctx.setLineDash([]);
+      ctx.restore();
+    }
+    errChart.draw(errOn.length ? [
+      { data: errOn, color: Course.colors.red, label: 'online' },
+      { data: errRe, color: Course.colors.green, label: 'replay' },
+    ] : [{ data: [[0, 0], [1, 1]], color: 'rgba(0,0,0,0)' }]);
+    $('sT').textContent = t.toLocaleString('en-GB');
+    $('sOn').textContent = t ? rms(online).toFixed(3) : '–';
+    $('sRe').textContent = t ? rms(replay).toFixed(3) : '–';
+  }
+
+  function stop() { clearInterval(timer); timer = null; $('bRun').textContent = 'Run'; }
+  $('bRun').addEventListener('click', () => {
+    if (timer) return stop();
+    $('bRun').textContent = 'Pause';
+    timer = setInterval(() => { for (let k = 0; k < 40; k++) step(); draw(); }, 30);
+  });
+  $('bSkip').addEventListener('click', () => {
+    const b = $('bSkip');
+    b.disabled = true; b.textContent = 'Running…';
+    setTimeout(() => { for (let k = 0; k < 2000; k++) step(); draw(); b.disabled = false; b.textContent = '+2,000 steps'; }, 30);
+  });
+  $('bReset').addEventListener('click', reset);
+  new ResizeObserver(draw).observe(cv);
+  reset();
+
+  // ------------------------------------------------------------ quiz
+  Course.quiz([
+    {
+      q: 'DQN stores one transition per step and does one update of 32 samples every 4 steps. With a full memory, about how many times is each transition used?',
+      answer: 32 / 4,
+      tol: 0,
+      explain: '$|B|/u = 32/4 = 8$. The memory size cancels out.',
+    },
+    {
+      q: 'A memory holds $10^6$ transitions. A minibatch draws 32 uniformly with replacement. The chance that one particular transition is in it is about $k \\times 10^{-5}$. What is $k$?',
+      answer: (1 - Math.pow(1 - 1e-6, 32)) * 1e5,
+      tol: 0.02,
+      hint: 'It is $1 - (1 - 10^{-6})^{32}$, which is close to $32 \\times 10^{-6}$.',
+      explain: '$1 - (1 - 10^{-6})^{32} \\approx 32 \\times 10^{-6} = 3.2 \\times 10^{-5}$.',
+    },
+    {
+      q: 'Set the memory to 32. Why does replay then behave like online learning?',
+      choices: [
+        'A memory of 32 holds only the last 32 steps, so random batches come from the same small region the agent just visited',
+        'The step size becomes too large',
+        'The network has too few hidden units for a small memory',
+      ],
+      answer: 0,
+      explain: 'Replay helps only when the memory spans many different states. Here that means at least one full sweep of the corridor.',
+    },
+    {
+      q: 'Why must a method that learns from a replay memory be off-policy?',
+      choices: [
+        'Replay memories are too big to store on-policy data',
+        'The stored transitions were generated by earlier versions of the policy, not the current one',
+        'Random sampling changes the rewards',
+      ],
+      answer: 1,
+      explain: 'Old transitions come from old ε-greedy policies. Q-learning\'s target uses $\\max_{a\'}$, so it does not care which policy chose the actions.',
+    },
+  ]);
+</script>
+</body>
+</html>

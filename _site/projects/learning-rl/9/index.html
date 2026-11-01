@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>9. Upper confidence bounds | Learning RL</title>
+<meta name="description" content="Explore where you're uncertain. Each arm gets a bonus that shrinks as you learn about it.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .ucb { position: relative; display: flex; gap: 6px; height: 240px; margin: 10px 0 4px; padding-left: 28px; }
+  .ucol { flex: 1; position: relative; border-radius: 3px; }
+  .ucol.picked { background: var(--accent-soft); }
+  .ucol .whisk { position: absolute; left: 50%; width: 0; border-left: 2px solid var(--blue); transition: all 0.25s ease; }
+  .ucol .cap { position: absolute; left: 20%; right: 20%; height: 0; border-top: 3px solid var(--blue); transition: all 0.25s ease; }
+  .ucol.picked .cap { border-top-color: var(--accent); border-top-width: 4px; }
+  .ucol .qline { position: absolute; left: 10%; right: 10%; height: 0; border-top: 3px solid var(--heading); transition: all 0.25s ease; }
+  .ucol .star { position: absolute; left: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; border: 2px solid var(--amber); background: #fff; }
+  .zero { position: absolute; left: 28px; right: 0; border-top: 1px dashed #cbd5e1; }
+  .ylab { position: absolute; left: 0; width: 24px; text-align: right; font-size: 0.7rem; color: var(--muted); transform: translateY(-50%); }
+  .xlab { display: flex; gap: 6px; padding-left: 28px; font-size: 0.75rem; color: var(--muted); }
+  .xlab span { flex: 1; text-align: center; }
+  .key { display: flex; gap: 16px; flex-wrap: wrap; font-size: 0.85rem; color: var(--muted); }
+  .key b { display: inline-block; width: 16px; vertical-align: middle; margin-right: 4px; }
+  #why { overflow-x: auto; }
+</style>
+</head>
+<body data-lesson="9">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Upper confidence bounds</h1>
+  <p class="lede">ε-greedy explores blindly: a random arm, even one it already knows is bad. UCB explores where it is <i>uncertain</i>. Each arm's estimate gets a bonus that is large when the arm has been tried rarely. The agent picks the arm with the highest estimate plus bonus.</p>
+
+  <section class="card">
+    <label class="slider"><span>Confidence $c$</span><input id="iC" type="range" min="0" max="4" step="0.1" value="2"><output></output></label>
+    <div class="ucb" id="ucb"></div>
+    <div class="xlab" id="xlab"></div>
+    <div class="key">
+      <span><b style="border-top:3px solid var(--heading)"></b>estimate $Q(a)$</span>
+      <span><b style="border-top:3px solid var(--blue)"></b>upper bound $Q(a) + \text{bonus}$</span>
+      <span id="trueKey" hidden>○ true $q_*(a)$</span>
+    </div>
+    <div id="why" class="status"></div>
+    <div class="row">
+      <button id="bStep">UCB step</button>
+      <button id="bRun" class="primary">Run</button>
+      <span class="spacer"></span>
+      <label class="muted"><input type="checkbox" id="cTrue"> show true values</label>
+      <button id="bReset" class="quiet">New bandit</button>
+    </div>
+
+    <div class="sub">
+      <h2>UCB vs ε-greedy</h2>
+      <p class="note">Average reward per step over 400 bandits (S&amp;B Figure 2.4).</p>
+      <div class="row"><button id="bCompare">Run comparison</button></div>
+      <canvas class="chart" id="chart" hidden></canvas>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>At step $t$, UCB picks</p>
+    $$A_t = \arg\max_a \left[\, Q_t(a) + c\,\sqrt{\frac{\ln t}{N_t(a)}} \;\right]$$
+    <p>An arm with $N_t(a) = 0$ counts as having an infinite bound, so every arm is tried once first.</p>
+    <p>The square root is a measure of uncertainty about $q_*(a)$:</p>
+    <ul>
+      <li>Each pull of $a$ raises $N_t(a)$, so its bonus shrinks.</li>
+      <li>Each pull of <i>another</i> arm raises $t$, so the bonus of every neglected arm slowly grows.</li>
+      <li>$\ln t$ grows without limit but ever more slowly, so every arm is retried eventually, but less and less often.</li>
+    </ul>
+    <p>$c$ sets how much uncertainty counts. With $c = 0$ the bonus vanishes and UCB is plain greedy.</p>
+    <p>The idea is <b>optimism in the face of uncertainty</b>: act as if each arm is as good as it plausibly could be. Either it really is good, or you quickly find out it isn't.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const K = 10, YMIN = -3, YMAX = 7;
+  let B, Q, N, t, last, timer = null;
+
+  const c = Course.slider('#iC', (v) => v.toFixed(1), draw);
+  const Y = (y) => `${(100 * (YMAX - Math.max(YMIN, Math.min(YMAX, y)))) / (YMAX - YMIN)}%`;
+  const bonus = (a) => (N[a] ? c() * Math.sqrt(Math.log(Math.max(t, 1)) / N[a]) : Infinity);
+  const upper = (a) => Q[a] + bonus(a);
+
+  function newBandit() { B = Course.bandit(K); reset(); }
+  function reset() {
+    stop();
+    Q = new Array(K).fill(0); N = new Array(K).fill(0); t = 0; last = -1;
+    $('why').textContent = 'Untried arms have an infinite bound, so each is tried once first.';
+    draw();
+  }
+
+  function draw() {
+    const show = $('cTrue').checked;
+    $('trueKey').hidden = !show;
+    let html = '';
+    for (let y = YMIN; y <= YMAX; y += 2) html += `<span class="ylab" style="top:${Y(y)}">${y}</span>`;
+    html += `<div class="zero" style="top:${Y(0)}"></div>`;
+    for (let a = 0; a < K; a++) {
+      const u = upper(a);
+      const capTop = isFinite(u) ? Y(u) : '0%';
+      const inner = N[a]
+        ? `<div class="whisk" style="top:${capTop};bottom:calc(100% - ${Y(Q[a])})"></div><div class="cap" style="top:${capTop}"></div><div class="qline" style="top:${Y(Q[a])}"></div>`
+        : `<div class="whisk" style="top:0;bottom:0;border-left-style:dashed"></div><div class="cap" style="top:0"></div>`;
+      const star = show ? `<span class="star" style="top:${Y(B.q[a])}"></span>` : '';
+      html += `<div class="ucol${a === last ? ' picked' : ''}" title="Q=${Q[a].toFixed(2)}, N=${N[a]}">${inner}${star}</div>`;
+    }
+    $('ucb').innerHTML = html;
+    $('xlab').innerHTML = N.map((k) => `<span>${k}</span>`).join('');
+  }
+
+  function ucbStep() {
+    t++;
+    const a = Course.argmax(Array.from({ length: K }, (_, i) => upper(i)));
+    const b = bonus(a);
+    const r = B.pull(a);
+    N[a]++; Q[a] += (r - Q[a]) / N[a];   // sample average
+    last = a;
+    $('why').textContent = isFinite(b)
+      ? `t = ${t}: arm ${a} had the highest upper bound (estimate + bonus ${b.toFixed(2)}). It paid ${r.toFixed(2)}.`
+      : `t = ${t}: arm ${a} was untried, so its bound was infinite. It paid ${r.toFixed(2)}.`;
+    draw();
+  }
+
+  function stop() { clearInterval(timer); timer = null; $('bRun').textContent = 'Run'; }
+  $('bStep').addEventListener('click', ucbStep);
+  $('bRun').addEventListener('click', () => {
+    if (timer) return stop();
+    $('bRun').textContent = 'Pause';
+    timer = setInterval(ucbStep, 150);
+  });
+  $('bReset').addEventListener('click', newBandit);
+  $('cTrue').addEventListener('change', draw);
+
+  // Average reward at each step for UCB or ε-greedy, both with sample averages.
+  function avgReward(kind, runs = 400, steps = 600) {
+    const sum = new Array(steps).fill(0);
+    for (let k = 0; k < runs; k++) {
+      const b = Course.bandit(K), q = new Array(K).fill(0), n = new Array(K).fill(0);
+      for (let s = 1; s <= steps; s++) {
+        let a;
+        if (kind === 'ucb') {
+          a = n.indexOf(0);
+          if (a < 0) a = Course.argmax(q.map((v, i) => v + 2 * Math.sqrt(Math.log(s) / n[i])));
+        } else {
+          a = Math.random() < 0.1 ? Course.randInt(K) : Course.argmax(q);
+        }
+        const r = b.pull(a);
+        n[a]++; q[a] += (r - q[a]) / n[a];
+        sum[s - 1] += r;
+      }
+    }
+    return sum.map((x) => x / runs);
+  }
+  const chart = Course.lineChart($('chart'), { xLabel: 'step', yLabel: 'average reward' });
+  $('bCompare').addEventListener('click', () => {
+    $('bCompare').disabled = true; $('bCompare').textContent = 'Running…';
+    setTimeout(() => {
+      $('chart').hidden = false;
+      chart.draw([
+        { data: avgReward('ucb'), color: Course.colors.blue, label: 'UCB, c = 2' },
+        { data: avgReward('eps'), color: Course.colors.grey, label: 'ε-greedy, ε = 0.1' },
+      ]);
+      $('bCompare').disabled = false; $('bCompare').textContent = 'Run again';
+    }, 30);
+  });
+
+  newBandit();
+
+  Course.quiz([
+    {
+      q: '$Q(a) = 1$, $c = 2$, $t = 100$ and $N_t(a) = 4$. What is the upper bound $Q(a) + c\\sqrt{\\ln t / N_t(a)}$?',
+      answer: 1 + 2 * Math.sqrt(Math.log(100) / 4),
+      tol: 0.01,
+      hint: '$\\ln 100 \\approx 4.605$.',
+      explain: '$1 + 2\\sqrt{4.605/4} = 1 + 2 \\times 1.073 \\approx 3.15$.',
+    },
+    {
+      q: 'Keep $t$ fixed. An arm\'s count goes from $N = 1$ to $N = 16$. By what factor does its bonus shrink?',
+      answer: 4,
+      explain: 'The bonus is proportional to $1/\\sqrt{N}$, and $\\sqrt{16} = 4$.',
+    },
+    {
+      q: 'What does UCB become with $c = 0$?',
+      choices: ['Random choice', 'Greedy', 'ε-greedy with ε = 0.5'],
+      answer: 1,
+      explain: 'The bonus is zero, so it picks $\\arg\\max_a Q_t(a)$. (After trying each arm once.)',
+    },
+  ]);
+</script>
+</body>
+</html>

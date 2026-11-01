@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>40. Review: the map so far | Learning RL</title>
+<meta name="description" content="Every idea from lessons 1 to 39 on one clickable map, and the four kinds of value update that the rest of the course builds on.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .urow { display: grid; grid-template-columns: 7.5em minmax(0, 1fr); gap: 8px; align-items: start; padding: 6px 0; border-top: 1px solid var(--border); }
+  .urow:first-child { border-top: 0; }
+  .ulab { font-size: 0.75rem; color: var(--muted); line-height: 1.3; padding-top: 6px; }
+  .ulab b { display: block; color: var(--heading); font-weight: 600; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    font: inherit; font-size: 0.85rem; font-weight: 500; color: var(--heading); background: #fff;
+    border: 1px solid var(--border); border-radius: 999px; padding: 4px 11px; cursor: pointer;
+  }
+  .chip:hover:not(:disabled) { background: var(--soft); color: var(--heading); border-color: #9ca3af; }
+  .chip.next { border-style: dashed; color: var(--muted); }
+  .chip.pre { background: var(--accent-soft); border-color: #6ee7b7; color: #065f46; }
+  .chip.post { background: #dbeafe; border-color: #93c5fd; color: #1e40af; }
+  .chip.sel, .chip.sel:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .key { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.8rem; color: var(--muted); margin: 8px 0 0; }
+  .key span::before { content: ""; display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 5px; }
+  .key .k1::before { background: var(--accent); }
+  .key .k2::before { background: var(--accent-soft); border: 1px solid #6ee7b7; }
+  .key .k3::before { background: #dbeafe; border: 1px solid #93c5fd; }
+  .key .k4::before { border: 1px dashed #9ca3af; }
+  #detail { margin-top: 14px; padding: 14px; border-radius: 6px; background: var(--soft); border: 1px solid var(--border); }
+  #detail h3 { margin: 0 0 2px; font-size: 1rem; color: var(--heading); }
+  #detail .links { font-size: 0.85rem; }
+  #dEq { overflow-x: auto; }
+
+  .slice { display: grid; grid-template-columns: 2.2em 1fr 1fr; grid-template-rows: auto 1fr 1fr; gap: 6px; max-width: 520px; margin: 8px auto; }
+  .slice .hd { font-size: 0.75rem; color: var(--muted); text-align: center; align-self: end; line-height: 1.25; }
+  .slice .vd { writing-mode: vertical-rl; transform: rotate(180deg); font-size: 0.75rem; color: var(--muted); text-align: center; align-self: center; justify-self: center; }
+  .quad {
+    font: inherit; text-align: left; padding: 10px 12px; min-height: 76px; border: 1px solid var(--border);
+    border-radius: 6px; background: #fff; color: var(--heading); cursor: pointer;
+  }
+  .quad b { display: block; font-size: 0.98rem; }
+  .quad small { color: var(--muted); font-weight: 400; }
+  .quad:hover:not(:disabled) { background: var(--soft); color: var(--heading); }
+  .quad.on, .quad.on:hover:not(:disabled) { background: var(--accent-soft); border-color: var(--accent); color: var(--heading); }
+  .backup { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 16px; align-items: center; margin-top: 10px; }
+  .backup svg { width: 170px; height: 150px; }
+  #uEq { overflow-x: auto; }
+  @media (max-width: 560px) {
+    .urow { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+    .ulab { padding-top: 0; }
+    .ulab b { display: inline; }
+    .backup { grid-template-columns: minmax(0, 1fr); }
+    .backup svg { margin: 0 auto; display: block; }
+  }
+</style>
+</head>
+<body data-lesson="40">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Review: the map so far</h1>
+  <p class="lede">Thirty-nine lessons, about twenty ideas. Most of them lean on two: the return $G_t$ and the update "move an estimate a step towards a target". The value-learning methods so far differ mainly in the target they move towards.</p>
+
+  <section class="card">
+    <h2>What builds on what</h2>
+    <p class="note">Click an idea. Green ideas are what it needs, blue ideas are what it leads to. Dashed ideas are coming in units 9 and 10.</p>
+    <div id="map"></div>
+    <div class="key"><span class="k1">selected</span><span class="k2">needs</span><span class="k3">leads to</span><span class="k4">coming next</span></div>
+    <div id="detail">
+      <h3 id="dTitle"></h3>
+      <p class="links" id="dLinks"></p>
+      <p id="dText"></p>
+      <div id="dEq"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Four ways to update a value</h2>
+    <p>Every value method so far fits into a square. One side asks whether the update averages over <b>every</b> possible next step (it needs the model $p$) or uses one <b>sampled</b> step. The other asks whether the target stops after one step and uses the current estimate of the next state (<b>bootstrapping</b>), or runs to the end of the episode. S&amp;B draw the same square at the end of Chapter 8.</p>
+    <div class="slice" id="slice">
+      <span></span><span class="hd">expected<br>(needs the model)</span><span class="hd">sampled<br>(needs experience)</span>
+      <span class="vd">one step, bootstrap</span>
+      <button class="quad" data-k="dp"><b>Dynamic programming</b><small>Lessons 30–34</small></button>
+      <button class="quad" data-k="td"><b>TD learning</b><small>Lesson 45, coming soon</small></button>
+      <span class="vd">to the end</span>
+      <button class="quad" data-k="ex"><b>Exhaustive search</b><small>the full tree</small></button>
+      <button class="quad" data-k="mc"><b>Monte Carlo</b><small>Lessons 35–39</small></button>
+    </div>
+    <div class="backup">
+      <svg id="svg" viewBox="0 0 170 150" aria-label="Backup diagram"></svg>
+      <div>
+        <p id="uText"></p>
+        <div id="uEq"></div>
+      </div>
+    </div>
+    <p class="note">The example: in state $s$ the policy picks $a$ or $b$ with probability $\tfrac12$ each. Action $a$ pays $1$ and leads to $s_1$; $b$ pays $0$ and leads to $s_2$. Current estimates $V(s) = 3$, $V(s_1) = 2$, $V(s_2) = 4$, with $\gamma = 0.9$ and $\alpha = 0.5$. One sampled episode took $b$ and ended with return $G = 2.5$.</p>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>The return is the discounted sum of future rewards (Lesson 4). Splitting off the first reward gives the recursion everything else rests on:</p>
+    $$G_t = R_{t+1} + \gamma R_{t+2} + \gamma^2 R_{t+3} + \cdots = R_{t+1} + \gamma\, G_{t+1}$$
+    <p>What happens from step $t$ is the next reward plus the discounted return from the step after.</p>
+    <p>A state's value under a policy $\pi$ is its expected return (Lesson 21). Taking the expectation of the recursion gives the Bellman equation (Lesson 26):</p>
+    $$v_\pi(s) = \mathbb{E}_\pi[G_t \mid S_t = s] = \sum_a \pi(a \mid s) \sum_{s', r} p(s', r \mid s, a)\big[r + \gamma\, v_\pi(s')\big]$$
+    <p>The value of a state is the average, over actions and outcomes, of reward now plus discounted value later.</p>
+    <p>Each method turns one of these lines into an update of the form from Lesson 6:</p>
+    $$V \leftarrow V + \alpha\,[\text{target} - V]$$
+    <p>Only the target changes:</p>
+    $$\begin{aligned}
+      \text{DP:}\quad & V(s) \leftarrow \textstyle\sum_a \pi(a \mid s) \sum_{s',r} p(s',r \mid s,a)\big[r + \gamma V(s')\big] && (\alpha = 1)\\
+      \text{MC:}\quad & V(S_t) \leftarrow V(S_t) + \alpha\big[G_t - V(S_t)\big] \\
+      \text{TD:}\quad & V(S_t) \leftarrow V(S_t) + \alpha\big[R_{t+1} + \gamma V(S_{t+1}) - V(S_t)\big]
+    \end{aligned}$$
+    <p>DP computes the sum on the right of the Bellman equation exactly, using the model. MC replaces the expectation $\mathbb{E}_\pi[G_t]$ with one sampled $G_t$. TD, coming in Lesson 45, samples one step of the recursion and fills in the rest with its own estimate $V(S_{t+1})$.</p>
+    <p>Control follows one pattern too. Evaluate the current policy, then make it greedy with respect to the values (Lesson 34): $\pi(s) \leftarrow \arg\max_a q_\pi(s, a)$. Repeat until nothing changes.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const L = (a, b) => (b ? `Lessons ${a}–${b}` : `Lesson ${a}`);
+
+  // ------------------------------------------------------------ concept map
+  const UNITS = [
+    [1, 'What is RL?'], [2, 'Bandits'], [3, 'Smarter bandits'], [4, 'MDPs'],
+    [5, 'Policies and values'], [6, 'Bellman equations'], [7, 'Dynamic programming'], [8, 'Monte Carlo'], [9, 'Coming next'],
+  ];
+  const NODES = [
+    { id: 'loop', u: 1, t: 'Agent–environment loop', ls: [1], needs: [],
+      s: 'At each step the agent sees a state, picks an action, and gets a reward and a new state. Everything in RL is about this loop.',
+      eq: 'S_0, A_0, R_1, S_1, A_1, R_2, S_2, A_2, R_3, \\ldots' },
+    { id: 'reward', u: 1, t: 'Rewards define the goal', ls: [2], needs: ['loop'],
+      s: 'The reward signal says what to achieve, not how. The goal is to maximise the expected sum of rewards.',
+      eq: 'R_{t+1} \\in \\mathbb{R}' },
+    { id: 'explore', u: 1, t: 'Explore or exploit', ls: [3], needs: ['loop'],
+      s: 'Taking the best-looking action earns reward now. Trying others earns information. An agent needs both.',
+      eq: 'A_t = \\arg\\max_a Q_t(a) \\;\\text{ or something else?}' },
+    { id: 'disc', u: 1, t: 'Returns and discounting', ls: [4, 19], needs: ['reward'],
+      s: 'The return adds up future rewards, each shrunk by $\\gamma$ per step of delay. It is finite for $\\gamma < 1$ or when episodes end.',
+      eq: 'G_t = R_{t+1} + \\gamma R_{t+2} + \\gamma^2 R_{t+3} + \\cdots = R_{t+1} + \\gamma G_{t+1}' },
+    { id: 'bandit', u: 2, t: 'The multi-armed bandit', ls: [5], needs: ['reward', 'explore'],
+      s: 'One state, $k$ actions, each with a hidden mean reward. Estimate the means while choosing well.',
+      eq: 'q_*(a) = \\mathbb{E}[R_t \\mid A_t = a]' },
+    { id: 'incr', u: 2, t: 'Incremental updates', ls: [6, 7], needs: ['bandit'],
+      s: 'Move an estimate a fraction of the way towards each new target. A step size of $1/n$ gives the exact average; a constant $\\alpha$ tracks a moving target.',
+      eq: 'Q_{n+1} = Q_n + \\alpha\\,[R_n - Q_n]' },
+    { id: 'optim', u: 2, t: 'Optimism and UCB', ls: [8, 9], needs: ['incr', 'explore'],
+      s: 'Explore on purpose: start estimates high, or add a bonus that shrinks the more an arm is tried.',
+      eq: 'A_t = \\arg\\max_a \\Big[Q_t(a) + c\\sqrt{\\tfrac{\\ln t}{N_t(a)}}\\Big]' },
+    { id: 'bayes', u: 3, t: 'Regret and Thompson sampling', ls: [10, 12], needs: ['optim'],
+      s: 'Regret counts reward lost to not knowing the best arm. Thompson sampling keeps a belief per arm and acts on a sample from it.',
+      eq: '\\text{Regret}_T = \\sum_{t=1}^{T} \\big(q_*(a^*) - q_*(A_t)\\big)' },
+    { id: 'grad', u: 3, t: 'Gradient and contextual bandits', ls: [13, 14], needs: ['incr'],
+      s: 'Learn preferences instead of values and turn them into probabilities with a softmax. Add a context and the best arm depends on the situation.',
+      eq: '\\pi_t(a) = \\frac{e^{H_t(a)}}{\\sum_b e^{H_t(b)}}' },
+    { id: 'markov', u: 4, t: 'Markov property and chains', ls: [15, 17], needs: ['loop'],
+      s: 'The present state holds everything about the past that matters for the future. A chain of such states settles into a stationary distribution.',
+      eq: '\\Pr[S_{t+1} \\mid S_t] = \\Pr[S_{t+1} \\mid S_1, \\ldots, S_t]' },
+    { id: 'mdp', u: 4, t: 'Markov decision processes', ls: [18, 19], needs: ['markov', 'disc'],
+      s: 'A Markov chain with actions and rewards. One function, the dynamics $p$, describes the whole environment.',
+      eq: 'p(s\', r \\mid s, a) = \\Pr\\{S_t = s\', R_t = r \\mid S_{t-1} = s, A_{t-1} = a\\}' },
+    { id: 'values', u: 5, t: 'Policies and values', ls: [20, 23], needs: ['mdp'],
+      s: 'A policy gives action probabilities in each state. Its value functions give the expected return from a state, or from a state and action.',
+      eq: 'v_\\pi(s) = \\mathbb{E}_\\pi[G_t \\mid S_t = s] = \\sum_a \\pi(a \\mid s)\\, q_\\pi(s, a)' },
+    { id: 'optimal', u: 5, t: 'Optimal policies', ls: [24, 29], needs: ['values', 'bellman'],
+      s: 'An optimal policy has the highest value in every state. Acting greedily with respect to $q_*$ is optimal.',
+      eq: 'v_*(s) = \\max_a \\sum_{s\',r} p(s\', r \\mid s, a)\\big[r + \\gamma v_*(s\')\\big]' },
+    { id: 'bellman', u: 6, t: 'Bellman expectation equation', ls: [25, 28], needs: ['values'],
+      s: 'Value now equals expected reward plus discounted value next. For a fixed policy it is a linear system: $v = (I - \\gamma P)^{-1} r$.',
+      eq: 'v_\\pi(s) = \\sum_a \\pi(a \\mid s) \\sum_{s\',r} p(s\', r \\mid s, a)\\big[r + \\gamma v_\\pi(s\')\\big]' },
+    { id: 'pe', u: 7, t: 'Policy evaluation', ls: [30], needs: ['bellman'],
+      s: 'Turn the Bellman equation into an update and sweep it over all states until the values stop changing.',
+      eq: 'V_{k+1}(s) = \\sum_a \\pi(a \\mid s) \\sum_{s\',r} p(s\', r \\mid s, a)\\big[r + \\gamma V_k(s\')\\big]' },
+    { id: 'gpi', u: 7, t: 'Policy and value iteration', ls: [31, 34], needs: ['pe', 'optimal'],
+      s: 'Evaluate, then act greedily, then evaluate again. Any mix of the two steps (generalised policy iteration) reaches the optimum.',
+      eq: '\\pi\'(s) = \\arg\\max_a \\sum_{s\',r} p(s\', r \\mid s, a)\\big[r + \\gamma v_\\pi(s\')\\big]' },
+    { id: 'mc', u: 8, t: 'Monte Carlo prediction', ls: [35, 37], needs: ['values', 'incr'],
+      s: 'No model. Play whole episodes and average the returns that follow each state.',
+      eq: 'V(S_t) \\leftarrow V(S_t) + \\alpha\\big[G_t - V(S_t)\\big]' },
+    { id: 'mcc', u: 8, t: 'Monte Carlo control', ls: [38], needs: ['mc', 'gpi', 'explore'],
+      s: 'Generalised policy iteration with action values estimated from episodes, plus exploration so every action keeps being tried.',
+      eq: '\\pi(s) = \\arg\\max_a Q(s, a)' },
+    { id: 'is', u: 8, t: 'Importance sampling', ls: [39], needs: ['mc'],
+      s: 'Learn about one policy from episodes of another by reweighting each return by how much more likely the target policy was to produce it.',
+      eq: '\\rho_{t:T-1} = \\prod_{k=t}^{T-1} \\frac{\\pi(A_k \\mid S_k)}{b(A_k \\mid S_k)}' },
+    { id: 'ttt', u: 9, t: 'Tic-tac-toe by self-play', ls: [42, 43], needs: ['incr', 'values'], next: true,
+      s: 'A table of board values, learned by nudging each value towards the value of the board that came next.',
+      eq: 'V(S_t) \\leftarrow V(S_t) + \\alpha\\big[V(S_{t+1}) - V(S_t)\\big]' },
+    { id: 'gamb', u: 9, t: "The gambler's problem", ls: [44], needs: ['gpi'], next: true,
+      s: 'Value iteration on a coin-flipping bet. The optimal policy has a strange, spiky shape.',
+      eq: 'V(s) \\leftarrow \\max_a \\big[p_h V(s + a) + (1 - p_h) V(s - a)\\big]' },
+    { id: 'td', u: 9, t: 'TD learning', ls: [45, 49], needs: ['pe', 'mc'], next: true,
+      s: 'Sample one step like Monte Carlo, then bootstrap from the next estimate like DP. Learns during the episode, without a model.',
+      eq: 'V(S_t) \\leftarrow V(S_t) + \\alpha\\big[R_{t+1} + \\gamma V(S_{t+1}) - V(S_t)\\big]' },
+  ];
+  const byId = Object.fromEntries(NODES.map((n) => [n.id, n]));
+  const lessonsText = (ls) => (ls.length === 1 ? L(ls[0]) : L(ls[0], ls[1]));
+  const lessonLinks = (ls) => {
+    const out = [];
+    for (let k = ls[0]; k <= (ls[1] ?? ls[0]); k++) out.push(`<a href="${Course.root}${k}/">${k}</a>`);
+    return (ls.length === 1 ? 'Lesson ' : 'Lessons ') + out.join(' · ');
+  };
+
+  function ancestors(id, acc = new Set()) {
+    byId[id].needs.forEach((p) => { if (!acc.has(p)) { acc.add(p); ancestors(p, acc); } });
+    return acc;
+  }
+  const children = (id) => NODES.filter((n) => n.needs.includes(id)).map((n) => n.id);
+
+  $('map').innerHTML = UNITS.map(([u, title]) => `<div class="urow"><div class="ulab"><b>${u < 9 ? 'Unit ' + u : 'Units 9–10'}</b> ${title}</div><div class="chips">${
+    NODES.filter((n) => n.u === u).map((n) => `<button class="chip${n.next ? ' next' : ''}" data-id="${n.id}">${n.t}</button>`).join('')
+  }</div></div>`).join('');
+
+  function select(id) {
+    const pre = ancestors(id), post = new Set(children(id));
+    document.querySelectorAll('.chip').forEach((c) => {
+      const k = c.dataset.id;
+      c.classList.toggle('sel', k === id);
+      c.classList.toggle('pre', pre.has(k));
+      c.classList.toggle('post', post.has(k));
+    });
+    const n = byId[id];
+    $('dTitle').textContent = n.t;
+    const names = (ids) => [...ids].map((k) => byId[k].t).join(', ') || 'nothing';
+    $('dLinks').innerHTML = `${lessonLinks(n.ls)}${n.next ? ' (coming next)' : ''}`;
+    $('dText').innerHTML = `${n.s} <span class="muted">Needs ${pre.size} earlier idea${pre.size === 1 ? '' : 's'}; ${post.size ? 'leads directly to ' + names(post).toLowerCase() + '.' : 'later units build on it.'}</span>`;
+    Course.renderMath($('dText'));
+    Course.tex($('dEq'), n.eq, true);
+  }
+  $('map').addEventListener('click', (e) => { const c = e.target.closest('.chip'); if (c) select(c.dataset.id); });
+  select('td');
+
+  // ------------------------------------------------------------ backup diagrams
+  // Open circle = state, solid dot = action, square = terminal (S&B backup-diagram conventions).
+  const G = Course.colors.green, INK = '#374151';
+  function svgFor(kind) {
+    const parts = [];
+    const line = (x1, y1, x2, y2, c = INK) => parts.push(`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${c}" stroke-width="1.5"/>`);
+    const st = (x, y, c = INK) => parts.push(`<circle cx="${x}" cy="${y}" r="7" fill="#fff" stroke="${c}" stroke-width="1.8"/>`);
+    const act = (x, y, c = INK) => parts.push(`<circle cx="${x}" cy="${y}" r="4" fill="${c}"/>`);
+    const term = (x, y, c = INK) => parts.push(`<rect x="${x - 6}" y="${y - 6}" width="12" height="12" fill="${c}"/>`);
+    if (kind === 'dp') {
+      [[50, [25, 75]], [120, [95, 145]]].forEach(([ax, ss]) => {
+        line(85, 20, ax, 70, G); act(ax, 70, G);
+        ss.forEach((sx) => { line(ax, 70, sx, 120, G); st(sx, 120, G); });
+      });
+      st(85, 20, G);
+    } else if (kind === 'td') {
+      line(85, 20, 85, 70, G); line(85, 70, 85, 120, G);
+      st(85, 20, G); act(85, 70, G); st(85, 120, G);
+    } else if (kind === 'mc') {
+      const ys = [12, 36, 60, 84, 108];
+      for (let i = 0; i < ys.length - 1; i++) line(85, ys[i], 85, ys[i + 1] + 24 * (i === ys.length - 2), G);
+      ys.forEach((y, i) => (i % 2 ? act(85, y, G) : st(85, y, G)));
+      line(85, 108, 85, 134, G); term(85, 136, G);
+    } else {
+      const lv = [[85], [45, 125], [25, 65, 105, 145]];
+      lv[1].forEach((x, i) => { line(85, 14, x, 50, G); act(x, 50, G); [lv[2][2 * i], lv[2][2 * i + 1]].forEach((sx) => { line(x, 50, sx, 90, G); }); });
+      lv[2].forEach((x) => { line(x, 90, x - 8, 134, G); line(x, 90, x + 8, 134, G); st(x, 90, G); term(x - 8, 136, G); term(x + 8, 136, G); });
+      st(85, 14, G);
+    }
+    return parts.join('');
+  }
+
+  const UPD = {
+    dp: {
+      text: '<b>Expected, one step.</b> Average over both actions using the model, and use the current estimates of $s_1$ and $s_2$ for everything after.',
+      eq: 'V(s) \\leftarrow \\tfrac12\\,(1 + 0.9 \\times 2) + \\tfrac12\\,(0 + 0.9 \\times 4) = 1.4 + 1.8 = 3.2',
+    },
+    td: {
+      text: '<b>Sampled, one step.</b> Use the one transition that happened ($b$, reward $0$, then $s_2$) and the current estimate of $s_2$. Lesson 45.',
+      eq: 'V(s) \\leftarrow 3 + 0.5\\,\\big[0 + 0.9 \\times 4 - 3\\big] = 3.3',
+    },
+    mc: {
+      text: '<b>Sampled, to the end.</b> Wait for the episode to finish and move towards the return that actually came.',
+      eq: 'V(s) \\leftarrow 3 + 0.5\\,\\big[2.5 - 3\\big] = 2.75',
+    },
+    ex: {
+      text: '<b>Expected, to the end.</b> Weigh every complete trajectory by its probability. No estimates are used, so the answer is $v_\\pi(s)$ exactly, but the tree grows exponentially with depth.',
+      eq: 'v_\\pi(s) = \\sum_{\\text{trajectories } \\tau} \\Pr_\\pi(\\tau \\mid s)\\; G(\\tau)',
+    },
+  };
+  function pick(k) {
+    document.querySelectorAll('.quad').forEach((q) => q.classList.toggle('on', q.dataset.k === k));
+    $('svg').innerHTML = svgFor(k);
+    $('uText').innerHTML = UPD[k].text;
+    Course.renderMath($('uText'));
+    Course.tex($('uEq'), UPD[k].eq, true);
+  }
+  $('slice').addEventListener('click', (e) => { const q = e.target.closest('.quad'); if (q) pick(q.dataset.k); });
+  pick('dp');
+
+  // ------------------------------------------------------------ quiz
+  const g = 0.8;
+  Course.quiz([
+    {
+      q: 'A policy picks left or right with probability $\\tfrac12$ each. Left pays $2$ and leads to a state with $V = 5$; right pays $0$ and leads to a state with $V = 10$. With $\\gamma = 0.8$, what does the DP update set $V(s)$ to?',
+      answer: 0.5 * (2 + g * 5) + 0.5 * (0 + g * 10),
+      hint: 'Average reward plus $\\gamma V(s\')$ over the two branches.',
+      explain: '$\\tfrac12(2 + 0.8 \\times 5) + \\tfrac12(0 + 0.8 \\times 10) = 3 + 4 = 7$.',
+    },
+    {
+      q: '$V(s) = 4$. An episode from $s$ returns $G = 10$. With $\\alpha = 0.1$, what is $V(s)$ after the Monte Carlo update?',
+      answer: 4 + 0.1 * (10 - 4),
+      explain: '$4 + 0.1\\,(10 - 4) = 4.6$.',
+    },
+    {
+      q: 'Which corners of the square need the model $p(s\', r \\mid s, a)$?',
+      choices: ['Monte Carlo only', 'Dynamic programming and exhaustive search', 'TD and Monte Carlo', 'All four'],
+      answer: 1,
+      explain: 'Expected updates sum over every next state and reward, so they need $p$. Sampled updates only need experience.',
+    },
+    {
+      q: 'Which description fits TD learning?',
+      choices: [
+        'Expected over all next states, run to the end',
+        'One sampled step, then the current estimate of the next state',
+        'A whole sampled episode, no estimates',
+        'A sum over every trajectory',
+      ],
+      answer: 1,
+      explain: 'TD samples one step like Monte Carlo and bootstraps from $V(S_{t+1})$ like DP. Lesson 45 starts there.',
+    },
+  ]);
+</script>
+</body>
+</html>

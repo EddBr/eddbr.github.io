@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>14. Contextual bandits | Learning RL</title>
+<meta name="description" content="The best action depends on who is asking. Serve ads to different visitors and learn a value for every pair of context and action.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .visitor { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 10px; border: 1px dashed var(--border); border-radius: 8px; margin: 6px 0 10px; }
+  .visitor .emo { font-size: 40px; line-height: 1; }
+  .visitor .who { font-weight: 600; color: var(--heading); }
+  .ads { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .ad { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 4px; border: 1px solid var(--border); border-radius: 8px; background: var(--soft); color: var(--heading); }
+  .ad:hover:not(:disabled) { background: var(--accent-soft); color: var(--heading); }
+  .ad .emo { font-size: 30px; line-height: 1.2; }
+  .ad .nm { font-size: 0.85rem; }
+  .ad.clicked { border-color: var(--accent); box-shadow: inset 0 0 0 2px var(--accent); }
+  .ad.ignored { border-color: var(--red); box-shadow: inset 0 0 0 2px var(--red-soft); }
+  .tablewrap { overflow-x: auto; }
+  table.qt td.v { font-weight: 600; color: var(--heading); }
+  table.qt td small { display: block; font-size: 0.7rem; color: var(--muted); font-weight: 400; }
+  table.qt td.true { color: var(--amber); }
+  table.qt tr.blind td { border-top: 2px solid var(--border); }
+  table.qt td.best { box-shadow: inset 0 0 0 2px var(--accent); }
+</style>
+</head>
+<body data-lesson="14">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Contextual bandits</h1>
+  <p class="lede">In a plain bandit the best arm is the same every time. Often it isn't: the best ad depends on who is looking. A contextual bandit sees a <b>context</b> before it acts and learns a value for every pair of context and action.</p>
+
+  <section class="card">
+    <h2>You are the ad server</h2>
+    <p class="note">A visitor arrives. Pick an ad to show them. Each kind of visitor clicks each ad with its own hidden probability.</p>
+    <div class="visitor"><span class="emo" id="vEmo"></span><span><span class="who" id="vWho"></span><br><span class="muted" id="vNote"></span></span></div>
+    <div class="ads" id="ads"></div>
+    <p class="status" id="status"></p>
+    <div class="tablewrap">
+      <table class="data qt" id="qt"></table>
+    </div>
+    <p class="note">Each cell is $Q(x, a)$: the click rate so far for that visitor and ad, with the number of times shown. The bottom row ignores the visitor.</p>
+    <div class="stats">
+      <div class="stat"><span class="k">Visitors</span><span class="v" id="sN">0</span></div>
+      <div class="stat"><span class="k">Clicks</span><span class="v" id="sC">0</span></div>
+      <div class="stat"><span class="k">Click rate</span><span class="v" id="sR">–</span></div>
+    </div>
+    <div class="row">
+      <button id="bAuto">Agent serves 200</button>
+      <button id="bReveal" class="quiet">Reveal true rates</button>
+      <span class="spacer"></span>
+      <button id="bReset" class="quiet">Reset</button>
+    </div>
+    <p class="note">The agent is ε-greedy on $Q(x, a)$ with $\varepsilon = 0.1$: it looks up the row for the current visitor and usually shows that row's best ad.</p>
+
+    <div class="sub">
+      <h2>Ignoring the context costs clicks</h2>
+      <p class="note">Two ε-greedy agents ($\varepsilon = 0.1$, sample averages), 300 runs of 2000 visitors each. One learns $Q(x, a)$. The other learns only $Q(a)$, as in Lessons 5 to 9.</p>
+      <div class="row"><button id="bCompare">Run comparison</button></div>
+      <canvas class="chart" id="chart" hidden></canvas>
+      <p class="note" id="cmpNote"></p>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>On each step the agent first observes a context $X_t$ (here, the kind of visitor), then picks $A_t$, then gets $R_t$ (1 for a click, 0 otherwise). The value now depends on both:</p>
+    $$q_*(x, a) = \mathbb{E}[R_t \mid X_t = x,\ A_t = a]$$
+    <p>The agent estimates it with $Q(x, a)$, one running average per pair (Lesson 6). Its greedy choice looks only at the row for the context it sees:</p>
+    $$A_t = \arg\max_a Q(X_t, a)$$
+    <p>The ε-greedy agent above makes this choice with probability $1 - \varepsilon$ and picks a random ad otherwise.</p>
+    <p>A rule that maps each context to an action is a <b>policy</b>. Let $P(x)$ be the share of visitors of kind $x$. The best a context-blind agent can do is the best single ad, and the best a contextual agent can do is the best ad per visitor:</p>
+    $$\text{blind: } \max_a \sum_x P(x)\, q_*(x, a)$$
+    $$\text{contextual: } \sum_x P(x) \max_a q_*(x, a)$$
+    <p>For every $a$, $q_*(x, a) \le \max_{a'} q_*(x, a')$, so averaging over $x$ gives contextual $\ge$ blind. They are equal only if one ad is best for every kind of visitor.</p>
+    <p>Sutton &amp; Barto call this <b>associative search</b> (§2.9). It sits between bandits and full RL. The action affects the reward, as in a bandit, and the best action depends on the situation, as in full RL. But the action does not affect the next context: showing an ad does not change who visits next. When actions also change the next situation, the problem becomes a Markov decision process (Lesson 18).</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const TYPES = [
+    { emo: '🎓', name: 'Student', share: 0.5 },
+    { emo: '👶', name: 'Parent', share: 0.3 },
+    { emo: '🎮', name: 'Gamer', share: 0.2 },
+  ];
+  const ADS = [{ emo: '🎧', name: 'Headphones' }, { emo: '🍼', name: 'Pram' }, { emo: '🕹️', name: 'Console' }];
+  // Click probability for [visitor][ad].
+  const P = [
+    [0.36, 0.06, 0.24],
+    [0.12, 0.45, 0.15],
+    [0.18, 0.03, 0.60],
+  ];
+  const SHARES = TYPES.map((t) => t.share);
+  const blindBest = Math.max(...ADS.map((_, a) => TYPES.reduce((s, t, x) => s + t.share * P[x][a], 0)));
+  const ctxBest = TYPES.reduce((s, t, x) => s + t.share * Math.max(...P[x]), 0);
+
+  let S, N, x, clicks, served, lastAd, lastClick, revealed;
+
+  function reset() {
+    S = TYPES.map(() => [0, 0, 0]); N = TYPES.map(() => [0, 0, 0]);
+    clicks = 0; served = 0; lastAd = -1; revealed = false;
+    $('bReveal').textContent = 'Reveal true rates';
+    nextVisitor();
+    $('status').textContent = 'Which ad will this visitor click?';
+    draw();
+  }
+  function nextVisitor() { x = Course.sample(SHARES); }
+
+  function serve(a) {
+    const vx = x, click = Math.random() < P[vx][a];
+    S[vx][a] += click; N[vx][a]++; served++; clicks += click;
+    lastAd = a; lastClick = click;
+    return { vx, click };
+  }
+
+  function draw() {
+    const t = TYPES[x];
+    $('vEmo').textContent = t.emo;
+    $('vWho').textContent = `A ${t.name.toLowerCase()} is visiting`;
+    $('vNote').textContent = `${Math.round(100 * t.share)}% of visitors are ${t.name.toLowerCase()}s`;
+    $('ads').innerHTML = ADS.map((ad, a) => `<button class="ad" data-a="${a}"><span class="emo">${ad.emo}</span><span class="nm">${ad.name}</span></button>`).join('');
+    const cell = (s, n) => (n ? (s / n).toFixed(2) : '–');
+    const head = `<thead><tr><th></th>${ADS.map((ad) => `<th>${ad.emo}</th>`).join('')}</tr></thead>`;
+    const rows = TYPES.map((ty, r) => {
+      const qs = N[r].map((n, a) => (n ? S[r][a] / n : -1));
+      return `<tr><th>${ty.emo}</th>${ADS.map((_, a) => {
+        const best = revealed && P[r][a] === Math.max(...P[r]);
+        return `<td class="v${best ? ' best' : ''}" style="background:${N[r][a] ? Course.heat(qs[a], 0.8) : ''}">${cell(S[r][a], N[r][a])}<small>${revealed ? `<span class="true">true ${P[r][a].toFixed(2)}</span>` : `n = ${N[r][a]}`}</small></td>`;
+      }).join('')}</tr>`;
+    }).join('');
+    const bS = [0, 1, 2].map((a) => S.reduce((s, row) => s + row[a], 0));
+    const bN = [0, 1, 2].map((a) => N.reduce((s, row) => s + row[a], 0));
+    const blindTrue = ADS.map((_, a) => TYPES.reduce((s, ty, r) => s + ty.share * P[r][a], 0));
+    const blind = `<tr class="blind"><th>any</th>${ADS.map((_, a) => `<td class="v">${cell(bS[a], bN[a])}<small>${revealed ? `<span class="true">true ${blindTrue[a].toFixed(3)}</span>` : `n = ${bN[a]}`}</small></td>`).join('')}</tr>`;
+    $('qt').innerHTML = head + `<tbody>${rows}${blind}</tbody>`;
+    $('sN').textContent = served;
+    $('sC').textContent = clicks;
+    $('sR').textContent = served ? (clicks / served).toFixed(3) : '–';
+  }
+
+  $('ads').addEventListener('click', (e) => {
+    const b = e.target.closest('.ad');
+    if (!b) return;
+    const { vx, click } = serve(+b.dataset.a);
+    const who = TYPES[vx].name.toLowerCase();
+    nextVisitor();
+    draw();
+    $('status').innerHTML = `The ${who} ${click ? '<b class="good">clicked</b>' : '<b class="bad">ignored</b>'} the ${ADS[lastAd].name.toLowerCase()} ad. Next visitor:`;
+  });
+
+  $('bAuto').addEventListener('click', () => {
+    let c = 0;
+    for (let i = 0; i < 200; i++) {
+      const qs = N[x].map((n, a) => (n ? S[x][a] / n : 0));
+      const a = Math.random() < 0.1 ? Course.randInt(3) : Course.argmax(qs);
+      c += serve(a).click;
+      nextVisitor();
+    }
+    draw();
+    $('status').textContent = `The agent served 200 visitors and got ${c} clicks (${(c / 200).toFixed(2)} per visitor). Look at which ad wins each row.`;
+  });
+  $('bReveal').addEventListener('click', () => {
+    revealed = !revealed;
+    $('bReveal').textContent = revealed ? 'Hide true rates' : 'Reveal true rates';
+    draw();
+    if (revealed) $('status').textContent = `Best single ad: ${blindBest.toFixed(3)} clicks per visitor. Best ad per visitor: ${ctxBest.toFixed(3)}.`;
+  });
+  $('bReset').addEventListener('click', reset);
+  reset();
+
+  // ------------------------------------------------------------ comparison
+  const RUNS = 300, STEPS = 2000;
+  function compare() {
+    const ctx = new Float64Array(STEPS), blind = new Float64Array(STEPS);
+    for (let run = 0; run < RUNS; run++) {
+      const sC = TYPES.map(() => [0, 0, 0]), nC = TYPES.map(() => [0, 0, 0]);
+      const sB = [0, 0, 0], nB = [0, 0, 0];
+      for (let t = 0; t < STEPS; t++) {
+        const v = Course.sample(SHARES);
+        // contextual
+        let a = Math.random() < 0.1 ? Course.randInt(3) : Course.argmax(nC[v].map((n, j) => (n ? sC[v][j] / n : 0)));
+        let r = Math.random() < P[v][a] ? 1 : 0;
+        sC[v][a] += r; nC[v][a]++;
+        ctx[t] += P[v][a] / RUNS;            // expected click rate of the choice: less noisy than the click
+        // context-blind
+        a = Math.random() < 0.1 ? Course.randInt(3) : Course.argmax(nB.map((n, j) => (n ? sB[j] / n : 0)));
+        r = Math.random() < P[v][a] ? 1 : 0;
+        sB[a] += r; nB[a]++;
+        blind[t] += P[v][a] / RUNS;
+      }
+    }
+    // Smooth with a 50-step moving average.
+    const smooth = (arr) => Array.from(arr, (_, i) => { const lo = Math.max(0, i - 49); let s = 0; for (let j = lo; j <= i; j++) s += arr[j]; return s / (i - lo + 1); });
+    return [smooth(ctx), smooth(blind)];
+  }
+  const chart = Course.lineChart($('chart'), { xLabel: 'visitor', yLabel: 'click rate', yMin: 0, yMax: 0.5 });
+  $('bCompare').addEventListener('click', () => {
+    $('bCompare').disabled = true; $('bCompare').textContent = 'Running…';
+    setTimeout(() => {
+      const [c, b] = compare();
+      $('chart').hidden = false;
+      chart.draw([
+        { data: c, color: Course.colors.green, label: 'Q(x, a)' },
+        { data: b, color: Course.colors.grey, label: 'Q(a) only' },
+      ], { hlines: [
+        { y: ctxBest, label: `best per visitor ${ctxBest.toFixed(3)}`, color: Course.colors.green },
+        { y: blindBest, label: `best single ad ${blindBest.toFixed(3)}`, color: Course.colors.grey },
+      ] });
+      $('cmpNote').textContent = `The blind agent can at best find the console ad, the best single ad on average, even though it is the favourite of only the gamers. Both curves stay a little below their dashed lines because 10% of the time each agent explores.`;
+      $('bCompare').disabled = false; $('bCompare').textContent = 'Run again';
+    }, 30);
+  });
+
+  // ------------------------------------------------------------ quiz
+  // Quiz world: two kinds of visitor, 50% each; two ads.
+  const QP = [[0.6, 0.2], [0.1, 0.4]];
+  const qBlind = Math.max(0.5 * QP[0][0] + 0.5 * QP[1][0], 0.5 * QP[0][1] + 0.5 * QP[1][1]);
+  const qCtx = 0.5 * 0.6 + 0.5 * 0.4;
+  const eps = 0.2;
+  const qEps = 0.5 * ((1 - eps) * 0.6 + eps * (0.6 + 0.2) / 2) + 0.5 * ((1 - eps) * 0.4 + eps * (0.1 + 0.4) / 2);
+  const world = 'Half the visitors are kind 1, half are kind 2. Kind 1 clicks ad A with probability 0.6 and ad B with 0.2. Kind 2 clicks A with 0.1 and B with 0.4.';
+  Course.quiz([
+    {
+      q: `${world} What click rate does the best single ad get?`,
+      answer: qBlind,
+      hint: 'Average each ad over the two kinds of visitor, then take the larger.',
+      explain: 'A: $0.5 \\times 0.6 + 0.5 \\times 0.1 = 0.35$. B: $0.5 \\times 0.2 + 0.5 \\times 0.4 = 0.3$. The best is $0.35$.',
+    },
+    {
+      q: 'Same visitors. What click rate does the best contextual policy get?',
+      answer: qCtx,
+      explain: 'Show A to kind 1 and B to kind 2: $0.5 \\times 0.6 + 0.5 \\times 0.4 = 0.5$.',
+    },
+    {
+      q: 'Same visitors. A contextual agent has learned the right ad for each kind but keeps exploring with $\\varepsilon = 0.2$ (a uniformly random ad). What is its long-run click rate?',
+      answer: qEps,
+      tol: 0.002,
+      hint: 'For each kind: $(1-\\varepsilon) \\times$ best rate $+ \\varepsilon \\times$ average of both rates.',
+      explain: 'Kind 1: $0.8 \\times 0.6 + 0.2 \\times 0.4 = 0.56$. Kind 2: $0.8 \\times 0.4 + 0.2 \\times 0.25 = 0.37$. Average: $0.465$.',
+    },
+    {
+      q: 'What makes this a contextual bandit and not a full RL problem?',
+      choices: [
+        'The rewards are only 0 or 1',
+        'The ad shown does not change who visits next',
+        'There are only three ads',
+      ],
+      answer: 1,
+      explain: 'Actions affect the reward but not the next context. Once actions change the next situation, you need MDPs (Lesson 18).',
+    },
+  ]);
+</script>
+</body>
+</html>

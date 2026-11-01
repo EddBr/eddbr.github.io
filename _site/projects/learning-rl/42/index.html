@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>42. Tic-tac-toe: a table of values | Learning RL</title>
+<meta name="description" content="Play tic-tac-toe against an agent that keeps one number per board and nudges it towards the value of the next board. Beat it, then watch it learn not to fall for the same trick.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .boards { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 20px; align-items: start; }
+  .boards h3 { font-size: 0.85rem; color: var(--muted); font-weight: 500; margin: 0 0 4px; text-align: center; }
+  #board { max-width: 270px !important; margin: 4px auto; }
+  #board .gcell { font-size: 44px; font-weight: 600; }
+  #mini { max-width: 180px !important; margin: 4px auto; }
+  #mini .gcell { font-size: 15px; font-weight: 600; }
+  .gcell.x { color: var(--accent); }
+  .gcell.o { color: var(--blue); }
+  .gcell.win { background: var(--accent-soft); }
+  .gcell.lose { background: var(--red-soft); }
+  .gcell.chosen { box-shadow: inset 0 0 0 3px var(--accent); }
+  .gcell .val { font-size: 13px; font-weight: 600; color: var(--heading); }
+  #mini .gcell.dim { color: #cbd5e1; }
+  #upd { overflow-x: auto; min-height: 2.6em; }
+  .logwrap { max-height: 170px; overflow-y: auto; margin-top: 6px; }
+  #log td { font-size: 0.85rem; }
+  .bars { height: 120px; }
+  .bar { background: var(--accent); }
+  .bar.o { background: var(--blue); }
+  .bar span { position: absolute; top: -16px; left: 50%; transform: translateX(-50%); font-size: 0.65rem; color: var(--muted); white-space: nowrap; }
+  @media (max-width: 560px) {
+    .boards { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+    #board .gcell { font-size: 36px; }
+    .bar span { font-size: 0.55rem; }
+  }
+</style>
+</head>
+<body data-lesson="42">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Tic-tac-toe: a table of values</h1>
+  <p class="lede">The agent keeps one number for every board it has seen: its estimate of how the game will end from there, on a scale from 0 (a loss) to 1 (a win). It moves to the board with the highest number. After each move it nudges the number for its previous board towards the number for its new board. That is the whole learning rule.</p>
+
+  <section class="card">
+    <p class="note">You are <b style="color:var(--blue)">O</b>. The agent is <b style="color:var(--accent)">X</b> and moves first. Click a square to play. Find a way to beat it, then play the same moves again.</p>
+    <div class="boards">
+      <div>
+        <h3>The game</h3>
+        <div id="board"></div>
+        <p class="status" id="status"></p>
+      </div>
+      <div>
+        <h3>The agent's last choice</h3>
+        <div id="mini"></div>
+        <p class="note" id="miniNote" style="text-align:center"></p>
+      </div>
+    </div>
+    <div id="upd"></div>
+    <label class="slider"><span>Step size $\alpha$</span><input id="iA" type="range" min="0.05" max="1" step="0.05" value="0.5"><output></output></label>
+    <label class="slider"><span>Explore $\varepsilon$</span><input id="iE" type="range" min="0" max="0.5" step="0.05" value="0.1"><output></output></label>
+    <div class="row">
+      <button id="bNew" class="primary">New game</button>
+      <button id="bTrain">Train ×200 vs random player</button>
+      <span class="spacer"></span>
+      <button id="bReset" class="quiet">Forget everything</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="k">Agent wins</span><span class="v" id="sW">0</span></div>
+      <div class="stat"><span class="k">Draws</span><span class="v" id="sD">0</span></div>
+      <div class="stat"><span class="k">Agent losses</span><span class="v" id="sL">0</span></div>
+      <div class="stat"><span class="k">Boards in table</span><span class="v" id="sN">0</span></div>
+    </div>
+    <div class="logwrap">
+      <table class="data">
+        <thead><tr><th>game</th><th>old $V(S_t)$</th><th>target $V(S_{t+1})$</th><th>new $V(S_t)$</th></tr></thead>
+        <tbody id="log"></tbody>
+      </table>
+    </div>
+
+    <div class="sub">
+      <h2>How big is the table?</h2>
+      <p class="note">Every square is empty, X or O, so there are at most $3^9 = 19{,}683$ boards. Most of those cannot happen in a real game. Count the ones that can.</p>
+      <div class="row"><button id="bCount">Count positions</button><span id="countOut" class="muted"></span></div>
+      <div id="countWrap" hidden>
+        <div class="bars" id="cbars"></div>
+        <div class="axis" id="caxis"></div>
+        <p class="note">Positions by number of marks on the board. Green: X has just moved (the boards the agent's table needs). Blue: O has just moved.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>This is S&amp;B's opening example (§1.5). Score a win as $1$, a draw as $\tfrac12$ and a loss as $0$. Let $V(s)$ be the agent's estimate of its expected score from board $s$, where $s$ is a board just after the agent's own move. Boards the game has already decided are fixed:</p>
+    $$V(s) = \begin{cases} 1 & \text{X has three in a row} \\ 0 & \text{O has three in a row} \\ \tfrac12 & \text{a draw, or undecided (initial guess)} \end{cases}$$
+    <p>A known result gets its true value. Every other board starts as a coin flip.</p>
+    <p>To move, the agent looks at each board it could create and usually picks the one with the highest $V$. With probability $\varepsilon$ it picks a random move instead, to explore. After a greedy move from board $S_t$ to board $S_{t+1}$:</p>
+    $$V(S_t) \leftarrow V(S_t) + \alpha\big[V(S_{t+1}) - V(S_t)\big]$$
+    <p>The previous board's value moves a fraction $\alpha$ of the way towards the value of the board that followed it. Good outcomes leak backwards, one move per game.</p>
+    <p>When O ends the game, the agent's last board is moved towards $0$. After an exploratory move there is no update: the values estimate how well the agent does when it plays its best, and a deliberate random move says little about that.</p>
+    <p>The update uses one estimate as the target for another. That idea is called <b>temporal-difference learning</b>, and Lesson 45 makes it precise. S&amp;B count draws as $0$, which makes $V$ a probability of winning; their goal is to beat an imperfect player. Here a draw is $\tfrac12$, so the agent prefers a draw to a loss.</p>
+    <p>If $\alpha$ shrinks slowly over time, the values converge to the true expected scores against this opponent when the agent plays greedily, and the greedy moves become the best replies to this opponent (S&amp;B §1.5).</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const LINES = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
+  const X = 1, O = 2;
+  // 0 = game on, 1 = X won, 2 = O won, 3 = draw
+  function result(b) {
+    for (const [p, q, r] of LINES) if (b[p] && b[p] === b[q] && b[p] === b[r]) return b[p];
+    return b.includes(0) ? 0 : 3;
+  }
+  const winLine = (b) => LINES.find(([p, q, r]) => b[p] && b[p] === b[q] && b[p] === b[r]);
+  const key = (b) => b.join('');
+  const empties = (b) => b.map((v, i) => (v ? -1 : i)).filter((i) => i >= 0);
+
+  // ------------------------------------------------------------ the value table (X's view)
+  let V = new Map();
+  function val(b) {
+    const k = key(b);
+    if (!V.has(k)) {
+      const r = result(b);
+      V.set(k, r === X ? 1 : r === O ? 0 : 0.5);
+    }
+    return V.get(k);
+  }
+  const alpha = Course.slider('#iA', (v) => v.toFixed(2));
+  const eps = Course.slider('#iE', (v) => v.toFixed(2));
+
+  // Choose X's move: returns { m, greedy, options: [[cell, value]] }
+  function choose(b, e) {
+    const options = empties(b).map((i) => { b[i] = X; const v = val(b); b[i] = 0; return [i, v]; });
+    if (Math.random() < e) return { m: Course.choice(options)[0], greedy: false, options };
+    const best = Math.max(...options.map((o) => o[1]));
+    const ties = options.filter((o) => Math.abs(o[1] - best) < 1e-12);
+    return { m: Course.choice(ties)[0], greedy: true, options };
+  }
+  function backup(prevKey, targetV, a) {
+    const old = V.get(prevKey);
+    const nv = old + a * (targetV - old);
+    V.set(prevKey, nv);
+    return [old, targetV, nv];
+  }
+
+  // ------------------------------------------------------------ interactive game
+  let board = new Array(9).fill(0), prev, over, games = 0, W = 0, D = 0, Lo = 0, lastChoice = null;
+
+  const g = Course.grid($('board'), 3, 3, (r, c, cell) => {
+    const i = r * 3 + c, v = board[i];
+    cell.textContent = v === X ? 'X' : v === O ? 'O' : '';
+    if (v === X) cell.classList.add('x');
+    if (v === O) cell.classList.add('o');
+    const wl = winLine(board);
+    if (wl && wl.includes(i)) cell.classList.add(board[i] === X ? 'win' : 'lose');
+  });
+  g.onClick((r, c) => human(r * 3 + c));
+
+  const mini = Course.grid($('mini'), 3, 3, (r, c, cell) => {
+    const i = r * 3 + c;
+    if (!lastChoice) { cell.textContent = ''; return; }
+    const v = lastChoice.board[i];
+    if (v) { cell.textContent = v === X ? 'X' : 'O'; cell.classList.add('dim'); return; }
+    const opt = lastChoice.options.find((o) => o[0] === i);
+    cell.innerHTML = `<span class="val">${opt[1].toFixed(2)}</span>`;
+    cell.style.background = Course.heat(opt[1] - 0.5, 0.5);
+    if (i === lastChoice.m) cell.classList.add('chosen');
+  });
+
+  function logRow(old, tgt, nv) {
+    $('log').insertAdjacentHTML('afterbegin',
+      `<tr><td>${games + 1}</td><td>${old.toFixed(3)}</td><td>${tgt.toFixed(3)}</td><td>${nv.toFixed(3)}</td></tr>`);
+  }
+  function showUpdate(old, tgt, nv, why) {
+    const a = alpha();
+    Course.tex($('upd'), `\\text{${why}:}\\; V(S_t) \\leftarrow ${old.toFixed(3)} + ${Course.fmt(a)}\\,[${tgt.toFixed(3)} - ${old.toFixed(3)}] = ${nv.toFixed(3)}`, true);
+  }
+
+  function agentMove() {
+    const before = board.slice();
+    const ch = choose(board, eps());
+    board[ch.m] = X;
+    const k = key(board); val(board);
+    lastChoice = { board: before, options: ch.options, m: ch.m };
+    if (ch.greedy && prev !== null) {
+      const [o, t, n] = backup(prev, V.get(k), alpha());
+      logRow(o, t, n); showUpdate(o, t, n, 'greedy move');
+    } else if (!ch.greedy) {
+      Course.tex($('upd'), '\\text{exploratory move: no update}', true);
+    } else {
+      Course.tex($('upd'), '\\text{first move: nothing to update yet}', true);
+    }
+    $('miniNote').textContent = (ch.greedy ? 'Greedy: highest value chosen.' : 'Exploring: a random move.') + ' Each number is V of the board that move would make.';
+    prev = k;
+    mini.update();
+    finishIfOver();
+  }
+
+  let pending = null;   // the agent's reply, while it is waiting to move
+  function human(i) {
+    if (over || pending || board[i]) return;
+    board[i] = O;
+    g.update();
+    if (finishIfOver()) return;
+    pending = setTimeout(() => { pending = null; agentMove(); g.update(); }, 250);
+  }
+
+  function finishIfOver() {
+    const r = result(board);
+    if (!r) { $('status').textContent = 'Your move.'; return false; }
+    over = true;
+    if (r === O && prev !== null) {
+      const [o, t, n] = backup(prev, 0, alpha());
+      logRow(o, t, n); showUpdate(o, t, n, 'you won, so its last board moves towards 0');
+    }
+    games++;
+    if (r === X) W++; else if (r === O) Lo++; else D++;
+    $('status').textContent = r === X ? 'X wins. Press "New game".' : r === O ? 'You win. Try the same moves again.' : 'Draw.';
+    stats();
+    g.update();
+    return true;
+  }
+
+  function stats() {
+    $('sW').textContent = W; $('sD').textContent = D; $('sL').textContent = Lo; $('sN').textContent = V.size;
+  }
+
+  function newGame() {
+    clearTimeout(pending); pending = null;
+    board = new Array(9).fill(0); prev = null; over = false;
+    agentMove();
+    g.update();
+    stats();
+  }
+
+  // ------------------------------------------------------------ training against a random O
+  function trainRandom(nGames) {
+    let w = 0, d = 0, l = 0;
+    for (let n = 0; n < nGames; n++) {
+      const b = new Array(9).fill(0);
+      let p = null;
+      for (;;) {
+        const ch = choose(b, eps());
+        b[ch.m] = X;
+        const k = key(b); val(b);
+        if (ch.greedy && p !== null) backup(p, V.get(k), alpha());
+        p = k;
+        let r = result(b);
+        if (r) { r === X ? w++ : d++; break; }
+        b[Course.choice(empties(b))] = O;
+        r = result(b);
+        if (r === O) { backup(p, 0, alpha()); l++; break; }
+      }
+    }
+    return [w, d, l];
+  }
+  $('bTrain').addEventListener('click', () => {
+    const [w, d, l] = trainRandom(200);
+    $('status').textContent = `Trained on 200 games: ${w} wins, ${d} draws, ${l} losses.`;
+    stats();
+  });
+
+  $('bNew').addEventListener('click', newGame);
+  $('bReset').addEventListener('click', () => {
+    V = new Map(); games = W = D = Lo = 0; $('log').innerHTML = ''; lastChoice = null; $('upd').innerHTML = '';
+    newGame();
+  });
+
+  // ------------------------------------------------------------ counting positions
+  $('bCount').addEventListener('click', () => {
+    const seen = new Set();
+    const byMarks = new Array(10).fill(0);
+    let terminal = 0;
+    (function rec(b, p) {
+      const k = key(b);
+      if (seen.has(k)) return;
+      seen.add(k);
+      byMarks[b.filter(Boolean).length]++;
+      if (result(b)) { terminal++; return; }
+      for (let i = 0; i < 9; i++) if (!b[i]) { b[i] = p; rec(b, 3 - p); b[i] = 0; }
+    })(new Array(9).fill(0), X);
+    const xBoards = byMarks.filter((_, m) => m % 2 === 1).reduce((a, b) => a + b, 0);
+    $('countOut').textContent = `${seen.size.toLocaleString()} reachable boards (${terminal} finished). ${xBoards.toLocaleString()} have X to have just moved.`;
+    $('countWrap').hidden = false;
+    const mx = Math.max(...byMarks);
+    $('cbars').innerHTML = byMarks.map((c, m) => `<div class="bar${m % 2 === 0 ? ' o' : ''}" style="height:${(100 * c) / mx}%"><span>${c}</span></div>`).join('');
+    $('caxis').innerHTML = byMarks.map((_, m) => `<span>${m}</span>`).join('');
+  });
+
+  newGame();
+
+  // ------------------------------------------------------------ quiz
+  Course.quiz([
+    {
+      q: 'The agent moves greedily from a board with $V(S_t) = 0.5$ to one with $V(S_{t+1}) = 0.8$. With $\\alpha = 0.1$, what is the new $V(S_t)$?',
+      answer: 0.5 + 0.1 * (0.8 - 0.5),
+      tol: 0.0005,
+      explain: '$0.5 + 0.1\\,(0.8 - 0.5) = 0.53$.',
+    },
+    {
+      q: 'O wins right after the agent reached a board with $V = 0.6$. With $\\alpha = 0.5$, what does that board\'s value become?',
+      answer: 0.6 + 0.5 * (0 - 0.6),
+      tol: 0.0005,
+      explain: 'The target is $0$: $0.6 + 0.5\\,(0 - 0.6) = 0.3$.',
+    },
+    {
+      q: 'Each of the 9 squares is empty, X or O. How many boards is that, before removing impossible ones?',
+      answer: Math.pow(3, 9),
+      tol: 0,
+      explain: '$3^9 = 19{,}683$. Only 5,478 can arise in play (use "Count positions").',
+    },
+    {
+      q: 'Why does the agent skip the update after an exploratory move?',
+      choices: [
+        'Random moves always lose, so the update would be wrong',
+        'The values estimate how well the agent does when playing greedily, and a deliberate random move is not evidence about that',
+        'The board after a random move has no value yet',
+        'It saves computation',
+      ],
+      answer: 1,
+      explain: 'Updating after a random move would pull values towards how a partly random player does, not how the greedy player does.',
+    },
+  ]);
+</script>
+</body>
+</html>

@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>58. Eligibility traces | Learning RL</title>
+<meta name="description" content="A fading memory of recently visited states. When a TD error arrives, every remembered state shares the credit. TD(λ) computed online.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  #corr { width: 100%; height: 150px; display: block; margin: 8px 0 0; }
+  #eq { overflow-x: auto; overflow-y: hidden; min-height: 2.8em; }
+  .key { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.85rem; color: var(--muted); justify-content: center; }
+  .key b { display: inline-block; width: 14px; height: 10px; vertical-align: middle; margin-right: 4px; border-radius: 2px; }
+  #fig { height: 260px; }
+  @media (max-width: 560px) { #eq .katex-display { font-size: 0.85em; } }
+</style>
+</head>
+<body data-lesson="58">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Eligibility traces</h1>
+  <p class="lede">The λ-return of Lesson 57 looks forward, so it has to wait for the future. An eligibility trace looks backward instead: each state leaves a footprint that fades by $\gamma\lambda$ per step. When a TD error arrives, every state with a footprint is updated in proportion to it. This is TD(λ), and it learns on every step.</p>
+
+  <section class="card">
+    <canvas id="corr" aria-label="Corridor with traces and values"></canvas>
+    <div class="key">
+      <span><b style="background:rgba(42,122,226,.6)"></b>trace $z(s)$</span>
+      <span><b style="background:var(--accent)"></b>value $V(s)$</span>
+    </div>
+    <div id="eq"></div>
+    <p class="status" id="status"></p>
+    <div class="row center">
+      <button id="bL">← Left</button>
+      <button id="bR">Right →</button>
+      <button id="bAuto" class="primary">Walk randomly</button>
+      <button id="bReset" class="quiet">Reset</button>
+    </div>
+    <label class="slider"><span>$\lambda$</span><input id="iL" type="range" min="0" max="1" step="0.05" value="0.8"><output></output></label>
+    <div class="row">
+      <label class="muted">Trace:
+        <select id="kind"><option value="acc">accumulating</option><option value="rep">replacing</option></select>
+      </label>
+      <span class="muted">$\gamma = 0.9$, $\alpha = 0.5$</span>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="k">Episodes</span><span class="v" id="sEp">0</span></div>
+      <div class="stat"><span class="k">Steps this episode</span><span class="v" id="sSt">0</span></div>
+      <div class="stat"><span class="k">States updated last step</span><span class="v" id="sUp">0</span></div>
+    </div>
+    <p class="note">Lesson 1's corridor: start at the left, the flag pays $+1$ and ends the episode, every other step pays $0$. $V$ starts at 0, so nothing is learned until the flag. Walk there and watch the last step's TD error light up the whole trail. Try $\lambda = 0$: only the last state learns, as in TD(0). Step back and forth over one cell to see an accumulating trace grow above 1.</p>
+
+    <div class="sub">
+      <h2>TD(λ) on the 19-state walk</h2>
+      <p class="note">Online TD(λ) with accumulating traces, measured as in Lessons 56 and 57 (RMS error over the first 10 episodes, 30 runs).</p>
+      <div class="row"><button id="bFig">Run comparison</button></div>
+      <canvas class="chart" id="fig" hidden></canvas>
+      <div class="key" id="figKey" hidden></div>
+      <p class="note" id="figNote" hidden>For small $\alpha$ the curves match Lesson 57's λ-return figure: TD(λ) approximates the λ-return. At large $\alpha$ and large $\lambda$ it does worse, because a state visited several times gets several large updates within one episode.</p>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>TD(λ) keeps a trace vector $\mathbf{z}_t$, the same size as the weights $\mathbf{w}$, starting at $\mathbf{z}_{-1} = \mathbf{0}$ each episode. On every step:</p>
+    $$\begin{aligned}
+      \mathbf{z}_t &= \gamma\lambda\, \mathbf{z}_{t-1} + \nabla \hat v(S_t, \mathbf{w}_t) \\
+      \delta_t &= R_{t+1} + \gamma\, \hat v(S_{t+1}, \mathbf{w}_t) - \hat v(S_t, \mathbf{w}_t) \\
+      \mathbf{w}_{t+1} &= \mathbf{w}_t + \alpha\, \delta_t\, \mathbf{z}_t
+    \end{aligned}$$
+    <p>The trace fades by $\gamma\lambda$ each step, then grows by the gradient of the current estimate: the weights that produced $\hat v(S_t, \mathbf{w}_t)$ get credit. Then one TD error (Lesson 46) updates every component in proportion to its trace.</p>
+    <p>In a table, $\hat v(s, \mathbf{w}) = V(s)$ and the gradient is 1 for the current state and 0 elsewhere. So each state has its own trace:</p>
+    $$z_t(s) = \gamma\lambda\, z_{t-1}(s) + \mathbb{1}[S_t = s], \qquad V(s) \leftarrow V(s) + \alpha\, \delta_t\, z_t(s) \ \text{ for all } s$$
+    <p>Unrolled, $z_t(s) = \sum_{k \le t,\ S_k = s} (\gamma\lambda)^{t-k}$: a sum of fading footprints, one per visit. A <b>replacing</b> trace sets $z_t(S_t) = 1$ instead of adding 1, so it never exceeds 1.</p>
+    <p>Why this matches Lesson 57. Suppose $V$ is held fixed during an episode and the updates are added up at the end. The total change to $V(s)$ is $\alpha \sum_t \delta_t z_t(s)$. Swap the order of summation:</p>
+    $$\sum_{t} \delta_t\, z_t(s) = \sum_{k:\ S_k = s}\ \sum_{t \ge k} (\gamma\lambda)^{t-k} \delta_t = \sum_{k:\ S_k = s} \big(G^\lambda_k - V(S_k)\big)$$
+    <p>The last step is Lesson 57's identity $G^\lambda_k - V(S_k) = \sum_{t \ge k} (\gamma\lambda)^{t-k} \delta_t$. So the backward view (traces) adds up to exactly the forward view (λ-returns). Updating online, as here, changes $V$ during the episode and makes the match approximate, close when $\alpha$ is small.</p>
+    <p>The cost is one extra number per state and an update of every state with a nonzero trace on each step. The gain is that credit from a reward reaches many past states at once, without waiting for the episode to end.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const N = 9, FLAG = 8, GAMMA = 0.9, ALPHA = 0.5;     // states 0..7, flag at 8 (terminal)
+  const lam = Course.slider('#iL', (v) => v.toFixed(2));
+  let V, z, s, steps, episodes, lastUpd = 0, timer = null;
+
+  function reset() {
+    stop();
+    V = new Array(N).fill(0); z = new Array(N).fill(0); s = 0; steps = 0; episodes = 0; lastUpd = 0;
+    Course.tex($('eq'), '\\delta = R + \\gamma V(S\') - V(S), \\qquad V(s) \\mathrel{+}= \\alpha\\,\\delta\\, z(s)', true);
+    $('status').textContent = 'Walk to the flag.';
+    draw();
+  }
+
+  const f = (x) => Course.fmt(Math.round(x * 1000) / 1000, 3);
+  function move(dir) {
+    if (s === FLAG) newEpisode();
+    const s2 = Math.max(0, Math.min(FLAG, s + dir));
+    const r = s2 === FLAG ? 1 : 0;
+    const gl = GAMMA * lam();
+    // Trace: decay everything, then mark the current state.
+    for (let i = 0; i < N; i++) z[i] *= gl;
+    z[s] = $('kind').value === 'acc' ? z[s] + 1 : 1;
+    const vNext = s2 === FLAG ? 0 : V[s2];
+    const delta = r + GAMMA * vNext - V[s];
+    lastUpd = 0;
+    for (let i = 0; i < FLAG; i++) {
+      if (z[i] > 1e-9 && delta !== 0) lastUpd++;
+      V[i] += ALPHA * delta * z[i];
+    }
+    Course.tex($('eq'), `\\begin{aligned} \\delta &= ${r} + 0.9\\,(${f(vNext)}) - ${f(V[s] - ALPHA * delta * z[s])} = ${f(delta)} \\\\ ` +
+      `V(s) &\\mathrel{+}= 0.5 \\times ${f(delta)} \\times z(s) \\ \\text{ for every } s \\end{aligned}`, true);
+    steps++; s = s2;
+    if (s === FLAG) {
+      episodes++;
+      $('status').textContent = `Flag. δ = ${f(delta)} reached ${lastUpd} state${lastUpd === 1 ? '' : 's'} through their traces. Step again to start a new episode.`;
+    } else {
+      $('status').textContent = delta === 0 ? 'δ = 0, so nothing changes. The trail of footprints grows.' : `δ = ${f(delta)} updated ${lastUpd} state${lastUpd === 1 ? '' : 's'}.`;
+    }
+    draw();
+  }
+  function newEpisode() { s = 0; steps = 0; z.fill(0); }
+
+  const ctx = $('corr').getContext('2d');
+  function draw() {
+    const c = $('corr'), dpr = window.devicePixelRatio || 1, W = c.clientWidth, H = c.clientHeight;
+    if (!W) return;
+    c.width = W * dpr; c.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+    const gap = 4, cw = (W - gap * (N - 1)) / N, top = 4, ch = H - 44;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const zmax = Math.max(1, ...z);
+    for (let i = 0; i < N; i++) {
+      const x = i * (cw + gap);
+      ctx.fillStyle = i === FLAG ? '#fef3c7' : '#f9fafb';
+      ctx.fillRect(x, top, cw, ch);
+      if (i < FLAG) {
+        // value: green from the bottom (V lies in [0, 1] here)
+        const vh = Math.max(0, Math.min(1, V[i])) * ch;
+        ctx.fillStyle = 'rgba(5,150,105,0.85)'; ctx.fillRect(x, top + ch - vh, cw, vh);
+        // trace: blue footprint from the top, scaled to the largest trace
+        const zh = (z[i] / zmax) * ch * 0.5;
+        ctx.fillStyle = `rgba(42,122,226,${0.25 + 0.45 * Math.min(1, z[i])})`; ctx.fillRect(x + cw * 0.2, top, cw * 0.6, zh);
+      }
+      ctx.strokeStyle = i === s ? Course.colors.green : '#e5e7eb'; ctx.lineWidth = i === s ? 3 : 1;
+      ctx.strokeRect(x + 0.5, top + 0.5, cw - 1, ch - 1);
+      ctx.font = `${Math.min(22, cw * 0.55)}px sans-serif`;
+      if (i === s) ctx.fillText('🤖', x + cw / 2, top + ch / 2);
+      else if (i === FLAG) ctx.fillText('🏁', x + cw / 2, top + ch / 2);
+      ctx.font = '10px -apple-system, sans-serif';
+      if (i < FLAG) {
+        ctx.fillStyle = '#2a7ae2'; ctx.fillText(z[i] ? z[i].toFixed(2) : '0', x + cw / 2, top + ch + 10);
+        ctx.fillStyle = '#047857'; ctx.fillText(V[i].toFixed(2), x + cw / 2, top + ch + 24);
+      }
+    }
+    $('sEp').textContent = episodes; $('sSt').textContent = steps; $('sUp').textContent = lastUpd;
+  }
+
+  function stop() { clearInterval(timer); timer = null; $('bAuto').textContent = 'Walk randomly'; }
+  $('bL').addEventListener('click', () => move(-1));
+  $('bR').addEventListener('click', () => move(1));
+  $('bAuto').addEventListener('click', () => {
+    if (timer) return stop();
+    $('bAuto').textContent = 'Pause';
+    timer = setInterval(() => { move(Math.random() < 0.5 ? -1 : 1); if (s === FLAG) stop(); }, 120);
+  });
+  $('bReset').addEventListener('click', reset);
+  $('kind').addEventListener('change', () => { z.fill(0); newEpisode(); draw(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+    if (e.key === 'ArrowLeft') move(-1);
+    if (e.key === 'ArrowRight') move(1);
+  });
+  new ResizeObserver(() => V && draw()).observe($('corr'));
+  reset();
+
+  // ------------------------------------------------------------ online TD(λ) on the 19-state walk
+  const NS = 19, START = 10;
+  const TRUE = Array.from({ length: NS + 2 }, (_, i) => (i === 0 || i === NS + 1 ? 0 : (i - 10) / 10));
+  function errorFor(l, a, runs = 30, E = 10) {
+    let total = 0;
+    for (let k = 0; k < runs; k++) {
+      const Vv = new Float64Array(NS + 2), zz = new Float64Array(NS + 2);
+      for (let e = 0; e < E; e++) {
+        zz.fill(0);
+        let x = START;
+        while (x !== 0 && x !== NS + 1) {
+          const x2 = x + (Math.random() < 0.5 ? -1 : 1);
+          const r = x2 === 0 ? -1 : x2 === NS + 1 ? 1 : 0;
+          for (let i = 1; i <= NS; i++) zz[i] *= l;          // γ = 1
+          zz[x] += 1;
+          const d = r + Vv[x2] - Vv[x];                     // V(terminal) stays 0
+          if (d !== 0) for (let i = 1; i <= NS; i++) Vv[i] += a * d * zz[i];
+          x = x2;
+        }
+        let se = 0;
+        for (let i = 1; i <= NS; i++) se += (Vv[i] - TRUE[i]) ** 2;
+        total += Math.sqrt(se / NS);
+      }
+    }
+    return total / (runs * E);
+  }
+  const LAMS = [0, 0.4, 0.8, 0.9, 0.95, 0.975, 1];
+  const COLS = ['#dc2626', '#d97706', '#059669', '#2a7ae2', '#7c3aed', '#db2777', '#374151'];
+  $('figKey').innerHTML = LAMS.map((l, j) => `<span><b style="background:${COLS[j]}"></b>λ = ${l}</span>`).join('');
+  const fig = Course.lineChart($('fig'), { xLabel: 'α', yLabel: 'average RMS error', yMin: 0.25, yMax: 0.55, xMin: 0, xMax: 1 });
+  $('bFig').addEventListener('click', () => {
+    $('bFig').disabled = true; $('bFig').textContent = 'Running…';
+    setTimeout(() => {
+      const AL = Array.from({ length: 11 }, (_, i) => i / 10);
+      fig.draw(LAMS.map((l, j) => ({ data: AL.map((a) => [a, errorFor(l, a)]), color: COLS[j], width: 1.5 })));
+      $('fig').hidden = false; $('figKey').hidden = false; $('figNote').hidden = false;
+      $('bFig').disabled = false; $('bFig').textContent = 'Run again';
+    }, 30);
+  });
+
+  Course.quiz([
+    {
+      q: '$\\gamma\\lambda = 0.8$. A state was visited once, 3 steps ago, and not since. What is its trace now?',
+      answer: Math.pow(0.8, 3),
+      explain: 'The footprint of 1 has faded three times: $0.8^3 = 0.512$.',
+    },
+    {
+      q: 'Accumulating trace, $\\gamma\\lambda = 0.8$. A state was visited 2 steps ago and again now. What is its trace?',
+      answer: 1 + Math.pow(0.8, 2),
+      explain: '$0.8^2 + 1 = 1.64$. A replacing trace would be exactly 1.',
+    },
+    {
+      q: '$\\alpha = 0.1$ and the TD error is $\\delta = 1$. By how much does a state with trace $0.512$ change?',
+      answer: 0.1 * 1 * 0.512,
+      explain: '$\\alpha\\,\\delta\\,z = 0.1 \\times 1 \\times 0.512 = 0.0512$.',
+    },
+    {
+      q: 'With $\\lambda = 0$, which states does a TD error update?',
+      choices: ['Every state visited this episode, equally', 'Only the current state $S_t$', 'Only the next state $S_{t+1}$', 'No states'],
+      answer: 1,
+      explain: 'All old traces are multiplied by $\\gamma \\cdot 0 = 0$, so only $z(S_t) = 1$ remains. That is TD(0).',
+    },
+  ]);
+</script>
+</body>
+</html>

@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>25. Now plus later | Learning RL</title>
+<meta name="description" content="A return is the next reward plus the discounted return after it. So a value is the expected next reward plus the discounted value of where you land.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  #grid { max-width: 440px !important; }
+  .gcell.goal { background: var(--accent-soft); }
+  .gcell.pit { background: var(--red-soft); }
+  .gcell.sel { box-shadow: inset 0 0 0 3px var(--heading); }
+  .gcell.next { box-shadow: inset 0 0 0 3px var(--blue); }
+  .gcell { font-weight: 600; }
+  .term { display: flex; flex-direction: column; align-items: center; line-height: 1.1; }
+  .term small { font-size: 0.6em; color: var(--heading); }
+  .pr { position: absolute; top: 2px; left: 4px; font-size: 0.62em; color: var(--blue); font-weight: 700; }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }
+  .seg button { border: 0; border-radius: 0; color: var(--muted); }
+  .seg button.on { color: #fff; }
+  .split { display: flex; height: 26px; border-radius: 4px; overflow: hidden; margin: 8px 0 2px; border: 1px solid var(--border); background: var(--soft); }
+  .split div { display: flex; align-items: center; justify-content: center; color: #fff; font-size: 0.8rem; font-weight: 600; white-space: nowrap; overflow: hidden; transition: width 0.2s ease; }
+  #look .katex { font-size: 1.05em; }
+  #look { overflow-x: auto; overflow-y: hidden; min-height: 3em; }
+  .tablewrap { overflow-x: auto; }
+  #epTable tr.hot td { background: var(--accent-soft); }
+  #epTable td.done { color: var(--accent); font-weight: 600; }
+  #backEq { overflow-x: auto; overflow-y: hidden; min-height: 2.4em; text-align: center; }
+</style>
+</head>
+<body data-lesson="25">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Now plus later</h1>
+  <p class="lede">A return is the next reward plus everything after it, discounted once. Average that over what can happen next and you get the core of every value method: a state's value is the expected next reward plus the discounted value of the state you land in.</p>
+
+  <section class="card">
+    <h2>A return, computed backwards</h2>
+    <p class="note">Sample an episode on the icy grid (Lesson 20's arrows, ε = 0.2), then fill in the returns from the end. Each $G_t$ needs only the reward after it and the $G_{t+1}$ below it.</p>
+    <div class="row">
+      <button id="bEp" class="primary">Sample episode</button>
+      <button id="bBack" disabled>Fill one return</button>
+      <button id="bAllBack" class="quiet" disabled>Fill all</button>
+    </div>
+    <div id="backEq"></div>
+    <div class="tablewrap">
+      <table class="data">
+        <thead><tr><th>$t$</th><th>$S_t$</th><th>$A_t$</th><th>$R_{t+1}$</th><th>$G_t$</th></tr></thead>
+        <tbody id="epTable"></tbody>
+      </table>
+    </div>
+
+    <div class="sub">
+      <h2>A value, one step ahead</h2>
+      <div class="row">
+        <span class="muted">Policy:</span>
+        <span class="seg"><button id="pRandom" class="on">Random</button><button id="pArrows">Arrows, ε = 0.2</button></span>
+      </div>
+      <p class="note">Cells show $v_\pi$. Click or hover a cell: the blue cells are where it can land next, with their probability $p_\pi(s' \mid s)$ under the policy and the ice.</p>
+      <div id="grid"></div>
+      <div class="split" id="split"></div>
+      <p class="note" id="splitNote"></p>
+      <div id="look"></div>
+    </div>
+    <label class="slider"><span>Step reward</span><input id="iStep" type="range" min="-1" max="0" step="0.25" value="0"><output></output></label>
+    <p class="note">The reward for any move that does not end the episode. Both parts use it; $\gamma = 0.9$.</p>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>Pull the first reward out of the return:</p>
+    $$\begin{aligned}
+      G_t &= R_{t+1} + \gamma R_{t+2} + \gamma^2 R_{t+3} + \dots \\
+      &= R_{t+1} + \gamma\big(R_{t+2} + \gamma R_{t+3} + \dots\big) \\
+      &= R_{t+1} + \gamma\, G_{t+1}
+    \end{aligned}$$
+    <p>With $G_T = 0$ at the end of an episode, this computes every return in one backward pass. That is the table above.</p>
+    <p>Now take expectations. Given $S_t = s$, the expected $G_{t+1}$ depends on where the agent lands. Given it lands in $s'$, the Markov property (Lesson 15) says the future looks the same as starting in $s'$, so that expectation is $v_\pi(s')$:</p>
+    $$\begin{aligned}
+      v_\pi(s) &= \mathbb{E}_\pi[R_{t+1} + \gamma G_{t+1} \mid S_t = s] \\
+      &= \mathbb{E}_\pi[R_{t+1} + \gamma\, v_\pi(S_{t+1}) \mid S_t = s]
+    \end{aligned}$$
+    <p>Value now equals expected reward now plus discounted value later. In the bar above, green is $\mathbb{E}[R_{t+1}]$ and blue is $\gamma\,\mathbb{E}[v_\pi(S_{t+1})]$.</p>
+    <p>This is a statement about $v_\pi$ itself: every state's value is tied to its neighbours' values. Lesson 26 writes the expectation out in full, and Lesson 45 learns from it one sample at a time.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  // ---- The icy gridworld (Lessons 18–19's layout, used in Lessons 20–29) ---
+  // 4×5 grid. G = goal (+10, ends), P = pit (−10, ends), # = wall. Every other move pays `step`.
+  // An action goes where you meant with probability 1 − slip, and slips to each side with slip/2.
+  // Moving into the wall or the edge leaves you where you are.
+  const MAP = ['....G', '.#..P', '...#.', '.....'];
+  const ROWS = 4, COLS = 5, NS = ROWS * COLS;
+  const ARROW = ['↑', '→', '↓', '←'], ANAME = ['up', 'right', 'down', 'left'];
+  const DR = [-1, 0, 1, 0], DC = [0, 1, 0, -1];
+  const kind = (s) => MAP[Math.floor(s / COLS)][s % COLS];
+  const isWall = (s) => kind(s) === '#';
+  const isTerm = (s) => kind(s) === 'G' || kind(s) === 'P';
+  const STATES = [...Array(NS).keys()].filter((s) => !isWall(s) && !isTerm(s));
+  const START = 15;
+  const rc = (s) => [Math.floor(s / COLS), s % COLS];
+  const cellName = (s) => `(${rc(s)[0]},${rc(s)[1]})`;
+
+  function move(s, d) {
+    const [r, c] = rc(s), nr = r + DR[d], nc = c + DC[d];
+    if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) return s;
+    const s2 = nr * COLS + nc;
+    return isWall(s2) ? s : s2;
+  }
+  const reward = (W, s2) => (kind(s2) === 'G' ? W.goal : kind(s2) === 'P' ? W.pit : W.step);
+  // The three possible results of action a in state s: meant, slip clockwise, slip anticlockwise.
+  function outcomes(W, s, a) {
+    return [[a, 1 - W.slip], [(a + 1) % 4, W.slip / 2], [(a + 3) % 4, W.slip / 2]]
+      .filter(([, p]) => p > 0)
+      .map(([d, p]) => { const s2 = move(s, d); return { d, p, s2, r: reward(W, s2) }; });
+  }
+  const uniform = () => { const pi = []; STATES.forEach((s) => (pi[s] = [0.25, 0.25, 0.25, 0.25])); return pi; };
+  const deterministic = (arrows) => { const pi = []; STATES.forEach((s) => { pi[s] = [0, 0, 0, 0]; pi[s][arrows[s]] = 1; }); return pi; };
+
+  // Exact v_π: solve (I − γ P_π) v = r_π over the non-terminal states by Gaussian elimination.
+  function evaluate(W, pi) {
+    const n = STATES.length, idx = new Map(STATES.map((s, i) => [s, i]));
+    const A = STATES.map(() => new Array(n + 1).fill(0));
+    STATES.forEach((s, i) => {
+      A[i][i] += 1;
+      for (let a = 0; a < 4; a++) {
+        if (!pi[s][a]) continue;
+        for (const o of outcomes(W, s, a)) {
+          const w = pi[s][a] * o.p;
+          A[i][n] += w * o.r;
+          if (!isTerm(o.s2)) A[i][idx.get(o.s2)] -= W.gamma * w;
+        }
+      }
+    });
+    for (let c = 0; c < n; c++) {
+      let piv = c;
+      for (let r = c + 1; r < n; r++) if (Math.abs(A[r][c]) > Math.abs(A[piv][c])) piv = r;
+      [A[c], A[piv]] = [A[piv], A[c]];
+      for (let r = 0; r < n; r++) {
+        if (r === c || !A[r][c]) continue;
+        const f = A[r][c] / A[c][c];
+        for (let k = c; k <= n; k++) A[r][k] -= f * A[c][k];
+      }
+    }
+    const v = new Array(NS).fill(0);
+    STATES.forEach((s, i) => (v[s] = A[i][n] / A[i][i]));
+    return v;
+  }
+  // q(s, a) = Σ p(s', r | s, a) [r + γ v(s')]
+  const qOf = (W, v, s, a) => outcomes(W, s, a).reduce((t, o) => t + o.p * (o.r + W.gamma * v[o.s2]), 0);
+  const qAll = (W, v) => { const q = []; STATES.forEach((s) => (q[s] = [0, 1, 2, 3].map((a) => qOf(W, v, s, a)))); return q; };
+  // v_* by value iteration (Lesson 33), run to convergence.
+  function optimal(W) {
+    let v = new Array(NS).fill(0);
+    for (let k = 0; k < 5000; k++) {
+      let delta = 0;
+      const nv = v.slice();
+      STATES.forEach((s) => { nv[s] = Math.max(...[0, 1, 2, 3].map((a) => qOf(W, v, s, a))); delta = Math.max(delta, Math.abs(nv[s] - v[s])); });
+      v = nv;
+      if (delta < 1e-12) break;
+    }
+    return v;
+  }
+  function stepEnv(W, s, a) {
+    const os = outcomes(W, s, a), o = os[Course.sample(os.map((x) => x.p))];
+    return o;
+  }
+  // One episode under π from s0 (and optional forced first action a0). Returns the steps.
+  function episode(W, pi, s0, a0 = null, maxT = 1000) {
+    const steps = [];
+    let s = s0;
+    for (let t = 0; t < maxT && !isTerm(s); t++) {
+      const a = t === 0 && a0 !== null ? a0 : Course.sample(pi[s]);
+      const o = stepEnv(W, s, a);
+      steps.push({ s, a, d: o.d, r: o.r, s2: o.s2 });
+      s = o.s2;
+    }
+    return steps;
+  }
+  // Two decimals without a minus sign on zero.
+  const f2 = (x) => (Math.abs(x) < 0.005 ? 0 : x).toFixed(2);
+  const discounted = (W, steps) => steps.reduceRight((g, x) => x.r + W.gamma * g, 0);
+  // ---- end of the icy gridworld ---------------------------------------------
+
+  // Lesson 19's route: up the left side, then along the top row.
+  const PRESET = { 0: 1, 1: 1, 2: 1, 3: 1, 5: 0, 7: 0, 8: 0, 10: 0, 11: 3, 12: 0, 14: 2, 15: 0, 16: 3, 17: 3, 18: 3, 19: 3 };
+  const ARROWS_EPS = (() => { const pi = []; STATES.forEach((s) => (pi[s] = [0, 1, 2, 3].map((a) => (a === PRESET[s] ? 0.8 : 0) + 0.05))); return pi; })();
+  const step = Course.slider('#iStep', (x) => x.toFixed(2), () => { refresh(); });
+  let W, which = 'random', pi, v, sel = 8, ep = null, filled = 0, G = [];
+
+  // ---------------- part 1: backward returns
+  function renderTable() {
+    if (!ep) return;
+    const T = ep.length;
+    $('epTable').innerHTML = ep.map((x, t) => {
+      const known = t >= T - filled;
+      return `<tr class="${t === T - filled && filled ? 'hot' : ''}"><td>${t}</td><td>${cellName(x.s)}</td><td>${ARROW[x.a]}</td><td>${x.r}</td><td class="${known ? 'done' : ''}">${known ? f2(G[t]) : '?'}</td></tr>`;
+    }).join('') + `<tr><td>${T}</td><td>${kind(ep[T - 1].s2) === 'G' ? '🏁' : '🕳️'}</td><td></td><td></td><td class="done">0</td></tr>`;
+    $('bBack').disabled = $('bAllBack').disabled = filled >= T;
+  }
+  function sampleEp() {
+    W = world();
+    do { ep = episode(W, ARROWS_EPS, START, null, 60); } while (!ep.length || !isTerm(ep[ep.length - 1].s2));
+    G = new Array(ep.length + 1).fill(0);
+    for (let t = ep.length - 1; t >= 0; t--) G[t] = ep[t].r + W.gamma * G[t + 1];
+    filled = 0;
+    Course.tex($('backEq'), `\\text{${ep.length} steps. Start from } G_{${ep.length}} = 0.`, true);
+    renderTable();
+  }
+  function fillOne() {
+    if (!ep || filled >= ep.length) return;
+    filled++;
+    const t = ep.length - filled;
+    Course.tex($('backEq'), `G_{${t}} = R_{${t + 1}} + \\gamma\\, G_{${t + 1}} = ${ep[t].r} + 0.9 \\times ${f2(G[t + 1])} = ${f2(G[t])}`, true);
+    renderTable();
+  }
+  $('bEp').addEventListener('click', sampleEp);
+  $('bBack').addEventListener('click', fillOne);
+  $('bAllBack').addEventListener('click', () => { while (filled < ep.length) fillOne(); });
+
+  // ---------------- part 2: one-step lookahead
+  const world = () => ({ slip: 0.2, step: step(), goal: 10, pit: -10, gamma: 0.9 });
+
+  // p_π(s'|s), expected reward, expected next value.
+  function lookahead(s) {
+    const next = new Map();
+    let ER = 0;
+    for (let a = 0; a < 4; a++) {
+      for (const o of outcomes(W, s, a)) {
+        const w = pi[s][a] * o.p;
+        if (!w) continue;
+        ER += w * o.r;
+        next.set(o.s2, (next.get(o.s2) || 0) + w);
+      }
+    }
+    let EV = 0;
+    next.forEach((p, s2) => (EV += p * v[s2]));
+    return { next, ER, EV };
+  }
+
+  const grid = Course.grid($('grid'), ROWS, COLS, (r, c, el) => {
+    const s = r * COLS + c, k = kind(s);
+    if (k === '#') { el.classList.add('wall'); return; }
+    if (k === 'G') { el.classList.add('goal'); el.innerHTML = '<span class="term">🏁<small>+10</small></span>'; }
+    else if (k === 'P') { el.classList.add('pit'); el.innerHTML = '<span class="term">🕳️<small>−10</small></span>'; }
+    else if (v) { el.style.background = Course.heat(v[s], 10); el.textContent = f2(v[s]); }
+    if (!v) return;
+    const L = lookahead(sel);
+    if (s === sel) el.classList.add('sel');
+    else if (L.next.has(s)) el.classList.add('next');
+    if (L.next.has(s)) el.insertAdjacentHTML('beforeend', `<span class="pr">${L.next.get(s).toFixed(2)}</span>`);
+  });
+  const pick = (e) => {
+    const d = e.target.closest('.gcell');
+    if (!d) return;
+    const s = +d.dataset.r * COLS + +d.dataset.c;
+    if (STATES.includes(s) && s !== sel) { sel = s; drawLook(); }
+  };
+  $('grid').addEventListener('click', pick);
+  $('grid').addEventListener('mouseover', pick);
+  $('grid').classList.add('clickable');
+
+  function drawLook() {
+    grid.update();
+    const { next, ER, EV } = lookahead(sel);
+    const later = W.gamma * EV, total = ER + later;
+    const mag = Math.abs(ER) + Math.abs(later) || 1;
+    $('split').innerHTML =
+      `<div style="width:${(100 * Math.abs(ER)) / mag}%;background:${ER >= 0 ? Course.colors.green : Course.colors.red}">${Math.abs(ER) / mag > 0.18 ? 'now ' + f2(ER) : ''}</div>` +
+      `<div style="width:${(100 * Math.abs(later)) / mag}%;background:${later >= 0 ? Course.colors.blue : Course.colors.purple}">${Math.abs(later) / mag > 0.18 ? 'later ' + f2(later) : ''}</div>`;
+    $('splitNote').textContent = `Bar widths show the size of each part (red or purple when negative). Now: ${f2(ER)}. Later: ${f2(later)}.`;
+    const par = (x) => (x < -0.004 ? `(${f2(x)})` : f2(x));
+    const rows = [...next.entries()].sort((a, b) => b[1] - a[1])
+      .map(([s2, p]) => `${p.toFixed(2)} \\cdot ${par(v[s2])}`);
+    const lines = [];
+    for (let i = 0; i < rows.length; i += 2) lines.push(rows.slice(i, i + 2).join(' + '));
+    Course.tex($('look'), `\\begin{aligned}
+      v_\\pi${cellName(sel)} &= \\mathbb{E}[R_{t+1}] + \\gamma\\, \\mathbb{E}[v_\\pi(S_{t+1})] \\\\
+      \\mathbb{E}[v_\\pi(S')] &= ${lines.join(' \\\\ &+ ')} \\\\ &= ${f2(EV)} \\\\
+      v_\\pi${cellName(sel)} &= ${f2(ER)} + 0.9 \\times ${par(EV)} \\\\ &= ${f2(total)}
+    \\end{aligned}`, true);
+  }
+
+  function refresh() {
+    W = world();
+    pi = which === 'random' ? uniform() : ARROWS_EPS;
+    v = evaluate(W, pi);
+    drawLook();
+    if (ep) sampleEp();
+  }
+  for (const [id, w] of [['pRandom', 'random'], ['pArrows', 'arrows']]) {
+    $(id).addEventListener('click', () => {
+      which = w;
+      $('pRandom').classList.toggle('on', w === 'random');
+      $('pArrows').classList.toggle('on', w === 'arrows');
+      refresh();
+    });
+  }
+  refresh();
+  sampleEp();
+
+  Course.quiz([
+    {
+      q: '$R_{t+1} = 2$, $G_{t+1} = 10$ and $\\gamma = 0.5$. What is $G_t$?',
+      answer: 2 + 0.5 * 10,
+      explain: '$G_t = R_{t+1} + \\gamma G_{t+1} = 2 + 0.5 \\times 10 = 7$.',
+    },
+    {
+      q: 'An episode has rewards $-1, -1, +10$ and $\\gamma = 0.9$. Working backwards, what is $G_0$?',
+      answer: -1 + 0.9 * (-1 + 0.9 * 10),
+      tol: 0.001,
+      hint: 'Start with $G_2 = 10$, then $G_1 = -1 + 0.9 \\times G_2$.',
+      explain: '$G_2 = 10$, $G_1 = -1 + 9 = 8$, $G_0 = -1 + 0.9 \\times 8 = 6.2$.',
+    },
+    {
+      q: 'From a state, the expected next reward is $-0.4$ and the expected value of the next state is $5$. With $\\gamma = 0.9$, what is $v_\\pi(s)$?',
+      answer: -0.4 + 0.9 * 5,
+      tol: 0.001,
+      explain: '$v_\\pi(s) = \\mathbb{E}[R_{t+1}] + \\gamma \\mathbb{E}[v_\\pi(S_{t+1})] = -0.4 + 4.5 = 4.1$.',
+    },
+    {
+      q: 'What justifies replacing $\\mathbb{E}[G_{t+1} \\mid S_{t+1} = s\']$ with $v_\\pi(s\')$?',
+      choices: [
+        'Discounting makes later rewards negligible',
+        'The Markov property: from $s\'$, the future does not depend on how the agent got there',
+        'The policy is deterministic',
+      ],
+      answer: 1,
+      explain: 'Because the next state carries all the relevant information, the expected return from $s\'$ is $v_\\pi(s\')$ whatever happened before.',
+    },
+  ]);
+</script>
+</body>
+</html>

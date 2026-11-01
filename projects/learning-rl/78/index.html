@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>78. Generalised advantage estimation | Learning RL</title>
+<meta name="description" content="Blend one-step TD errors into an advantage estimate with a decaying weight λ. One slider moves between the biased, steady TD estimate and the unbiased, noisy Monte Carlo one.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .logwrap { max-height: 300px; overflow: auto; margin-top: 8px; }
+  #tbl tbody tr { cursor: pointer; }
+  #tbl tbody tr:hover td { background: var(--soft); }
+  #tbl tbody tr.sel td { background: var(--accent-soft); }
+  #tbl td.w { position: relative; min-width: 46px; }
+  #tbl td.w i { position: absolute; left: 3px; bottom: 3px; height: 4px; background: var(--purple); border-radius: 2px; }
+  #tbl td.ahat { font-weight: 600; color: var(--heading); }
+  .eq { min-height: 2.4em; text-align: center; margin: 6px 0; line-height: 2; }
+  .stats .v { font-size: 1.2rem; }
+</style>
+</head>
+<body data-lesson="78">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Generalised advantage estimation</h1>
+  <p class="lede">The one-step TD error is a steady but biased advantage estimate when the critic is wrong. The full return minus a baseline is unbiased but noisy. <b>GAE</b> adds up all future TD errors with weights that shrink by $\gamma\lambda$ per step, so a single knob $\lambda$ slides between the two, exactly as λ-returns did for values in Lesson 57.</p>
+
+  <section class="card">
+    <h2>One episode, every estimate</h2>
+    <p class="note">The slippery corridor (Lessons 75 to 77) with policy $\pi(\rightarrow) = 0.8$ in every cell and $\gamma = 1$. The critic is part-trained: $\hat v = c\, v_\pi$, a fraction $c$ of the way from 0 to the truth. Click a row to see its weights.</p>
+    <label class="slider"><span>$\lambda$</span><input id="lam" type="range" min="0" max="1" step="0.05" value="0.5"><output></output></label>
+    <label class="slider"><span>Critic progress $c$</span><input id="cc" type="range" min="0" max="1" step="0.05" value="0.5"><output></output></label>
+    <div class="row">
+      <button id="bNew" class="primary">New episode</button>
+    </div>
+    <div class="logwrap">
+      <table class="data" id="tbl"></table>
+    </div>
+    <div class="eq" id="eq"></div>
+    <div class="stats">
+      <div class="stat"><span class="k">$\lambda = 0$: $\delta_t$</span><span class="v" id="sTD">–</span></div>
+      <div class="stat"><span class="k">your $\lambda$: $\hat A_t$</span><span class="v" id="sG">–</span></div>
+      <div class="stat"><span class="k">$\lambda = 1$: $G_t - \hat v(S_t)$</span><span class="v" id="sMC">–</span></div>
+      <div class="stat"><span class="k">true $A_\pi(S_t, A_t)$</span><span class="v" id="sA">–</span></div>
+    </div>
+    <p class="note">Purple bars are the weights $\lambda^l$ on each later $\delta$. At $\lambda = 0$ only the row itself counts. At $\lambda = 1$ every later row counts fully, and the sum telescopes to the Monte Carlo score (Lesson 75).</p>
+
+    <div class="sub">
+      <h2>The bias–variance trade-off</h2>
+      <p class="note">4000 episodes that start with → from cell 1, then follow the policy. For each $\lambda$, the error of $\hat A_0 + \hat v(S_0)$ as an estimate of $q_\pi(1, \rightarrow)$, split into bias² and variance. Uses the critic progress $c$ above.</p>
+      <div class="row"><button id="bBV">Run 4000 episodes</button></div>
+      <canvas class="chart" id="bv" hidden></canvas>
+      <p class="note" id="bvNote"></p>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>Write $\delta_t = R_{t+1} + \gamma \hat v(S_{t+1}) - \hat v(S_t)$ for the critic's TD error, with $\delta_t = 0$ once the episode has ended. Summing the first $k$ of them with discounts gives the <b>$k$-step advantage estimate</b>; the $\hat v$ terms telescope as in Lesson 75:</p>
+    $$\hat A^{(k)}_t = \sum_{l=0}^{k-1} \gamma^l \delta_{t+l} = R_{t+1} + \gamma R_{t+2} + \dots + \gamma^{k-1} R_{t+k} + \gamma^k \hat v(S_{t+k}) - \hat v(S_t)$$
+    <p>It is the $k$-step return of Lesson 56 minus the baseline $\hat v(S_t)$. Small $k$ leans on the critic; large $k$ leans on real rewards.</p>
+    <p><b>GAE</b> (Schulman et al., 2016) averages all of them with weights $(1-\lambda)\lambda^{k-1}$, as the λ-return does:</p>
+    $$\hat A^{\text{GAE}(\gamma,\lambda)}_t = (1-\lambda) \sum_{k=1}^{\infty} \lambda^{k-1} \hat A^{(k)}_t = \sum_{l=0}^{\infty} (\gamma\lambda)^l\, \delta_{t+l}$$
+    <p>The second form follows by collecting terms: $\delta_{t+l}$ appears in every $\hat A^{(k)}_t$ with $k > l$, so its weight is $\gamma^l (1-\lambda)\sum_{k > l} \lambda^{k-1} = \gamma^l \lambda^l$. Equivalently $\hat A_t = G^\lambda_t - \hat v(S_t)$, the λ-return minus the baseline.</p>
+    <p>The two ends of the slider:</p>
+    $$\lambda = 0:\ \hat A_t = \delta_t, \qquad \lambda = 1:\ \hat A_t = \sum_{l=0}^{\infty} \gamma^l \delta_{t+l} = G_t - \hat v(S_t)$$
+    <p>At $\lambda = 1$ the estimate is unbiased however wrong the critic is (the $-\hat v(S_t)$ term is a baseline, which adds no bias to the policy gradient, Lesson 74). At $\lambda = 0$ it is biased unless $\hat v = v_\pi$, but it has the least variance. In between, each extra step of real reward cuts bias and adds noise. Values like $\lambda = 0.95$ with $\gamma = 0.99$ are common in practice.</p>
+    <p><b>Computing it.</b> One backward pass over the episode, starting from $\hat A_T = 0$:</p>
+    $$\hat A_t = \delta_t + \gamma\lambda\, \hat A_{t+1}$$
+    <p>That is how the table above fills its $\hat A_t$ column, and how PPO implementations (Lessons 80 onwards) compute advantages.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const C = Course.colors, P = 0.8;
+
+  // ------------------------------------------------------------ slippery corridor (Lessons 75–78)
+  const GOAL = 5, SLIP = 0.2;
+  const clamp = (x) => Math.max(0, Math.min(GOAL, x));
+  const outcomes = (s, a) => { const d = a ? 1 : -1; return [[clamp(s + d), 1 - SLIP], [clamp(s - d), SLIP]]; };
+  const stepEnv = (s, a) => clamp(s + (a ? 1 : -1) * (Math.random() < SLIP ? -1 : 1));
+  function evaluate(pR) {
+    const n = GOAL, M = Array.from({ length: n }, (_, i) => { const r = new Array(n + 1).fill(0); r[i] = 1; r[n] = -1; return r; });
+    for (let s = 0; s < n; s++) for (const a of [0, 1]) {
+      const pa = a ? pR[s] : 1 - pR[s];
+      for (const [s2, pp] of outcomes(s, a)) if (s2 !== GOAL) M[s][s2] -= pa * pp;
+    }
+    for (let i = 0; i < n; i++) {
+      let piv = i; for (let r = i + 1; r < n; r++) if (Math.abs(M[r][i]) > Math.abs(M[piv][i])) piv = r;
+      [M[i], M[piv]] = [M[piv], M[i]];
+      for (let r = 0; r < n; r++) if (r !== i) { const f = M[r][i] / M[i][i]; for (let c = i; c <= n; c++) M[r][c] -= f * M[i][c]; }
+    }
+    const v = M.map((r, i) => r[n] / r[i]); v.push(0); return v;
+  }
+  const VP = evaluate(new Array(GOAL).fill(P));
+  const qOf = (s, a) => outcomes(s, a).reduce((x, [s2, pp]) => x + pp * (-1 + VP[s2]), 0);
+
+  const lam = Course.slider('#lam', (v) => v.toFixed(2), draw);
+  const cc = Course.slider('#cc', (v) => v.toFixed(2), draw);
+  const Vh = (s) => (s === GOAL ? 0 : cc() * VP[s]);
+  let ep, sel = 0;
+
+  function newEpisode() {
+    ep = []; let s = 0;
+    while (s !== GOAL && ep.length < 40) { const a = Math.random() < P ? 1 : 0, s2 = stepEnv(s, a); ep.push({ s, a, s2 }); s = s2; }
+    sel = 0; draw();
+  }
+  // GAE by the backward recursion Â_t = δ_t + γλ Â_{t+1}, γ = 1.
+  function gae(deltas, l) { const A = new Array(deltas.length); let acc = 0; for (let t = deltas.length - 1; t >= 0; t--) { acc = deltas[t] + l * acc; A[t] = acc; } return A; }
+
+  function draw() {
+    const l = lam(), d = ep.map((x) => -1 + Vh(x.s2) - Vh(x.s)), A = gae(d, l);
+    const f = (x) => x.toFixed(2);
+    $('tbl').innerHTML = `<thead><tr><th>$t$</th><th>$S_t$</th><th>$A_t$</th><th>$\\hat v(S_t)$</th><th>$\\delta_t$</th><th>weight</th><th>$\\hat A_t$</th></tr></thead><tbody>` +
+      ep.map((x, t) => {
+        const w = t >= sel ? Math.pow(l, t - sel) : 0;
+        return `<tr data-t="${t}" class="${t === sel ? 'sel' : ''}"><td>${t}</td><td>${x.s}</td><td>${x.a ? '→' : '←'}</td><td>${f(Vh(x.s))}</td><td>${f(d[t])}</td><td class="w">${t >= sel ? w.toFixed(2) : ''}<i style="width:${40 * w}px"></i></td><td class="ahat">${f(A[t])}</td></tr>`;
+      }).join('') + '</tbody>';
+    Course.renderMath($('tbl'));
+    const terms = d.slice(sel, sel + 4).map((x, k) => (k === 0 ? `${f(x)}` : `${l.toFixed(2)}^{${k}}(${f(x)})`));
+    Course.tex($('eq'), `\\hat A_{${sel}} = ${terms.join(' + ')}${d.length - sel > 4 ? ' + \\dots' : ''} = ${f(A[sel])}`);
+    const G = -(ep.length - sel);
+    $('sTD').textContent = f(d[sel]);
+    $('sG').textContent = f(A[sel]);
+    $('sMC').textContent = f(G - Vh(ep[sel].s));
+    $('sA').textContent = f(qOf(ep[sel].s, ep[sel].a) - VP[ep[sel].s]);
+  }
+  $('tbl').addEventListener('click', (e) => { const r = e.target.closest('tr[data-t]'); if (r) { sel = +r.dataset.t; draw(); } });
+  $('bNew').addEventListener('click', newEpisode);
+  newEpisode();
+
+  // ------------------------------------------------------------ bias / variance over λ
+  const bv = Course.lineChart($('bv'), { xLabel: 'λ', yLabel: 'squared error', xMin: 0, xMax: 1, yMin: 0 });
+  $('bBV').addEventListener('click', () => {
+    $('bBV').disabled = true; $('bBV').textContent = 'Running…';
+    setTimeout(() => {
+      const N = 4000, LS = Array.from({ length: 21 }, (_, i) => i / 20), s0 = 1, target = qOf(1, 1);
+      const sum = new Array(LS.length).fill(0), sum2 = new Array(LS.length).fill(0);
+      for (let n = 0; n < N; n++) {
+        const d = []; let s = s0, a = 1;
+        while (s !== GOAL && d.length < 500) { const s2 = stepEnv(s, a); d.push(-1 + Vh(s2) - Vh(s)); s = s2; a = Math.random() < P ? 1 : 0; }
+        LS.forEach((l, i) => {
+          let acc = 0, w = 1; for (let k = 0; k < d.length; k++) { acc += w * d[k]; w *= l; if (w < 1e-12) break; }
+          const est = acc + Vh(s0); sum[i] += est; sum2[i] += est * est;
+        });
+      }
+      const bias2 = LS.map((l, i) => [l, Math.pow(sum[i] / N - target, 2)]);
+      const vars = LS.map((l, i) => [l, sum2[i] / N - Math.pow(sum[i] / N, 2)]);
+      const mse = LS.map((l, i) => [l, bias2[i][1] + vars[i][1]]);
+      const best = mse.reduce((b, x) => (x[1] < b[1] ? x : b));
+      $('bv').hidden = false;
+      bv.draw([
+        { data: bias2, color: C.amber, label: 'bias²' },
+        { data: vars, color: C.blue, label: 'variance' },
+        { data: mse, color: C.green, label: 'total', dots: true },
+      ], { vlines: [{ x: best[0], label: `best λ ≈ ${best[0].toFixed(2)}`, color: C.green }] });
+      $('bvNote').textContent = `Critic progress c = ${cc().toFixed(2)}. Lowest total error at λ ≈ ${best[0].toFixed(2)}. Try c = 1 (perfect critic: no bias anywhere, so λ = 0 wins) and c = 0 (no critic: only λ = 1 is unbiased).`;
+      $('bBV').disabled = false; $('bBV').textContent = 'Run again';
+    }, 30);
+  });
+
+  Course.quiz([
+    {
+      q: 'An episode ends after three more steps with TD errors $\\delta_t = 1$, $\\delta_{t+1} = -2$, $\\delta_{t+2} = 4$. With $\\gamma = 1$ and $\\lambda = 0.5$, what is $\\hat A_t$?',
+      answer: 1 + 0.5 * -2 + 0.25 * 4,
+      tol: 0.001,
+      explain: '$1 + 0.5(-2) + 0.25(4) = 1 - 1 + 1 = 1$.',
+    },
+    {
+      q: 'Same TD errors with $\\lambda = 1$. What is $G_t - \\hat v(S_t)$?',
+      answer: 3,
+      tol: 0.001,
+      explain: 'At $\\lambda = 1$ the weights are all 1: $1 - 2 + 4 = 3$, which telescopes to $G_t - \\hat v(S_t)$.',
+    },
+    {
+      q: 'With $\\gamma = 0.99$ and $\\lambda = 0.95$, what weight does GAE put on $\\delta_{t+2}$?',
+      answer: Math.pow(0.99 * 0.95, 2),
+      tol: 0.001,
+      explain: '$(\\gamma\\lambda)^2 = 0.9405^2 \\approx 0.885$.',
+    },
+    {
+      q: 'The critic is badly wrong. Which $\\lambda$ gives an advantage estimate whose policy gradient is unbiased?',
+      choices: ['$\\lambda = 0$', '$\\lambda = 1$', 'Any $\\lambda$, because the critic is only a baseline'],
+      answer: 1,
+      explain: 'At $\\lambda = 1$ the critic appears only as the baseline $-\\hat v(S_t)$. For $\\lambda < 1$ it also appears inside the target as $\\hat v(S_{t+k})$, which introduces bias.',
+    },
+  ]);
+</script>
+</body>
+</html>

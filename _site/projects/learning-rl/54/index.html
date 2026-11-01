@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>54. Expected SARSA | Learning RL</title>
+<meta name="description" content="Average over the next action instead of sampling it. Same expected update as SARSA, less noise, and Q-learning as a special case.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .acts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 8px 0; }
+  .act { border: 1px solid var(--border); border-radius: 6px; padding: 6px; text-align: center; background: var(--soft); }
+  .act.greedy { border-color: var(--accent); background: var(--accent-soft); }
+  .act.hit { box-shadow: 0 0 0 3px var(--blue); }
+  .act .nm { font-weight: 600; color: var(--heading); font-size: 0.9rem; }
+  .act .qv { font-variant-numeric: tabular-nums; font-size: 1.1rem; font-weight: 600; color: var(--heading); }
+  .act .pr { font-size: 0.8rem; color: var(--muted); }
+  .act input { width: 100%; accent-color: var(--accent); }
+  .act .pbar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; margin-top: 3px; }
+  .act .pbar div { height: 100%; background: var(--accent); }
+  #line { width: 100%; height: 120px; display: block; margin: 6px 0; }
+  .key { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.85rem; color: var(--muted); justify-content: center; }
+  .key b { display: inline-block; width: 16px; vertical-align: middle; margin-right: 4px; }
+  #eqs { overflow-x: auto; overflow-y: hidden; }
+  #fig { height: 240px; }
+  @media (max-width: 560px) { .acts { gap: 4px; } .act { padding: 4px 2px; } .act .qv { font-size: 0.95rem; } #eqs .katex-display { font-size: 0.85em; } }
+</style>
+</head>
+<body data-lesson="54">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Expected SARSA</h1>
+  <p class="lede">SARSA's target depends on a random next action, which adds noise. Expected SARSA replaces that one sample with the average over all next actions, weighted by how likely the policy is to take each. Its updates have the same mean as SARSA's and less variance.</p>
+
+  <section class="card">
+    <p class="note">One transition on the cliff from Lesson 53: reward $R = -1$, $\gamma = 1$, and the agent lands in a cell on the cliff edge. Drag the action values at $S'$, set ε, and sample SARSA targets.</p>
+    <label class="slider"><span>Exploration $\varepsilon$</span><input id="iE" type="range" min="0" max="1" step="0.01" value="0.1"><output></output></label>
+    <div class="acts" id="acts"></div>
+    <canvas id="line" aria-label="Targets on a number line"></canvas>
+    <div class="key">
+      <span><b style="height:8px;border-radius:50%;width:8px;background:var(--blue);opacity:.6"></b>SARSA samples</span>
+      <span><b style="border-top:3px solid var(--accent)"></b>Expected SARSA</span>
+      <span><b style="border-top:2px dashed var(--muted)"></b>Q-learning</span>
+    </div>
+    <div class="row">
+      <button id="b1">Sample A′</button>
+      <button id="b100" class="primary">Sample ×100</button>
+      <span class="spacer"></span>
+      <button id="bClear" class="quiet">Clear</button>
+    </div>
+    <div id="eqs"></div>
+    <div class="stats">
+      <div class="stat"><span class="k">SARSA samples</span><span class="v" id="sN">0</span></div>
+      <div class="stat"><span class="k">Their mean</span><span class="v" id="sMean">–</span></div>
+      <div class="stat"><span class="k">Their std. dev.</span><span class="v" id="sSd">–</span></div>
+      <div class="stat"><span class="k">Exact std. dev.</span><span class="v" id="sExact">–</span></div>
+    </div>
+    <p class="note">The mean of the SARSA samples settles on the Expected SARSA target. Expected SARSA gets that number in one step, with standard deviation 0. Set ε to 0 and all three targets coincide.</p>
+
+    <div class="sub">
+      <h2>Step size on the cliff</h2>
+      <p class="note">Average reward per episode over the first 100 episodes of cliff walking, for each step size $\alpha$ ($\varepsilon = 0.1$, 15 runs each). S&amp;B §6.6 plots the same comparison.</p>
+      <div class="row"><button id="bFig">Run comparison</button></div>
+      <canvas class="chart" id="fig" hidden></canvas>
+      <p class="note" id="figNote" hidden>The cliff is deterministic, so once $S'$ is known the only randomness left in SARSA's target is $A'$. Expected SARSA removes it, so large steps do not make it jumpy and it keeps improving as $\alpha$ grows towards 1.</p>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>Expected SARSA's update:</p>
+    $$Q(S_t, A_t) \leftarrow Q(S_t, A_t) + \alpha\Big[R_{t+1} + \gamma \sum_a \pi(a \mid S_{t+1})\, Q(S_{t+1}, a) - Q(S_t, A_t)\Big]$$
+    <p>The sum is the value of $S_{t+1}$ under the current $Q$ and the policy $\pi$, as in Lesson 23. With $\bar Q(s) = \sum_a \pi(a \mid s)\,Q(s, a)$, SARSA's target averages to it:</p>
+    $$\mathbb{E}\big[R_{t+1} + \gamma\, Q(S_{t+1}, A_{t+1}) \,\big|\, S_{t+1}, R_{t+1}\big] = R_{t+1} + \gamma\, \bar Q(S_{t+1})$$
+    <p>So the two methods move $Q$ the same way on average. The difference is the spread. Given $S_{t+1}$ and $R_{t+1}$, SARSA's target has variance</p>
+    $$\gamma^2 \sum_a \pi(a \mid S_{t+1}) \big(Q(S_{t+1}, a) - \bar Q(S_{t+1})\big)^2$$
+    <p>and Expected SARSA's has none. Variance from the environment (which $S_{t+1}$ and $R_{t+1}$ occur) is the same for both. The price is a sum over actions on every step.</p>
+    <p>Two special cases. If $\pi$ is greedy, the sum puts all its weight on the best action and the target is $R_{t+1} + \gamma \max_a Q(S_{t+1}, a)$: Expected SARSA <i>is</i> Q-learning. And $\pi$ in the target need not be the policy the agent follows, so Expected SARSA can learn off-policy about any target policy, with Q-learning as the greedy case.</p>
+    <p>For ε-greedy with $|\mathcal{A}|$ actions and a unique greedy action $a^*$, the weights are</p>
+    $$\pi(a^* \mid s) = 1 - \varepsilon + \frac{\varepsilon}{|\mathcal{A}|}, \qquad \pi(a \mid s) = \frac{\varepsilon}{|\mathcal{A}|} \ \ (a \ne a^*)$$
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const NAMES = ['up', 'right', 'down', 'left'];
+  const R = -1, LO = -120, HI = 0;
+  const Qn = [-14, -12, -112, -14];         // an edge cell: down is the cliff
+  let samples = [], lastA = null;
+  const eps = Course.slider('#iE', (v) => v.toFixed(2), () => { samples = []; lastA = null; render(); });
+
+  // ε-greedy probabilities, splitting the greedy share between tied actions.
+  function probs(q, e) {
+    const m = Math.max(...q), nb = q.filter((x) => x === m).length;
+    return q.map((x) => e / q.length + (x === m ? (1 - e) / nb : 0));
+  }
+
+  $('acts').innerHTML = NAMES.map((n, a) =>
+    `<div class="act" id="act${a}"><div class="nm">${n}</div><div class="qv" id="qv${a}"></div>` +
+    `<input type="range" min="${LO}" max="${HI}" step="1" value="${Qn[a]}" data-a="${a}" aria-label="Q of ${n}">` +
+    `<div class="pr" id="pr${a}"></div><div class="pbar"><div id="pb${a}"></div></div></div>`).join('');
+  $('acts').addEventListener('input', (e) => {
+    const a = e.target.dataset.a;
+    if (a === undefined) return;
+    Qn[+a] = +e.target.value; samples = []; lastA = null; render();
+  });
+
+  const ctx = $('line').getContext('2d');
+  function drawLine(exp, ql) {
+    const c = $('line'), dpr = window.devicePixelRatio || 1, W = c.clientWidth, H = c.clientHeight;
+    if (!W) return;
+    c.width = W * dpr; c.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+    const lo = Math.min(LO, ...samples) - 5, hi = 5;
+    const X = (v) => 12 + ((v - lo) / (hi - lo)) * (W - 24);
+    const axisY = H - 26;
+    ctx.strokeStyle = '#9ca3af'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(12, axisY); ctx.lineTo(W - 12, axisY); ctx.stroke();
+    ctx.fillStyle = '#6b7280'; ctx.font = '11px -apple-system, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    for (let v = Math.ceil(lo / 20) * 20; v <= hi; v += 20) {
+      ctx.beginPath(); ctx.moveTo(X(v), axisY); ctx.lineTo(X(v), axisY + 4); ctx.stroke();
+      ctx.fillText(v, X(v), axisY + 6);
+    }
+    // Samples stack up in columns so repeated values stay visible.
+    const counts = new Map();
+    ctx.fillStyle = 'rgba(42,122,226,0.55)';
+    for (const v of samples) {
+      const k = Math.round(v), n = counts.get(k) || 0; counts.set(k, n + 1);
+      const y = axisY - 6 - (n % 14) * 5;
+      ctx.beginPath(); ctx.arc(X(v), y, 2.6, 0, 2 * Math.PI); ctx.fill();
+    }
+    ctx.setLineDash([5, 4]); ctx.strokeStyle = '#6b7280'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(X(ql), 4); ctx.lineTo(X(ql), axisY); ctx.stroke();
+    ctx.setLineDash([]); ctx.strokeStyle = Course.colors.green; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(X(exp), 4); ctx.lineTo(X(exp), axisY); ctx.stroke();
+  }
+
+  const f1 = (x) => Course.fmt(Math.round(x * 100) / 100, 2);
+  function render() {
+    const e = eps(), p = probs(Qn, e), m = Math.max(...Qn);
+    const qbar = p.reduce((s, pi, a) => s + pi * Qn[a], 0);
+    const exp = R + qbar, ql = R + m;
+    Qn.forEach((q, a) => {
+      $(`qv${a}`).textContent = q;
+      $(`pr${a}`).textContent = `π = ${p[a].toFixed(3)}`;
+      $(`pb${a}`).style.width = `${p[a] * 100}%`;
+      $(`act${a}`).className = `act${q === m ? ' greedy' : ''}${a === lastA ? ' hit' : ''}`;
+    });
+    drawLine(exp, ql);
+    Course.tex($('eqs'), `\\begin{aligned}
+      \\text{Expected SARSA:}\\ & {-1} + \\textstyle\\sum_a \\pi(a \\mid S')\\,Q(S',a) = {-1} + (${f1(qbar)}) = ${f1(exp)} \\\\
+      \\text{Q-learning:}\\ & {-1} + \\max_a Q(S',a) = {-1} + (${m}) = ${f1(ql)}` +
+      (lastA === null ? '' : ` \\\\ \\text{SARSA (last sample):}\\ & {-1} + Q(S',\\text{${NAMES[lastA]}}) = ${f1(R + Qn[lastA])}`) +
+      '\\end{aligned}', true);
+    const n = samples.length;
+    const mean = n ? samples.reduce((a, b) => a + b, 0) / n : null;
+    const sd = n > 1 ? Math.sqrt(samples.reduce((a, b) => a + (b - mean) ** 2, 0) / (n - 1)) : null;
+    const exact = Math.sqrt(p.reduce((s, pi, a) => s + pi * (Qn[a] - qbar) ** 2, 0));
+    $('sN').textContent = n;
+    $('sMean').textContent = n ? mean.toFixed(2) : '–';
+    $('sSd').textContent = sd === null ? '–' : sd.toFixed(2);
+    $('sExact').textContent = exact.toFixed(2);
+  }
+  function sample(k) {
+    const p = probs(Qn, eps());
+    for (let i = 0; i < k; i++) { lastA = Course.sample(p); samples.push(R + Qn[lastA]); }
+    render();
+  }
+  $('b1').addEventListener('click', () => sample(1));
+  $('b100').addEventListener('click', () => sample(100));
+  $('bClear').addEventListener('click', () => { samples = []; lastA = null; render(); });
+  new ResizeObserver(render).observe($('line'));
+  render();
+
+  // ------------------------------------------------------------ cliff walking, step-size sweep
+  const RC = 4, CC = 12, START = 36, GOAL = 47, D = [[-1, 0], [0, 1], [1, 0], [0, -1]];
+  function envStep(s, a) {
+    const r = Math.max(0, Math.min(RC - 1, Math.floor(s / CC) + D[a][0]));
+    const c = Math.max(0, Math.min(CC - 1, (s % CC) + D[a][1]));
+    return r === 3 && c >= 1 && c <= 10 ? [START, -100] : [r * CC + c, -1];
+  }
+  function episode(Q, kind, alpha, e) {
+    let s = START, G = 0;
+    let a = Math.random() < e ? Course.randInt(4) : Course.argmax(Q[s]);
+    for (let k = 0; k < 1e5 && s !== GOAL; k++) {
+      const [s2, r] = envStep(s, a);
+      G += r;
+      let next = 0, a2 = null;
+      if (s2 !== GOAL) {
+        a2 = Math.random() < e ? Course.randInt(4) : Course.argmax(Q[s2]);
+        const q = Q[s2];
+        if (kind === 's') next = q[a2];
+        else if (kind === 'q') next = Math.max(...q);
+        else next = probs(q, e).reduce((acc, pi, b) => acc + pi * q[b], 0);
+      }
+      Q[s][a] += alpha * (r + next - Q[s][a]);
+      s = s2; a = a2;
+    }
+    return G;
+  }
+  const ALPHAS = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
+  function sweep(kind, runs = 15, E = 100) {
+    return ALPHAS.map((al) => {
+      let tot = 0;
+      for (let k = 0; k < runs; k++) {
+        const Q = Array.from({ length: 48 }, () => [0, 0, 0, 0]);
+        for (let e = 0; e < E; e++) tot += episode(Q, kind, al, 0.1);
+      }
+      return [al, tot / (runs * E)];
+    });
+  }
+  const fig = Course.lineChart($('fig'), { xLabel: 'step size α', yLabel: 'reward per episode', xMin: 0.1, xMax: 1 });
+  $('bFig').addEventListener('click', () => {
+    $('bFig').disabled = true; $('bFig').textContent = 'Running…';
+    setTimeout(() => {
+      $('fig').hidden = false; $('figNote').hidden = false;
+      fig.draw([
+        { data: sweep('e'), color: Course.colors.green, label: 'Expected SARSA', dots: true },
+        { data: sweep('s'), color: Course.colors.blue, label: 'SARSA', dots: true },
+        { data: sweep('q'), color: Course.colors.grey, label: 'Q-learning', dots: true },
+      ]);
+      $('bFig').disabled = false; $('bFig').textContent = 'Run again';
+    }, 30);
+  });
+
+  // Quiz numbers: Q(S') = (2, 5, 1, 0), ε = 0.2, R = −1, γ = 1.
+  const QQ = [2, 5, 1, 0], PP = probs(QQ, 0.2);
+  const QB = PP.reduce((s, p, a) => s + p * QQ[a], 0);
+  Course.quiz([
+    {
+      q: 'At $S\'$ the action values are $2, 5, 1, 0$. The policy is ε-greedy with $\\varepsilon = 0.2$. With $R = -1$ and $\\gamma = 1$, what is the Expected SARSA target?',
+      answer: -1 + QB,
+      hint: 'The greedy action gets $1 - 0.2 + 0.2/4$; the others get $0.2/4$ each.',
+      explain: '$\\pi = (0.05, 0.85, 0.05, 0.05)$. $\\bar Q = 0.85 \\times 5 + 0.05(2 + 1 + 0) = 4.4$, so the target is $-1 + 4.4 = 3.4$.',
+    },
+    {
+      q: 'Same numbers. What is the variance of SARSA\'s target (from the random choice of $A\'$)?',
+      answer: PP.reduce((s, p, a) => s + p * (QQ[a] - QB) ** 2, 0),
+      tol: 0.01,
+      hint: '$\\sum_a \\pi(a)\\,(Q(a) - 4.4)^2$.',
+      explain: '$0.85(0.6)^2 + 0.05(2.4^2 + 3.4^2 + 4.4^2) = 0.306 + 1.834 = 2.14$.',
+    },
+    {
+      q: 'Same numbers. What is the Q-learning target?',
+      answer: -1 + 5,
+      explain: '$-1 + \\max(2, 5, 1, 0) = 4$. It is higher than Expected SARSA\'s 3.4 because it ignores the 15% chance of exploring.',
+    },
+    {
+      q: 'Expected SARSA with $\\varepsilon = 0$ in its target policy is the same as:',
+      choices: ['SARSA', 'Q-learning', 'Monte Carlo control', 'TD(0) on state values'],
+      answer: 1,
+      explain: 'All weight goes on the greedy action, so the sum becomes $\\max_a Q(S\', a)$.',
+    },
+  ]);
+</script>
+</body>
+</html>

@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>15. The Markov property | Learning RL</title>
+<meta name="description" content="A state is Markov if knowing the past adds nothing once you know the present. Test it on weather records, and fix it when it fails.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .strip { display: flex; gap: 2px; justify-content: center; flex-wrap: wrap; font-size: 20px; margin: 4px 0 10px; }
+  .strip span { width: 26px; text-align: center; }
+  .seg { display: inline-flex; border: 1px solid var(--accent); border-radius: 4px; overflow: hidden; }
+  .seg button { border: 0; border-radius: 0; padding: 0.35rem 0.8rem; }
+  .cond { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 10px 0; }
+  .slot { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px; border: 1px solid var(--border); border-radius: 8px; background: var(--soft); color: var(--heading); font-size: 0.78rem; }
+  .slot:hover:not(:disabled) { background: var(--accent-soft); color: var(--heading); }
+  .slot .w { font-size: 26px; line-height: 1.2; min-height: 32px; }
+  .slot.any .w { font-size: 0.9rem; color: var(--muted); line-height: 32px; }
+  .slot.instate { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .slot.tomorrow { background: #fff; border-style: dashed; cursor: default; }
+  .preds { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .preds h3 { font-size: 0.85rem; margin: 0 0 4px; color: var(--heading); }
+  .pb { display: flex; align-items: center; gap: 6px; margin: 3px 0; font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+  .pb .e { width: 22px; text-align: center; }
+  .pb .track { flex: 1; height: 14px; background: var(--soft); border-radius: 3px; overflow: hidden; }
+  .pb .fill { height: 100%; background: var(--accent); transition: width 0.2s ease; }
+  .preds .alt .fill { background: var(--blue); }
+  .pb .num { width: 3.2em; text-align: right; }
+  #verdict { text-align: left; font-weight: 400; }
+  @media (max-width: 560px) { .preds { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body data-lesson="15">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>The Markov property</h1>
+  <p class="lede">The bandits of Lessons 5 to 14 had no situation that carried over from one step to the next. Full RL does, and it rests on one assumption about it: the present <b>state</b> holds everything about the past that matters for the future. That is the Markov property. Whether it holds depends on what you choose to call the state.</p>
+
+  <section class="card">
+    <p class="note">40,000 days of weather from one of two towns. Click the days to set a history. The green box is the state. Compare the forecast from the whole history with the forecast from the state alone. Start with two rainy days in Town A, then switch to Town B.</p>
+    <div class="row center">
+      <span class="seg"><button id="wM" class="on">Town A</button><button id="wB">Town B</button></span>
+    </div>
+    <div class="strip" id="strip"></div>
+    <div class="cond" id="cond"></div>
+    <div class="row center">
+      <span class="muted">State is</span>
+      <span class="seg"><button id="s1" class="on">today</button><button id="s2">yesterday + today</button></span>
+    </div>
+    <div class="preds">
+      <div><h3>Tomorrow, given the whole history you set</h3><div id="pFull"></div><p class="note" id="nFull"></p></div>
+      <div class="alt"><h3>Tomorrow, given only the state</h3><div id="pState"></div><p class="note" id="nState"></p></div>
+    </div>
+    <p class="status" id="verdict"></p>
+    <div class="row"><button id="bNew" class="quiet">New records</button></div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>Let $S_t$ be the state on day $t$. The state has the <b>Markov property</b> if</p>
+    $$P(S_{t+1} \mid S_t) = P(S_{t+1} \mid S_1, S_2, \dots, S_t)$$
+    <p>Once you know today, knowing every earlier day changes nothing about tomorrow. The present screens off the past.</p>
+    <p>In Town A the weather follows this rule, with $S_t$ = today's weather. Any extra days you add to the history leave the forecast where it was, up to sampling noise.</p>
+    <p>In Town B, rain rarely lasts more than two days: after two wet days the clouds usually clear. Today's weather alone is then <i>not</i> Markov, because yesterday changes the forecast. The fix is to put the missing information into the state:</p>
+    $$S'_t = (\text{yesterday}, \text{today}) = (W_{t-1}, W_t)$$
+    <p>$W_t$ is the weather on day $t$. With $S'_t$ as the state, Town B is Markov again. The price is more states: $3^2 = 9$ instead of 3, and $3^k$ if the town remembered $k$ days.</p>
+    <p>In RL the property is stated for the environment's response to an action (S&amp;B §3.1). The next state and reward depend only on the current state and action:</p>
+    $$\begin{aligned} &P(S_{t+1}, R_{t+1} \mid S_t, A_t) \\ &\quad = P(S_{t+1}, R_{t+1} \mid S_0, A_0, R_1, \dots, S_t, A_t) \end{aligned}$$
+    <p>A chess position is Markov: how the pieces got there does not matter. A single frame of a video game usually is not, because it shows where the ball is but not where it is going. DQN (Lesson 66) fixes this the Town B way, stacking the last 4 frames into one state.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const W = ['☀️', '☁️', '🌧️'], WN = ['sunny', 'cloudy', 'rainy'];
+  const SUN = 0, CLOUD = 1, RAIN = 2;
+  const PM = [
+    [0.7, 0.2, 0.1],
+    [0.3, 0.4, 0.3],
+    [0.2, 0.3, 0.5],
+  ];
+  // Town B: like Town A, except rain depends on whether yesterday was also rainy.
+  function nextB(y, t) {
+    if (t === RAIN) return y === RAIN ? [0.6, 0.3, 0.1] : [0.1, 0.3, 0.6];
+    return PM[t];
+  }
+  const DAYS = 40000;
+  let town = 'A', stateLen = 1, seqs = {};
+  // cond[i]: weather for [3 days ago, 2 days ago, yesterday, today], or -1 for "any".
+  let cond = [-1, -1, -1, SUN];
+
+  function generate() {
+    for (const tw of ['A', 'B']) {
+      const s = new Uint8Array(DAYS);
+      s[0] = Course.randInt(3); s[1] = Course.sample(PM[s[0]]);
+      for (let d = 2; d < DAYS; d++) s[d] = Course.sample(tw === 'A' ? PM[s[d - 1]] : nextB(s[d - 2], s[d - 1]));
+      seqs[tw] = s;
+    }
+  }
+
+  // Empirical P(tomorrow | the days in `c` that are set), from the town's records.
+  function predict(c) {
+    const s = seqs[town], counts = [0, 0, 0];
+    for (let d = 3; d < DAYS - 1; d++) {
+      if ((c[0] < 0 || s[d - 3] === c[0]) && (c[1] < 0 || s[d - 2] === c[1]) && (c[2] < 0 || s[d - 1] === c[2]) && s[d] === c[3]) counts[s[d + 1]]++;
+    }
+    const n = counts[0] + counts[1] + counts[2];
+    return { n, p: counts.map((k) => (n ? k / n : 0)) };
+  }
+
+  const bars = (p) => p.map((x, i) => `<div class="pb"><span class="e">${W[i]}</span><span class="track"><span class="fill" style="display:block;width:${100 * x}%"></span></span><span class="num">${x.toFixed(2)}</span></div>`).join('');
+
+  function draw() {
+    const s = seqs[town];
+    $('strip').innerHTML = Array.from(s.slice(DAYS - 14), (w) => `<span>${W[w]}</span>`).join('');
+    const labels = ['3 days ago', '2 days ago', 'yesterday', 'today'];
+    const inState = (i) => i >= 4 - stateLen;
+    $('cond').innerHTML = cond.map((w, i) => `<button class="slot${w < 0 ? ' any' : ''}${inState(i) ? ' instate' : ''}" data-i="${i}"><span class="w">${w < 0 ? 'any' : W[w]}</span>${labels[i]}</button>`).join('');
+    // The state part of the condition must be set for the comparison to make sense.
+    const stateCond = cond.map((w, i) => (inState(i) ? w : -1));
+    const full = predict(cond), st = predict(stateCond);
+    $('pFull').innerHTML = bars(full.p);
+    $('pState').innerHTML = bars(st.p);
+    $('nFull').textContent = `${full.n.toLocaleString()} matching days in the records`;
+    $('nState').textContent = `${st.n.toLocaleString()} matching days`;
+    const gap = Math.max(...full.p.map((x, i) => Math.abs(x - st.p[i])));
+    // A rough noise level for the smaller sample: 2 standard errors of a proportion near 0.5.
+    const noise = full.n ? 2 * Math.sqrt(0.25 / full.n) : 1;
+    const extra = cond.some((w, i) => w >= 0 && !inState(i));
+    let msg;
+    if (!full.n) msg = 'That history never happened in the records. Try another.';
+    else if (!extra) msg = 'Set an earlier day (click a slot outside the green box) to add history beyond the state.';
+    else if (gap <= Math.max(noise, 0.03)) msg = `<b class="good">The extra history changes nothing</b> (biggest difference ${gap.toFixed(3)}, within sampling noise of about ±${noise.toFixed(3)}). For this history, the state looks Markov.`;
+    else msg = `<b class="bad">The extra history changes the forecast</b> by up to ${gap.toFixed(2)}, far more than sampling noise (about ±${noise.toFixed(3)}). This state is not Markov.`;
+    $('verdict').innerHTML = msg;
+  }
+
+  $('cond').addEventListener('click', (e) => {
+    const b = e.target.closest('.slot');
+    if (!b) return;
+    const i = +b.dataset.i;
+    // today is always set; other days cycle any → sun → cloud → rain → any
+    if (i === 3) cond[i] = (cond[i] + 1) % 3;
+    else cond[i] = cond[i] === 2 ? -1 : cond[i] + 1;
+    draw();
+  });
+  function setTown(t) { town = t; $('wM').classList.toggle('on', t === 'A'); $('wB').classList.toggle('on', t === 'B'); draw(); }
+  function setState(k) {
+    stateLen = k; $('s1').classList.toggle('on', k === 1); $('s2').classList.toggle('on', k === 2);
+    if (k === 2 && cond[2] < 0) cond[2] = RAIN;
+    draw();
+  }
+  $('wM').addEventListener('click', () => setTown('A'));
+  $('wB').addEventListener('click', () => setTown('B'));
+  $('s1').addEventListener('click', () => setState(1));
+  $('s2').addEventListener('click', () => setState(2));
+  $('bNew').addEventListener('click', () => { generate(); draw(); });
+  generate();
+  cond = [-1, -1, RAIN, RAIN];
+  draw();
+
+  // ------------------------------------------------------------ quiz
+  Course.quiz([
+    {
+      q: 'Town B. Yesterday was cloudy and today is rainy. Rain after (not rain, rain) has probability 0.6, and rain after (rain, rain) has probability 0.1. What is the probability of rain on both of the next two days?',
+      answer: 0.6 * 0.1,
+      hint: 'After one more rainy day, the state is (rain, rain).',
+      explain: '$P(\\text{rain} \\mid \\text{cloud, rain}) \\times P(\\text{rain} \\mid \\text{rain, rain}) = 0.6 \\times 0.1 = 0.06$.',
+    },
+    {
+      q: 'Town A. Sunny days are followed by sun with probability 0.7. Today is sunny and the six days before were all rainy. What is the probability of sun tomorrow?',
+      answer: 0.7,
+      explain: 'Town A is Markov in today\'s weather, so the rainy week is irrelevant: $0.7$.',
+    },
+    {
+      q: 'A town\'s weather depends on the last 4 days, with 3 kinds of weather. How many states does a Markov state need?',
+      answer: 3 ** 4,
+      tol: 0,
+      explain: 'The state must hold all 4 days: $3^4 = 81$ combinations.',
+    },
+    {
+      q: 'An agent plays Pong and sees one still frame as its state. Is that state Markov?',
+      choices: [
+        'Yes, the frame shows everything on screen',
+        'No, a single frame shows where the ball is but not which way it is moving',
+        'Only if the reward is zero',
+      ],
+      answer: 1,
+      explain: 'Two frames with the ball in the same place can lead to different futures. Stacking recent frames puts the velocity back into the state.',
+    },
+  ]);
+</script>
+</body>
+</html>

@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>74. Baselines | Learning RL</title>
+<meta name="description" content="Subtract a baseline from the return: the policy gradient stays the same on average but its noise collapses. See the cloud of samples shrink.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  .cloudwrap { max-width: 380px; margin: 8px auto 0; }
+  #cloud { width: 100%; aspect-ratio: 1; display: block; border: 1px solid var(--border); border-radius: 6px; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.8rem; color: var(--muted); margin: 6px 0 0; justify-content: center; }
+  .legend > span::before { content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 50%; vertical-align: middle; margin-right: 5px; background: rgba(42,122,226,0.5); }
+  .legend > .ex::before { background: var(--accent); }
+  .legend > .mn::before { background: #fff; border: 2px solid var(--blue); width: 7px; height: 7px; }
+  .eq { min-height: 2.4em; text-align: center; margin: 6px 0; line-height: 2; }
+  canvas.small { height: 180px; }
+</style>
+</head>
+<body data-lesson="74">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>Baselines</h1>
+  <p class="lede">REINFORCE scales each push by the raw return. If every return is large and positive, every action gets pushed up, and only the small differences between them carry information. Subtracting a baseline $b(s)$ from the return leaves the expected gradient unchanged and can shrink its variance dramatically.</p>
+
+  <section class="card">
+    <h2>A cloud of gradient samples</h2>
+    <p class="note">Lesson 71's three arms, $q = (1, 2, 0)$, rewards $\mathcal{N}(q, 1)$, uniform policy. Each dot is one sample $(R - b)(\mathbb{1}_{A=a} - \pi(a))$ for $a = A$ (horizontal) and $a = B$ (vertical). Add a constant $c$ to every reward, then move the baseline $b$.</p>
+    <label class="slider"><span>Add $c$ to rewards</span><input id="c" type="range" min="0" max="10" step="0.5" value="5"><output></output></label>
+    <label class="slider"><span>Baseline $b$</span><input id="b" type="range" min="-2" max="12" step="0.1" value="0"><output></output></label>
+    <div class="row">
+      <button id="bAvg" class="primary">Set b to the average reward</button>
+      <button id="bNew" class="quiet">New samples</button>
+    </div>
+    <div class="cloudwrap"><canvas id="cloud" aria-label="Scatter of 300 gradient samples"></canvas></div>
+    <div class="legend"><span>one sample</span><span class="mn">mean of samples</span><span class="ex">exact $\nabla J$</span></div>
+    <div class="stats">
+      <div class="stat"><span class="k">Exact $\nabla J$</span><span class="v" id="sEx">–</span></div>
+      <div class="stat"><span class="k">Mean of 300 samples</span><span class="v" id="sMean">–</span></div>
+      <div class="stat"><span class="k">Variance (exact)</span><span class="v" id="sVar">–</span></div>
+    </div>
+    <canvas class="chart small" id="vcurve"></canvas>
+    <p class="note">Total variance of one sample as a function of $b$ (exact). It is a parabola; the dashed line is your $b$. Adding $c$ to the rewards does not change $\nabla J$, but without a matching baseline the variance explodes.</p>
+
+    <div class="sub">
+      <h2>REINFORCE with a baseline</h2>
+      <p class="note">The short corridor from Lessons 70 and 73. Plain REINFORCE ($\alpha = 2^{-13}$) against REINFORCE with a learned baseline ($\alpha^{\boldsymbol\theta} = 2^{-9}$, $\alpha^{\mathbf w} = 2^{-6}$), 50 runs of 1000 episodes (S&amp;B Figure 13.2). The agent cannot tell the states apart, so the baseline is a single learned number $\hat v = w$.</p>
+      <div class="row"><button id="bCompare">Run comparison</button></div>
+      <canvas class="chart" id="cmp" hidden></canvas>
+      <p class="note" id="cmpNote" hidden>The baseline lets the policy use a step size 16 times larger without blowing up, because each update is no longer dominated by "every action was bad".</p>
+    </div>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>The policy gradient theorem holds with any baseline $b(s)$ that does not depend on the action (S&amp;B eq. 13.10):</p>
+    $$\nabla J(\boldsymbol\theta) \propto \sum_s \mu(s) \sum_a \big(q_\pi(s,a) - b(s)\big)\, \nabla \pi(a \mid s, \boldsymbol\theta)$$
+    <p>The extra term is zero, because the probabilities always sum to 1:</p>
+    $$\sum_a b(s)\, \nabla \pi(a \mid s, \boldsymbol\theta) = b(s)\, \nabla \sum_a \pi(a \mid s, \boldsymbol\theta) = b(s)\, \nabla 1 = 0$$
+    <p>So the baseline adds nothing to the expected gradient. Following the steps of Lesson 73 gives <b>REINFORCE with baseline</b> (eq. 13.11):</p>
+    $$\boldsymbol\theta_{t+1} = \boldsymbol\theta_t + \alpha \big(G_t - b(S_t)\big)\, \nabla \ln \pi(A_t \mid S_t, \boldsymbol\theta_t)$$
+    <p>The push is now "how much better than the baseline", which can be negative or positive.</p>
+    <p><b>Variance.</b> For one state, a sample is $\hat g = (R - b)\,\nabla\ln\pi(A)$. Its mean does not depend on $b$, so its variance is smallest where $\mathbb{E}\big[\lVert\hat g\rVert^2\big]$ is smallest. That is a parabola in $b$, minimised at</p>
+    $$b^* = \frac{\mathbb{E}\big[R\, \lVert\nabla\ln\pi(A)\rVert^2\big]}{\mathbb{E}\big[\lVert\nabla\ln\pi(A)\rVert^2\big]}$$
+    <p>This is an average reward weighted by the size of each action's gradient. It is usually close to the plain average reward, which is why "Set b to the average reward" lands near the bottom of the curve.</p>
+    <p><b>A learned baseline.</b> The natural choice is a state-value estimate $\hat v(S_t, \mathbf w)$, learned by Monte Carlo from the same returns (S&amp;B §13.4):</p>
+    $$\begin{aligned}
+      \delta &\leftarrow G_t - \hat v(S_t, \mathbf w) \\
+      \mathbf w &\leftarrow \mathbf w + \alpha^{\mathbf w}\, \delta\, \nabla \hat v(S_t, \mathbf w) \\
+      \boldsymbol\theta &\leftarrow \boldsymbol\theta + \alpha^{\boldsymbol\theta}\, \gamma^t\, \delta\, \nabla \ln \pi(A_t \mid S_t, \boldsymbol\theta)
+    \end{aligned}$$
+    <p>$\delta$ says whether the episode went better or worse than this state usually goes. Lesson 75 asks what happens when $\hat v$ is used for more than a baseline.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const C = Course.colors, Q = [1, 2, 0], PI = [1 / 3, 1 / 3, 1 / 3], NS = 300, LIM = 6;
+  const cSl = Course.slider('#c', (v) => v.toFixed(1), drawCloud);
+  const bSl = Course.slider('#b', (v) => v.toFixed(1), drawCloud);
+  const canvas = $('cloud'), ctx = canvas.getContext('2d');
+  let pts = [];   // fixed (A, noise) pairs so moving sliders reuses the same samples
+
+  const e = (a) => [(a === 0) - PI[0], (a === 1) - PI[1]];   // ∇ln π(a) restricted to θ_A, θ_B
+  const w = (a) => { const v = e(a); return v[0] * v[0] + v[1] * v[1]; };
+  function newSamples() { pts = Array.from({ length: NS }, () => [Course.sample(PI), Course.gauss()]); drawCloud(); }
+  function exactGrad() { const J = PI.reduce((s, p, i) => s + p * Q[i], 0); return [PI[0] * (Q[0] - J), PI[1] * (Q[1] - J)]; }
+  function variance(c, b) {
+    let m2 = 0;
+    for (let a = 0; a < 3; a++) m2 += PI[a] * (Math.pow(Q[a] + c - b, 2) + 1) * w(a);
+    const g = exactGrad();
+    return m2 - g[0] * g[0] - g[1] * g[1];
+  }
+  const bStar = (c) => { let n = 0, d = 0; for (let a = 0; a < 3; a++) { n += PI[a] * (Q[a] + c) * w(a); d += PI[a] * w(a); } return n / d; };
+
+  const vchart = Course.lineChart($('vcurve'), { xLabel: 'baseline b', yLabel: 'variance', xMin: -2, xMax: 12, yMin: 0 });
+
+  function drawCloud() {
+    const c = cSl(), b = bSl();
+    const dpr = window.devicePixelRatio || 1, W = canvas.clientWidth;
+    canvas.width = canvas.height = W * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, W);
+    const X = (x) => W / 2 + (x / LIM) * (W / 2), Y = (y) => W / 2 - (y / LIM) * (W / 2);
+    ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 1;
+    for (let k = -LIM; k <= LIM; k += 2) { ctx.beginPath(); ctx.moveTo(X(k), 0); ctx.lineTo(X(k), W); ctx.moveTo(0, Y(k)); ctx.lineTo(W, Y(k)); ctx.stroke(); }
+    ctx.strokeStyle = '#9ca3af'; ctx.beginPath(); ctx.moveTo(X(0), 0); ctx.lineTo(X(0), W); ctx.moveTo(0, Y(0)); ctx.lineTo(W, Y(0)); ctx.stroke();
+    ctx.fillStyle = '#6b7280'; ctx.font = '11px -apple-system, sans-serif';
+    ctx.textAlign = 'right'; ctx.fillText('arm A →', W - 4, Y(0) - 5); ctx.fillText(`±${LIM}`, W - 4, 12);
+    ctx.textAlign = 'left'; ctx.fillText('↑ arm B', X(0) + 4, 12);
+
+    let m = [0, 0];
+    ctx.fillStyle = 'rgba(42,122,226,0.45)';
+    for (const [a, z] of pts) {
+      const R = Q[a] + c + z, g = e(a).map((v) => (R - b) * v);
+      m[0] += g[0] / NS; m[1] += g[1] / NS;
+      ctx.beginPath(); ctx.arc(X(Math.max(-LIM, Math.min(LIM, g[0]))), Y(Math.max(-LIM, Math.min(LIM, g[1]))), 2.6, 0, 2 * Math.PI); ctx.fill();
+    }
+    const ex = exactGrad();
+    ctx.fillStyle = C.green; ctx.beginPath(); ctx.arc(X(ex[0]), Y(ex[1]), 6, 0, 2 * Math.PI); ctx.fill();
+    ctx.strokeStyle = C.blue; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(X(m[0]), Y(m[1]), 7, 0, 2 * Math.PI); ctx.stroke();
+
+    $('sEx').textContent = `(${ex[0].toFixed(2)}, ${ex[1].toFixed(2)})`;
+    $('sMean').textContent = `(${m[0].toFixed(2)}, ${m[1].toFixed(2)})`;
+    $('sVar').textContent = variance(c, b).toFixed(2);
+
+    const curve = []; for (let x = -2; x <= 12.001; x += 0.1) curve.push([x, variance(c, x)]);
+    const bs = bStar(c);
+    vchart.draw([{ data: curve, color: C.purple }], {
+      vlines: [{ x: b, label: Math.abs(b - bs) < 1.5 ? '' : `b = ${b.toFixed(1)}`, color: '#374151' }, { x: bs, label: `b* = ${bs.toFixed(2)}`, color: C.amber }],
+    });
+  }
+
+  $('bAvg').addEventListener('click', () => {
+    const avg = PI.reduce((s, p, i) => s + p * (Q[i] + cSl()), 0);
+    $('b').value = avg; $('b').dispatchEvent(new Event('input'));
+  });
+  $('bNew').addEventListener('click', newSamples);
+  new ResizeObserver(drawCloud).observe(canvas);
+  newSamples();
+
+  // ------------------------------------------------------------ Figure 13.2
+  const pr = (t) => 1 / (1 + Math.exp(-(t[0] - t[1])));
+  const move = (s, r) => { if (s === 1) r = !r; return r ? s + 1 : Math.max(0, s - 1); };
+  function gen(t) { const A = []; let s = 0; const p = pr(t); while (s !== 3 && A.length < 1000) { const a = Math.random() < p; A.push(a); s = move(s, a); } return A; }
+  function run(at, aw, base, EPS) {
+    const t = [-1.47, 1.47], out = new Float64Array(EPS); let wv = 0;
+    for (let k = 0; k < EPS; k++) {
+      const A = gen(t), T = A.length; out[k] = -T;
+      for (let i = 0; i < T; i++) {
+        const G = -(T - i), p = pr(t);
+        let d = G;
+        if (base) { d = G - wv; wv += aw * d; }
+        const g = A[i] ? [1 - p, -(1 - p)] : [-p, p];
+        t[0] += at * d * g[0]; t[1] += at * d * g[1];
+      }
+    }
+    return out;
+  }
+  const cmp = Course.lineChart($('cmp'), { xLabel: 'episode', yLabel: 'return (average of 50 runs)', yMin: -90, yMax: -10 });
+  $('bCompare').addEventListener('click', () => {
+    $('bCompare').disabled = true; $('bCompare').textContent = 'Running…';
+    setTimeout(() => {
+      const RUNS = 50, EPS = 1000;
+      const avg = (f) => {
+        const acc = new Float64Array(EPS);
+        for (let r = 0; r < RUNS; r++) { const o = f(); for (let k = 0; k < EPS; k++) acc[k] += o[k] / RUNS; }
+        return Array.from(acc, (_, i) => { const lo = Math.max(0, i - 9); let s = 0; for (let k = lo; k <= i; k++) s += acc[k]; return [i + 1, s / (i - lo + 1)]; });
+      };
+      $('cmp').hidden = false; $('cmpNote').hidden = false;
+      cmp.draw([
+        { data: avg(() => run(Math.pow(2, -13), 0, false, EPS)), color: C.grey, label: 'REINFORCE' },
+        { data: avg(() => run(Math.pow(2, -9), Math.pow(2, -6), true, EPS)), color: C.green, label: 'with baseline' },
+      ], { hlines: [{ y: -2 * Math.SQRT2 / (3 * Math.SQRT2 - 4), label: 'v*', color: C.amber }] });
+      $('bCompare').disabled = false; $('bCompare').textContent = 'Run again';
+    }, 30);
+  });
+
+  Course.quiz([
+    {
+      q: 'A step has $G_t = -20$, baseline $b(S_t) = -15$ and $\\nabla \\ln \\pi(A_t \\mid S_t) = 0.4$ (one parameter). With $\\alpha = 0.1$, what is the change in $\\theta$?',
+      answer: 0.1 * (-20 + 15) * 0.4,
+      tol: 0.001,
+      explain: '$0.1 \\times (-20 - (-15)) \\times 0.4 = 0.1 \\times (-5) \\times 0.4 = -0.2$.',
+    },
+    {
+      q: 'Two actions with the one-parameter policy of Lesson 72 at $\\pi(\\rightarrow) = 0.5$. Rewards are fixed: $10$ for right, $8$ for left. With no baseline, $\\hat g = R\\,\\nabla_\\theta\\ln\\pi(A)$. What is the variance of $\\hat g$?',
+      answer: (25 + 16) / 2 - 0.25,
+      tol: 0.01,
+      hint: 'Right gives $10 \\times 0.5$, left gives $8 \\times (-0.5)$, each with probability $0.5$.',
+      explain: 'Samples are $5$ and $-4$. Mean $0.5$, mean square $(25 + 16)/2 = 20.5$, variance $20.5 - 0.25 = 20.25$.',
+    },
+    {
+      q: 'Same setting, but with baseline $b = 9$. What is the variance now?',
+      answer: 0,
+      tol: 0.001,
+      explain: 'Right: $(10 - 9)(0.5) = 0.5$. Left: $(8 - 9)(-0.5) = 0.5$. Every sample equals the true gradient $0.5$, so the variance is $0$.',
+    },
+    {
+      q: 'Could the baseline depend on the action, $b(s, a)$?',
+      choices: [
+        'Yes, any baseline works',
+        'No: then $\\sum_a b(s,a)\\nabla\\pi(a \\mid s)$ is not zero in general, so the gradient becomes biased',
+        'Only if $\\gamma < 1$',
+      ],
+      answer: 1,
+      explain: 'The proof pulls $b(s)$ out of the sum over actions. An action-dependent $b$ cannot be pulled out.',
+    },
+  ]);
+</script>
+</body>
+</html>

@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>21. State values | Learning RL</title>
+<meta name="description" content="The value of a state is the return you expect from it under a policy. Run episodes from a cell and watch their average settle on that number.">
+<link rel="stylesheet" href="/projects/learning-rl/assets/course.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="/projects/learning-rl/assets/lessons.js"></script>
+<script defer src="/projects/learning-rl/assets/course.js"></script>
+<style>
+  #grid { max-width: 440px !important; }
+  .gcell.goal { background: var(--accent-soft); }
+  .gcell.pit { background: var(--red-soft); }
+  .gcell.sel { box-shadow: inset 0 0 0 3px var(--blue); }
+  .term { display: flex; flex-direction: column; align-items: center; line-height: 1.1; }
+  .term small { font-size: 0.6em; color: var(--heading); font-weight: 600; }
+  .est { display: flex; flex-direction: column; align-items: center; line-height: 1.15; }
+  .est b { font-weight: 600; color: var(--ink); }
+  .est small { font-size: 0.6em; color: var(--muted); }
+  .est .ex { color: var(--amber); font-weight: 600; font-size: 0.65em; }
+  .trail { position: absolute; width: 8px; height: 8px; border-radius: 50%; background: var(--blue); opacity: 0.55; top: 4px; left: 4px; }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }
+  .seg button { border: 0; border-radius: 0; color: var(--muted); }
+  .seg button.on { color: #fff; }
+  #epEq { overflow-x: auto; overflow-y: hidden; text-align: center; min-height: 2.4em; }
+</style>
+</head>
+<body data-lesson="21">
+
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" href="/">Eddie's Blog</a>
+    <nav class="site-nav">
+      <a href="/about/">About</a><a href="/writing/">Writing</a><a href="/projects/">Projects</a><a href="/playground/">Playground</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <p id="crumbs"></p>
+  <h1>State values</h1>
+  <p class="lede">Start the same policy from the same cell twice and you get different returns, because the policy and the ice are both random. The <b>value</b> of a state is the return you get from it on average. It scores a state under a given policy with a single number.</p>
+
+  <section class="card">
+    <div class="row">
+      <span class="muted">Policy:</span>
+      <span class="seg"><button id="pRandom" class="on">Random</button><button id="pArrows">Arrows, ε = 0.2</button></span>
+    </div>
+    <p class="note">The icy gridworld from Lesson 20, $\gamma = 0.9$. "Arrows" is Lesson 20's starting policy. Click a cell to start episodes from it. Each cell shows its average return so far and how many episodes made it.</p>
+    <div id="grid"></div>
+    <div id="epEq"></div>
+    <div class="row">
+      <button id="bOne">Run 1 episode</button>
+      <button id="bHundred" class="primary">Run 100 episodes</button>
+      <button id="bAll">100 from every cell</button>
+      <span class="spacer"></span>
+      <label class="muted"><input type="checkbox" id="cExact"> show exact $v_\pi$</label>
+      <button id="bReset" class="quiet">Reset</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="k">Episodes from <span id="selName"></span></span><span class="v" id="sN">0</span></div>
+      <div class="stat"><span class="k">Average return $V(s)$</span><span class="v" id="sV">–</span></div>
+      <div class="stat"><span class="k">Standard error</span><span class="v" id="sSE">–</span></div>
+      <div class="stat" id="exactStat" hidden><span class="k">Exact $v_\pi(s)$</span><span class="v" id="sExact">–</span></div>
+    </div>
+    <canvas class="chart" id="chart"></canvas>
+    <p class="note" id="chartNote">Blue: the running average for the selected cell. Amber dashes: the exact value, when shown.</p>
+  </section>
+
+  <section class="card maths">
+    <h2>The maths</h2>
+    <p>The return from time $t$ is the discounted sum of the rewards that follow (Lesson 4):</p>
+    $$\begin{aligned} G_t &= R_{t+1} + \gamma R_{t+2} + \gamma^2 R_{t+3} + \dots \\ &= \sum_{k=0}^{\infty} \gamma^k R_{t+k+1} \end{aligned}$$
+    <p>The <b>state-value function</b> of policy $\pi$ is the expected return when starting in $s$ and following $\pi$ from then on:</p>
+    $$v_\pi(s) = \mathbb{E}_\pi\big[G_t \mid S_t = s\big]$$
+    <p>$\mathbb{E}_\pi$ averages over everything random: the actions $\pi$ picks and the slips of the ice. A terminal state has $v_\pi = 0$, since no rewards follow it.</p>
+    <p>If $n$ episodes start in $s$ and return $G^{(1)}, \dots, G^{(n)}$, their average estimates the value:</p>
+    $$V(s) = \frac{1}{n}\sum_{i=1}^{n} G^{(i)} \;\longrightarrow\; v_\pi(s) \quad \text{as } n \to \infty$$
+    <p>This is the law of large numbers again (Lesson 5). Its typical error is the standard error, where $\sigma$ is the standard deviation of the returns:</p>
+    $$\text{SE} = \frac{\sigma}{\sqrt{n}}$$
+    <p>Four times as many episodes halves the error. Returns here are spread widely (from about $-10$ to $+10$), so a few episodes give a rough answer. Lesson 35 builds a learning method on exactly this averaging.</p>
+    <p>A value is always <i>of a policy</i>. Switch policies above: the same cell gets a different number.</p>
+  </section>
+
+  <section class="card" id="quiz"></section>
+
+  <p id="read"></p>
+  <nav id="pager"></nav>
+  <nav id="progress"></nav>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  // ---- The icy gridworld (Lessons 18–19's layout, used in Lessons 20–29) ---
+  // 4×5 grid. G = goal (+10, ends), P = pit (−10, ends), # = wall. Every other move pays `step`.
+  // An action goes where you meant with probability 1 − slip, and slips to each side with slip/2.
+  // Moving into the wall or the edge leaves you where you are.
+  const MAP = ['....G', '.#..P', '...#.', '.....'];
+  const ROWS = 4, COLS = 5, NS = ROWS * COLS;
+  const ARROW = ['↑', '→', '↓', '←'], ANAME = ['up', 'right', 'down', 'left'];
+  const DR = [-1, 0, 1, 0], DC = [0, 1, 0, -1];
+  const kind = (s) => MAP[Math.floor(s / COLS)][s % COLS];
+  const isWall = (s) => kind(s) === '#';
+  const isTerm = (s) => kind(s) === 'G' || kind(s) === 'P';
+  const STATES = [...Array(NS).keys()].filter((s) => !isWall(s) && !isTerm(s));
+  const START = 15;
+  const rc = (s) => [Math.floor(s / COLS), s % COLS];
+  const cellName = (s) => `(${rc(s)[0]},${rc(s)[1]})`;
+
+  function move(s, d) {
+    const [r, c] = rc(s), nr = r + DR[d], nc = c + DC[d];
+    if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) return s;
+    const s2 = nr * COLS + nc;
+    return isWall(s2) ? s : s2;
+  }
+  const reward = (W, s2) => (kind(s2) === 'G' ? W.goal : kind(s2) === 'P' ? W.pit : W.step);
+  // The three possible results of action a in state s: meant, slip clockwise, slip anticlockwise.
+  function outcomes(W, s, a) {
+    return [[a, 1 - W.slip], [(a + 1) % 4, W.slip / 2], [(a + 3) % 4, W.slip / 2]]
+      .filter(([, p]) => p > 0)
+      .map(([d, p]) => { const s2 = move(s, d); return { d, p, s2, r: reward(W, s2) }; });
+  }
+  const uniform = () => { const pi = []; STATES.forEach((s) => (pi[s] = [0.25, 0.25, 0.25, 0.25])); return pi; };
+  const deterministic = (arrows) => { const pi = []; STATES.forEach((s) => { pi[s] = [0, 0, 0, 0]; pi[s][arrows[s]] = 1; }); return pi; };
+
+  // Exact v_π: solve (I − γ P_π) v = r_π over the non-terminal states by Gaussian elimination.
+  function evaluate(W, pi) {
+    const n = STATES.length, idx = new Map(STATES.map((s, i) => [s, i]));
+    const A = STATES.map(() => new Array(n + 1).fill(0));
+    STATES.forEach((s, i) => {
+      A[i][i] += 1;
+      for (let a = 0; a < 4; a++) {
+        if (!pi[s][a]) continue;
+        for (const o of outcomes(W, s, a)) {
+          const w = pi[s][a] * o.p;
+          A[i][n] += w * o.r;
+          if (!isTerm(o.s2)) A[i][idx.get(o.s2)] -= W.gamma * w;
+        }
+      }
+    });
+    for (let c = 0; c < n; c++) {
+      let piv = c;
+      for (let r = c + 1; r < n; r++) if (Math.abs(A[r][c]) > Math.abs(A[piv][c])) piv = r;
+      [A[c], A[piv]] = [A[piv], A[c]];
+      for (let r = 0; r < n; r++) {
+        if (r === c || !A[r][c]) continue;
+        const f = A[r][c] / A[c][c];
+        for (let k = c; k <= n; k++) A[r][k] -= f * A[c][k];
+      }
+    }
+    const v = new Array(NS).fill(0);
+    STATES.forEach((s, i) => (v[s] = A[i][n] / A[i][i]));
+    return v;
+  }
+  // q(s, a) = Σ p(s', r | s, a) [r + γ v(s')]
+  const qOf = (W, v, s, a) => outcomes(W, s, a).reduce((t, o) => t + o.p * (o.r + W.gamma * v[o.s2]), 0);
+  const qAll = (W, v) => { const q = []; STATES.forEach((s) => (q[s] = [0, 1, 2, 3].map((a) => qOf(W, v, s, a)))); return q; };
+  // v_* by value iteration (Lesson 33), run to convergence.
+  function optimal(W) {
+    let v = new Array(NS).fill(0);
+    for (let k = 0; k < 5000; k++) {
+      let delta = 0;
+      const nv = v.slice();
+      STATES.forEach((s) => { nv[s] = Math.max(...[0, 1, 2, 3].map((a) => qOf(W, v, s, a))); delta = Math.max(delta, Math.abs(nv[s] - v[s])); });
+      v = nv;
+      if (delta < 1e-12) break;
+    }
+    return v;
+  }
+  function stepEnv(W, s, a) {
+    const os = outcomes(W, s, a), o = os[Course.sample(os.map((x) => x.p))];
+    return o;
+  }
+  // One episode under π from s0 (and optional forced first action a0). Returns the steps.
+  function episode(W, pi, s0, a0 = null, maxT = 1000) {
+    const steps = [];
+    let s = s0;
+    for (let t = 0; t < maxT && !isTerm(s); t++) {
+      const a = t === 0 && a0 !== null ? a0 : Course.sample(pi[s]);
+      const o = stepEnv(W, s, a);
+      steps.push({ s, a, d: o.d, r: o.r, s2: o.s2 });
+      s = o.s2;
+    }
+    return steps;
+  }
+  // Two decimals without a minus sign on zero.
+  const f2 = (x) => (Math.abs(x) < 0.005 ? 0 : x).toFixed(2);
+  const discounted = (W, steps) => steps.reduceRight((g, x) => x.r + W.gamma * g, 0);
+  // ---- end of the icy gridworld ---------------------------------------------
+
+  const W = { slip: 0.2, step: 0, goal: 10, pit: -10, gamma: 0.9 };
+  // Lesson 19's route: up the left side, then along the top row.
+  const PRESET = { 0: 1, 1: 1, 2: 1, 3: 1, 5: 0, 7: 0, 8: 0, 10: 0, 11: 3, 12: 0, 14: 2, 15: 0, 16: 3, 17: 3, 18: 3, 19: 3 };
+  const POLICIES = {
+    random: uniform(),
+    arrows: (() => { const pi = []; STATES.forEach((s) => (pi[s] = [0, 1, 2, 3].map((a) => (a === PRESET[s] ? 0.8 : 0) + 0.05))); return pi; })(),
+  };
+  let which = 'random', pi, exact, sum, sq, cnt, hist, sel = START, trail = new Set();
+
+  function reset() {
+    pi = POLICIES[which];
+    exact = evaluate(W, pi);
+    sum = new Array(NS).fill(0); sq = new Array(NS).fill(0); cnt = new Array(NS).fill(0);
+    hist = Array.from({ length: NS }, () => []);
+    trail = new Set();
+    $('epEq').innerHTML = '';
+    draw();
+  }
+
+  const G = Course.grid($('grid'), ROWS, COLS, (r, c, el) => {
+    const s = r * COLS + c, k = kind(s);
+    if (k === '#') { el.classList.add('wall'); return; }
+    if (k === 'G') { el.classList.add('goal'); el.innerHTML = '<span class="term">🏁<small>+10</small></span>'; return; }
+    if (k === 'P') { el.classList.add('pit'); el.innerHTML = '<span class="term">🕳️<small>−10</small></span>'; return; }
+    if (!sum) return;
+    const show = $('cExact').checked;
+    const V = cnt[s] ? sum[s] / cnt[s] : null;
+    if (V !== null) el.style.background = Course.heat(V, 10);
+    el.innerHTML = `<span class="est"><b>${V === null ? '·' : f2(V)}</b><small>n = ${cnt[s]}</small>${show ? `<span class="ex">${f2(exact[s])}</span>` : ''}</span>` +
+      (trail.has(s) ? '<span class="trail"></span>' : '');
+    if (s === sel) el.classList.add('sel');
+  });
+  G.onClick((r, c) => {
+    const s = r * COLS + c;
+    if (!STATES.includes(s)) return;
+    sel = s; trail = new Set(); $('epEq').innerHTML = '';
+    draw();
+  });
+
+  const chart = Course.lineChart($('chart'), { xLabel: 'episodes from this cell', yLabel: 'average return' });
+
+  function draw() {
+    G.update();
+    const n = cnt[sel], show = $('cExact').checked;
+    $('selName').textContent = cellName(sel);
+    $('sN').textContent = n;
+    $('sV').textContent = n ? f2(sum[sel] / n) : '–';
+    if (n > 1) {
+      const m = sum[sel] / n, varr = (sq[sel] - n * m * m) / (n - 1);
+      $('sSE').textContent = `±${Math.sqrt(Math.max(0, varr) / n).toFixed(2)}`;
+    } else $('sSE').textContent = '–';
+    $('exactStat').hidden = !show;
+    $('sExact').textContent = f2(exact[sel]);
+    const data = hist[sel].map((y, i) => [i + 1, y]);
+    $('chart').hidden = !data.length;
+    $('chartNote').hidden = !data.length;
+    if (data.length) chart.draw(data.length ? [{ data, color: Course.colors.blue, label: 'V(s)' }] : [{ data: [[1, 0]], color: 'transparent' }],
+      { hlines: show ? [{ y: exact[sel], color: Course.colors.amber, label: 'v_π(s)' }] : [] });
+  }
+
+  function record(s, g) {
+    sum[s] += g; sq[s] += g * g; cnt[s]++;
+    hist[s].push(sum[s] / cnt[s]);
+  }
+
+  $('bOne').addEventListener('click', () => {
+    const ep = episode(W, pi, sel), g = discounted(W, ep);
+    record(sel, g);
+    trail = new Set(ep.map((x) => x.s));
+    const T = ep.length, last = ep[T - 1];
+    const nonzero = ep.map((x, k) => [x.r, k]).filter(([r]) => r !== 0);
+    const terms = nonzero.map(([r, k]) => (k === 0 ? `${r}` : `0.9^{${k}} \\times (${r})`)).join(' + ') || '0';
+    Course.tex($('epEq'), `\\text{${T} steps, ${kind(last.s2) === 'G' ? 'reached the goal' : kind(last.s2) === 'P' ? 'fell in the pit' : 'cut off'}:} \\quad G = ${terms} = ${f2(g)}`, true);
+    draw();
+  });
+  $('bHundred').addEventListener('click', () => {
+    for (let i = 0; i < 100; i++) record(sel, discounted(W, episode(W, pi, sel)));
+    trail = new Set(); $('epEq').innerHTML = '';
+    draw();
+  });
+  $('bAll').addEventListener('click', () => {
+    for (const s of STATES) for (let i = 0; i < 100; i++) record(s, discounted(W, episode(W, pi, s)));
+    trail = new Set(); $('epEq').innerHTML = '';
+    draw();
+  });
+  $('cExact').addEventListener('change', draw);
+  $('bReset').addEventListener('click', reset);
+  for (const [id, w] of [['pRandom', 'random'], ['pArrows', 'arrows']]) {
+    $(id).addEventListener('click', () => {
+      which = w;
+      $('pRandom').classList.toggle('on', w === 'random');
+      $('pArrows').classList.toggle('on', w === 'arrows');
+      reset();
+    });
+  }
+  reset();
+
+  Course.quiz([
+    {
+      q: 'An episode gets rewards $0, 0, +10$ and ends. With $\\gamma = 0.9$, what is its return $G_0$?',
+      answer: 0.81 * 10,
+      tol: 0.001,
+      explain: '$G_0 = 0 + 0.9 \\times 0 + 0.9^2 \\times 10 = 8.1$.',
+    },
+    {
+      q: 'Three episodes from the same cell return $8.1$, $-9$ and $10$. What is the estimate $V(s)$?',
+      answer: (8.1 - 9 + 10) / 3,
+      tol: 0.005,
+      explain: '$(8.1 - 9 + 10)/3 = 9.1/3 \\approx 3.03$.',
+    },
+    {
+      q: 'Returns from a cell have standard deviation $\\sigma = 6$. How many episodes give a standard error of $0.3$?',
+      answer: 400,
+      tol: 0,
+      hint: 'Solve $6/\\sqrt{n} = 0.3$.',
+      explain: '$\\sqrt{n} = 6/0.3 = 20$, so $n = 400$.',
+    },
+    {
+      q: 'Under the random policy, the cell left of 🏁 has a higher value than the start cell. Why?',
+      choices: [
+        'From there the +10 tends to come sooner, so it is discounted less, and the pit is less likely to come first',
+        'The random policy picks moves towards 🏁 more often',
+        'Values are higher in the top row by definition',
+      ],
+      answer: 0,
+      explain: 'A value averages discounted returns. Near the goal, $+10$ arrives after few steps, so $\\gamma^k \\times 10$ is large.',
+    },
+  ]);
+</script>
+</body>
+</html>
