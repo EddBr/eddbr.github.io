@@ -4,7 +4,7 @@
 
 // Lessons 1..RL_LIVE are published. Later lessons are listed but not linked.
 // On localhost everything is linked, for authoring.
-window.RL_LIVE = ['localhost', '127.0.0.1'].includes(location.hostname) ? 100 : 4;
+window.RL_LIVE = ['localhost', '127.0.0.1'].includes(location.hostname) ? 100 : 9;
 
 window.RL_UNITS = [
   { n: 1, title: 'What is RL?' },
