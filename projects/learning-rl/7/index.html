@@ -13,11 +13,10 @@
 <script defer src="/projects/learning-rl/assets/course.js"></script>
 <style>
   canvas#chart { height: 260px; }
-  .bars { height: 110px; }
-  .bars .bar.avg { background: var(--blue); }
-  .weights { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  .weights h3 { font-size: 0.9rem; margin: 0; color: var(--heading); }
-  @media (max-width: 560px) { .weights { grid-template-columns: 1fr; } }
+  .key { margin: 0 0 8px; padding-left: 1.2em; }
+  .key li { margin: 2px 0; }
+  .swatch { display: inline-block; width: 14px; height: 3px; vertical-align: middle; margin-right: 6px; }
+  #eq { overflow-x: auto; min-height: 5.2em; }
 </style>
 </head>
 <body data-lesson="7">
@@ -34,43 +33,57 @@
 <main>
   <p id="crumbs"></p>
   <h1>Step sizes and moving targets</h1>
-  <p class="lede">So far, each lever's true value $q_*$ has stayed fixed. If it drifts over time, an average of every reward since the start falls behind, because old rewards count as much as new ones. Replacing $\tfrac{1}{n}$ with a constant step size $\alpha$ lets the estimate keep up.</p>
+  <p class="lede">In Lessons 5 and 6 each lever's true value $q_*$ never changed, so averaging every reward ever seen was the best estimate. If $q_*$ drifts, old rewards describe a lever that no longer exists, and the average is held back by them. A constant step size $\alpha$ forgets old rewards at a steady rate, so the estimate keeps up.</p>
 
   <section class="card">
+    <h2>One drifting lever, two estimates</h2>
+    <p>There is a single lever. Every step, its true value $q_*$ wanders a little at random, and pulling it pays $q_*$ plus noise. Two estimates watch exactly the same rewards and differ only in step size:</p>
+    <ul class="key">
+      <li><span class="swatch" style="background:var(--amber)"></span><b>True $q_*$</b> (dashed): the hidden value both are trying to track.</li>
+      <li><span class="swatch" style="background:#c4c8cf"></span><b>Rewards</b>: what the agent actually sees.</li>
+      <li><span class="swatch" style="background:var(--blue)"></span><b>Sample average</b>, step size $\tfrac{1}{n}$ (Lesson 6).</li>
+      <li><span class="swatch" style="background:var(--accent)"></span><b>Constant step size</b> $\alpha$.</li>
+    </ul>
+    <p class="note">Press <b>Move target</b> to shift $q_*$ by 3 in one go, then watch which estimate follows. Press <b>Run</b> to let it drift.</p>
     <canvas class="chart" id="chart"></canvas>
-    <label class="slider"><span>Step size α</span><input id="iAlpha" type="range" min="0.01" max="1" step="0.01" value="0.1"><output></output></label>
-    <label class="slider"><span>Drift</span><input id="iDrift" type="range" min="0" max="0.3" step="0.01" value="0.08"><output></output></label>
     <div class="row">
-      <button id="bRun" class="primary">Run</button>
+      <button id="bJump" class="primary">Move target</button>
+      <button id="bRun">Run</button>
+      <span class="spacer"></span>
       <button id="bReset" class="quiet">Reset</button>
     </div>
-    <div class="stats">
-      <div class="stat"><span class="k">Steps</span><span class="v" id="sT">0</span></div>
-      <div class="stat"><span class="k">Average error, $\tfrac{1}{n}$</span><span class="v" id="sE1" style="color:var(--blue)">–</span></div>
-      <div class="stat"><span class="k">Average error, α</span><span class="v" id="sE2" style="color:var(--accent)">–</span></div>
-    </div>
-    <p class="note">Error is $|Q - q_*|$ averaged over the last 100 steps. Set drift to 0 and see which estimate wins then.</p>
+    <label class="slider"><span>Step size α</span><input id="iAlpha" type="range" min="0.01" max="1" step="0.01" value="0.1"><output></output></label>
+    <label class="slider"><span>Drift per step</span><input id="iDrift" type="range" min="0" max="0.3" step="0.01" value="0.08"><output></output></label>
 
     <div class="sub">
-      <h2>How much does each past reward count?</h2>
-      <div class="weights">
-        <div><h3 style="color:var(--blue)">Sample average, $n = 20$</h3><div class="bars" id="wAvg"></div></div>
-        <div><h3 style="color:var(--accent)">Constant α</h3><div class="bars" id="wAlpha"></div></div>
-      </div>
-      <div class="axis"><span>oldest</span><span style="text-align:right">newest →</span></div>
+      <h2>Why the average falls behind</h2>
+      <p>Both estimates use the update from Lesson 6, $Q \leftarrow Q + \text{step}\,(R - Q)$: move a fraction of the way towards the latest reward. Here is the latest step for each:</p>
+      <div id="eq"></div>
+      <p class="note" id="eqNote"></p>
     </div>
+
+    <div class="stats">
+      <div class="stat"><span class="k">Steps</span><span class="v" id="sT">0</span></div>
+      <div class="stat"><span class="k">Recent error, $\tfrac{1}{n}$</span><span class="v" id="sE1" style="color:var(--blue)">–</span></div>
+      <div class="stat"><span class="k">Recent error, α</span><span class="v" id="sE2" style="color:var(--accent)">–</span></div>
+    </div>
+    <p class="note">Error is the distance from the truth, $|Q - q_*|$, averaged over the last 100 steps. Lower is better.</p>
+    <p class="note"><b>Try this.</b> Set drift to 0: blue wins, because nothing moves and averaging everything is best. Set α to 1: green copies the last reward and is very noisy. Large α reacts fast but is noisy. Small α is smooth but slow.</p>
   </section>
 
   <section class="card maths">
     <h2>The maths</h2>
     <p>Replace $\tfrac{1}{n}$ with a fixed $\alpha \in (0, 1]$:</p>
-    $$Q_{n+1} = Q_n + \alpha\,\big[R_n - Q_n\big]$$
-    <p>Unrolling the recursion shows how much each reward counts:</p>
-    $$Q_{n+1} = (1-\alpha)^n\, Q_1 + \sum_{i=1}^{n} \alpha (1-\alpha)^{n-i}\, R_i$$
-    <p>The weight on a reward shrinks by a factor $(1-\alpha)$ for every newer reward. This is an <b>exponential recency-weighted average</b>. The weights sum to 1, the initial guess $Q_1$ fades away, and recent rewards matter most.</p>
-    <p>The trade-off: a constant $\alpha$ never settles down, because every new reward keeps nudging it. Stochastic approximation theory says an estimate converges for sure only if the step sizes $\alpha_n$ satisfy</p>
-    $$\sum_{n=1}^{\infty} \alpha_n = \infty \qquad \text{and} \qquad \sum_{n=1}^{\infty} \alpha_n^2 < \infty$$
-    <p>The first condition means steps stay big enough to overcome any starting error. The second means they eventually shrink enough to stop the noise. $\tfrac{1}{n}$ satisfies both. A constant $\alpha$ fails the second, which is exactly what lets it keep tracking a moving target.</p>
+    $$Q_{n+1} = Q_n + \alpha\,\big[R_n - Q_n\big] = \alpha R_n + (1-\alpha)\,Q_n$$
+    <p>The new estimate is a share $\alpha$ of the newest reward plus a share $1-\alpha$ of the old estimate. Substitute the same rule for $Q_n$, then for $Q_{n-1}$, and so on:</p>
+    $$\begin{aligned}
+      Q_{n+1} &= \alpha R_n + (1-\alpha)\big[\alpha R_{n-1} + (1-\alpha)\,Q_{n-1}\big] \\
+      &= \alpha R_n + \alpha(1-\alpha) R_{n-1} + (1-\alpha)^2 Q_{n-1} \\
+      &= (1-\alpha)^n\, Q_1 + \sum_{i=1}^{n} \alpha (1-\alpha)^{n-i}\, R_i
+    \end{aligned}$$
+    <p>Reward $R_i$ gets weight $\alpha(1-\alpha)^{n-i}$. The newest ($i = n$) gets $\alpha$, the next $\alpha(1-\alpha)$, and each step further back multiplies the weight by another $(1-\alpha)$. This is an <b>exponential recency-weighted average</b>. The weights, including $(1-\alpha)^n$ on the starting guess $Q_1$, add up to 1, and the starting guess fades away.</p>
+    <p>The sample average instead gives every reward the same weight, $\tfrac{1}{n}$. A reward from step 1 counts as much as the latest one. That is right when $q_*$ is fixed, because every reward is equally good evidence. When $q_*$ moves it is wrong: old rewards describe where the target used to be, and with equal weights they keep outvoting the new ones. Constant $\alpha$ fixes this by letting old rewards fade.</p>
+    <p>The cost: a constant $\alpha$ never fully settles, because every new reward still nudges it. Lessons 45 and 52 come back to when a step size settles.</p>
   </section>
 
   <section class="card" id="quiz"></section>
@@ -82,10 +95,10 @@
 
 <script type="module">
   const $ = (id) => document.getElementById(id);
-  const WINDOW = 100, SHOW = 400;
-  let q, qAvg, qAlpha, n, hist, err1, err2, timer = null;
+  const WINDOW = 100, SHOW = 400, WARMUP = 150;
+  let q, qAvg, qAlpha, n, hist, err1, err2, last, timer = null;
 
-  const alpha = Course.slider('#iAlpha', (v) => v.toFixed(2), weights);
+  const alpha = Course.slider('#iAlpha', (v) => v.toFixed(2), () => draw());
   const drift = Course.slider('#iDrift', (v) => v.toFixed(2));
   const chart = Course.lineChart($('chart'), { xLabel: 'step', yLabel: 'value' });
 
@@ -94,7 +107,7 @@
     q = 0; qAvg = 0; qAlpha = 0; n = 0;
     hist = { q: [], r: [], avg: [], alpha: [] };
     err1 = []; err2 = [];
-    for (let i = 0; i < 150; i++) step();
+    for (let i = 0; i < WARMUP; i++) step();
     draw();
   }
 
@@ -102,17 +115,29 @@
     q += drift() * Course.gauss();          // the true value takes a small random walk
     const r = q + Course.gauss();           // reward = true value + noise
     n++;
+    const a = alpha();
+    last = { n, r, avg0: qAvg, alpha0: qAlpha, a };
     qAvg += (r - qAvg) / n;
-    qAlpha += alpha() * (r - qAlpha);
+    qAlpha += a * (r - qAlpha);
+    last.avg1 = qAvg; last.alpha1 = qAlpha;
     hist.q.push([n, q]); hist.r.push([n, r]); hist.avg.push([n, qAvg]); hist.alpha.push([n, qAlpha]);
     err1.push(Math.abs(qAvg - q)); err2.push(Math.abs(qAlpha - q));
     for (const k in hist) if (hist[k].length > SHOW) hist[k].shift();
     if (err1.length > WINDOW) { err1.shift(); err2.shift(); }
   }
 
+  function jump() {
+    q += q > 0 ? -3 : 3;                    // keep the target near the middle of the chart
+    for (let i = 0; i < 40; i++) step();
+    draw();
+  }
+
+  const f = (x) => x.toFixed(2);
+  const sgn = (x) => (x < 0 ? `(${f(x)})` : f(x));
+
   function draw() {
     chart.draw([
-      { data: hist.r, color: 'rgba(156,163,175,0.45)', width: 1, label: 'reward' },
+      { data: hist.r, color: 'rgba(156,163,175,0.4)', width: 1, label: 'reward' },
       { data: hist.q, color: Course.colors.amber, width: 2.5, dashed: true, label: 'true q*' },
       { data: hist.avg, color: Course.colors.blue, label: '1/n' },
       { data: hist.alpha, color: Course.colors.green, label: 'α' },
@@ -121,14 +146,16 @@
     const mean = (xs) => (xs.length ? (xs.reduce((a, b) => a + b, 0) / xs.length).toFixed(2) : '–');
     $('sE1').textContent = mean(err1);
     $('sE2').textContent = mean(err2);
-  }
 
-  function weights() {
-    const N = 20, a = alpha();
-    const top = Math.max(a, 1 / N) * 1.1;   // both panels share one scale
-    const bar = (w, cls = '') => `<div class="bar ${cls}" style="height:${(w / top) * 100}%" title="weight ${w.toFixed(3)}"></div>`;
-    $('wAvg').innerHTML = Array.from({ length: N }, () => bar(1 / N, 'avg')).join('');
-    $('wAlpha').innerHTML = Array.from({ length: N }, (_, i) => bar(a * Math.pow(1 - a, N - 1 - i))).join('');
+    const L = last;
+    Course.tex($('eq'),
+      `\\begin{aligned}` +
+      `&\\text{reward } R_{${L.n}} = ${f(L.r)} \\\\[2pt]` +
+      `&\\color{${Course.colors.blue}}{\\tfrac{1}{n}:}\\ \\ ${f(L.avg0)} + \\tfrac{1}{${L.n}}\\,(${f(L.r)} - ${sgn(L.avg0)}) = ${f(L.avg1)} \\\\` +
+      `&\\color{${Course.colors.green}}{\\alpha:}\\ \\ ${f(L.alpha0)} + ${f(L.a)}\\,(${f(L.r)} - ${sgn(L.alpha0)}) = ${f(L.alpha1)}` +
+      `\\end{aligned}`, true);
+    $('eqNote').textContent =
+      `Blue moves 1/${L.n} of the way to the new reward, and that share shrinks every step. Green always moves ${f(L.a)} of the way.`;
   }
 
   function stop() { clearInterval(timer); timer = null; $('bRun').textContent = 'Run'; }
@@ -137,8 +164,8 @@
     $('bRun').textContent = 'Pause';
     timer = setInterval(() => { for (let i = 0; i < 4; i++) step(); draw(); }, 40);
   });
+  $('bJump').addEventListener('click', jump);
   $('bReset').addEventListener('click', reset);
-  weights();
   reset();
 
   Course.quiz([
@@ -146,7 +173,7 @@
       q: 'With $\\alpha = 0.1$, what weight does the newest reward get?',
       answer: 0.1,
       tol: 0.001,
-      explain: 'The newest reward has $i = n$, so its weight is $\\alpha(1-\\alpha)^0 = \\alpha$.',
+      explain: 'The newest reward gets weight $\\alpha = 0.1$.',
     },
     {
       q: 'With $\\alpha = 0.1$, what weight does the reward just before the newest get?',
@@ -159,12 +186,6 @@
       answer: Math.pow(0.5, 10),
       tol: 0.0001,
       explain: '$(1-\\alpha)^n = 0.5^{10} \\approx 0.001$. The starting guess is almost forgotten.',
-    },
-    {
-      q: 'Which step-size sequence satisfies both convergence conditions?',
-      choices: ['$\\alpha_n = 0.1$', '$\\alpha_n = 1/n$', '$\\alpha_n = 1/n^2$'],
-      answer: 1,
-      explain: '$\\sum 1/n$ diverges and $\\sum 1/n^2$ converges. A constant fails the second condition. $1/n^2$ fails the first: its steps shrink so fast the total movement is finite.',
     },
   ]);
 </script>
